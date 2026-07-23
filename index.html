@@ -3152,6 +3152,7 @@ function confirmOrientImport(){
     (byProfile[r.targetProfile]=byProfile[r.targetProfile]||[]).push(obj);
   });
   var totalAdded=0;
+  var breakdown=[];
   Object.keys(byProfile).forEach(function(pid){
     var arr=readProfileOrientations(pid).slice();
     var existIds=arr.map(function(o){return o.id;});
@@ -3159,10 +3160,16 @@ function confirmOrientImport(){
     arr=arr.concat(fresh);
     writeProfileOrientations(pid,arr);
     totalAdded+=fresh.length;
+    if(fresh.length>0){var pf=getProfile(pid);breakdown.push((pf?pf.nom:pid)+' ('+fresh.length+')');}
   });
   S.orientImportRows=null;S.orientImportCmsFilter='';S.orientImportBulkTarget='';S.modal=null;
   renderOrientations();renderTabs();renderModal();
-  var msg='✅ '+totalAdded+' orientation(s) dispatchée(s) vers les profils concernés';
+  var msg;
+  if(totalAdded===0){
+    msg='ℹ️ Aucune orientation ajoutée';
+  } else {
+    msg='✅ '+totalAdded+' orientation(s) ajoutée(s) — '+breakdown.join(', ');
+  }
   if(skipped>0)msg+=' — ⚠️ '+skipped+' ignorée(s) (conseiller non choisi)';
   showToast(msg);
 }
@@ -3263,7 +3270,7 @@ function renderOrientations(){
     var empty=el('div',{style:"text-align:center;padding:40px 20px;color:var(--c-muted);"});
     empty.appendChild(el('div',{style:"font-size:48px;margin-bottom:12px;opacity:.4;"},"📋"));
     empty.appendChild(el('div',{style:"font-size:15px;font-weight:700;margin-bottom:6px;"},"Aucune orientation"));
-    empty.appendChild(el('div',{style:"font-size:13px;line-height:1.6;max-width:380px;margin:0 auto;"},"Importez un export Excel du GDIN ou ajoutez manuellement des bénéficiaires de Fumel et Marmande."));
+    empty.appendChild(el('div',{style:"font-size:13px;line-height:1.6;max-width:380px;margin:0 auto;"},"Importez un export Excel du GDIN ou ajoutez manuellement des bénéficiaires. Lors d'un import, chaque bénéficiaire est attribué au conseiller concerné et n'apparaît que dans les orientations de ce conseiller."));
     wrap.appendChild(empty);
     pane.appendChild(wrap);return;
   }
