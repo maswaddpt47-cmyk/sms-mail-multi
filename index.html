@@ -3536,7 +3536,14 @@ function renderModal(){
       if(p.id===S.orientImportBulkTarget)opt.selected=true;
       bulkSel.appendChild(opt);
     });
-    bulkSel.addEventListener('change',function(e){S.orientImportBulkTarget=e.target.value;});
+    bulkSel.addEventListener('change',function(e){
+      S.orientImportBulkTarget=e.target.value;
+      if(S.orientImportBulkTarget){
+        visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;});
+        showToast('✓ '+visibleRows.length+' ligne(s) attribuée(s)');
+      }
+      renderModal();
+    });
     bulkRow.appendChild(bulkSel);
     bulkRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:12px;padding:8px 14px;border-radius:9px;white-space:nowrap;",onClick:function(){
       if(!S.orientImportBulkTarget){showToast('⚠️ Choisissez un conseiller','warn');return;}
@@ -3579,7 +3586,11 @@ function renderModal(){
     box.appendChild(listDiv);
     var impBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:4px;"});
     impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:function(){S.orientImportRows=null;S.orientImportCmsFilter='';S.orientImportBulkTarget='';S.modal=null;renderModal();}},'Annuler'));
-    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:confirmOrientImport},"✓ Confirmer l'import"));
+    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:function(){
+      var missing=rows.filter(function(r){return r.include&&!r.targetProfile;}).length;
+      if(missing>0&&!confirm(missing+' ligne(s) coché(es) n\'ont pas de conseiller attribué et seront ignorées. Continuer quand même ?'))return;
+      confirmOrientImport();
+    }},"✓ Confirmer l'import"));
     box.appendChild(impBtnRow);
   }
   else if(S.modal==='agenda-new'){
