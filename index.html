@@ -3151,13 +3151,13 @@ function confirmOrientImport(){
   renderOrientations();renderTabs();renderModal();
   showToast('✅ '+fresh.length+' orientation(s) ajoutée(s)');
 }
-/* tente de faire correspondre une structure détectée dans le fichier à un secteur connu de l'appli */
-function matchSecteur(raw){
+/* tente de faire correspondre une structure détectée dans le fichier à un CMS du profil actif */
+function matchCms(raw){
   if(!raw)return null;
   var norm=raw.trim().toLowerCase();
   if(!norm)return null;
-  var found=S.secteurs.find(function(s){var sn=s.trim().toLowerCase();return norm.indexOf(sn)!==-1||sn.indexOf(norm)!==-1;});
-  return found||null;
+  var found=S.cmsList.find(function(c){var cn=(c.nom||'').trim().toLowerCase();return cn&&(norm.indexOf(cn)!==-1||cn.indexOf(norm)!==-1);});
+  return found?found.nom:null;
 }
 function renderOrientations(){
   var pane=document.getElementById('pane-orientations');if(!pane)return;clear(pane);
@@ -3188,7 +3188,7 @@ function renderOrientations(){
             if(result.length===0){showToast('⚠️ Aucune ligne exploitable trouvée dans le fichier','warn');return;}
             /* écran de prévisualisation : le CONUM choisit la structure d'orientation et les lignes à garder */
             S.orientImportRows=result.map(function(r){
-              var guess=matchSecteur(r.structure)||r.structure||r.communeBenef||'';
+              var guess=matchCms(r.structure)||r.structure||r.communeBenef||'';
               return Object.assign({},r,{include:true,structureChoice:guess,structureFree:''});
             });
             S.modal='orient-import';renderModal();
@@ -3509,8 +3509,8 @@ function renderModal(){
       if(row.motif)body.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-dim);margin-top:3px;line-height:1.4;"},row.motif));
       var selWrap=el('div',{style:"margin-top:7px;"});
       selWrap.appendChild(el('label',{style:"font-size:10px;font-weight:700;color:var(--c-muted);letter-spacing:.03em;display:block;margin-bottom:3px;"},"STRUCTURE D'ORIENTATION"));
-      var opts=S.secteurs.slice();
-      if(row.structure&&opts.indexOf(row.structure)===-1)opts=[row.structure].concat(opts);
+      var opts=S.cmsList.map(function(c){return c.nom;});
+      if(row.structureChoice&&row.structureChoice!=='__autre__'&&opts.indexOf(row.structureChoice)===-1)opts=[row.structureChoice].concat(opts);
       var sel=el('select',{style:INS4});
       opts.forEach(function(o){var opt=el('option',{value:o},o);if(o===row.structureChoice)opt.selected=true;sel.appendChild(opt);});
       var autreOpt=el('option',{value:'__autre__'},"✏️ Autre (saisie libre)");
