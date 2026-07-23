@@ -148,7 +148,8 @@
 </style>
 </head>
 <body>
-<div id="app-root" style="height:100%;display:flex;flex-direction:column;overflow:hidden;">
+<div id="profile-root" style="height:100%;display:none;align-items:center;overflow-y:auto;"></div>
+<div id="app-root" style="height:100%;display:none;flex-direction:column;overflow:hidden;">
 
   <!-- HEADER + TABS (sticky ensemble) -->
   <div style="position:sticky;top:0;z-index:100;">
@@ -161,6 +162,7 @@
         <div id="rdvCounter" style="font-size:12px;color:oklch(0.5 0.14 155);font-weight:700;"></div>
       </div>
     </div>
+    <button class="gx-press hdr-btn" id="btnProfile" style="border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);display:flex;align-items:center;gap:7px;"><span id="profileDot" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;"></span><span id="profileNameLbl"></span></button>
     <button class="gx-press" id="btnDark" title="Mode sombre" style="cursor:pointer;font-family:inherit;border:none;background:none;font-size:20px;padding:4px 6px;line-height:1;border-radius:9px;flex-shrink:0;">🌙</button>
     <button class="gx-press hdr-btn" id="btnData" style="border:none;background:oklch(0.26 0.03 264);color:#fff;box-shadow:0 4px 12px oklch(0.26 0.03 264 / .25);">💾 Données</button>
   </header>
@@ -314,8 +316,18 @@ var JOURS_FR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi']
 var STRUCTURE="Conseil Départemental du Lot-et-Garonne";
 var DUREE="1 an";
 
+/* ============================== PROFILS ============================== */
+var PROFILES=[
+  {id:'michel',nom:'Michel',color:'oklch(0.5 0.16 266)'},
+  {id:'cynthia',nom:'Cynthia',color:'oklch(0.5 0.16 310)'},
+  {id:'corentin',nom:'Corentin',color:'oklch(0.45 0.14 155)'},
+  {id:'eva',nom:'Eva',color:'oklch(0.52 0.16 55)'},
+];
+function getProfile(id){return PROFILES.find(function(p){return p.id===id;});}
+
 /* ============================== STATE ============================== */
 var S={
+  activeProfile:null, agendaScope:"mine",
   channel:"sms", msgType:"proposition", selectedTemplate:"__default__",
   selectedCMS:"", selectedDemarche:"", commune:"",
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
@@ -339,9 +351,22 @@ var S={
 
 /* ============================== PERSISTENCE ============================== */
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');}}
+/* clé cloisonnée par profil actif — pour history/permanences/cmsList/orientations et dérivés */
+function pk(suffix){return 'ess-'+S.activeProfile+'-'+suffix;}
+function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:ls('ess-'+profileId+'-history',[]);}
+function writeProfileHistory(profileId,arr){
+  if(profileId===S.activeProfile){S.history=arr;lsSet(pk('history'),arr);}
+  else{lsSet('ess-'+profileId+'-history',arr);}
+}
+/* retrouve l'index d'un item d'historique par référence, ou par clé composite (date+heure+commune+nom) pour les items agrégés d'un autre profil */
+function findHistIdx(arr,item){
+  var idx=arr.indexOf(item);
+  if(idx!==-1)return idx;
+  return arr.findIndex(function(h){return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();});
+}
 var _ghLastAutoPush=0;
 function persist(){
-  lsSet('ess-cms',S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
+  lsSet(pk('cms'),S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
   lsSet('ess-templates',S.templates);lsSet('ess-custom-tpl',S.customTemplates);lsSet('ess-vars',S.customVars);
   lsSet('ess-hidden',S.hiddenBuiltinKeys);
   var now=new Date().toLocaleString('fr-FR');lsSet('ess-lastSave',now);
@@ -355,19 +380,21 @@ function persist(){
     }
   }
 }
-function saveLast(){lsSet('ess-last',{selectedCMS:S.selectedCMS,selectedDemarche:S.selectedDemarche,commune:S.commune});}
+function saveLast(){lsSet(pk('last'),{selectedCMS:S.selectedCMS,selectedDemarche:S.selectedDemarche,commune:S.commune});}
 
 /* ============================== GITHUB BACKUP ============================== */
-var GH_REPO='maswaddpt47-cmyk/sms-mail';
+var GH_REPO='maswaddpt47-cmyk/sms-mail-multi';
 var GH_BRANCH='main';
 var GH_BACKUP_DIR='backups';
 function ghToken(){return localStorage.getItem('ess-gh-token')||'';}
 function ghHeaders(token){return{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};}
+/* dossier de backup cloisonné par profil : backups/<profil>/ */
+function ghBackupDir(){return GH_BACKUP_DIR+'/'+S.activeProfile;}
 function ghNowFile(){
   var n=new Date();
   var d=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
   var h=String(n.getHours()).padStart(2,'0')+String(n.getMinutes()).padStart(2,'0');
-  return GH_BACKUP_DIR+'/backup-'+d+'-'+h+'.json';
+  return ghBackupDir()+'/backup-'+d+'-'+h+'.json';
 }
 
 /* pousse un fichier daté, puis nettoie les anciens (garde GH_MAX_VERSIONS) */
@@ -388,7 +415,7 @@ function githubPush(silent,onSuccess){
     .then(function(r){
       if(!r||!r.ok){if(!silent)showToast('❌ Erreur GitHub (vérifiez le token)','err');return;}
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
-      localStorage.setItem('ess-gh-last-backup',new Date().toISOString());
+      localStorage.setItem(pk('gh-last-backup'),new Date().toISOString());
       ghCleanOldBackups(token);
       if(onSuccess)onSuccess();
     })
@@ -412,7 +439,7 @@ function ghRestoreLatest(token,onSuccess){
 }
 
 function ghCleanOldBackups(token){
-  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_BACKUP_DIR+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
+  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+ghBackupDir()+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(files){
       if(!Array.isArray(files))return;
@@ -431,9 +458,9 @@ function ghCleanOldBackups(token){
     }).catch(function(){});
 }
 
-/* liste les backups disponibles sur GitHub */
+/* liste les backups disponibles sur GitHub (dossier du profil actif) */
 function ghListBackups(token,cb){
-  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_BACKUP_DIR+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
+  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+ghBackupDir()+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(files){
       if(!Array.isArray(files)){cb([]);return;}
@@ -459,7 +486,7 @@ function ghRestoreFile(token,filePath){
 /* vérification silencieuse au démarrage */
 function ghCheckOnStartup(){
   var token=ghToken();if(!token)return;
-  var lastLocal=localStorage.getItem('ess-gh-last-backup');
+  var lastLocal=localStorage.getItem(pk('gh-last-backup'));
   ghListBackups(token,function(backups){
     if(!backups.length)return;
     var latest=backups[0];
