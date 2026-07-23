@@ -3363,7 +3363,8 @@ function renderOrientations(){
       S.selectedDemarche=matched?String(matched.id):'';
       S.demarcheAutre=matched?'':o.motif;
       S.genNotes=o.motif||(o.orienteur?'Orienté par '+o.orienteur:'');
-      S.dateDemande=o.date||new Date().toISOString().slice(0,10);
+      /* dateDemande = date d'envoi du message, toujours aujourd'hui — o.date est la date de la demande d'orientation d'origine (peut être ancienne), pas la date d'envoi du SMS/mail généré maintenant */
+      S.dateDemande=new Date().toISOString().slice(0,10);
       S.msgType='sans_appel';
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
