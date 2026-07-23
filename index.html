@@ -3155,14 +3155,8 @@ function confirmOrientImport(){
   var rows=S.orientImportRows||[];
   var byProfile={};
   rows.filter(function(r){return r.include;}).forEach(function(r){
-    var targetProfile=S.activeProfile,structureLabel='';
-    if(r.structureChoice&&r.structureChoice!=='__autre__'){
-      var parts=r.structureChoice.split('||');
-      targetProfile=parts[0];structureLabel=parts[1];
-    } else {
-      structureLabel=(r.structureFree||'').trim();
-    }
-    var obj={id:r.id,nom:r.nom,prenom:r.prenom,commune:structureLabel,communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
+    var targetProfile=r.targetProfile||S.activeProfile;
+    var obj={id:r.id,nom:r.nom,prenom:r.prenom,commune:r.structure||'',communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
     (byProfile[targetProfile]=byProfile[targetProfile]||[]).push(obj);
   });
   var totalAdded=0;
@@ -3213,14 +3207,10 @@ function renderOrientations(){
           showToast('⏳ Lecture du fichier…','ok');
           parseXlsxOrientationsAsync(e.target.result).then(function(result){
             if(result.length===0){showToast('⚠️ Aucune ligne exploitable trouvée dans le fichier','warn');return;}
-            /* écran de prévisualisation : le CONUM choisit le CMS (et donc le profil destinataire) pour chaque ligne */
+            /* écran de prévisualisation : le CONUM choisit à qui attribuer chaque ligne */
             S.orientImportRows=result.map(function(r){
               var m=matchCms(r.structure);
-              return Object.assign({},r,{
-                include:true,
-                structureChoice:m?(m.profileId+'||'+m.cmsNom):'__autre__',
-                structureFree:m?'':(r.structure||r.communeBenef||'')
-              });
+              return Object.assign({},r,{include:true,targetProfile:m?m.profileId:S.activeProfile});
             });
             S.modal='orient-import';renderModal();
           }).catch(function(err){
@@ -3524,9 +3514,8 @@ function renderModal(){
   else if(S.modal==='orient-import'){
     var rows=S.orientImportRows||[];
     box.appendChild(header('📋 Importer les orientations ('+rows.length+')'));
-    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},"Choisissez le CMS pour chaque bénéficiaire — l'orientation sera dispatchée dans les données du conseiller rattaché à ce CMS. Décochez les lignes à ne pas importer."));
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},"Attribuez chaque bénéficiaire au conseiller concerné — l'orientation sera ajoutée dans ses propres données. Décochez les lignes à ne pas importer."));
     var INS4="width:100%;font-family:inherit;font-size:12.5px;padding:7px 9px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-input);color:var(--c-text);box-sizing:border-box;";
-    var cmsOptions=allProfileCms();
     var listDiv=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:400px;flex:1;display:flex;flex-direction:column;gap:8px;"});
     rows.forEach(function(row){
       var rcard=el('div',{style:"border:1px solid var(--c-border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;"+(row.include?'':'opacity:.5;')});
@@ -3538,36 +3527,18 @@ function renderModal(){
       var fullName=[row.nom,row.prenom].filter(Boolean).join(' ')||'—';
       body.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},fullName));
       if(row.communeBenef)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Habite : '+row.communeBenef));
+      if(row.structure)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Structure (fichier) : '+row.structure));
       if(row.motif)body.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-dim);margin-top:3px;line-height:1.4;"},row.motif));
       var selWrap=el('div',{style:"margin-top:7px;"});
-      selWrap.appendChild(el('label',{style:"font-size:10px;font-weight:700;color:var(--c-muted);letter-spacing:.03em;display:block;margin-bottom:3px;"},"CMS D'ORIENTATION"));
+      selWrap.appendChild(el('label',{style:"font-size:10px;font-weight:700;color:var(--c-muted);letter-spacing:.03em;display:block;margin-bottom:3px;"},"ATTRIBUER À"));
       var sel=el('select',{style:INS4});
-      cmsOptions.forEach(function(c){
-        var val=c.profileId+'||'+c.cmsNom;
-        var opt=el('option',{value:val},c.cmsNom+' — '+c.profileName);
-        if(val===row.structureChoice)opt.selected=true;
+      PROFILES.forEach(function(p){
+        var opt=el('option',{value:p.id},p.nom);
+        if(p.id===row.targetProfile)opt.selected=true;
         sel.appendChild(opt);
       });
-      var autreOpt=el('option',{value:'__autre__'},"✏️ Autre / non trouvé (reste chez moi)");
-      if(row.structureChoice==='__autre__')autreOpt.selected=true;
-      sel.appendChild(autreOpt);
-      var freeIn=el('input',{type:'text',style:INS4+"margin-top:6px;",placeholder:'Nom de la structure…',value:row.structureFree||''});
-      freeIn.style.display=row.structureChoice==='__autre__'?'block':'none';
-      var hint=el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:4px;font-style:italic;"});
-      function updateHint(){
-        if(row.structureChoice&&row.structureChoice!=='__autre__'){
-          var pid=row.structureChoice.split('||')[0];var pf=getProfile(pid);
-          hint.textContent='→ sera ajouté aux orientations de '+(pf?pf.nom:pid);
-        } else {
-          hint.textContent='→ sera ajouté à mes propres orientations ('+(getProfile(S.activeProfile)||{}).nom+')';
-        }
-      }
-      updateHint();
-      sel.addEventListener('change',function(e){row.structureChoice=e.target.value;freeIn.style.display=e.target.value==='__autre__'?'block':'none';updateHint();});
-      freeIn.addEventListener('input',function(e){row.structureFree=e.target.value;});
+      sel.addEventListener('change',function(e){row.targetProfile=e.target.value;});
       selWrap.appendChild(sel);
-      selWrap.appendChild(freeIn);
-      selWrap.appendChild(hint);
       body.appendChild(selWrap);
       rcard.appendChild(body);
       listDiv.appendChild(rcard);
