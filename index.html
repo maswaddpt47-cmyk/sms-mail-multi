@@ -334,7 +334,7 @@ var S={
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
   statsCMS:"", calendarType:"google",
-  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientAddOpen:false, orientNew:null, orientImportRows:null,
+  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientAddOpen:false, orientNew:null, orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
   modal:null, histItem:null,
@@ -3160,7 +3160,7 @@ function confirmOrientImport(){
     writeProfileOrientations(pid,arr);
     totalAdded+=fresh.length;
   });
-  S.orientImportRows=null;S.modal=null;
+  S.orientImportRows=null;S.orientImportCmsFilter='';S.orientImportBulkTarget='';S.modal=null;
   renderOrientations();renderTabs();renderModal();
   var msg='✅ '+totalAdded+' orientation(s) dispatchée(s) vers les profils concernés';
   if(skipped>0)msg+=' — ⚠️ '+skipped+' ignorée(s) (conseiller non choisi)';
@@ -3196,7 +3196,8 @@ function renderOrientations(){
             /* écran de prévisualisation : le CONUM choisit à qui attribuer chaque ligne (aucune présélection) */
             S.orientImportRows=result.map(function(r){
               return Object.assign({},r,{include:true,targetProfile:''});
-            });
+            }).sort(function(a,b){return(a.structure||'').localeCompare(b.structure||'','fr',{sensitivity:'base'});});
+            S.orientImportCmsFilter='';S.orientImportBulkTarget='';
             S.modal='orient-import';renderModal();
           }).catch(function(err){
             if(err&&err.message==='cannot_inflate'){
@@ -3501,8 +3502,52 @@ function renderModal(){
     box.appendChild(header('📋 Importer les orientations ('+rows.length+')'));
     box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},"Attribuez chaque bénéficiaire au conseiller concerné — l'orientation sera ajoutée dans ses propres données. Décochez les lignes à ne pas importer."));
     var INS4="width:100%;font-family:inherit;font-size:12.5px;padding:7px 9px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-input);color:var(--c-text);box-sizing:border-box;";
-    var listDiv=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:400px;flex:1;display:flex;flex-direction:column;gap:8px;"});
-    rows.forEach(function(row){
+    /* filtre CMS + attribution groupée */
+    var cmsValues=[];
+    rows.forEach(function(r){var s=(r.structure||'').trim();if(s&&cmsValues.indexOf(s)===-1)cmsValues.push(s);});
+    cmsValues.sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
+    var filterBar=el('div',{style:"background:var(--c-hover);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;"});
+    var filterRow=el('div',{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;"});
+    filterRow.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);white-space:nowrap;"},'Filtrer par CMS'));
+    var cmsSel=el('select',{style:INS4+"flex:1;min-width:160px;"});
+    var allOpt=el('option',{value:''},'— Toutes les structures ('+rows.length+') —');
+    if(!S.orientImportCmsFilter)allOpt.selected=true;
+    cmsSel.appendChild(allOpt);
+    cmsValues.forEach(function(v){
+      var n=rows.filter(function(r){return(r.structure||'').trim()===v;}).length;
+      var opt=el('option',{value:v},v+' ('+n+')');
+      if(v===S.orientImportCmsFilter)opt.selected=true;
+      cmsSel.appendChild(opt);
+    });
+    cmsSel.addEventListener('change',function(e){S.orientImportCmsFilter=e.target.value;renderModal();});
+    filterRow.appendChild(cmsSel);
+    filterBar.appendChild(filterRow);
+
+    var visibleRows=S.orientImportCmsFilter?rows.filter(function(r){return(r.structure||'').trim()===S.orientImportCmsFilter;}):rows;
+
+    var bulkRow=el('div',{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;"});
+    bulkRow.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);white-space:nowrap;"},'Attribuer les '+visibleRows.length+' ligne(s) affichée(s) à'));
+    var bulkSel=el('select',{style:INS4+"flex:1;min-width:140px;"});
+    var bulkPlaceholder=el('option',{value:''},'Choisir…');
+    if(!S.orientImportBulkTarget)bulkPlaceholder.selected=true;
+    bulkSel.appendChild(bulkPlaceholder);
+    PROFILES.forEach(function(p){
+      var opt=el('option',{value:p.id},p.nom);
+      if(p.id===S.orientImportBulkTarget)opt.selected=true;
+      bulkSel.appendChild(opt);
+    });
+    bulkSel.addEventListener('change',function(e){S.orientImportBulkTarget=e.target.value;});
+    bulkRow.appendChild(bulkSel);
+    bulkRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:12px;padding:8px 14px;border-radius:9px;white-space:nowrap;",onClick:function(){
+      if(!S.orientImportBulkTarget){showToast('⚠️ Choisissez un conseiller','warn');return;}
+      visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;});
+      renderModal();showToast('✓ '+visibleRows.length+' ligne(s) attribuée(s)');
+    }},'Appliquer'));
+    filterBar.appendChild(bulkRow);
+    box.appendChild(filterBar);
+
+    var listDiv=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:340px;flex:1;display:flex;flex-direction:column;gap:8px;"});
+    visibleRows.forEach(function(row){
       var rcard=el('div',{style:"border:1px solid var(--c-border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;"+(row.include?'':'opacity:.5;')});
       var chk=el('input',{type:'checkbox',style:"margin-top:3px;cursor:pointer;"});
       chk.checked=row.include;
@@ -3533,7 +3578,7 @@ function renderModal(){
     });
     box.appendChild(listDiv);
     var impBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:4px;"});
-    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:function(){S.orientImportRows=null;S.modal=null;renderModal();}},'Annuler'));
+    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:function(){S.orientImportRows=null;S.orientImportCmsFilter='';S.orientImportBulkTarget='';S.modal=null;renderModal();}},'Annuler'));
     impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:confirmOrientImport},"✓ Confirmer l'import"));
     box.appendChild(impBtnRow);
   }
