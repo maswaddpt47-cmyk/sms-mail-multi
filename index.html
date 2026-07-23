@@ -3572,7 +3572,7 @@ function renderModal(){
       var fullName=[row.nom,row.prenom].filter(Boolean).join(' ')||'—';
       body.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},fullName));
       if(row.communeBenef)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Habite : '+row.communeBenef));
-      if(row.structure)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Structure (fichier) : '+row.structure));
+      if(row.structure)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},['Structure (fichier) : ',el('span',{style:"font-weight:700;color:var(--c-dim);"},row.structure)]));
       if(row.motif)body.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-dim);margin-top:3px;line-height:1.4;"},row.motif));
       var selWrap=el('div',{style:"margin-top:7px;"});
       selWrap.appendChild(el('label',{style:"font-size:10px;font-weight:700;color:var(--c-muted);letter-spacing:.03em;display:block;margin-bottom:3px;"},"ATTRIBUER À"));
