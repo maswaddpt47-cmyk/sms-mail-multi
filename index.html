@@ -334,7 +334,7 @@ var S={
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
   statsCMS:"", calendarType:"google",
-  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientAddOpen:false, orientNew:null,
+  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientAddOpen:false, orientNew:null, orientImportRows:null,
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
   modal:null, histItem:null,
@@ -3107,12 +3107,8 @@ function parseXlsxOrientationsAsync(arrayBuffer){
       var results=[];
       for(var ri=1;ri<rows.length;ri++){
         var c=rows[ri].cells;
-        /* filtre : commune bénéficiaire OU structure d'orientation doit contenir fumel ou marmande */
         var commune=(colCommune?c[colCommune]||'':'').trim();
         var structure=(colStructure?c[colStructure]||'':'').trim();
-        var cl=commune.toLowerCase();var sl=structure.toLowerCase();
-        var isFumelMarmande=(cl.indexOf('fumel')!==-1||sl.indexOf('fumel')!==-1||cl.indexOf('marmande')!==-1||sl.indexOf('marmande')!==-1);
-        if(!isFumelMarmande)continue;
         /* nom + prénom */
         var nomPrenom=(colNomPrenom?c[colNomPrenom]||'':'').trim();
         var nom='',prenom='';
@@ -3124,18 +3120,16 @@ function parseXlsxOrientationsAsync(arrayBuffer){
           var sp=splitNomPrenom(nomPrenom);nom=sp.nom;prenom=sp.prenom;
         }
         if(!nom&&!prenom)continue;
-        /* commune affichée = structure si commune bénéficiaire ne contient pas fumel/marmande */
-        var communeAff=(cl.indexOf('fumel')!==-1||cl.indexOf('marmande')!==-1)?commune:structure;
         var dateRaw=colDate?c[colDate]||'':'';
         results.push({
           id:String(Date.now())+'_'+ri,
-          nom:nom,prenom:prenom,commune:communeAff,
+          nom:nom,prenom:prenom,
           communeBenef:commune,
+          structure:structure,
           motif:(colMotif?c[colMotif]||'':'').trim(),
           orienteur:(colOrienteur?c[colOrienteur]||'':'').trim(),
           date:dateRaw?excelDate(dateRaw):'',
-          etat:(colEtat?c[colEtat]||'':'').trim(),
-          done:false
+          etat:(colEtat?c[colEtat]||'':'').trim()
         });
       }
       resolve(results);
@@ -3143,6 +3137,28 @@ function parseXlsxOrientationsAsync(arrayBuffer){
   });
 }
 
+function confirmOrientImport(){
+  var rows=S.orientImportRows||[];
+  var toAdd=rows.filter(function(r){return r.include;}).map(function(r){
+    var structure=r.structureChoice==='__autre__'?(r.structureFree||'').trim():r.structureChoice;
+    return{id:r.id,nom:r.nom,prenom:r.prenom,commune:structure,communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
+  });
+  var existIds=S.orientations.map(function(o){return o.id;});
+  var fresh=toAdd.filter(function(o){return existIds.indexOf(o.id)===-1;});
+  S.orientations=S.orientations.concat(fresh);
+  lsSet(pk('orientations'),S.orientations);
+  S.orientImportRows=null;S.modal=null;
+  renderOrientations();renderTabs();renderModal();
+  showToast('✅ '+fresh.length+' orientation(s) ajoutée(s)');
+}
+/* tente de faire correspondre une structure détectée dans le fichier à un CMS du profil actif */
+function matchCms(raw){
+  if(!raw)return null;
+  var norm=raw.trim().toLowerCase();
+  if(!norm)return null;
+  var found=S.cmsList.find(function(c){var cn=(c.nom||'').trim().toLowerCase();return cn&&(norm.indexOf(cn)!==-1||cn.indexOf(norm)!==-1);});
+  return found?found.nom:null;
+}
 function renderOrientations(){
   var pane=document.getElementById('pane-orientations');if(!pane)return;clear(pane);
   var wrap=el('div',{style:"max-width:860px;margin:0 auto;padding:clamp(18px,3vw,32px) clamp(16px,4vw,40px);"});
@@ -3169,13 +3185,13 @@ function renderOrientations(){
         var fr2=new FileReader();fr2.onload=function(e){
           showToast('⏳ Lecture du fichier…','ok');
           parseXlsxOrientationsAsync(e.target.result).then(function(result){
-            if(result.length===0){showToast('⚠️ Aucune orientation Fumel/Marmande trouvée','warn');return;}
-            /* merge : skip already existing ids */
-            var existIds=S.orientations.map(function(o){return o.id;});
-            var fresh=result.filter(function(o){return existIds.indexOf(o.id)===-1;});
-            S.orientations=S.orientations.concat(fresh);
-            lsSet(pk('orientations'),S.orientations);renderOrientations();renderTabs();
-            showToast('✅ '+fresh.length+' orientation(s) ajoutée(s)');
+            if(result.length===0){showToast('⚠️ Aucune ligne exploitable trouvée dans le fichier','warn');return;}
+            /* écran de prévisualisation : le CONUM choisit la structure d'orientation et les lignes à garder */
+            S.orientImportRows=result.map(function(r){
+              var guess=matchCms(r.structure)||r.structure||r.communeBenef||'';
+              return Object.assign({},r,{include:true,structureChoice:guess,structureFree:''});
+            });
+            S.modal='orient-import';renderModal();
           }).catch(function(err){
             if(err&&err.message==='cannot_inflate'){
               showToast('⚠️ Fichier xlsx non lisible (compression non supportée). Essayez d\'exporter en CSV depuis Excel puis importez en JSON.','warn');
@@ -3473,6 +3489,48 @@ function renderModal(){
     box.appendChild(lbl);
     box.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);margin-top:10px;line-height:1.6;"},"Les événements déjà présents dans l'historique ne seront pas dupliqués."));
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;margin-top:10px;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){S.modal=null;renderModal();}},'Fermer'));
+  }
+  else if(S.modal==='orient-import'){
+    var rows=S.orientImportRows||[];
+    box.appendChild(header('📋 Importer les orientations ('+rows.length+')'));
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},"Choisissez la structure d'orientation pour chaque bénéficiaire, et décochez les lignes à ne pas importer."));
+    var INS4="width:100%;font-family:inherit;font-size:12.5px;padding:7px 9px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-input);color:var(--c-text);box-sizing:border-box;";
+    var listDiv=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:400px;flex:1;display:flex;flex-direction:column;gap:8px;"});
+    rows.forEach(function(row){
+      var rcard=el('div',{style:"border:1px solid var(--c-border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;"+(row.include?'':'opacity:.5;')});
+      var chk=el('input',{type:'checkbox',style:"margin-top:3px;cursor:pointer;"});
+      chk.checked=row.include;
+      chk.addEventListener('change',function(e){row.include=e.target.checked;renderModal();});
+      rcard.appendChild(chk);
+      var body=el('div',{style:"flex:1;min-width:0;"});
+      var fullName=[row.nom,row.prenom].filter(Boolean).join(' ')||'—';
+      body.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},fullName));
+      if(row.communeBenef)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Habite : '+row.communeBenef));
+      if(row.motif)body.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-dim);margin-top:3px;line-height:1.4;"},row.motif));
+      var selWrap=el('div',{style:"margin-top:7px;"});
+      selWrap.appendChild(el('label',{style:"font-size:10px;font-weight:700;color:var(--c-muted);letter-spacing:.03em;display:block;margin-bottom:3px;"},"STRUCTURE D'ORIENTATION"));
+      var opts=S.cmsList.map(function(c){return c.nom;});
+      if(row.structureChoice&&row.structureChoice!=='__autre__'&&opts.indexOf(row.structureChoice)===-1)opts=[row.structureChoice].concat(opts);
+      var sel=el('select',{style:INS4});
+      opts.forEach(function(o){var opt=el('option',{value:o},o);if(o===row.structureChoice)opt.selected=true;sel.appendChild(opt);});
+      var autreOpt=el('option',{value:'__autre__'},"✏️ Autre (saisie libre)");
+      if(row.structureChoice==='__autre__')autreOpt.selected=true;
+      sel.appendChild(autreOpt);
+      var freeIn=el('input',{type:'text',style:INS4+"margin-top:6px;",placeholder:'Nom de la structure…',value:row.structureFree||''});
+      freeIn.style.display=row.structureChoice==='__autre__'?'block':'none';
+      sel.addEventListener('change',function(e){row.structureChoice=e.target.value;freeIn.style.display=e.target.value==='__autre__'?'block':'none';});
+      freeIn.addEventListener('input',function(e){row.structureFree=e.target.value;});
+      selWrap.appendChild(sel);
+      selWrap.appendChild(freeIn);
+      body.appendChild(selWrap);
+      rcard.appendChild(body);
+      listDiv.appendChild(rcard);
+    });
+    box.appendChild(listDiv);
+    var impBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:4px;"});
+    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:function(){S.orientImportRows=null;S.modal=null;renderModal();}},'Annuler'));
+    impBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:11px;border-radius:12px;",onClick:confirmOrientImport},"✓ Confirmer l'import"));
+    box.appendChild(impBtnRow);
   }
   else if(S.modal==='agenda-new'){
     var an=S.agendaNew||{};
