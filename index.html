@@ -3195,7 +3195,7 @@ function renderOrientations(){
             if(result.length===0){showToast('⚠️ Aucune ligne exploitable trouvée dans le fichier','warn');return;}
             /* écran de prévisualisation : le CONUM choisit à qui attribuer chaque ligne (aucune présélection) */
             S.orientImportRows=result.map(function(r){
-              return Object.assign({},r,{include:true,targetProfile:''});
+              return Object.assign({},r,{include:false,targetProfile:''});
             }).sort(function(a,b){return(a.structure||'').localeCompare(b.structure||'','fr',{sensitivity:'base'});});
             S.orientImportCmsFilter='';S.orientImportBulkTarget='';
             S.modal='orient-import';renderModal();
@@ -3539,7 +3539,7 @@ function renderModal(){
     bulkSel.addEventListener('change',function(e){
       S.orientImportBulkTarget=e.target.value;
       if(S.orientImportBulkTarget){
-        visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;});
+        visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;r.include=true;});
         showToast('✓ '+visibleRows.length+' ligne(s) attribuée(s)');
       }
       renderModal();
@@ -3547,7 +3547,7 @@ function renderModal(){
     bulkRow.appendChild(bulkSel);
     bulkRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:12px;padding:8px 14px;border-radius:9px;white-space:nowrap;",onClick:function(){
       if(!S.orientImportBulkTarget){showToast('⚠️ Choisissez un conseiller','warn');return;}
-      visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;});
+      visibleRows.forEach(function(r){r.targetProfile=S.orientImportBulkTarget;r.include=true;});
       renderModal();showToast('✓ '+visibleRows.length+' ligne(s) attribuée(s)');
     }},'Appliquer'));
     filterBar.appendChild(bulkRow);
@@ -3577,7 +3577,7 @@ function renderModal(){
         if(p.id===row.targetProfile)opt.selected=true;
         sel.appendChild(opt);
       });
-      sel.addEventListener('change',function(e){row.targetProfile=e.target.value;renderModal();});
+      sel.addEventListener('change',function(e){row.targetProfile=e.target.value;if(e.target.value)row.include=true;renderModal();});
       selWrap.appendChild(sel);
       body.appendChild(selWrap);
       rcard.appendChild(body);
