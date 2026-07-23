@@ -352,11 +352,13 @@ var S={
 /* ============================== PERSISTENCE ============================== */
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');}}
 /* clé cloisonnée par profil actif — pour history/permanences/cmsList/orientations et dérivés */
-function pk(suffix){return 'ess-'+S.activeProfile+'-'+suffix;}
+function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
+function pk(suffix){return pkFor(S.activeProfile,suffix);}
 function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:ls('ess-'+profileId+'-history',[]);}
 function writeProfileHistory(profileId,arr){
   if(profileId===S.activeProfile){S.history=arr;lsSet(pk('history'),arr);}
   else{lsSet('ess-'+profileId+'-history',arr);}
+  maybeAutoBackupProfile(profileId);
 }
 /* retrouve l'index d'un item d'historique par référence, ou par clé composite (date+heure+commune+nom) pour les items agrégés d'un autre profil */
 function findHistIdx(arr,item){
@@ -364,21 +366,14 @@ function findHistIdx(arr,item){
   if(idx!==-1)return idx;
   return arr.findIndex(function(h){return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();});
 }
-var _ghLastAutoPush=0;
+var _ghLastAutoPushByProfile={};
 function persist(){
   lsSet(pk('cms'),S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
   lsSet('ess-templates',S.templates);lsSet('ess-custom-tpl',S.customTemplates);lsSet('ess-vars',S.customVars);
   lsSet('ess-hidden',S.hiddenBuiltinKeys);
   var now=new Date().toLocaleString('fr-FR');lsSet('ess-lastSave',now);
   S.saveStatus='Sauvegardé le '+now;renderHeader();
-  /* auto-backup GitHub throttlé : max 1 push toutes les 2 minutes */
-  if(ghToken()){
-    var nowMs=Date.now();
-    if(nowMs-_ghLastAutoPush>120000){
-      _ghLastAutoPush=nowMs;
-      githubPush(true);
-    }
-  }
+  maybeAutoBackupProfile(S.activeProfile);
 }
 function saveLast(){lsSet(pk('last'),{selectedCMS:S.selectedCMS,selectedDemarche:S.selectedDemarche,commune:S.commune});}
 
@@ -389,21 +384,31 @@ var GH_BACKUP_DIR='backups';
 function ghToken(){return localStorage.getItem('ess-gh-token')||'';}
 function ghHeaders(token){return{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};}
 /* dossier de backup cloisonné par profil : backups/<profil>/ */
-function ghBackupDir(){return GH_BACKUP_DIR+'/'+S.activeProfile;}
-function ghNowFile(){
+function ghBackupDir(pid){return GH_BACKUP_DIR+'/'+(pid||S.activeProfile);}
+function ghNowFile(pid){
   var n=new Date();
   var d=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
   var h=String(n.getHours()).padStart(2,'0')+String(n.getMinutes()).padStart(2,'0');
-  return ghBackupDir()+'/backup-'+d+'-'+h+'.json';
+  return ghBackupDir(pid)+'/backup-'+d+'-'+h+'.json';
+}
+/* déclenche un backup throttlé (2 min) pour un profil donné — utilisé lors d'écritures cross-profil */
+function maybeAutoBackupProfile(profileId){
+  if(!ghToken())return;
+  var nowMs=Date.now();
+  if(nowMs-(_ghLastAutoPushByProfile[profileId]||0)>120000){
+    _ghLastAutoPushByProfile[profileId]=nowMs;
+    githubPush(true,null,profileId);
+  }
 }
 
 /* pousse un fichier daté, puis nettoie les anciens (garde GH_MAX_VERSIONS) */
-function githubPush(silent,onSuccess){
+function githubPush(silent,onSuccess,pid){
+  pid=pid||S.activeProfile;
   var token=ghToken();
   if(!token){if(!silent)showToast('⚠️ Token GitHub manquant — ajoutez-le dans Configuration','warn');return;}
   if(!silent)showToast('⏳ Sauvegarde GitHub en cours…','ok');
-  var content=btoa(unescape(encodeURIComponent(JSON.stringify(exportData(),null,2))));
-  var file=ghNowFile();
+  var content=btoa(unescape(encodeURIComponent(JSON.stringify(exportDataForProfile(pid),null,2))));
+  var file=ghNowFile(pid);
   /* chaque backup est un nouveau fichier horodaté — pas besoin de SHA */
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():null;})
@@ -415,8 +420,8 @@ function githubPush(silent,onSuccess){
     .then(function(r){
       if(!r||!r.ok){if(!silent)showToast('❌ Erreur GitHub (vérifiez le token)','err');return;}
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
-      localStorage.setItem(pk('gh-last-backup'),new Date().toISOString());
-      ghCleanOldBackups(token);
+      localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
+      ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
     })
     .catch(function(){if(!silent)showToast('❌ Erreur réseau GitHub','err');});
@@ -438,8 +443,8 @@ function ghRestoreLatest(token,onSuccess){
   });
 }
 
-function ghCleanOldBackups(token){
-  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+ghBackupDir()+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
+function ghCleanOldBackups(token,pid){
+  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+ghBackupDir(pid)+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(files){
       if(!Array.isArray(files))return;
@@ -665,8 +670,7 @@ function addHistory(item){
   if(item.body&&!item.statut)item.statut='en_attente';
   var h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
   S.history=h;lsSet(pk('history'),h);
-  /* auto-backup GitHub immédiat après chaque nouveau RDV (throttlé 2 min) */
-  if(ghToken()){var nowMs=Date.now();if(nowMs-_ghLastAutoPush>120000){_ghLastAutoPush=nowMs;githubPush(true);}}
+  maybeAutoBackupProfile(S.activeProfile);
   /* Rappel export tous les 5 messages */
   var since=parseInt(localStorage.getItem(pk('since-export'))||'0',10)+1;
   localStorage.setItem(pk('since-export'),since);
@@ -843,7 +847,13 @@ function savePerm(id){
 }
 
 /* modals */
-function exportData(){return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:S.history,permanences:S.permanences,orientations:S.orientations};}
+/* démarches/templates/customTemplates/secteurs/customVars/mandats sont partagés entre profils : lus depuis S quel que soit pid */
+function exportDataForProfile(pid){
+  var cmsList=pid===S.activeProfile?S.cmsList:ls('ess-'+pid+'-cms',[]);
+  var permanences=pid===S.activeProfile?S.permanences:ls('ess-'+pid+'-permanences',[]);
+  return{cmsList:cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),permanences:permanences,orientations:readProfileOrientations(pid)};
+}
+function exportData(){return exportDataForProfile(S.activeProfile);}
 function openExport(){S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
 function downloadExport(){var blob=new Blob([JSON.stringify(exportData(),null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
@@ -3141,6 +3151,7 @@ function readProfileOrientations(profileId){return profileId===S.activeProfile?S
 function writeProfileOrientations(profileId,arr){
   if(profileId===S.activeProfile){S.orientations=arr;lsSet(pk('orientations'),arr);}
   else{lsSet('ess-'+profileId+'-orientations',arr);}
+  maybeAutoBackupProfile(profileId);
 }
 function confirmOrientImport(){
   var rows=S.orientImportRows||[];
@@ -3716,7 +3727,7 @@ function renderModal(){
         var targetP=t._profile||S.activeProfile;
         var arr=readProfileHistory(targetP);
         var idx=findHistIdx(arr,t);
-        if(idx!==-1){arr[idx].statut=ev.target.value||null;t.statut=ev.target.value||null;writeProfileHistory(targetP,arr);renderAgenda();if(ghToken()){var _n=Date.now();if(_n-_ghLastAutoPush>120000){_ghLastAutoPush=_n;githubPush(true);}}}
+        if(idx!==-1){arr[idx].statut=ev.target.value||null;t.statut=ev.target.value||null;writeProfileHistory(targetP,arr);renderAgenda();}
       }});
       [['','— Statut —'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé']].forEach(function(o){var opt=el('option',{value:o[0]},o[1]);if((t.statut||'')===(o[0]))opt.selected=true;stSel.appendChild(opt);});
       box.appendChild(stSel);
