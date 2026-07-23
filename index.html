@@ -418,7 +418,17 @@ function githubPush(silent,onSuccess,pid){
       return fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file,{method:'PUT',headers:ghHeaders(token),body:JSON.stringify(body)});
     })
     .then(function(r){
-      if(!r||!r.ok){if(!silent)showToast('❌ Erreur GitHub (vérifiez le token)','err');return;}
+      if(!r||!r.ok){
+        if(!silent){
+          var status=r?r.status:0;
+          (r?r.json().catch(function(){return null;}):Promise.resolve(null)).then(function(errBody){
+            var detail=errBody&&errBody.message?' — '+errBody.message:'';
+            var hint=status===404?' (repo/branche introuvable pour ce token)':status===403||status===401?' (droits insuffisants sur ce repo)':'';
+            showToast('❌ Erreur GitHub '+status+hint+detail,'err');
+          });
+        }
+        return;
+      }
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
       localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
       ghCleanOldBackups(token,pid);
