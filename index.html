@@ -2155,8 +2155,19 @@ function renderAgenda(){
   navBar.appendChild(btnToday);navBar.appendChild(btnPrev);navBar.appendChild(btnNext);navBar.appendChild(btnPrint);navBar.appendChild(searchIn);navBar.appendChild(statutSel);navBar.appendChild(jumpIn);
   pane.appendChild(navBar);
 
+  function dayKey(d){return d.dateStr+'|'+d.perm.commune+'|'+d.profile;}
+  var visibleDays=S.agendaFocusDay?days.filter(function(d){return dayKey(d)===S.agendaFocusDay;}):days;
+  if(S.agendaFocusDay&&!visibleDays.length){S.agendaFocusDay=null;visibleDays=days;}
+  if(S.agendaFocusDay){
+    var focusBar=el('div',{style:"display:flex;align-items:center;gap:10px;background:oklch(0.96 0.04 266);border:1.5px solid oklch(0.78 0.1 266);border-radius:14px;padding:10px 16px;margin-bottom:16px;"});
+    focusBar.appendChild(el('span',{style:"font-size:13px;font-weight:700;color:oklch(0.4 0.14 266);"},"🔍 Mode journée — une seule journée affichée"));
+    var btnUnfocus=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:9px;border:none;background:oklch(0.5 0.16 266);color:#fff;margin-left:auto;",onClick:function(){S.agendaFocusDay=null;renderAgenda();}},"✕ Voir toute la période");
+    focusBar.appendChild(btnUnfocus);
+    pane.appendChild(focusBar);
+  }
+
   var MONTHS=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-  days.forEach(function(day){
+  visibleDays.forEach(function(day){
     var dayHist=readProfileHistory(day.profile).map(function(h){return Object.assign({},h,{_profile:day.profile});});
     var slots=getSlots(day.perm.commune,day.dateStr,dayHist,day.perm);
     var takenCount=slots.filter(function(s){return s.taken&&!s.freeAgain;}).length;
@@ -2178,8 +2189,10 @@ function renderAgenda(){
     if(day.exceptional)dayHead.appendChild(el('span',{style:"background:oklch(0.94 0.06 38);color:oklch(0.42 0.12 38);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},"Exceptionnel"));
     if(isPast&&takenCount>0)dayHead.appendChild(el('span',{style:"background:oklch(0.96 0.04 25);color:oklch(0.5 0.16 25);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},takenCount+" RDV passé"+(takenCount>1?"s":"")));
     if(isPast&&takenCount===0)dayHead.appendChild(el('span',{style:"font-size:11px;color:var(--c-muted);font-weight:600;"},"Passé"));
-    var freeBadge=el('span',{style:"margin-left:auto;font-size:12px;font-weight:700;color:"+(freeCount>0?'oklch(0.42 0.12 155)':'oklch(0.5 0.16 25)')+";"},freeCount+" libre"+(freeCount!==1?"s":"")+" / "+slots.length);
+    var freeBadge=el('span',{style:"margin-left:"+(S.agendaFocusDay?"0":"auto")+";font-size:12px;font-weight:700;color:"+(freeCount>0?'oklch(0.42 0.12 155)':'oklch(0.5 0.16 25)')+";"},freeCount+" libre"+(freeCount!==1?"s":"")+" / "+slots.length);
     dayHead.appendChild(freeBadge);
+    var btnFocusDay=el('button',{class:'gx-press',title:S.agendaFocusDay?"Quitter le mode journée":"Focus sur cette journée uniquement",style:"cursor:pointer;font-family:inherit;border:none;background:none;font-size:14px;padding:2px 4px;"+(S.agendaFocusDay?"":"margin-left:6px;"),onClick:(function(k){return function(){S.agendaFocusDay=S.agendaFocusDay===k?null:k;renderAgenda();};})(dayKey(day))},S.agendaFocusDay?'🔍✕':'🔍');
+    dayHead.appendChild(btnFocusDay);
     card.appendChild(dayHead);
     /* grille des créneaux — colonnes fixes pour éviter les trous */
     var sg=el('div',{style:"display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;"});
