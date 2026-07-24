@@ -840,7 +840,7 @@ function getSlots(commune,dateStr,historyList,permOverride){
   return slots;
 }
 function hasConflict(date,heure,commune){
-  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour';});
+  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
 }
 function addPerm(){
   var np=S.np;
