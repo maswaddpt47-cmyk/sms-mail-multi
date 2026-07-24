@@ -36,3 +36,19 @@ git pull origin main
 → commit (feat/fix/refactor)
 → git push origin main
 ```
+
+## Politique de tests
+
+App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests automatisés (Playwright) coûtent du temps sur chaque intervention et n'apportent rien pour un simple changement d'UI (bouton, libellé, style).
+
+- **Toujours** : vérifier la syntaxe JS avant de committer — coût quasi nul :
+  ```bash
+  node -e "
+  const fs = require('fs');
+  const html = fs.readFileSync('index.html','utf8');
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+  scripts.forEach((s,i)=>{ try{ new Function(s); console.log(i,'OK'); } catch(e){ console.log(i,'ERROR', e.message); } });
+  "
+  ```
+- **Test Playwright ciblé requis** uniquement quand le changement touche au **calcul ou à la persistance des données** : migrations localStorage, logique de fusion/déduplication, calculs de statuts/créneaux (`getSlots`, `hasConflict`), sauvegarde/restauration GitHub. C'est justement l'absence de ce genre de test qui a causé une perte de CMS lors de la migration du 24/07.
+- **Pas de test Playwright** pour : ajout de bouton, changement de libellé/couleur, réorganisation d'UI, ajout de KPI d'affichage simple.
