@@ -2197,6 +2197,42 @@ function renderAgenda(){
     w.focus();
     setTimeout(function(){w.print();},300);
   }
+  /* impression / export PDF d'une seule journée */
+  function printAgendaDay(day){
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    var dayHist=readProfileHistory(day.profile).map(function(h){return Object.assign({},h,{_profile:day.profile});});
+    var slots=getSlots(day.perm.commune,day.dateStr,dayHist,day.perm);
+    var dateLabel=JOURS_FR[day.date.getDay()]+' '+day.date.getDate()+' '+MONTHS[day.date.getMonth()];
+    var ownerLabel=day.profile!==S.activeProfile?(' — '+esc((getProfile(day.profile)||{}).nom||'')):'';
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>Agenda '+esc(day.dateStr)+'</title><style>'
+      +'body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#1a1a2e;}'
+      +'h1{font-size:19px;margin:0 0 2px;}'
+      +'.sub{font-size:13px;color:#666;margin-bottom:22px;}'
+      +'table{width:100%;border-collapse:collapse;font-size:13px;}'
+      +'td,th{border:1px solid #ccc;padding:6px 10px;text-align:left;}'
+      +'th{background:#f0f0f0;}'
+      +'.libre{color:#2a8a4a;}'
+      +'@media print{body{padding:0;}}'
+      +'</style></head><body>';
+    html+='<h1>Agenda du jour — '+esc(dateLabel)+ownerLabel+'</h1>';
+    html+='<div class="sub">'+esc(day.perm.commune)+'</div>';
+    html+='<table><tr><th>Heure</th><th>Bénéficiaire</th><th>Téléphone</th><th>Statut</th></tr>';
+    slots.forEach(function(slot){
+      if(!slot.taken){
+        html+='<tr><td>'+esc(slot.heure)+'</td><td class="libre">Libre</td><td></td><td></td></tr>';
+      } else {
+        var who=esc([slot.taken.civilite,slot.taken.prenom,slot.taken.nom].filter(Boolean).join(' ')||'—');
+        var stLabel=esc((STATUT_STYLES[slot.taken.statut]&&STATUT_STYLES[slot.taken.statut].label)||'');
+        html+='<tr><td>'+esc(slot.heure)+'</td><td>'+who+'</td><td>'+esc(slot.taken.telephone||'')+'</td><td>'+stLabel+'</td></tr>';
+      }
+    });
+    html+='</table></body></html>';
+    var w2=window.open('','_blank');
+    if(!w2){showToast('⚠️ Bloqué par le navigateur — autorisez les pop-ups pour imprimer','warn');return;}
+    w2.document.open();w2.document.write(html);w2.document.close();
+    w2.focus();
+    setTimeout(function(){w2.print();},300);
+  }
   var jumpIn=el('input',{type:'date',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;margin-left:auto;",value:todayStr});
   jumpIn.addEventListener('change',function(e){if(e.target.value)agScrollTo(e.target.value);});
   var searchIn=el('input',{type:'search',placeholder:'🔍 Nom…',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);min-width:120px;flex:1;max-width:220px;"});
@@ -2254,6 +2290,8 @@ function renderAgenda(){
     dayHead.appendChild(freeBadge);
     var btnFocusDay=el('button',{class:'gx-press',title:S.agendaFocusDay?"Quitter le mode journée":"Focus sur cette journée uniquement",style:"cursor:pointer;font-family:inherit;border:none;background:none;font-size:14px;padding:2px 4px;"+(S.agendaFocusDay?"":"margin-left:6px;"),onClick:(function(k){return function(){S.agendaFocusDay=S.agendaFocusDay===k?null:k;renderAgenda();};})(dayKey(day))},S.agendaFocusDay?'🔍✕':'🔍');
     dayHead.appendChild(btnFocusDay);
+    var btnPrintDay=el('button',{class:'gx-press',title:"Imprimer / PDF de cette journée",style:"cursor:pointer;font-family:inherit;border:none;background:none;font-size:14px;padding:2px 4px;",onClick:(function(d){return function(){printAgendaDay(d);};})(day)},'🖨️');
+    dayHead.appendChild(btnPrintDay);
     card.appendChild(dayHead);
     /* grille des créneaux — colonnes fixes pour éviter les trous */
     var sg=el('div',{style:"display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;"});
