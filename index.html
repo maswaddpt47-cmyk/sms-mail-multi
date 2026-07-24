@@ -4147,21 +4147,24 @@ function showProfileSelect(){
 }
 
 /* ============================== INIT ============================== */
-/* migration unique : "Adresses CMS" (cmsList) passe de cloisonné par profil à partagé entre les 4 —
-   fusionne les listes existantes de chaque profil (dédoublonnées par nom, adresse non vide prioritaire) */
+/* migration : "Adresses CMS" (cmsList) passe de cloisonné par profil à partagé entre les 4 —
+   fusionne les listes de chaque profil (dédoublonnées par nom, adresse non vide prioritaire).
+   v2 (corrige v1) : un profil qui n'avait jamais personnalisé sa liste voyait quand même les
+   11 CMS par défaut (DEFAULT_CMS) à l'écran, sans que cette liste soit jamais écrite en
+   localStorage — v1 lisait un fallback [] et perdait donc ces entrées "par défaut mais jamais
+   sauvegardées" lors de la fusion. v2 relit avec DEFAULT_CMS comme fallback et fusionne dans
+   la liste partagée déjà existante (rien de ce qui est déjà là n'est retiré, seulement complété). */
 function migrateSharedCmsList(){
-  if(localStorage.getItem('ess-cms-migrated'))return;
-  localStorage.setItem('ess-cms-migrated','1');
-  if(localStorage.getItem('ess-cms'))return; /* déjà une liste partagée existante */
+  if(localStorage.getItem('ess-cms-migrated-v2'))return;
+  localStorage.setItem('ess-cms-migrated-v2','1');
   var merged=[];var byNom={};
-  PROFILES.forEach(function(p){
-    var list=ls('ess-'+p.id+'-cms',[]);
-    list.forEach(function(c){
-      var key=(c.nom||'').trim().toLowerCase();if(!key)return;
-      if(!byNom[key]){byNom[key]=c;merged.push(c);}
-      else if(!byNom[key].adresse&&c.adresse){byNom[key].adresse=c.adresse;}
-    });
-  });
+  function add(c){
+    var key=(c.nom||'').trim().toLowerCase();if(!key)return;
+    if(!byNom[key]){byNom[key]=c;merged.push(c);}
+    else if(!byNom[key].adresse&&c.adresse){byNom[key].adresse=c.adresse;}
+  }
+  ls('ess-cms',[]).forEach(add);
+  PROFILES.forEach(function(p){ls('ess-'+p.id+'-cms',DEFAULT_CMS).forEach(add);});
   if(merged.length)lsSet('ess-cms',merged);
 }
 function loadProfileData(){
