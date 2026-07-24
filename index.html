@@ -351,7 +351,7 @@ var S={
 
 /* ============================== PERSISTENCE ============================== */
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');}}
-/* clé cloisonnée par profil actif — pour history/permanences/cmsList/orientations et dérivés */
+/* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
 function pk(suffix){return pkFor(S.activeProfile,suffix);}
 function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:ls('ess-'+profileId+'-history',[]);}
@@ -385,7 +385,7 @@ function findHistIdx(arr,item){
 }
 var _ghLastAutoPushByProfile={};
 function persist(){
-  lsSet(pk('cms'),S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
+  lsSet('ess-cms',S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
   lsSet('ess-templates',S.templates);lsSet('ess-custom-tpl',S.customTemplates);lsSet('ess-vars',S.customVars);
   lsSet('ess-hidden',S.hiddenBuiltinKeys);
   var now=new Date().toLocaleString('fr-FR');lsSet('ess-lastSave',now);
@@ -876,11 +876,10 @@ function savePerm(id){
 }
 
 /* modals */
-/* démarches/templates/customTemplates/secteurs/customVars/mandats sont partagés entre profils : lus depuis S quel que soit pid */
+/* démarches/templates/customTemplates/secteurs/customVars/mandats/cmsList sont partagés entre profils : lus depuis S quel que soit pid */
 function exportDataForProfile(pid){
-  var cmsList=pid===S.activeProfile?S.cmsList:ls('ess-'+pid+'-cms',[]);
   var permanences=pid===S.activeProfile?S.permanences:ls('ess-'+pid+'-permanences',[]);
-  return{cmsList:cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),permanences:permanences,orientations:readProfileOrientations(pid)};
+  return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),permanences:permanences,orientations:readProfileOrientations(pid)};
 }
 function exportData(){return exportDataForProfile(S.activeProfile);}
 function openExport(){S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
@@ -894,7 +893,7 @@ function doImport(){
     if(data.cmsList)S.cmsList=data.cmsList;if(data.demarches)S.demarches=data.demarches;if(data.secteurs)S.secteurs=data.secteurs;
     if(data.customTemplates)S.customTemplates=data.customTemplates;if(data.customVars)S.customVars=data.customVars;
     /* on n'importe pas les templates builtin — ils sont définis dans le code */
-    /* cmsList est persisté via persist() ci-dessous (clé cloisonnée par profil) */
+    /* cmsList est persisté via persist() ci-dessous (clé partagée entre profils) */
     if(data.mandats){S.mandats=data.mandats;lsSet('ess-mandats',S.mandats);}
     if(data.history){S.history=data.history;lsSet(pk('history'),S.history);}
     if(data.permanences){S.permanences=data.permanences;lsSet(pk('permanences'),S.permanences);}
@@ -4148,10 +4147,28 @@ function showProfileSelect(){
 }
 
 /* ============================== INIT ============================== */
+/* migration unique : "Adresses CMS" (cmsList) passe de cloisonné par profil à partagé entre les 4 —
+   fusionne les listes existantes de chaque profil (dédoublonnées par nom, adresse non vide prioritaire) */
+function migrateSharedCmsList(){
+  if(localStorage.getItem('ess-cms-migrated'))return;
+  localStorage.setItem('ess-cms-migrated','1');
+  if(localStorage.getItem('ess-cms'))return; /* déjà une liste partagée existante */
+  var merged=[];var byNom={};
+  PROFILES.forEach(function(p){
+    var list=ls('ess-'+p.id+'-cms',[]);
+    list.forEach(function(c){
+      var key=(c.nom||'').trim().toLowerCase();if(!key)return;
+      if(!byNom[key]){byNom[key]=c;merged.push(c);}
+      else if(!byNom[key].adresse&&c.adresse){byNom[key].adresse=c.adresse;}
+    });
+  });
+  if(merged.length)lsSet('ess-cms',merged);
+}
 function loadProfileData(){
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
-  S.cmsList=ls(pk('cms'),DEFAULT_CMS);
+  migrateSharedCmsList();
+  S.cmsList=ls('ess-cms',DEFAULT_CMS);
   S.demarches=ls('ess-demarches',DEFAULT_DEMARCHES);
   /* fusion : ajouter les démarches par défaut manquantes sans écraser les personnalisations */
   var existingIds=S.demarches.map(function(d){return d.id;});
