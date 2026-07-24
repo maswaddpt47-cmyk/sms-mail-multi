@@ -1794,6 +1794,49 @@ function renderStats(){
   wrap.appendChild(barCard);
   wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
 
+  /* ── Tendance mensuelle Lapin / Excusé / Pas de retour ── */
+  var trendMap={};
+  hist.forEach(function(h){
+    if(!h.date||['lapin','excuse','pas_de_retour'].indexOf(h.statut)===-1)return;
+    var key=h.date.substring(0,7);
+    if(!trendMap[key])trendMap[key]={lapin:0,excuse:0,pas_de_retour:0};
+    trendMap[key][h.statut]++;
+  });
+  var trendMonths=Object.keys(trendMap).sort();
+  var trendCard=card("Tendance mensuelle — Lapin / Excusé / Pas de retour");
+  if(trendMonths.length){
+    var seriesKeys=['lapin','excuse','pas_de_retour'];
+    var seriesColors={lapin:"oklch(0.55 0.2 15)",excuse:"oklch(0.72 0.14 85)",pas_de_retour:"oklch(0.62 0.04 266)"};
+    var seriesLabels={lapin:"🐇 Lapin",excuse:"🙅 Excusé",pas_de_retour:"📵 Pas de retour"};
+    var maxT=Math.max.apply(null,trendMonths.map(function(m){var v=trendMap[m];return Math.max(v.lapin,v.excuse,v.pas_de_retour);}))||1;
+    var colsT=trendMonths.length,WT=Math.max(colsT*70,320),HT=110,PBT=26,PTT=8;
+    var svgT=svgEl("svg",{viewBox:"0 0 "+WT+" "+(HT+PBT+PTT),width:"100%",height:"170",preserveAspectRatio:"none",style:"display:block;"});
+    var stepT=WT/colsT;
+    trendMonths.forEach(function(m,i){
+      var v=trendMap[m];
+      var bw=Math.min(stepT*0.22,16);
+      var baseX=i*stepT+(stepT-bw*3-4)/2;
+      seriesKeys.forEach(function(key,si){
+        var hgt=Math.round(v[key]/maxT*(HT-PTT));
+        var x=baseX+si*(bw+2);
+        var r=svgEl("rect",{x:x,y:PTT+(HT-PTT-hgt),width:bw,height:Math.max(hgt,0),fill:seriesColors[key],rx:2});
+        var titleEl=svgEl("title",{});titleEl.textContent=m+' · '+seriesLabels[key]+' : '+v[key];r.appendChild(titleEl);
+        svgT.appendChild(r);
+      });
+      var lbT=svgEl("text",{x:baseX+bw*1.5+2,"text-anchor":"middle","font-size":"9",fill:"oklch(0.55 0.02 264)",y:HT+PTT+PBT-14});
+      lbT.textContent=m.length>=7?m.substring(5)+"/"+(m.substring(2,4)):m;svgT.appendChild(lbT);
+    });
+    var legT=svgEl("g",{transform:"translate(2,"+(HT+PTT+PBT-2)+")"});
+    [{x:0,key:'lapin'},{x:60,key:'excuse'},{x:130,key:'pas_de_retour'}].forEach(function(l){
+      legT.appendChild(svgEl("rect",{x:l.x,y:-7,width:7,height:7,fill:seriesColors[l.key],rx:2}));
+      var t=svgEl("text",{x:l.x+9,y:0,"font-size":"9",fill:"oklch(0.55 0.02 264)"});t.textContent=seriesLabels[l.key];legT.appendChild(t);
+    });
+    svgT.appendChild(legT);
+    var swT=el('div',{style:"overflow-x:auto;-webkit-overflow-scrolling:touch;"});swT.appendChild(svgT);trendCard.appendChild(swT);
+  }else{trendCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Pas assez de données"));}
+  wrap.appendChild(trendCard);
+  wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
+
   /* ── Grille 2 colonnes responsive ── */
   var grid2=el('div',{class:"stats-grid"});
 
