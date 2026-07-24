@@ -672,7 +672,8 @@ function setFieldSave(patch){Object.assign(S,patch);regen();saveLast();renderGen
 function handleGenerate(){
   if(!canGenerate())return;
   if(hasConflict(S.date,S.heure,S.commune)){
-    var conf=S.history.find(function(h){return h.date===S.date&&h.heure===S.heure&&h.commune===S.commune;});
+    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
+    var conf=matches.filter(function(x){return x.msgType==='confirmation';})[0]||matches.filter(function(x){return x.msgType==='proposition';})[0]||matches.filter(function(x){return x.msgType==='sans_appel';})[0]||matches[0];
     var who=conf?[conf.civilite,conf.prenom,conf.nom].filter(Boolean).join(' '):'';
     showToast('⚠️ Créneau déjà pris'+(who?' — '+who:''),'warn');
   }
