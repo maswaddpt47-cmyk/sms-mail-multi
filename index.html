@@ -355,6 +355,23 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){show
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
 function pk(suffix){return pkFor(S.activeProfile,suffix);}
 function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:ls('ess-'+profileId+'-history',[]);}
+/* nombre de RDV réellement occupés aujourd'hui pour un profil (dédoublonné par créneau, hors statuts freeAgain) */
+function countTodayRdv(profileId){
+  var today=toLocalDateStr(new Date());
+  var groups={};
+  readProfileHistory(profileId).forEach(function(h){
+    if(h.date!==today)return;
+    var key=(h.commune||'')+'|'+h.heure;
+    (groups[key]=groups[key]||[]).push(h);
+  });
+  var count=0;
+  Object.keys(groups).forEach(function(key){
+    var arr=groups[key];
+    var taken=arr.filter(function(x){return x.msgType==='confirmation';})[0]||arr.filter(function(x){return x.msgType==='proposition';})[0]||arr.filter(function(x){return x.msgType==='sans_appel';})[0]||null;
+    if(taken&&taken.statut!=='pas_de_retour'&&taken.statut!=='lapin'&&taken.statut!=='excuse')count++;
+  });
+  return count;
+}
 function writeProfileHistory(profileId,arr){
   if(profileId===S.activeProfile){S.history=arr;lsSet(pk('history'),arr);}
   else{lsSet('ess-'+profileId+'-history',arr);}
@@ -3897,6 +3914,8 @@ function renderProfileSelect(){
     card.appendChild(el('div',{style:"width:46px;height:46px;border-radius:14px;background:"+p.color+";display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;font-weight:800;"},p.nom.charAt(0)));
     card.appendChild(el('div',{style:"font-weight:800;font-size:16px;"},p.nom));
     card.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);font-weight:600;"},last?'Dernière connexion : '+last:'Jamais connecté'));
+    var todayCount=countTodayRdv(p.id);
+    card.appendChild(el('div',{style:"font-size:11.5px;font-weight:700;color:"+(todayCount?'oklch(0.48 0.16 266)':'var(--c-muted)')+";"},todayCount?'📅 '+todayCount+' RDV aujourd’hui':'📅 Aucun RDV aujourd’hui'));
     card.addEventListener('click',function(){activateProfile(p.id);});
     grid.appendChild(card);
   });
