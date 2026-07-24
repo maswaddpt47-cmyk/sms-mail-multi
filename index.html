@@ -2069,6 +2069,57 @@ function renderAgenda(){
   }
   function agFilterNom(q){_agNomFilter=q;agApplyFilters();}
   function agFilterStatut(v){_agStatutFilter=v;agApplyFilters();}
+  /* impression / export PDF de la semaine affichée — s'appuie sur window.print() (l'utilisateur peut choisir "Enregistrer en PDF" dans la boîte de dialogue) */
+  function printAgendaWeek(refDateStr){
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    var ref=new Date((refDateStr||todayStr)+'T12:00:00');
+    var monday=new Date(ref);monday.setDate(ref.getDate()-((ref.getDay()+6)%7));
+    var sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+    var weekDates={};
+    for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(monday.getDate()+i);weekDates[toLocalDateStr(d)]=1;}
+    var weekEntries=days.filter(function(x){return weekDates[x.dateStr];});
+    weekEntries.sort(function(a,b){return a.dateStr===b.dateStr?a.perm.debut.localeCompare(b.perm.debut):a.dateStr.localeCompare(b.dateStr);});
+    var scopeLabel=S.agendaScope==='mine'?'Mon agenda':S.agendaScope==='all'?'Tous les conseillers':((getProfile(S.agendaScope)||{}).nom||'');
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>Agenda semaine du '+esc(toLocalDateStr(monday))+'</title><style>'
+      +'body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#1a1a2e;}'
+      +'h1{font-size:19px;margin:0 0 2px;}'
+      +'.sub{font-size:13px;color:#666;margin-bottom:22px;}'
+      +'.day{margin-bottom:18px;page-break-inside:avoid;}'
+      +'.day h2{font-size:14px;margin:0 0 6px;border-bottom:2px solid #333;padding-bottom:4px;}'
+      +'table{width:100%;border-collapse:collapse;font-size:12px;}'
+      +'td,th{border:1px solid #ccc;padding:4px 8px;text-align:left;}'
+      +'th{background:#f0f0f0;}'
+      +'.libre{color:#2a8a4a;}'
+      +'@media print{body{padding:0;}}'
+      +'</style></head><body>';
+    html+='<h1>Agenda de la semaine — '+esc(scopeLabel)+'</h1>';
+    html+='<div class="sub">Du '+esc(toLocalDateStr(monday))+' au '+esc(toLocalDateStr(sunday))+'</div>';
+    if(!weekEntries.length)html+='<p>Aucune permanence cette semaine.</p>';
+    weekEntries.forEach(function(day){
+      var dayHist=readProfileHistory(day.profile).map(function(h){return Object.assign({},h,{_profile:day.profile});});
+      var slots=getSlots(day.perm.commune,day.dateStr,dayHist,day.perm);
+      var dateLabel=JOURS_FR[day.date.getDay()]+' '+day.date.getDate()+' '+MONTHS[day.date.getMonth()];
+      var ownerLabel=S.agendaScope==='all'?(' — '+esc((getProfile(day.profile)||{}).nom||'')):'';
+      html+='<div class="day"><h2>'+esc(dateLabel)+' — '+esc(day.perm.commune)+ownerLabel+'</h2>';
+      html+='<table><tr><th>Heure</th><th>Bénéficiaire</th><th>Statut</th></tr>';
+      slots.forEach(function(slot){
+        if(!slot.taken){
+          html+='<tr><td>'+esc(slot.heure)+'</td><td class="libre">Libre</td><td></td></tr>';
+        } else {
+          var who=esc([slot.taken.civilite,slot.taken.prenom,slot.taken.nom].filter(Boolean).join(' ')||'—');
+          var stLabel=esc((STATUT_STYLES[slot.taken.statut]&&STATUT_STYLES[slot.taken.statut].label)||'');
+          html+='<tr><td>'+esc(slot.heure)+'</td><td>'+who+'</td><td>'+stLabel+'</td></tr>';
+        }
+      });
+      html+='</table></div>';
+    });
+    html+='</body></html>';
+    var w=window.open('','_blank');
+    if(!w){showToast('⚠️ Bloqué par le navigateur — autorisez les pop-ups pour imprimer','warn');return;}
+    w.document.open();w.document.write(html);w.document.close();
+    w.focus();
+    setTimeout(function(){w.print();},300);
+  }
   var jumpIn=el('input',{type:'date',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;margin-left:auto;",value:todayStr});
   jumpIn.addEventListener('change',function(e){if(e.target.value)agScrollTo(e.target.value);});
   var searchIn=el('input',{type:'search',placeholder:'🔍 Nom…',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);min-width:120px;flex:1;max-width:220px;"});
@@ -2083,7 +2134,9 @@ function renderAgenda(){
   var statutSel=el('select',{id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
   [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['libre','🟢 Libre'],['depasse','🚨 Dépassement']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
-  navBar.appendChild(btnToday);navBar.appendChild(btnPrev);navBar.appendChild(btnNext);navBar.appendChild(searchIn);navBar.appendChild(statutSel);navBar.appendChild(jumpIn);
+  var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
+  btnPrint.addEventListener('click',function(){printAgendaWeek(jumpIn.value||todayStr);});
+  navBar.appendChild(btnToday);navBar.appendChild(btnPrev);navBar.appendChild(btnNext);navBar.appendChild(btnPrint);navBar.appendChild(searchIn);navBar.appendChild(statutSel);navBar.appendChild(jumpIn);
   pane.appendChild(navBar);
 
   var MONTHS=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
