@@ -1588,16 +1588,34 @@ function renderStats(){
       var realiseN=S.history.filter(function(h){return h.statut==='realise';}).length;
       concretStr=Math.round(realiseN/totalStatut*100)+'%';
     }
+    /* taux de lapin : part des RDV passés en statut "Lapin" parmi tous les RDV statutés */
+    var lapinStr='—';
+    if(totalStatut>0){
+      var lapinN=S.history.filter(function(h){return h.statut==='lapin';}).length;
+      lapinStr=Math.round(lapinN/totalStatut*100)+'%';
+    }
     var kpiStyle="background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 16px;box-shadow:0 1px 3px oklch(0.5 0.05 264 / .06);text-align:center;";
     var kpiNumStyle="font-size:32px;font-weight:900;color:oklch(0.45 0.18 266);line-height:1.1;margin-bottom:6px;";
     var kpiLblStyle="font-size:12px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;text-transform:uppercase;";
     var dashboard=el('div',{style:"margin-bottom:22px;"});
     dashboard.appendChild(el('div',{style:"font-size:14px;font-weight:800;color:var(--c-dim);margin-bottom:10px;letter-spacing:-.01em;"},"Tableau de bord"));
     var grid=el('div',{class:'stats-kpi'});
-    [[countToday,"RDV aujourd'hui"],[countWeek,"RDV cette semaine"],[countMonth,"RDV ce mois"],[occStr,"Taux d'occupation (30j)"],[concretStr,"Taux de concrétisation"]].forEach(function(kpi){
+    [
+      [countToday,"RDV aujourd'hui"],
+      [countWeek,"RDV cette semaine"],
+      [countMonth,"RDV ce mois"],
+      [occStr,"Taux d'occupation (30j)","Part des créneaux de permanence occupés sur les 30 prochains jours (les créneaux libérés par un RDV Pas de retour/Lapin/Excusé comptent comme libres)."],
+      [concretStr,"Taux de concrétisation","Part des RDV passés au statut ✅ Réalisé, parmi tous les RDV auxquels un statut a été attribué."],
+      [lapinStr,"Taux de lapin 🐇","Part des RDV passés au statut 🐇 Lapin, parmi tous les RDV auxquels un statut a été attribué."]
+    ].forEach(function(kpi){
       var tile=el('div',{style:kpiStyle});
       tile.appendChild(el('div',{style:kpiNumStyle},String(kpi[0])));
-      tile.appendChild(el('div',{style:kpiLblStyle},kpi[1]));
+      var lblRow=el('div',{style:"display:flex;align-items:center;justify-content:center;gap:4px;"});
+      lblRow.appendChild(el('div',{style:kpiLblStyle},kpi[1]));
+      if(kpi[2]){
+        lblRow.appendChild(el('span',{title:kpi[2],style:"display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--c-muted);color:var(--c-card);font-size:9px;font-weight:800;cursor:help;flex-shrink:0;"},'i'));
+      }
+      tile.appendChild(lblRow);
       grid.appendChild(tile);
     });
     dashboard.appendChild(grid);
