@@ -928,6 +928,14 @@ var BTNDEL="cursor:pointer;font-family:inherit;border:none;background:oklch(0.96
 function chanBadgeStyle(ch){return badge(ch==="sms"?'oklch(0.93 0.05 264)':'oklch(0.93 0.05 300)',ch==="sms"?'oklch(0.45 0.15 266)':'oklch(0.45 0.15 300)');}
 function typeBadgeStyle(t){return badge(t==="proposition"?'oklch(0.95 0.05 85)':t==="confirmation"?'oklch(0.94 0.05 155)':'oklch(0.93 0.04 264)',t==="proposition"?'oklch(0.48 0.1 70)':t==="confirmation"?'oklch(0.42 0.11 155)':'oklch(0.45 0.06 264)');}
 var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel"};
+/* couleurs + libellés par statut de RDV, partagés entre l'agenda (tuiles) et les stats */
+var STATUT_STYLES={
+  confirme:{border:'oklch(0.48 0.2 266)',bg:'oklch(0.82 0.14 266)',text:'oklch(0.2 0.15 266)',label:'✓ Confirmé'},
+  en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
+  realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
+  excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙅 Excusé'},
+  lapin:{border:'oklch(0.55 0.2 15)',bg:'oklch(0.88 0.1 15)',text:'oklch(0.32 0.18 15)',label:'🐇 Lapin'}
+};
 
 function selectOpts(selectEl,opts,selected){
   opts.forEach(function(o){selectEl.appendChild(el('option',{value:o.value,selected:String(o.value)===String(selected)},o.label));});
@@ -1744,8 +1752,24 @@ function renderStats(){
   }else{demCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucune démarche"));}
   grid2.appendChild(demCard);
 
-  /* Colonne droite: type + CMS */
+  /* Colonne droite: statut + type + CMS */
   var col2=el('div',{style:"display:flex;flex-direction:column;gap:14px;"});
+
+  var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,lapin:0};
+  hist.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
+  var statutCard=card("Répartition par statut");
+  var statutKeys=["en_attente","confirme","realise","excuse","lapin"];
+  var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
+  var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
+  var anyStatut=false;
+  statutKeys.forEach(function(k){
+    if(!statutMap[k])return;
+    anyStatut=true;
+    var pct=Math.round(statutMap[k]/statutTotal*100);
+    stw.appendChild(barRow(STATUT_STYLES[k].label,pct,STATUT_STYLES[k].border,statutMap[k]+" ("+pct+"%)",null));
+  });
+  if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
+  statutCard.appendChild(stw);col2.appendChild(statutCard);
 
   var typeMap={proposition:0,confirmation:0,sans_appel:0};
   hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
@@ -2034,7 +2058,7 @@ function renderAgenda(){
   var btnNext=el('button',{class:'gx-press',style:NBTN},'Semaine suiv. →');
   btnNext.addEventListener('click',function(){var d=new Date((jumpIn.value||todayStr)+'T12:00:00');d.setDate(d.getDate()+7);var s=toLocalDateStr(d);jumpIn.value=s;agScrollTo(s);});
   var statutSel=el('select',{id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
-  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['libre','🟢 Libre'],['depasse','🚨 Dépassement']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['libre','🟢 Libre'],['depasse','🚨 Dépassement']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   navBar.appendChild(btnToday);navBar.appendChild(btnPrev);navBar.appendChild(btnNext);navBar.appendChild(searchIn);navBar.appendChild(statutSel);navBar.appendChild(jumpIn);
   pane.appendChild(navBar);
@@ -2077,14 +2101,12 @@ function renderAgenda(){
         sg.appendChild(freePill);
         return;
       }
-      /* couleurs selon statut : rose=en_attente, bleu=confirmé */
+      /* couleurs selon statut, voir STATUT_STYLES */
       var pillBorder,pillBg,pillTxt;
       if(slot.multiPropo){
         pillBorder='oklch(0.62 0.2 25)';pillBg='oklch(0.92 0.08 25)';pillTxt='oklch(0.42 0.2 25)';
-      } else if(_st==='confirme'){
-        pillBorder='oklch(0.48 0.2 266)';pillBg='oklch(0.82 0.14 266)';pillTxt='oklch(0.2 0.15 266)';
-      } else if(_st==='en_attente'){
-        pillBorder='oklch(0.78 0.14 350)';pillBg='oklch(0.95 0.06 350)';pillTxt='oklch(0.45 0.18 350)';
+      } else if(STATUT_STYLES[_st]){
+        pillBorder=STATUT_STYLES[_st].border;pillBg=STATUT_STYLES[_st].bg;pillTxt=STATUT_STYLES[_st].text;
       } else {
         pillBorder='oklch(0.82 0.08 155)';pillBg='oklch(0.95 0.04 155)';pillTxt='oklch(0.42 0.12 155)';
       }
@@ -2098,7 +2120,7 @@ function renderAgenda(){
         var _demLabel=_t.demarcheAutre||(_t.selectedDemarche&&S.demarches?((S.demarches.find(function(d){return String(d.id)===String(_t.selectedDemarche);})||{}).nom||''):'');
         if(_demLabel)_ttLines.push('📋 '+_demLabel);
         if(_t.date)_ttLines.push('📅 '+_t.date+(_t.heure?' à '+_t.heure:''));
-        var _stLabel={'confirme':'✓ Confirmé','en_attente':'⏳ En attente','libre':'🟢 Libre'}[_st]||'';
+        var _stLabel=(STATUT_STYLES[_st]&&STATUT_STYLES[_st].label)||'';
         if(_stLabel)_ttLines.push(_stLabel);
         if(_t._profile&&_t._profile!==S.activeProfile){var _ownerT=getProfile(_t._profile);if(_ownerT)_ttLines.push('👤 '+_ownerT.nom);}
       } else {
@@ -3739,7 +3761,7 @@ function renderModal(){
         var idx=findHistIdx(arr,t);
         if(idx!==-1){arr[idx].statut=ev.target.value||null;t.statut=ev.target.value||null;writeProfileHistory(targetP,arr);renderAgenda();}
       }});
-      [['','— Statut —'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé']].forEach(function(o){var opt=el('option',{value:o[0]},o[1]);if((t.statut||'')===(o[0]))opt.selected=true;stSel.appendChild(opt);});
+      [['','— Statut —'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin']].forEach(function(o){var opt=el('option',{value:o[0]},o[1]);if((t.statut||'')===(o[0]))opt.selected=true;stSel.appendChild(opt);});
       box.appendChild(stSel);
       [['Bénéficiaire',fullName],['Téléphone',t.telephone||'—'],['Démarche',t.demarche||'—'],['Date RDV',(d.dateStr||'').split('-').reverse().join('/')],['Envoi msg',t.dateDemande?(t.dateDemande.split('-').reverse().join('/')):'—'],['Notes',t.notes||'—']].forEach(function(r){
         var row=el('div',{style:"display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--c-border);"});
