@@ -3630,6 +3630,29 @@ function renderModal(){
     }
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;margin-top:8px;",onClick:closeModal},'Fermer'));
   }
+  else if(S.modal==='rappel-overdue'){
+    var overdueList=S.overdueReminder||[];
+    box.appendChild(header('🚨 RDV en attente depuis plus de 3 jours'));
+    box.appendChild(el('div',{style:"font-size:13px;color:var(--c-muted);margin-bottom:12px;"},overdueList.length+' RDV n\'ont pas encore été confirmés :'));
+    var listDiv2=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:340px;"});
+    overdueList.forEach(function(h){
+      var nm=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'—';
+      var row=el('div',{style:"padding:9px 12px;border-radius:10px;border:1px solid var(--c-border);margin-bottom:6px;background:var(--c-card);"});
+      row.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);"},nm));
+      var sub=[h.demarche,h.commune,h.dateDemande?('envoyé le '+h.dateDemande.split('-').reverse().join('/')):''].filter(Boolean).join(' · ');
+      if(sub)row.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);margin-top:2px;"},sub));
+      listDiv2.appendChild(row);
+    });
+    box.appendChild(listDiv2);
+    var rBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:10px;"});
+    rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){
+      closeModal();S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();
+      var sel=document.querySelector('#ag-statut-sel');
+      if(sel){sel.value='depasse';sel.dispatchEvent(new Event('change'));}
+    }},'Voir dans l\'agenda'));
+    rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
+    box.appendChild(rBtnRow);
+  }
   else if(S.modal==='import-ics'){
     box.appendChild(header('⬆️ Importer un fichier ICS'));
     var icsFile=el('input',{type:'file',accept:'.ics,text/calendar',style:"display:none;"});
@@ -4057,6 +4080,21 @@ function bindStaticListenersOnce(){
     if(ctrl&&e.shiftKey&&(e.key==='G'||e.key==='g')){e.preventDefault();if(canGenerate())handleGenerate();}
   });
 }
+/* rappel des RDV en attente depuis >3j au lancement, une fois par jour et par profil */
+function maybeShowOverdueReminder(){
+  var todayStr=toLocalDateStr(new Date());
+  if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
+  var t0=new Date();t0.setHours(0,0,0,0);
+  var overdue=S.history.filter(function(h){
+    if(h.statut!=='en_attente'||!h.dateDemande)return false;
+    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+  });
+  localStorage.setItem(pk('overdue-reminder-date'),todayStr);
+  if(!overdue.length)return;
+  S.overdueReminder=overdue;
+  S.modal='rappel-overdue';
+  renderModal();
+}
 function enterApp(){
   document.getElementById('profile-root').style.display='none';
   document.getElementById('app-root').style.display='flex';
@@ -4067,6 +4105,7 @@ function enterApp(){
   bindStaticListenersOnce();
   /* vérification silencieuse au démarrage */
   setTimeout(ghCheckOnStartup,2000);
+  setTimeout(maybeShowOverdueReminder,600);
 }
 function activateProfile(id){
   S.activeProfile=id;
