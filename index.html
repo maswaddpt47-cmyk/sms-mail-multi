@@ -3361,6 +3361,7 @@ function parseXlsxOrientationsAsync(arrayBuffer){
       if(!colDate)colDate=findCol(hdr,['date']);
       var colEtat=findCol(hdr,['etat de la demande','état de la demande','etat','état','statut']);
       var colOrienteur=findCol(hdr,['prénom de l\'orient','orienteur','orient']);
+      var colTel=findCol(hdr,['tel bénéficiaire','téléphone','telephone','tel']);
       var results=[];
       for(var ri=1;ri<rows.length;ri++){
         var c=rows[ri].cells;
@@ -3381,6 +3382,7 @@ function parseXlsxOrientationsAsync(arrayBuffer){
         results.push({
           id:String(Date.now())+'_'+ri,
           nom:nom,prenom:prenom,
+          telephone:(colTel?c[colTel]||'':'').trim(),
           communeBenef:commune,
           structure:structure,
           motif:(colMotif?c[colMotif]||'':'').trim(),
@@ -3406,7 +3408,7 @@ function confirmOrientImport(){
   var skipped=0;
   rows.filter(function(r){return r.include;}).forEach(function(r){
     if(!r.targetProfile){skipped++;return;}
-    var obj={id:r.id,nom:r.nom,prenom:r.prenom,commune:r.structure||'',communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
+    var obj={id:r.id,nom:r.nom,prenom:r.prenom,telephone:r.telephone||'',commune:r.structure||'',communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
     (byProfile[r.targetProfile]=byProfile[r.targetProfile]||[]).push(obj);
   });
   var totalAdded=0;
@@ -3589,6 +3591,7 @@ function renderOrientations(){
       if(o.orienteur)communeLine.appendChild(document.createTextNode(' · '+o.orienteur));
       info.appendChild(communeLine);
     }
+    if(o.telephone){info.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-top:2px;"},'📞 '+o.telephone));}
     if(o.motif){info.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);margin-top:4px;font-weight:500;line-height:1.4;"},o.motif));}
     if(o.date){var d=o.date.split('-').reverse().join('/');info.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);margin-top:4px;"},'📅 '+d));}
     card.appendChild(info);
@@ -3857,6 +3860,7 @@ function renderModal(){
       var body=el('div',{style:"flex:1;min-width:0;"});
       var fullName=[row.nom,row.prenom].filter(Boolean).join(' ')||'—';
       body.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},fullName));
+      if(row.telephone)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'📞 '+row.telephone));
       if(row.communeBenef)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},'Habite : '+row.communeBenef));
       if(row.structure)body.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:1px;"},['Structure (fichier) : ',el('span',{style:"font-weight:700;color:var(--c-dim);"},row.structure)]));
       if(row.motif)body.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-dim);margin-top:3px;line-height:1.4;"},row.motif));
