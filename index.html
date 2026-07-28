@@ -448,6 +448,7 @@ function githubPush(silent,onSuccess,pid){
       }
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
       localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
+      if(pid===S.activeProfile){S._ghNewerBackup=null;renderHeader();}
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
     })
