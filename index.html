@@ -53,7 +53,7 @@
   .gen-preview{position:static;}
   @media(min-width:720px){.gen-preview{position:sticky;top:136px;}}
   .gen-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  @media(min-width:420px){.gen-type-grid{grid-template-columns:1fr 1fr 1fr;}}
+  @media(min-width:420px){.gen-type-grid{grid-template-columns:1fr 1fr 1fr 1fr;}}
   .gen-row1{display:grid;grid-template-columns:80px 1fr;gap:9px;}
   @media(min-width:400px){.gen-row1{grid-template-columns:80px 1fr 1fr;}}
   .mandat-grid{display:flex;flex-direction:column;gap:20px;max-width:1180px;margin:0 auto;padding:clamp(14px,3vw,32px) clamp(12px,4vw,40px);}
@@ -293,6 +293,9 @@ var DEFAULT_TEMPLATES={
   mail_confirmation:"Bonjour {civilite} {nom} {prenom},\n\nSuite à notre échange téléphonique, je vous confirme votre rendez-vous dans le cadre de votre démarche \"{demarche}\".\n\n📅 Date : {date}\n🕐 Heure : {heure}\n📍 Adresse : {adresse}\n\nMerci de vous munir des documents suivants :\n{documents}\n\nEn cas d'empêchement, merci de me prévenir par retour mail dans les meilleurs délais.\n\nCordialement,\n\n📅 Ajouter à votre calendrier : {lienCalendrier}",
   mail_sans_appel_sujet:"Proposition de rendez-vous — {demarche} — {date}",
   mail_sans_appel:"Bonjour {civilite} {nom} {prenom},\n\nPour faire suite à la demande du CMS de {commune}, je me permets de vous contacter par écrit dans le cadre de votre démarche \"{demarche}\".\n\nJe vous propose un rendez-vous le {date} à {heure} au :\n\n📍 {adresse}\n\nMerci de bien vouloir me confirmer par retour mail si ce créneau vous convient en répondant à ce mail.\n\nLe cas échéant, merci de prévoir les documents suivants :\n{documents}\n\nDans l'attente de votre retour, je reste à votre disposition.\n\nCordialement,\n\n📅 Ajouter à votre calendrier : {lienCalendrier}",
+  sms_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe reviens vers vous suite à ma proposition de RDV du {dateDemande} concernant \"{demarche}\" prévu le {date} à {heure}.\n\nMerci de me confirmer rapidement votre venue par SMS.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
+  mail_relance_sujet:"Rappel — Votre RDV du {date} — {demarche}",
+  mail_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe me permets de revenir vers vous suite à ma proposition de rendez-vous du {dateDemande} concernant votre démarche \"{demarche}\".\n\nVotre RDV est prévu le {date} à {heure} au :\n📍 {adresse}\n\nMerci de bien vouloir me confirmer par retour mail ou par SMS si ce créneau vous convient toujours.\n\nDans l'attente de votre retour, je reste à votre disposition.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
 };
 var LABELS={
   sms_proposition:"💬 SMS — Proposition (non joint)",
@@ -304,6 +307,9 @@ var LABELS={
   mail_confirmation:"✉️ Mail — Corps Confirmation",
   mail_sans_appel_sujet:"✉️ Mail — Objet Proposition sans appel",
   mail_sans_appel:"✉️ Mail — Corps Proposition sans appel",
+  sms_relance:"💬 SMS — Relance",
+  mail_relance_sujet:"✉️ Mail — Objet Relance",
+  mail_relance:"✉️ Mail — Corps Relance",
 };
 var HISTORY_MAX=99999;
 
@@ -607,7 +613,10 @@ function fillTemplate(tpl,v){
     .replace(/merci de prévoir les documents suivants :\n\{documents\}/g, docList?'merci de prévoir les documents suivants :\n'+docList:'')
     .replace(/{documents}/g,docList).replace(/{commune}/g,v.commune||"[commune]")
     .replace(/\n📅 Ajouter à votre calendrier : \{lienCalendrier\}/g, v.lienCalendrier ? '\n📅 Ajouter à votre calendrier : '+v.lienCalendrier : '')
-    .replace(/{lienCalendrier}/g,v.lienCalendrier||"");
+    .replace(/{lienCalendrier}/g,v.lienCalendrier||"")
+    .replace(/{dateDemande}/g,v.dateDemande
+      ? new Date(v.dateDemande).toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
+      : "[date de proposition]");
   for(var i=0;i<S.customVars.length;i++){var cv=S.customVars[i];if(cv.nom)r=r.replace(new RegExp("\\{"+cv.nom+"\\}","g"),cv.valeur);}
   return r.replace(/Bonjour  /g,"Bonjour ");
 }
@@ -637,14 +646,14 @@ function buildCalLink(){
 function compute(){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
   var dem=S.selectedDemarche==="__autre__"?{nom:S.demarcheAutre||"Autre",documents:[]}:S.demarches.find(function(d){return String(d.id)===String(S.selectedDemarche);});
-  var vars={civilite:S.civilite,prenom:S.prenom,nom:S.nom,demarche:dem?dem.nom:"[démarche]",date:S.date,heure:S.heure,adresse:cms?cms.adresse:"[adresse]",documents:dem?dem.documents:[],commune:S.commune,lienCalendrier:buildCalLink()};
+  var vars={civilite:S.civilite,prenom:S.prenom,nom:S.nom,demarche:dem?dem.nom:"[démarche]",date:S.date,heure:S.heure,adresse:cms?cms.adresse:"[adresse]",documents:dem?dem.documents:[],commune:S.commune,lienCalendrier:buildCalLink(),dateDemande:S.dateDemande||""};
   var body="",subject="";
   if(S.selectedTemplate!=="__default__"){
     var ct=S.customTemplates.find(function(t){return String(t.id)===String(S.selectedTemplate);});
     if(ct){body=fillTemplate(ct.body,vars);subject=ct.canal==="mail"?fillTemplate(ct.sujet||"",vars):"";}
   } else {
-    var bk={sms:{proposition:"sms_proposition",confirmation:"sms_confirmation",sans_appel:"sms_sans_appel"},mail:{proposition:"mail_proposition",confirmation:"mail_confirmation",sans_appel:"mail_sans_appel"}};
-    var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet"};
+    var bk={sms:{proposition:"sms_proposition",confirmation:"sms_confirmation",sans_appel:"sms_sans_appel",relance:"sms_relance"},mail:{proposition:"mail_proposition",confirmation:"mail_confirmation",sans_appel:"mail_sans_appel",relance:"mail_relance"}};
+    var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet",relance:"mail_relance_sujet"};
     var bodyKey=bk[S.channel][S.msgType];
     var tpl=S.templates[bodyKey]||DEFAULT_TEMPLATES[bodyKey]||"";
     body=fillTemplate(tpl,vars);
@@ -773,9 +782,9 @@ function restoreAllBuiltin(){S.hiddenBuiltinKeys=[];persist();renderTemplates();
 function duplicateBuiltin(k){
   if(k.indexOf("sujet")>=0){showToast("Les objets mail ne peuvent pas être dupliqués seuls","warn");return;}
   var canal=k.indexOf("sms")===0?"sms":"mail";
-  var type=["proposition","confirmation","sans_appel"].find(function(t){return k.indexOf(t)>=0;})||"proposition";
+  var type=["proposition","confirmation","sans_appel","relance"].find(function(t){return k.indexOf(t)>=0;})||"proposition";
   var body=S.templates[k]||DEFAULT_TEMPLATES[k]||"";
-  var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet"};
+  var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet",relance:"mail_relance_sujet"};
   var sujet=canal==="mail"?(S.templates[sk[type]]||DEFAULT_TEMPLATES[sk[type]]||""):"";
   S.customTemplates=S.customTemplates.concat([{id:Date.now(),nom:LABELS[k]+" (copie)",canal:canal,type:type,sujet:sujet,body:body}]);
   persist();renderTemplates();showToast("Dupliqué vers Mes modèles");
@@ -953,7 +962,7 @@ var BTNP="cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.
 var BTNDEL="cursor:pointer;font-family:inherit;border:none;background:oklch(0.96 0.03 25);color:oklch(0.55 0.16 25);font-weight:600;font-size:12px;padding:6px 10px;border-radius:9px;";
 function chanBadgeStyle(ch){return badge(ch==="sms"?'oklch(0.93 0.05 264)':'oklch(0.93 0.05 300)',ch==="sms"?'oklch(0.45 0.15 266)':'oklch(0.45 0.15 300)');}
 function typeBadgeStyle(t){return badge(t==="proposition"?'oklch(0.95 0.05 85)':t==="confirmation"?'oklch(0.94 0.05 155)':'oklch(0.93 0.04 264)',t==="proposition"?'oklch(0.48 0.1 70)':t==="confirmation"?'oklch(0.42 0.11 155)':'oklch(0.45 0.06 264)');}
-var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel"};
+var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel",relance:"Relance"};
 /* couleurs + libellés par statut de RDV, partagés entre l'agenda (tuiles) et les stats */
 var STATUT_STYLES={
   confirme:{border:'oklch(0.48 0.2 266)',bg:'oklch(0.82 0.14 266)',text:'oklch(0.2 0.15 266)',label:'✓ Confirmé'},
@@ -1044,7 +1053,7 @@ function renderGenerate(){
   c1.appendChild(chGrid);
   c1.appendChild(el('div',{style:"font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--c-muted);margin:18px 0 11px;"},"Type de message"));
   var tGrid=el('div',{class:"gen-type-grid"});
-  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"]].forEach(function(b){
+  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"],["relance","Relance / Rappel","Sans réponse"]].forEach(function(b){
     var btn=el('button',{class:'gx-press',style:typeBtn(S.msgType===b[0]),onClick:function(){S.msgType=b[0];S.selectedTemplate="__default__";regen();renderGenerate();}});
     btn.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},b[1]));
     btn.appendChild(el('div',{style:"font-size:10.5px;font-weight:500;margin-top:2px;opacity:.7;"},b[2]));
@@ -1878,10 +1887,10 @@ function renderStats(){
   if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
   statutCard.appendChild(stw);col2.appendChild(statutCard);
 
-  var typeMap={proposition:0,confirmation:0,sans_appel:0};
+  var typeMap={proposition:0,confirmation:0,sans_appel:0,relance:0};
   hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
   var typeCard=card("Répartition par type");
-  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
+  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"},{k:"relance",lbl:"Relance",col:"oklch(0.65 0.2 45)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   typeList.forEach(function(t){if(!typeMap[t.k])return;var pct=Math.round(typeMap[t.k]/typeTotal*100);tw.appendChild(barRow(t.lbl,pct,t.col,typeMap[t.k]+" ("+pct+"%)",null));});
