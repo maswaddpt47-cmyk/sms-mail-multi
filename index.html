@@ -1094,7 +1094,7 @@ function renderGenerate(){
   c1.appendChild(chGrid);
   c1.appendChild(el('div',{style:"font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--c-muted);margin:18px 0 11px;"},"Type de message"));
   var tGrid=el('div',{class:"gen-type-grid"});
-  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"],["relance","Relance / Rappel","Sans réponse"]].forEach(function(b){
+  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"],["relance","Relance","Rappel"]].forEach(function(b){
     var btn=el('button',{class:'gx-press',style:typeBtn(S.msgType===b[0]),onClick:function(){S.msgType=b[0];S.selectedTemplate="__default__";regen();renderGenerate();}});
     btn.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},b[1]));
     btn.appendChild(el('div',{style:"font-size:10.5px;font-weight:500;margin-top:2px;opacity:.7;"},b[2]));
