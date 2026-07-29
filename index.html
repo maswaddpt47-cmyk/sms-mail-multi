@@ -2510,14 +2510,21 @@ function renderAgenda(){
       var pill=el('button',{class:_isDepasse?'ag-depasse':'',style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0',title:_ttLines.join('\n')});
       var hourRow=el('div',{style:"display:flex;align-items:center;gap:3px;"});
       hourRow.appendChild(el('span',{style:"font-size:12px;font-weight:800;white-space:nowrap;color:"+pillTxt},slot.heure));
-      if(slot.freeAgain)hourRow.appendChild(el('span',{style:"font-size:10px;line-height:1;"},'🔓'));
       pill.appendChild(hourRow);
       if(slot.taken&&slot.multiPropo){
         pill.appendChild(el('div',{style:"font-size:8px;font-weight:700;color:"+pillTxt+";letter-spacing:0.03em;"},"Réservé ("+slot.allPropo.length+")"));
       } else if(slot.taken&&who){
-        var nameEl=el('div',{style:"font-size:9px;font-weight:600;color:oklch(0.48 0.15 25);width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"});
-        nameEl.textContent=who;
-        pill.appendChild(nameEl);
+        if(slot.freeAgain){
+          var _stIcon={'pas_de_retour':'📵','lapin':'🐇','excuse':'🙏'}[_st]||'';
+          var nameEl=el('div',{style:"font-size:9px;font-weight:600;color:oklch(0.6 0.04 266);width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;"});
+          nameEl.textContent=who;
+          pill.appendChild(nameEl);
+          if(_stIcon)pill.appendChild(el('div',{style:"font-size:9px;text-align:center;line-height:1;"},_stIcon));
+        } else {
+          var nameEl=el('div',{style:"font-size:9px;font-weight:600;color:oklch(0.48 0.15 25);width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"});
+          nameEl.textContent=who;
+          pill.appendChild(nameEl);
+        }
       }
       if(_ownerPill){
         pill.appendChild(el('div',{style:"font-size:7.5px;font-weight:800;color:"+_ownerPill.color+";text-transform:uppercase;letter-spacing:.03em;"},_ownerPill.nom));
