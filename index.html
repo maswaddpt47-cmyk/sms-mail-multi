@@ -1126,7 +1126,27 @@ function renderGenerate(){
   pre.appendChild(el('input',{class:'gx-in',style:INPUT,value:S.prenom,placeholder:"Sophie",onInput:function(e){S.prenom=e.target.value;regen();updatePreviewOnly();}}));
   row1.appendChild(pre);
   var noms=el('div');noms.appendChild(el('label',{style:LABEL},"Nom *"));
-  noms.appendChild(el('input',{class:'gx-in',style:INPUT,value:S.nom,placeholder:"Dupont",onInput:function(e){S.nom=e.target.value;regen();updatePreviewOnly();},onBlur:function(){renderGenerate();}}));
+  var nomIn=el('input',{class:'gx-in',style:INPUT,value:S.nom,placeholder:"Dupont",
+    onInput:function(e){S.nom=e.target.value;regen();updatePreviewOnly();},
+    onBlur:function(){renderGenerate();}});
+  noms.appendChild(nomIn);
+  (function(){
+    var hint=el('div',{style:"font-size:11px;color:oklch(0.52 0.18 45);font-weight:700;margin-top:3px;display:none;"});
+    noms.appendChild(hint);
+    nomIn.addEventListener('input',function(){
+      var v=(nomIn.value||'').trim().toLowerCase();
+      if(v.length<2){hint.style.display='none';return;}
+      var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v;});
+      if(matches.length>0){
+        var last=matches[0];
+        var lastInfo=[last.prenom,last.demarche,last.statut?({'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','lapin':'🐇','pas_de_retour':'📵'}[last.statut]||''):''].filter(Boolean).join(' · ');
+        hint.textContent='⚠️ Déjà dans l\'historique ('+matches.length+'x) — '+lastInfo;
+        hint.style.display='block';
+      } else {
+        hint.style.display='none';
+      }
+    });
+  })();
   row1.appendChild(noms);
   col.appendChild(row1);
 
