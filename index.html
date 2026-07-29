@@ -960,7 +960,7 @@ var STATUT_STYLES={
   en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
   realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
   excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙅 Excusé'},
-  lapin:{border:'oklch(0.55 0.2 15)',bg:'oklch(0.88 0.1 15)',text:'oklch(0.32 0.18 15)',label:'🐇 Lapin'},
+  lapin:{border:'oklch(0.65 0.2 45)',bg:'oklch(0.93 0.1 45)',text:'oklch(0.38 0.18 45)',label:'🐇 Lapin'},
   pas_de_retour:{border:'oklch(0.62 0.04 266)',bg:'oklch(0.91 0.02 266)',text:'oklch(0.42 0.06 266)',label:'📵 Pas de retour'}
 };
 
@@ -1813,7 +1813,7 @@ function renderStats(){
   var trendCard=card("Tendance mensuelle — Lapin / Excusé / Pas de retour");
   if(trendMonths.length){
     var seriesKeys=['lapin','excuse','pas_de_retour'];
-    var seriesColors={lapin:"oklch(0.55 0.2 15)",excuse:"oklch(0.72 0.14 85)",pas_de_retour:"oklch(0.62 0.04 266)"};
+    var seriesColors={lapin:"oklch(0.65 0.2 45)",excuse:"oklch(0.72 0.14 85)",pas_de_retour:"oklch(0.62 0.04 266)"};
     var seriesLabels={lapin:"🐇 Lapin",excuse:"🙅 Excusé",pas_de_retour:"📵 Pas de retour"};
     var maxT=Math.max.apply(null,trendMonths.map(function(m){var v=trendMap[m];return Math.max(v.lapin,v.excuse,v.pas_de_retour);}))||1;
     var colsT=trendMonths.length,WT=Math.max(colsT*70,320),HT=110,PBT=26,PTT=8;
