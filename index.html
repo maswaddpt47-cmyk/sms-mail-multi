@@ -53,7 +53,7 @@
   .gen-preview{position:static;}
   @media(min-width:720px){.gen-preview{position:sticky;top:136px;}}
   .gen-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  @media(min-width:420px){.gen-type-grid{grid-template-columns:1fr 1fr 1fr;}}
+  @media(min-width:420px){.gen-type-grid{grid-template-columns:1fr 1fr 1fr 1fr;}}
   .gen-row1{display:grid;grid-template-columns:80px 1fr;gap:9px;}
   @media(min-width:400px){.gen-row1{grid-template-columns:80px 1fr 1fr;}}
   .mandat-grid{display:flex;flex-direction:column;gap:20px;max-width:1180px;margin:0 auto;padding:clamp(14px,3vw,32px) clamp(12px,4vw,40px);}
@@ -293,6 +293,9 @@ var DEFAULT_TEMPLATES={
   mail_confirmation:"Bonjour {civilite} {nom} {prenom},\n\nSuite à notre échange téléphonique, je vous confirme votre rendez-vous dans le cadre de votre démarche \"{demarche}\".\n\n📅 Date : {date}\n🕐 Heure : {heure}\n📍 Adresse : {adresse}\n\nMerci de vous munir des documents suivants :\n{documents}\n\nEn cas d'empêchement, merci de me prévenir par retour mail dans les meilleurs délais.\n\nCordialement,\n\n📅 Ajouter à votre calendrier : {lienCalendrier}",
   mail_sans_appel_sujet:"Proposition de rendez-vous — {demarche} — {date}",
   mail_sans_appel:"Bonjour {civilite} {nom} {prenom},\n\nPour faire suite à la demande du CMS de {commune}, je me permets de vous contacter par écrit dans le cadre de votre démarche \"{demarche}\".\n\nJe vous propose un rendez-vous le {date} à {heure} au :\n\n📍 {adresse}\n\nMerci de bien vouloir me confirmer par retour mail si ce créneau vous convient en répondant à ce mail.\n\nLe cas échéant, merci de prévoir les documents suivants :\n{documents}\n\nDans l'attente de votre retour, je reste à votre disposition.\n\nCordialement,\n\n📅 Ajouter à votre calendrier : {lienCalendrier}",
+  sms_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe reviens vers vous suite à ma proposition de RDV du {dateDemande} concernant \"{demarche}\" prévu le {date} à {heure}.\n\nMerci de me confirmer rapidement votre venue par SMS.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
+  mail_relance_sujet:"Rappel — Votre RDV du {date} — {demarche}",
+  mail_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe me permets de revenir vers vous suite à ma proposition de rendez-vous du {dateDemande} concernant votre démarche \"{demarche}\".\n\nVotre RDV est prévu le {date} à {heure} au :\n📍 {adresse}\n\nMerci de bien vouloir me confirmer par retour mail ou par SMS si ce créneau vous convient toujours.\n\nDans l'attente de votre retour, je reste à votre disposition.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
 };
 var LABELS={
   sms_proposition:"💬 SMS — Proposition (non joint)",
@@ -304,6 +307,9 @@ var LABELS={
   mail_confirmation:"✉️ Mail — Corps Confirmation",
   mail_sans_appel_sujet:"✉️ Mail — Objet Proposition sans appel",
   mail_sans_appel:"✉️ Mail — Corps Proposition sans appel",
+  sms_relance:"💬 SMS — Relance",
+  mail_relance_sujet:"✉️ Mail — Objet Relance",
+  mail_relance:"✉️ Mail — Corps Relance",
 };
 var HISTORY_MAX=99999;
 
@@ -333,7 +339,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
-  statsCMS:"", calendarType:"google",
+  statsCMS:"", calendarType:"google", relanceDelai:3,
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -607,7 +613,10 @@ function fillTemplate(tpl,v){
     .replace(/merci de prévoir les documents suivants :\n\{documents\}/g, docList?'merci de prévoir les documents suivants :\n'+docList:'')
     .replace(/{documents}/g,docList).replace(/{commune}/g,v.commune||"[commune]")
     .replace(/\n📅 Ajouter à votre calendrier : \{lienCalendrier\}/g, v.lienCalendrier ? '\n📅 Ajouter à votre calendrier : '+v.lienCalendrier : '')
-    .replace(/{lienCalendrier}/g,v.lienCalendrier||"");
+    .replace(/{lienCalendrier}/g,v.lienCalendrier||"")
+    .replace(/{dateDemande}/g,v.dateDemande
+      ? new Date(v.dateDemande).toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
+      : "[date de proposition]");
   for(var i=0;i<S.customVars.length;i++){var cv=S.customVars[i];if(cv.nom)r=r.replace(new RegExp("\\{"+cv.nom+"\\}","g"),cv.valeur);}
   return r.replace(/Bonjour  /g,"Bonjour ");
 }
@@ -637,14 +646,14 @@ function buildCalLink(){
 function compute(){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
   var dem=S.selectedDemarche==="__autre__"?{nom:S.demarcheAutre||"Autre",documents:[]}:S.demarches.find(function(d){return String(d.id)===String(S.selectedDemarche);});
-  var vars={civilite:S.civilite,prenom:S.prenom,nom:S.nom,demarche:dem?dem.nom:"[démarche]",date:S.date,heure:S.heure,adresse:cms?cms.adresse:"[adresse]",documents:dem?dem.documents:[],commune:S.commune,lienCalendrier:buildCalLink()};
+  var vars={civilite:S.civilite,prenom:S.prenom,nom:S.nom,demarche:dem?dem.nom:"[démarche]",date:S.date,heure:S.heure,adresse:cms?cms.adresse:"[adresse]",documents:dem?dem.documents:[],commune:S.commune,lienCalendrier:buildCalLink(),dateDemande:S.dateDemande||""};
   var body="",subject="";
   if(S.selectedTemplate!=="__default__"){
     var ct=S.customTemplates.find(function(t){return String(t.id)===String(S.selectedTemplate);});
     if(ct){body=fillTemplate(ct.body,vars);subject=ct.canal==="mail"?fillTemplate(ct.sujet||"",vars):"";}
   } else {
-    var bk={sms:{proposition:"sms_proposition",confirmation:"sms_confirmation",sans_appel:"sms_sans_appel"},mail:{proposition:"mail_proposition",confirmation:"mail_confirmation",sans_appel:"mail_sans_appel"}};
-    var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet"};
+    var bk={sms:{proposition:"sms_proposition",confirmation:"sms_confirmation",sans_appel:"sms_sans_appel",relance:"sms_relance"},mail:{proposition:"mail_proposition",confirmation:"mail_confirmation",sans_appel:"mail_sans_appel",relance:"mail_relance"}};
+    var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet",relance:"mail_relance_sujet"};
     var bodyKey=bk[S.channel][S.msgType];
     var tpl=S.templates[bodyKey]||DEFAULT_TEMPLATES[bodyKey]||"";
     body=fillTemplate(tpl,vars);
@@ -694,6 +703,18 @@ function handleGenerate(){
 function onReset(){
   Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:""});
   regen();renderGenerate();
+}
+/* précharge le formulaire Générer pour relancer un RDV en attente dépassant le délai configuré */
+function lancerRelance(h){
+  S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
+  S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
+  S.date=h.date||"";S.heure=h.heure||"";
+  S.dateDemande=h.dateDemande||"";
+  if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
+  if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
+  S.channel=h.channel||"sms";S.msgType="relance";S.selectedTemplate="__default__";
+  regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
+  showToast("📨 Formulaire pré-rempli pour relance");
 }
 function addHistory(item){
   /* doublon : même date + heure + commune + nom → remplace l'existant */
@@ -773,9 +794,9 @@ function restoreAllBuiltin(){S.hiddenBuiltinKeys=[];persist();renderTemplates();
 function duplicateBuiltin(k){
   if(k.indexOf("sujet")>=0){showToast("Les objets mail ne peuvent pas être dupliqués seuls","warn");return;}
   var canal=k.indexOf("sms")===0?"sms":"mail";
-  var type=["proposition","confirmation","sans_appel"].find(function(t){return k.indexOf(t)>=0;})||"proposition";
+  var type=["proposition","confirmation","sans_appel","relance"].find(function(t){return k.indexOf(t)>=0;})||"proposition";
   var body=S.templates[k]||DEFAULT_TEMPLATES[k]||"";
-  var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet"};
+  var sk={proposition:"mail_proposition_sujet",confirmation:"mail_confirmation_sujet",sans_appel:"mail_sans_appel_sujet",relance:"mail_relance_sujet"};
   var sujet=canal==="mail"?(S.templates[sk[type]]||DEFAULT_TEMPLATES[sk[type]]||""):"";
   S.customTemplates=S.customTemplates.concat([{id:Date.now(),nom:LABELS[k]+" (copie)",canal:canal,type:type,sujet:sujet,body:body}]);
   persist();renderTemplates();showToast("Dupliqué vers Mes modèles");
@@ -938,6 +959,20 @@ function reuseHistItem(h){
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
   showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
 }
+/* charge la fiche complète (avec date/heure) dans Générer pour consulter/copier le message existant, sans créer de doublon */
+function openHistInGen(h){
+  S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
+  S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
+  S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
+  if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
+  if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
+  S.date=h.date||"";S.heure=h.heure||"";
+  S.dateDemande=h.dateDemande||new Date().toISOString().slice(0,10);
+  S.genNotes=h.notes||"";
+  S.selectedTemplate="__default__";
+  regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
+  showToast("📋 Fiche chargée dans Générer");
+}
 
 /* ============================== STYLE HELPERS ============================== */
 function badge(bg,fg){return "display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.02em;background:"+bg+";color:"+fg+";";}
@@ -953,14 +988,14 @@ var BTNP="cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.
 var BTNDEL="cursor:pointer;font-family:inherit;border:none;background:oklch(0.96 0.03 25);color:oklch(0.55 0.16 25);font-weight:600;font-size:12px;padding:6px 10px;border-radius:9px;";
 function chanBadgeStyle(ch){return badge(ch==="sms"?'oklch(0.93 0.05 264)':'oklch(0.93 0.05 300)',ch==="sms"?'oklch(0.45 0.15 266)':'oklch(0.45 0.15 300)');}
 function typeBadgeStyle(t){return badge(t==="proposition"?'oklch(0.95 0.05 85)':t==="confirmation"?'oklch(0.94 0.05 155)':'oklch(0.93 0.04 264)',t==="proposition"?'oklch(0.48 0.1 70)':t==="confirmation"?'oklch(0.42 0.11 155)':'oklch(0.45 0.06 264)');}
-var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel"};
+var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel",relance:"Relance"};
 /* couleurs + libellés par statut de RDV, partagés entre l'agenda (tuiles) et les stats */
 var STATUT_STYLES={
   confirme:{border:'oklch(0.48 0.2 266)',bg:'oklch(0.82 0.14 266)',text:'oklch(0.2 0.15 266)',label:'✓ Confirmé'},
   en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
   realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
   excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙅 Excusé'},
-  lapin:{border:'oklch(0.55 0.2 15)',bg:'oklch(0.88 0.1 15)',text:'oklch(0.32 0.18 15)',label:'🐇 Lapin'},
+  lapin:{border:'oklch(0.65 0.2 45)',bg:'oklch(0.93 0.1 45)',text:'oklch(0.38 0.18 45)',label:'🐇 Lapin'},
   pas_de_retour:{border:'oklch(0.62 0.04 266)',bg:'oklch(0.91 0.02 266)',text:'oklch(0.42 0.06 266)',label:'📵 Pas de retour'}
 };
 
@@ -1004,7 +1039,7 @@ function renderTabs(){
   var t0Tabs=new Date();t0Tabs.setHours(0,0,0,0);
   var overdueN=S.history.filter(function(h){
     if(h.statut!=='en_attente'||!h.dateDemande)return false;
-    return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+    return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   }).length;
   var defs=[["generate","Générer"],["history","Historique"],["orientations","📋 Orientations"+(orientN>0?" ("+orientN+")":"")],["agenda","📅 Agenda"],["stats","📊 Stats"],["templates","Modèles"],["config","Configuration"],["mandat","Mandat"],["mandats","Mandats archivés"]];
   defs.forEach(function(d){
@@ -1044,7 +1079,7 @@ function renderGenerate(){
   c1.appendChild(chGrid);
   c1.appendChild(el('div',{style:"font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--c-muted);margin:18px 0 11px;"},"Type de message"));
   var tGrid=el('div',{class:"gen-type-grid"});
-  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"]].forEach(function(b){
+  [["proposition","Proposition","Non joint"],["confirmation","Confirmation","Joint"],["sans_appel","Sans appel","Direct"],["relance","Relance / Rappel","Sans réponse"]].forEach(function(b){
     var btn=el('button',{class:'gx-press',style:typeBtn(S.msgType===b[0]),onClick:function(){S.msgType=b[0];S.selectedTemplate="__default__";regen();renderGenerate();}});
     btn.appendChild(el('div',{style:"font-weight:700;font-size:13px;"},b[1]));
     btn.appendChild(el('div',{style:"font-size:10.5px;font-weight:500;margin-top:2px;opacity:.7;"},b[2]));
@@ -1442,6 +1477,7 @@ function renderHistoryCard(h,realIdx,container){
   meta.appendChild(el('span',{style:"font-size:11.5px;color:var(--c-subtle);"},h.ts+(ago?' · '+ago:'')));
   var actWrap=el('span',{style:"margin-left:auto;display:flex;gap:6px;"});
   if(!isEditing){
+    actWrap.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid oklch(0.7 0.1 266);background:oklch(0.95 0.05 266);color:oklch(0.4 0.14 266);font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;",onClick:function(e){e.stopPropagation();openHistInGen(h);}},"📋 Ouvrir"));
     actWrap.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid oklch(0.72 0.14 155);background:oklch(0.95 0.05 155);color:oklch(0.38 0.13 155);font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;",onClick:function(e){e.stopPropagation();reuseHistItem(h);}},"↩ Réutiliser"));
     actWrap.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:oklch(0.4 0.1 264);font-size:12px;font-weight:600;padding:4px 9px;border-radius:8px;",onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";renderHistoryList();}},"✏️"));
   }
@@ -1813,7 +1849,7 @@ function renderStats(){
   var trendCard=card("Tendance mensuelle — Lapin / Excusé / Pas de retour");
   if(trendMonths.length){
     var seriesKeys=['lapin','excuse','pas_de_retour'];
-    var seriesColors={lapin:"oklch(0.55 0.2 15)",excuse:"oklch(0.72 0.14 85)",pas_de_retour:"oklch(0.62 0.04 266)"};
+    var seriesColors={lapin:"oklch(0.65 0.2 45)",excuse:"oklch(0.72 0.14 85)",pas_de_retour:"oklch(0.62 0.04 266)"};
     var seriesLabels={lapin:"🐇 Lapin",excuse:"🙅 Excusé",pas_de_retour:"📵 Pas de retour"};
     var maxT=Math.max.apply(null,trendMonths.map(function(m){var v=trendMap[m];return Math.max(v.lapin,v.excuse,v.pas_de_retour);}))||1;
     var colsT=trendMonths.length,WT=Math.max(colsT*70,320),HT=110,PBT=26,PTT=8;
@@ -1878,10 +1914,10 @@ function renderStats(){
   if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
   statutCard.appendChild(stw);col2.appendChild(statutCard);
 
-  var typeMap={proposition:0,confirmation:0,sans_appel:0};
+  var typeMap={proposition:0,confirmation:0,sans_appel:0,relance:0};
   hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
   var typeCard=card("Répartition par type");
-  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
+  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"},{k:"relance",lbl:"Relance",col:"oklch(0.65 0.2 45)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   typeList.forEach(function(t){if(!typeMap[t.k])return;var pct=Math.round(typeMap[t.k]/typeTotal*100);tw.appendChild(barRow(t.lbl,pct,t.col,typeMap[t.k]+" ("+pct+"%)",null));});
@@ -1903,6 +1939,111 @@ function renderStats(){
 
   wrap.appendChild(el('div',{style:"margin-bottom:16px;"}));
   wrap.appendChild(grid2);
+
+  /* ── Heatmap annuelle style GitHub ── */
+  (function(){
+    var MONTHS_H=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+    var histAll=S.history.filter(function(h){return !S.statsCMS||h.commune===S.statsCMS;});
+    var countByDate={};
+    histAll.forEach(function(h){if(h.date)countByDate[h.date]=(countByDate[h.date]||0)+1;});
+    var heatCard=card("Activité annuelle");
+    var todayH=new Date();todayH.setHours(0,0,0,0);
+    var endW=new Date(todayH);endW.setDate(endW.getDate()+(6-((endW.getDay()+6)%7))); /* dimanche de la semaine courante */
+    var totalDays=52*7;
+    var startW=new Date(endW);startW.setDate(startW.getDate()-(totalDays-1));
+    var maxCount=0;var days=[];
+    for(var hi=0;hi<totalDays;hi++){
+      var hd=new Date(startW);hd.setDate(startW.getDate()+hi);
+      var hds=toLocalDateStr(hd);
+      var hn=countByDate[hds]||0;
+      if(hn>maxCount)maxCount=hn;
+      days.push({date:hd,ds:hds,n:hn});
+    }
+    function heatColor(n){
+      if(!n)return 'var(--c-border)';
+      var t=maxCount?Math.min(1,n/maxCount):0;
+      var light=(0.82-t*0.42).toFixed(2);
+      var chroma=(0.06+t*0.18).toFixed(2);
+      return 'oklch('+light+' '+chroma+' 266)';
+    }
+    var heatWrap=el('div',{style:"overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;"});
+    var heatInner=el('div',{style:"display:inline-block;"});
+    var monthRow=el('div',{style:"display:flex;margin-left:22px;margin-bottom:4px;position:relative;height:12px;"});
+    var lastMonth=-1;
+    for(var w=0;w<52;w++){
+      var colDate=days[w*7].date;
+      var mo=colDate.getMonth();
+      if(mo!==lastMonth){
+        monthRow.appendChild(el('div',{style:"position:absolute;left:"+(w*13)+"px;font-size:9px;color:var(--c-muted);"},MONTHS_H[mo]));
+        lastMonth=mo;
+      }
+    }
+    heatInner.appendChild(monthRow);
+    var gridRow=el('div',{style:"display:flex;gap:2px;"});
+    var dayLabels=el('div',{style:"display:flex;flex-direction:column;gap:2px;margin-right:4px;width:16px;"});
+    ['L','M','M','J','V','S','D'].forEach(function(l,di){dayLabels.appendChild(el('div',{style:"height:11px;font-size:8px;color:var(--c-muted);line-height:11px;"},(di%2===0?l:'')));});
+    gridRow.appendChild(dayLabels);
+    for(var w2=0;w2<52;w2++){
+      var col=el('div',{style:"display:flex;flex-direction:column;gap:2px;"});
+      for(var d2=0;d2<7;d2++){
+        var day=days[w2*7+d2];
+        var cell=el('div',{title:day.ds.split('-').reverse().join('/')+' — '+day.n+' RDV',style:"width:11px;height:11px;border-radius:2px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
+        cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.4)';});
+        cell.addEventListener('mouseleave',function(){this.style.transform='';});
+        col.appendChild(cell);
+      }
+      gridRow.appendChild(col);
+    }
+    heatInner.appendChild(gridRow);
+    var legendRow=el('div',{style:"display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:8px;font-size:9px;color:var(--c-muted);"});
+    legendRow.appendChild(el('span',{},'Moins'));
+    [0,Math.ceil(maxCount*0.25),Math.ceil(maxCount*0.5),Math.ceil(maxCount*0.75),maxCount].forEach(function(n){
+      legendRow.appendChild(el('div',{style:"width:10px;height:10px;border-radius:2px;background:"+heatColor(n)+";"}));
+    });
+    legendRow.appendChild(el('span',{},'Plus'));
+    heatInner.appendChild(legendRow);
+    heatWrap.appendChild(heatInner);
+    heatCard.appendChild(heatWrap);
+    wrap.appendChild(heatCard);
+    wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
+  })();
+
+  /* ── Taux de remplissage par CMS (90 derniers jours) ── */
+  (function(){
+    var fillCard=card("Taux de remplissage par CMS (90 derniers jours)");
+    var communesSet={};
+    (S.permanences||[]).forEach(function(p){communesSet[p.commune]=1;});
+    var communesFill=Object.keys(communesSet);
+    if(communesFill.length){
+      var results=[];
+      communesFill.forEach(function(commune){
+        var totalSlots=0,takenSlots=0;
+        for(var di=89;di>=0;di--){
+          var dd=new Date();dd.setDate(dd.getDate()-di);
+          var ds=toLocalDateStr(dd);
+          S.permanences.forEach(function(p){
+            if(p.commune===commune&&isPermDay(p,ds)){
+              var sls=getSlots(p.commune,ds);
+              totalSlots+=sls.length;
+              takenSlots+=sls.filter(function(sl){return sl.taken&&!sl.freeAgain;}).length;
+            }
+          });
+        }
+        results.push({commune:commune,pct:totalSlots?Math.round(takenSlots/totalSlots*100):0});
+      });
+      results.sort(function(a,b){return b.pct-a.pct;});
+      var fw=el('div',{style:"display:flex;flex-direction:column;gap:9px;"});
+      results.forEach(function(r){
+        var col='oklch('+(0.75-r.pct/100*0.35).toFixed(2)+' '+(0.08+r.pct/100*0.16).toFixed(2)+' 266)';
+        fw.appendChild(barRow(r.commune,r.pct,col,r.pct+'%',null));
+      });
+      fillCard.appendChild(fw);
+    } else {
+      fillCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucune permanence configurée"));
+    }
+    wrap.appendChild(fillCard);
+  })();
+
   pane.appendChild(wrap);
 
   /* Déclencher les animations width — double rAF pour garantir un frame peint à width:0% avant la transition */
@@ -2065,7 +2206,7 @@ function renderAgenda(){
     var t0B=new Date(todayB+'T00:00:00');
     var depasses=S.history.filter(function(h){
       if(h.statut!=='en_attente'||!h.dateDemande)return false;
-      return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+      return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
     });
     if(!depasses.length)return;
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
@@ -2342,7 +2483,7 @@ function renderAgenda(){
       if(slot.taken&&_st==='en_attente'&&slot.taken.dateDemande){
         var _nowD=new Date();
         var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
-        _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+        _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
       }
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:10px;border:1px solid "+pillBorder+";background:"+pillBg+";cursor:pointer;font-family:inherit;min-height:52px;"+(_ownerPill?"border-left:3px solid "+_ownerPill.color+";":"");
@@ -2379,6 +2520,13 @@ function renderAgenda(){
           _ago=timeAgo(slot.taken.ts);
         }
         if(_ago&&_st!=='confirme')pill.appendChild(el('div',{style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
+      }
+      if(_isDepasse){
+        /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
+        var relBtn=el('div',{role:'button',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:rgba(0,0,0,0.08);color:"+pillTxt+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:"Relancer par SMS ou mail"});
+        relBtn.textContent='📨 Relancer';
+        relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
+        pill.appendChild(relBtn);
       }
       (function(s,d){
         pill.addEventListener('click',function(){
@@ -2844,6 +2992,35 @@ function renderConfig(){
     });
     card3.appendChild(calSel);
     wrap.appendChild(card3);
+
+    /* relance automatique */
+    var card3b=el('div',{style:"background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 20px;margin-bottom:14px;"});
+    card3b.appendChild(el('div',{style:"font-weight:800;font-size:14px;margin-bottom:6px;"},"📨 Relance automatique"));
+    card3b.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:12px;line-height:1.5;"},"Délai après lequel un RDV en attente est considéré en retard et proposé à la relance (badge Agenda, rappel au lancement, bouton 📨 Relancer)."));
+    card3b.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;"},"Délai (jours)"));
+    var delayIn=el('input',{type:'number',min:1,max:30,style:INS3+"cursor:text;max-width:120px;",value:S.relanceDelai||3});
+    delayIn.addEventListener('change',function(e){
+      var v=Math.min(30,Math.max(1,parseInt(e.target.value,10)||3));
+      S.relanceDelai=v;lsSet('ess-relance-delai',v);e.target.value=v;renderTabs();showToast('Délai de relance mis à jour');
+    });
+    card3b.appendChild(delayIn);
+    card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin:14px 0 10px;line-height:1.5;"},"Variables disponibles : {civilite} {nom} {prenom} {demarche} {date} {heure} {adresse} {commune} {documents} {lienCalendrier} et {dateDemande} (date de la proposition initiale)."));
+    function relanceField(lbl,key,isTextarea,rows){
+      var w=el('div',{style:"margin-bottom:12px;"});
+      w.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;"},lbl));
+      var val=S.templates[key]!==undefined?S.templates[key]:(DEFAULT_TEMPLATES[key]||'');
+      var inp=el(isTextarea?'textarea':'input',{style:INS3+"cursor:text;"+(isTextarea?"height:"+(rows||90)+"px;resize:vertical;":"")});
+      inp.value=val;
+      inp.addEventListener('change',function(e){
+        var t=Object.assign({},S.templates);t[key]=e.target.value;S.templates=t;persist();showToast('Modèle de relance enregistré');
+      });
+      w.appendChild(inp);
+      return w;
+    }
+    card3b.appendChild(relanceField('Modèle SMS','sms_relance',true,90));
+    card3b.appendChild(relanceField('Objet mail','mail_relance_sujet',false));
+    card3b.appendChild(relanceField('Corps mail','mail_relance',true,110));
+    wrap.appendChild(card3b);
 
     /* token GitHub */
     var card4=el('div',{style:"background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 20px;margin-bottom:14px;"});
@@ -4175,6 +4352,7 @@ function loadProfileData(){
   S.orientations=ls(pk('orientations'),[]);
   S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
   S.calendarType=ls('ess-caltype','google');
+  S.relanceDelai=ls('ess-relance-delai',3);
   S.agendaScope='mine';
   S.selectedCMS=last.selectedCMS||"";
   S.selectedDemarche=last.selectedDemarche||"";
@@ -4200,7 +4378,7 @@ function maybeShowOverdueReminder(){
   var t0=new Date();t0.setHours(0,0,0,0);
   var overdue=S.history.filter(function(h){
     if(h.statut!=='en_attente'||!h.dateDemande)return false;
-    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   });
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
   if(!overdue.length)return;
