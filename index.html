@@ -704,17 +704,27 @@ function onReset(){
   Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:""});
   regen();renderGenerate();
 }
-/* précharge le formulaire Générer pour relancer un RDV en attente dépassant le délai configuré */
+/* calcule le message de relance directement (sans jamais passer par le formulaire Générer,
+   pour ne pas déclencher le dédoublonnage d'addHistory sur l'entrée existante) et ouvre la
+   modale de relance en lecture seule */
 function lancerRelance(h){
-  S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
-  S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
-  S.date=h.date||"";S.heure=h.heure||"";
-  S.dateDemande=h.dateDemande||"";
-  if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
-  if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.channel=h.channel||"sms";S.msgType="relance";S.selectedTemplate="__default__";
-  regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
-  showToast("📨 Formulaire pré-rempli pour relance");
+  if(!h)return;
+  var cms=S.cmsList.find(function(c){return String(c.id)===String(h.selectedCMS);});
+  var dem=h.selectedDemarche==="__autre__"
+    ?{nom:h.demarcheAutre||"Autre",documents:[]}
+    :S.demarches.find(function(d){return String(d.id)===String(h.selectedDemarche);})||{nom:h.demarche||"",documents:[]};
+  var vars={civilite:h.civilite||"",prenom:h.prenom||"",nom:h.nom||"",
+    demarche:dem.nom||"",date:h.date||"",heure:h.heure||"",
+    adresse:cms?cms.adresse:"[adresse]",documents:dem.documents||[],
+    commune:h.commune||"",dateDemande:h.dateDemande||"",lienCalendrier:""};
+  var canal=h.channel||"sms";
+  var bodyTpl=canal==="sms"
+    ?(S.templates.sms_relance||DEFAULT_TEMPLATES.sms_relance)
+    :(S.templates.mail_relance||DEFAULT_TEMPLATES.mail_relance);
+  var subjTpl=canal==="mail"?(S.templates.mail_relance_sujet||DEFAULT_TEMPLATES.mail_relance_sujet):"";
+  var body=fillTemplate(bodyTpl,vars);
+  var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
+  S.modal='relance';S._relanceCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
 function addHistory(item){
   /* doublon : même date + heure + commune + nom → remplace l'existant */
@@ -722,7 +732,11 @@ function addHistory(item){
     var di=S.history.findIndex(function(h){
       return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();
     });
-    if(di!==-1){S.history.splice(di,1,Object.assign({},S.history[di],item));lsSet(pk('history'),S.history);return;}
+    if(di!==-1){
+      var merged=Object.assign({},S.history[di],item);
+      if(merged.body&&(!merged.statut||merged.statut==='libre'))merged.statut='en_attente';
+      S.history.splice(di,1,merged);lsSet(pk('history'),S.history);return;
+    }
   }
   if(item.body&&!item.statut)item.statut='en_attente';
   var h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
@@ -879,7 +893,8 @@ function getSlots(commune,dateStr,historyList,permOverride){
     var confirmations=matches.filter(function(x){return x.msgType==='confirmation';});
     var propositions=matches.filter(function(x){return x.msgType==='proposition';});
     var sansAppels=matches.filter(function(x){return x.msgType==='sans_appel';});
-    var taken=confirmations[0]||propositions[0]||sansAppels[0]||null;
+    var relances=matches.filter(function(x){return x.msgType==='relance';});
+    var taken=confirmations[0]||propositions[0]||sansAppels[0]||relances[0]||null;
     var multiPropo=confirmations.length===0&&propositions.length>1;
     var freeAgain=taken&&(taken.statut==='pas_de_retour'||taken.statut==='lapin'||taken.statut==='excuse');
     slots.push({heure:heure,taken:taken||null,freeAgain:!!freeAgain,multiPropo:multiPropo,allPropo:propositions});
@@ -2523,8 +2538,11 @@ function renderAgenda(){
       }
       if(_isDepasse){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
-        var relBtn=el('div',{role:'button',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:rgba(0,0,0,0.08);color:"+pillTxt+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:"Relancer par SMS ou mail"});
-        relBtn.textContent='📨 Relancer';
+        var _dejaRelance=slot.taken.dateRelance;
+        var _relBg=_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
+        var _relCol=_dejaRelance?'oklch(0.32 0.13 155)':pillTxt;
+        var relBtn=el('div',{role:'button',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:"+_relBg+";color:"+_relCol+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:_dejaRelance?"Déjà relancé le "+_dejaRelance.split('-').reverse().join('/'):"Relancer par SMS ou mail"});
+        relBtn.textContent=_dejaRelance?('✓ Relancé '+_dejaRelance.slice(8,10)+'/'+_dejaRelance.slice(5,7)):'📨 Relancer';
         relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
         pill.appendChild(relBtn);
       }
@@ -4234,6 +4252,43 @@ function renderModal(){
       }},'Enregistrer'));
       box.appendChild(btnRow2);
     }
+  }
+  else if(S.modal==='relance'){
+    var rctx=S._relanceCtx||{};
+    var rh=rctx.h,rbody=rctx.body||'',rsubj=rctx.subj||'',rcanal=rctx.canal||'sms';
+    var rFullName=rh?[rh.civilite,rh.prenom,rh.nom].filter(Boolean).join(' '):'';
+    box.appendChild(header('📨 Relance'+(rFullName?' — '+rFullName:'')));
+    if(rh&&rh.telephone){
+      var rTelRow=el('div',{style:"display:flex;align-items:center;gap:8px;margin-bottom:10px;"});
+      rTelRow.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);flex:1;"},'📞 '+formatTel(rh.telephone)));
+      rTelRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;white-space:nowrap;",onClick:function(){doCopy(rh.telephone).then(function(ok){if(ok)showToast('✓ Numéro copié');});}},'📋 Copier'));
+      var rCallLink=el('a',{href:'tel:'+rh.telephone,style:"text-decoration:none;font-family:inherit;font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;border:none;background:oklch(0.5 0.16 155);color:#fff;white-space:nowrap;"},'📞 Appeler');
+      rTelRow.appendChild(rCallLink);
+      box.appendChild(rTelRow);
+    }
+    if(rcanal==='mail'){
+      box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:3px;"},'Objet'));
+      box.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);background:var(--c-hover);border-radius:10px;padding:8px 10px;margin-bottom:10px;"},rsubj));
+    }
+    var rTextarea=el('textarea',{readOnly:true,style:"width:100%;font-family:inherit;font-size:13px;padding:10px;border-radius:10px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);box-sizing:border-box;height:180px;resize:vertical;"});
+    rTextarea.value=rbody;
+    box.appendChild(rTextarea);
+    var rBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:12px;"});
+    rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){
+      doCopy(rbody).then(function(ok){
+        if(!ok)return;
+        if(rh){
+          var _today=new Date().toISOString().slice(0,10);
+          var targetP=rh._profile||S.activeProfile;
+          var arr=readProfileHistory(targetP);
+          var idx=findHistIdx(arr,rh);
+          if(idx!==-1){arr[idx].dateRelance=_today;rh.dateRelance=_today;writeProfileHistory(targetP,arr);}
+        }
+        S.modal=null;renderModal();renderAgenda();showToast('✓ Message copié — relance enregistrée');
+      });
+    }},'📋 Copier'));
+    rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
+    box.appendChild(rBtnRow);
   }
   else if(S.modal==='hist'){
     var hi=S.histItem;
