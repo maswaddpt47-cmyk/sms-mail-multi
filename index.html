@@ -339,7 +339,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
-  statsCMS:"", calendarType:"google",
+  statsCMS:"", calendarType:"google", relanceDelai:3,
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -704,6 +704,18 @@ function onReset(){
   Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:""});
   regen();renderGenerate();
 }
+/* précharge le formulaire Générer pour relancer un RDV en attente dépassant le délai configuré */
+function lancerRelance(h){
+  S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
+  S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
+  S.date=h.date||"";S.heure=h.heure||"";
+  S.dateDemande=h.dateDemande||"";
+  if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
+  if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
+  S.channel=h.channel||"sms";S.msgType="relance";S.selectedTemplate="__default__";
+  regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
+  showToast("📨 Formulaire pré-rempli pour relance");
+}
 function addHistory(item){
   /* doublon : même date + heure + commune + nom → remplace l'existant */
   if(item.date&&item.heure&&item.nom){
@@ -1013,7 +1025,7 @@ function renderTabs(){
   var t0Tabs=new Date();t0Tabs.setHours(0,0,0,0);
   var overdueN=S.history.filter(function(h){
     if(h.statut!=='en_attente'||!h.dateDemande)return false;
-    return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+    return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   }).length;
   var defs=[["generate","Générer"],["history","Historique"],["orientations","📋 Orientations"+(orientN>0?" ("+orientN+")":"")],["agenda","📅 Agenda"],["stats","📊 Stats"],["templates","Modèles"],["config","Configuration"],["mandat","Mandat"],["mandats","Mandats archivés"]];
   defs.forEach(function(d){
@@ -2179,7 +2191,7 @@ function renderAgenda(){
     var t0B=new Date(todayB+'T00:00:00');
     var depasses=S.history.filter(function(h){
       if(h.statut!=='en_attente'||!h.dateDemande)return false;
-      return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+      return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
     });
     if(!depasses.length)return;
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
@@ -2456,7 +2468,7 @@ function renderAgenda(){
       if(slot.taken&&_st==='en_attente'&&slot.taken.dateDemande){
         var _nowD=new Date();
         var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
-        _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+        _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
       }
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:10px;border:1px solid "+pillBorder+";background:"+pillBg+";cursor:pointer;font-family:inherit;min-height:52px;"+(_ownerPill?"border-left:3px solid "+_ownerPill.color+";":"");
@@ -2493,6 +2505,13 @@ function renderAgenda(){
           _ago=timeAgo(slot.taken.ts);
         }
         if(_ago&&_st!=='confirme')pill.appendChild(el('div',{style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
+      }
+      if(_isDepasse){
+        /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
+        var relBtn=el('div',{role:'button',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:rgba(0,0,0,0.08);color:"+pillTxt+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:"Relancer par SMS ou mail"});
+        relBtn.textContent='📨 Relancer';
+        relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
+        pill.appendChild(relBtn);
       }
       (function(s,d){
         pill.addEventListener('click',function(){
@@ -2958,6 +2977,35 @@ function renderConfig(){
     });
     card3.appendChild(calSel);
     wrap.appendChild(card3);
+
+    /* relance automatique */
+    var card3b=el('div',{style:"background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 20px;margin-bottom:14px;"});
+    card3b.appendChild(el('div',{style:"font-weight:800;font-size:14px;margin-bottom:6px;"},"📨 Relance automatique"));
+    card3b.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:12px;line-height:1.5;"},"Délai après lequel un RDV en attente est considéré en retard et proposé à la relance (badge Agenda, rappel au lancement, bouton 📨 Relancer)."));
+    card3b.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;"},"Délai (jours)"));
+    var delayIn=el('input',{type:'number',min:1,max:30,style:INS3+"cursor:text;max-width:120px;",value:S.relanceDelai||3});
+    delayIn.addEventListener('change',function(e){
+      var v=Math.min(30,Math.max(1,parseInt(e.target.value,10)||3));
+      S.relanceDelai=v;lsSet('ess-relance-delai',v);e.target.value=v;renderTabs();showToast('Délai de relance mis à jour');
+    });
+    card3b.appendChild(delayIn);
+    card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin:14px 0 10px;line-height:1.5;"},"Variables disponibles : {civilite} {nom} {prenom} {demarche} {date} {heure} {adresse} {commune} {documents} {lienCalendrier} et {dateDemande} (date de la proposition initiale)."));
+    function relanceField(lbl,key,isTextarea,rows){
+      var w=el('div',{style:"margin-bottom:12px;"});
+      w.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;"},lbl));
+      var val=S.templates[key]!==undefined?S.templates[key]:(DEFAULT_TEMPLATES[key]||'');
+      var inp=el(isTextarea?'textarea':'input',{style:INS3+"cursor:text;"+(isTextarea?"height:"+(rows||90)+"px;resize:vertical;":"")});
+      inp.value=val;
+      inp.addEventListener('change',function(e){
+        var t=Object.assign({},S.templates);t[key]=e.target.value;S.templates=t;persist();showToast('Modèle de relance enregistré');
+      });
+      w.appendChild(inp);
+      return w;
+    }
+    card3b.appendChild(relanceField('Modèle SMS','sms_relance',true,90));
+    card3b.appendChild(relanceField('Objet mail','mail_relance_sujet',false));
+    card3b.appendChild(relanceField('Corps mail','mail_relance',true,110));
+    wrap.appendChild(card3b);
 
     /* token GitHub */
     var card4=el('div',{style:"background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 20px;margin-bottom:14px;"});
@@ -4289,6 +4337,7 @@ function loadProfileData(){
   S.orientations=ls(pk('orientations'),[]);
   S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
   S.calendarType=ls('ess-caltype','google');
+  S.relanceDelai=ls('ess-relance-delai',3);
   S.agendaScope='mine';
   S.selectedCMS=last.selectedCMS||"";
   S.selectedDemarche=last.selectedDemarche||"";
@@ -4314,7 +4363,7 @@ function maybeShowOverdueReminder(){
   var t0=new Date();t0.setHours(0,0,0,0);
   var overdue=S.history.filter(function(h){
     if(h.statut!=='en_attente'||!h.dateDemande)return false;
-    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>3;
+    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   });
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
   if(!overdue.length)return;
