@@ -3113,22 +3113,7 @@ function renderConfig(){
       S.relanceDelai=v;lsSet('ess-relance-delai',v);e.target.value=v;renderTabs();showToast('Délai de relance mis à jour');
     });
     card3b.appendChild(delayIn);
-    card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin:14px 0 10px;line-height:1.5;"},"Variables disponibles : {civilite} {nom} {prenom} {demarche} {date} {heure} {adresse} {commune} {documents} {lienCalendrier} et {dateDemande} (date de la proposition initiale)."));
-    function relanceField(lbl,key,isTextarea,rows){
-      var w=el('div',{style:"margin-bottom:12px;"});
-      w.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;"},lbl));
-      var val=S.templates[key]!==undefined?S.templates[key]:(DEFAULT_TEMPLATES[key]||'');
-      var inp=el(isTextarea?'textarea':'input',{style:INS3+"cursor:text;"+(isTextarea?"height:"+(rows||90)+"px;resize:vertical;":"")});
-      inp.value=val;
-      inp.addEventListener('change',function(e){
-        var t=Object.assign({},S.templates);t[key]=e.target.value;S.templates=t;persist();showToast('Modèle de relance enregistré');
-      });
-      w.appendChild(inp);
-      return w;
-    }
-    card3b.appendChild(relanceField('Modèle SMS','sms_relance',true,90));
-    card3b.appendChild(relanceField('Objet mail','mail_relance_sujet',false));
-    card3b.appendChild(relanceField('Corps mail','mail_relance',true,110));
+    card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:10px;line-height:1.5;"},"Les modèles SMS/Mail de relance se modifient dans l'onglet Modèles."));
     wrap.appendChild(card3b);
 
     /* token GitHub */
