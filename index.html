@@ -2502,6 +2502,10 @@ function renderAgenda(){
   btnPrint.addEventListener('click',function(){printAgendaWeek(jumpIn.value||todayStr);});
   navBar.appendChild(btnToday);navBar.appendChild(btnPrev);navBar.appendChild(btnNext);navBar.appendChild(btnPrint);navBar.appendChild(searchIn);navBar.appendChild(statutSel);navBar.appendChild(jumpIn);
   pane.appendChild(navBar);
+  /* la barre de filtres sticky peut faire plusieurs lignes sur mobile (flex-wrap) —
+     on mesure sa hauteur réelle plutôt qu'une valeur fixe, sinon les tuiles scrollent
+     sous la barre et apparaissent coupées en haut */
+  var navBarScrollMargin=(navBar.offsetHeight||64)+12;
 
   function dayKey(d){return d.dateStr+'|'+d.perm.commune+'|'+d.profile;}
   var visibleDays=S.agendaFocusDay?days.filter(function(d){return dayKey(d)===S.agendaFocusDay;}):days;
@@ -2523,7 +2527,7 @@ function renderAgenda(){
     var isPast=day.date<today;
     var isToday=day.dateStr===todayStr;
     var cardBorder=isToday?'oklch(0.62 0.14 266)':isPast?'var(--c-border)':'var(--c-border)';
-    var card=el('div',{id:'agenda-day-'+day.dateStr+'-'+day.perm.commune+'-'+day.profile,style:"scroll-margin-top:64px;background:var(--c-card);border:1px solid "+cardBorder+";border-left:4px solid "+(isPast?'oklch(0.78 0.03 264)':'oklch(0.62 0.14 266)')+";border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px oklch(0.5 0.05 264 / .06);opacity:"+(isPast?'.6':'1')+";"});
+    var card=el('div',{id:'agenda-day-'+day.dateStr+'-'+day.perm.commune+'-'+day.profile,style:"scroll-margin-top:"+navBarScrollMargin+"px;background:var(--c-card);border:1px solid "+cardBorder+";border-left:4px solid "+(isPast?'oklch(0.78 0.03 264)':'oklch(0.62 0.14 266)')+";border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px oklch(0.5 0.05 264 / .06);opacity:"+(isPast?'.6':'1')+";"});
     /* en-tête du jour */
     var dayHead=el('div',{style:"display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;"});
     var dateLabel=JOURS_FR[day.date.getDay()]+' '+day.date.getDate()+' '+MONTHS[day.date.getMonth()];
