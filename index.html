@@ -1059,7 +1059,20 @@ function renderTabs(){
   }).length;
   var defs=[["generate","Générer"],["history","Historique"],["orientations","📋 Orientations"+(orientN>0?" ("+orientN+")":"")],["agenda","📅 Agenda"],["stats","📊 Stats"],["templates","Modèles"],["config","Configuration"],["mandat","Mandat"],["mandats","Mandats archivés"]];
   defs.forEach(function(d){
-    var btn=el('button',{class:'gx-press',style:tabStyle(S.activeTab===d[0]),onClick:(function(key){return function(){S.activeTab=key;showActivePane();renderTabs();var mainScroll=document.querySelector('main');if(mainScroll)mainScroll.scrollTop=0;if(key==='stats')renderStats();if(key==='agenda')renderAgenda();if(key==='orientations')renderOrientations();};})(d[0])},d[1]);
+    var btn=el('button',{class:'gx-press',style:tabStyle(S.activeTab===d[0]),onClick:(function(key){return function(){S.activeTab=key;showActivePane();renderTabs();var mainScroll=document.querySelector('main');if(mainScroll)mainScroll.scrollTop=0;if(key==='stats')renderStats();if(key==='orientations')renderOrientations();
+      if(key==='agenda'){
+        renderAgenda();
+        setTimeout(function(){
+          var now=new Date();var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+          var all=Array.prototype.slice.call(document.querySelectorAll('[id^="agenda-day-"]'));
+          all.sort(function(a,b){return a.id.slice(11,21).localeCompare(b.id.slice(11,21));});
+          var anchor=null;
+          for(var i=0;i<all.length;i++){if(all[i].id.slice(11,21)>=todayStr){anchor=all[i];break;}}
+          if(!anchor&&all.length)anchor=all[all.length-1];
+          if(anchor)anchor.scrollIntoView({block:'start'});
+        },50);
+      }
+    };})(d[0])},d[1]);
     if(d[0]==='history'&&todayN>0){
       var badge=el('span',{style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.15 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(todayN));
       btn.appendChild(badge);
