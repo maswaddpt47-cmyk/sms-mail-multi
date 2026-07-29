@@ -50,5 +50,5 @@ App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests auto
   scripts.forEach((s,i)=>{ try{ new Function(s); console.log(i,'OK'); } catch(e){ console.log(i,'ERROR', e.message); } });
   "
   ```
-- **Test Playwright ciblé requis** uniquement quand le changement touche au **calcul ou à la persistance des données** : migrations localStorage, logique de fusion/déduplication, calculs de statuts/créneaux (`getSlots`, `hasConflict`), sauvegarde/restauration GitHub. C'est justement l'absence de ce genre de test qui a causé une perte de CMS lors de la migration du 24/07.
-- **Pas de test Playwright** pour : ajout de bouton, changement de libellé/couleur, réorganisation d'UI, ajout de KPI d'affichage simple.
+- **Pas de test Playwright par défaut**, même sur les changements de calcul/données (`getSlots`, `hasConflict`, migrations, dédup…) — ça consomme trop de temps/tokens à répétition. La vérification de syntaxe suffit dans l'immense majorité des cas.
+- **Test Playwright ciblé uniquement** : si l'utilisateur le demande explicitement pour ce changement, ou en début de session pour valider l'état général de l'app après une reprise/un déploiement. Ne pas en faire un réflexe systématique.
