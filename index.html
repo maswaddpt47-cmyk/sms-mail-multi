@@ -155,11 +155,11 @@
   <div style="position:sticky;top:0;z-index:100;">
   <header style="background:var(--c-header);backdrop-filter:blur(16px);border-bottom:1px solid var(--c-border);padding:14px clamp(16px,4vw,40px);display:flex;align-items:center;gap:14px;">
     <div style="width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,oklch(0.56 0.16 266),oklch(0.46 0.16 272));display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;box-shadow:0 6px 16px oklch(0.5 0.16 266 / .35);flex-shrink:0;">✦</div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-weight:800;font-size:16px;letter-spacing:-.02em;line-height:1.1;">Team Générateur SMS &amp; MAIL</div>
-      <div style="display:flex;gap:10px;align-items:center;margin-top:1px;">
-        <div id="saveStatus" style="font-size:12px;color:oklch(0.56 0.02 264);font-weight:500;"></div>
-        <div id="rdvCounter" style="font-size:12px;color:oklch(0.5 0.14 155);font-weight:700;"></div>
+    <div style="flex:1;min-width:0;overflow:hidden;">
+      <div style="font-weight:800;font-size:15px;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Team Générateur SMS &amp; MAIL</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:1px;min-width:0;">
+        <div id="saveStatus" style="font-size:12px;color:oklch(0.56 0.02 264);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;"></div>
+        <div id="rdvCounter" style="font-size:12px;color:oklch(0.5 0.14 155);font-weight:700;white-space:nowrap;flex-shrink:0;"></div>
       </div>
     </div>
     <button class="gx-press hdr-btn" id="btnProfile" style="border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);display:flex;align-items:center;gap:7px;"><span id="profileDot" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;"></span><span id="profileNameLbl"></span></button>
@@ -1082,6 +1082,7 @@ function renderTabs(){
       btn.appendChild(badgeAg);
     }
     nav.appendChild(btn);
+    if(S.activeTab===d[0])setTimeout(function(){btn.scrollIntoView({inline:'nearest',block:'nearest'});},0);
   });
 }
 function showActivePane(){
