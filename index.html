@@ -347,7 +347,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
-  statsCMS:"", calendarType:"google", relanceDelai:3,
+  statsCMS:"", calendarType:"google", relanceDelai:3, _agScrollTarget:null,
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -1090,18 +1090,7 @@ function renderTabs(){
   var defs=[["generate","Générer"],["history","Historique"],["orientations","📋 Orientations"+(orientN>0?" ("+orientN+")":"")],["agenda","📅 Agenda"],["stats","📊 Stats"],["templates","Modèles"],["config","Configuration"],["mandat","Mandat"],["mandats","Mandats archivés"]];
   defs.forEach(function(d){
     var btn=el('button',{class:'gx-press',style:tabStyle(S.activeTab===d[0]),onClick:(function(key){return function(){S.activeTab=key;showActivePane();renderTabs();var mainScroll=document.querySelector('main');if(mainScroll)mainScroll.scrollTop=0;if(key==='stats')renderStats();if(key==='orientations')renderOrientations();
-      if(key==='agenda'){
-        renderAgenda();
-        setTimeout(function(){
-          var now=new Date();var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-          var all=Array.prototype.slice.call(document.querySelectorAll('[id^="agenda-day-"]'));
-          all.sort(function(a,b){return a.id.slice(11,21).localeCompare(b.id.slice(11,21));});
-          var anchor=null;
-          for(var i=0;i<all.length;i++){if(all[i].id.slice(11,21)>=todayStr){anchor=all[i];break;}}
-          if(!anchor&&all.length)anchor=all[all.length-1];
-          if(anchor)anchor.scrollIntoView({block:'start'});
-        },50);
-      }
+      if(key==='agenda')renderAgenda();
     };})(d[0])},d[1]);
     if(d[0]==='history'&&todayN>0){
       var badge=el('span',{style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.15 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(todayN));
@@ -1231,7 +1220,7 @@ function renderGenerate(){
   dd.appendChild(el('input',{class:'gx-in',style:INPUT,type:"date",value:S.date,onChange:function(e){setFieldSave({date:e.target.value});}}));
   if(S.date&&S.commune){
     if(perm){
-      var agLink=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;border:1px solid oklch(0.72 0.12 155);background:oklch(0.94 0.06 155);color:oklch(0.38 0.12 155);margin-top:4px;",onClick:function(){S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();setTimeout(function(){var all=Array.prototype.slice.call(document.querySelectorAll('[id^="agenda-day-"]'));all.sort(function(a,b){return a.id.slice(11,21).localeCompare(b.id.slice(11,21));});var t=S.date;var anchor=null;for(var i=0;i<all.length;i++){if(all[i].id.slice(11,21)>=t){anchor=all[i];break;}}if(!anchor&&all.length)anchor=all[all.length-1];if(anchor)anchor.scrollIntoView({behavior:'smooth',block:'start'});},80);}},"📅 Voir dans l'agenda");
+      var agLink=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;border:1px solid oklch(0.72 0.12 155);background:oklch(0.94 0.06 155);color:oklch(0.38 0.12 155);margin-top:4px;",onClick:function(){S._agScrollTarget=S.date;S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();}},"📅 Voir dans l'agenda");
       dd.appendChild(agLink);
     } else {
       /* date hors permanence — proposer ajout exceptionnel */
@@ -2572,7 +2561,10 @@ function renderAgenda(){
       if(_ownerPf)dayHead.appendChild(el('span',{style:"background:"+_ownerPf.color+";color:#fff;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;"},_ownerPf.nom));
     }
     if(isToday)dayHead.appendChild(el('span',{style:"background:oklch(0.5 0.16 266);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;"},"Aujourd'hui"));
-    if(day.exceptional)dayHead.appendChild(el('span',{style:"background:oklch(0.94 0.06 38);color:oklch(0.42 0.12 38);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},"Exceptionnel"));
+    if(day.exceptional){
+      dayHead.appendChild(el('span',{style:"background:oklch(0.94 0.06 38);color:oklch(0.42 0.12 38);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},"Exceptionnel"));
+      (function(perm){dayHead.appendChild(el('button',{class:'gx-press',title:'Supprimer cette journée exceptionnelle',style:"cursor:pointer;font-family:inherit;font-size:11px;padding:2px 7px;border-radius:7px;border:1px solid oklch(0.82 0.1 25);background:oklch(0.97 0.03 25);color:oklch(0.5 0.16 25);margin-left:4px;",onClick:function(e){e.stopPropagation();if(confirm('Supprimer la permanence exceptionnelle "'+perm.commune+' — '+perm.exceptDate+'" ?')){S.permanences=S.permanences.filter(function(p){return p!==perm;});lsSet(pk('permanences'),S.permanences);renderAgenda();showToast('✓ Journée supprimée');}}},'🗑'));})(day.perm);
+    }
     if(isPast&&takenCount>0)dayHead.appendChild(el('span',{style:"background:oklch(0.96 0.04 25);color:oklch(0.5 0.16 25);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},takenCount+" RDV passé"+(takenCount>1?"s":"")));
     if(isPast&&takenCount===0)dayHead.appendChild(el('span',{style:"font-size:11px;color:var(--c-muted);font-weight:600;"},"Passé"));
     var freeBadge=el('span',{style:"margin-left:"+(S.agendaFocusDay?"0":"auto")+";font-size:12px;font-weight:700;color:"+(freeCount>0?'oklch(0.42 0.12 155)':'oklch(0.5 0.16 25)')+";"},freeCount+" libre"+(freeCount!==1?"s":"")+" / "+slots.length);
@@ -2728,6 +2720,11 @@ function renderAgenda(){
     wrap.appendChild(card);
   });
   pane.appendChild(wrap);
+  setTimeout(function(){
+    var t=S._agScrollTarget||null;
+    S._agScrollTarget=null;
+    agScrollTo(t||todayStr);
+  },50);
 }
 
 function renderHistory(){
