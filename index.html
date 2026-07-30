@@ -2332,13 +2332,13 @@ function renderAgenda(){
     pane.appendChild(wrap);return;
   }
 
-  /* 4 semaines passées + 6 semaines futures */
+  /* 4 semaines passées + 8 semaines futures */
   var today=new Date();today.setHours(0,0,0,0);
   var todayStr=toLocalDateStr(today);
   var days=[];
   /* permanences régulières (sans exceptDate) */
   var regularPerms=permSource.filter(function(p){return !p.exceptDate&&p.commune.toLowerCase().indexOf('villeneuve')===-1;});
-  for(var w=-4;w<7;w++){
+  for(var w=-4;w<9;w++){
     regularPerms.forEach(function(perm){
       var base=new Date(today);base.setDate(base.getDate()+w*7);
       var baseDay=base.getDay();
