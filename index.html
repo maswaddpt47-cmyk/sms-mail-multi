@@ -392,7 +392,7 @@ function countPendingRelances(profileId){
   var t0=new Date();t0.setHours(0,0,0,0);
   var count=0;
   readProfileHistory(profileId).forEach(function(h){
-    if(h.statut!=='en_attente'||!h.dateDemande)return;
+    if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return;
     var diff=Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000);
     if(diff>delai)count++;
   });
@@ -1084,7 +1084,7 @@ function renderTabs(){
   var orientN=S.orientations.filter(function(o){return !o.done;}).length;
   var t0Tabs=new Date();t0Tabs.setHours(0,0,0,0);
   var overdueN=S.history.filter(function(h){
-    if(h.statut!=='en_attente'||!h.dateDemande)return false;
+    if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
     return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   }).length;
   var _todayTab=toLocalDateStr(new Date());
@@ -2303,7 +2303,7 @@ function renderAgenda(){
     var todayB=nowB.getFullYear()+'-'+String(nowB.getMonth()+1).padStart(2,'0')+'-'+String(nowB.getDate()).padStart(2,'0');
     var t0B=new Date(todayB+'T00:00:00');
     var depasses=S.history.filter(function(h){
-      if(h.statut!=='en_attente'||!h.dateDemande)return false;
+      if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
       return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
     });
     if(!depasses.length)return;
@@ -2621,7 +2621,7 @@ function renderAgenda(){
         _ttLines.push('🟢 Créneau libre — '+slot.heure);
       }
       var _isDepasse=false;
-      if(slot.taken&&_st==='en_attente'&&slot.taken.dateDemande){
+      if(slot.taken&&_st==='en_attente'&&slot.taken.dateDemande&&!slot.taken.dateRelance){
         var _nowD=new Date();
         var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
         _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
@@ -2679,7 +2679,7 @@ function renderAgenda(){
         }
         if(_ago&&_st!=='confirme')pill.appendChild(el('div',{style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
       }
-      if(_isDepasse){
+      if(_isDepasse||(slot.taken&&slot.taken.dateRelance)){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
         var _dejaRelance=slot.taken.dateRelance;
         var _relBg=_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
@@ -4579,7 +4579,7 @@ function maybeShowOverdueReminder(){
   if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
   var t0=new Date();t0.setHours(0,0,0,0);
   var overdue=S.history.filter(function(h){
-    if(h.statut!=='en_attente'||!h.dateDemande)return false;
+    if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
     return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
   });
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
