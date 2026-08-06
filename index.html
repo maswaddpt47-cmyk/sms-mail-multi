@@ -883,7 +883,11 @@ function getPermanence(commune,dateStr,permList){
     var exc=permList.find(function(p){return p.commune===commune&&p.exceptDate===dateStr;});
     if(exc)return exc;
   }
-  return permList.find(function(p){return p.commune===commune&&!p.exceptDate;});
+  var reg=permList.find(function(p){return p.commune===commune&&!p.exceptDate;});
+  if(!reg)return null;
+  /* vérifier que la date correspond bien au jour de la semaine de la permanence régulière */
+  if(dateStr){var dow=new Date(dateStr+'T12:00:00').getDay();if(dow!==reg.jour)return null;}
+  return reg;
 }
 function nextPermDate(perm){
   var d=new Date();
