@@ -2048,11 +2048,16 @@ function renderStats(){
     var histAll=S.history.filter(function(h){return !S.statsCMS||h.commune===S.statsCMS;});
     var countByDate={};
     histAll.forEach(function(h){if(h.date)countByDate[h.date]=(countByDate[h.date]||0)+1;});
-    var heatCard=card("Activité annuelle");
     var todayH=new Date();todayH.setHours(0,0,0,0);
     var endW=new Date(todayH);endW.setDate(endW.getDate()+(6-((endW.getDay()+6)%7))); /* dimanche de la semaine courante */
-    var totalDays=52*7;
-    var startW=new Date(endW);startW.setDate(startW.getDate()-(totalDays-1));
+    /* départ fixé au 1er juillet de l'année courante (ou précédente si on est avant juillet) */
+    var heatYear=todayH.getMonth()>=6?todayH.getFullYear():todayH.getFullYear()-1;
+    var july1=new Date(heatYear,6,1);
+    var july1dow=(july1.getDay()+6)%7;
+    var startW=new Date(july1);startW.setDate(july1.getDate()-july1dow);
+    var heatLabel='depuis juillet '+heatYear;
+    var totalDays=Math.round((endW-startW)/86400000)+1;
+    var totalWeeks=totalDays/7;
     var maxCount=0;var days=[];
     for(var hi=0;hi<totalDays;hi++){
       var hd=new Date(startW);hd.setDate(startW.getDate()+hi);
@@ -2061,6 +2066,8 @@ function renderStats(){
       if(hn>maxCount)maxCount=hn;
       days.push({date:hd,ds:hds,n:hn});
     }
+    if(!maxCount)return;
+    var heatCard=card("Activité annuelle — "+heatLabel);
     function heatColor(n){
       if(!n)return 'var(--c-border)';
       var t=maxCount?Math.min(1,n/maxCount):0;
@@ -2072,7 +2079,7 @@ function renderStats(){
     var heatInner=el('div',{style:"display:inline-block;"});
     var monthRow=el('div',{style:"display:flex;margin-left:22px;margin-bottom:4px;position:relative;height:12px;"});
     var lastMonth=-1;
-    for(var w=0;w<52;w++){
+    for(var w=0;w<totalWeeks;w++){
       var colDate=days[w*7].date;
       var mo=colDate.getMonth();
       if(mo!==lastMonth){
@@ -2085,7 +2092,7 @@ function renderStats(){
     var dayLabels=el('div',{style:"display:flex;flex-direction:column;gap:2px;margin-right:4px;width:16px;"});
     ['L','M','M','J','V','S','D'].forEach(function(l,di){dayLabels.appendChild(el('div',{style:"height:11px;font-size:8px;color:var(--c-muted);line-height:11px;"},(di%2===0?l:'')));});
     gridRow.appendChild(dayLabels);
-    for(var w2=0;w2<52;w2++){
+    for(var w2=0;w2<totalWeeks;w2++){
       var col=el('div',{style:"display:flex;flex-direction:column;gap:2px;"});
       for(var d2=0;d2<7;d2++){
         var day=days[w2*7+d2];
