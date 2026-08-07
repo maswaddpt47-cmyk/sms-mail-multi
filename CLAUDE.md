@@ -52,3 +52,11 @@ App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests auto
   ```
 - **Pas de test Playwright par défaut**, même sur les changements de calcul/données (`getSlots`, `hasConflict`, migrations, dédup…) — ça consomme trop de temps/tokens à répétition. La vérification de syntaxe suffit dans l'immense majorité des cas.
 - **Test Playwright ciblé uniquement** : si l'utilisateur le demande explicitement pour ce changement, ou en début de session pour valider l'état général de l'app après une reprise/un déploiement. Ne pas en faire un réflexe systématique.
+
+## Portage entre SMS-mail et sms-mail-multi
+
+Ce sont deux repos distincts avec une architecture proche (single-file HTML vanilla JS) — les correctifs sont portés manuellement d'un côté à l'autre, ce qui a déjà causé un oubli. En début (ou fin) de session de portage, avec les deux repos clonés en sibling (`../SMS-mail`) :
+```bash
+node scripts/check-drift.js
+```
+Liste les fonctions communes qui divergent entre les deux apps (portage oublié ou différence voulue — à juger au cas par cas), et celles qui n'existent que d'un côté.
