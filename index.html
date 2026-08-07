@@ -304,6 +304,9 @@ var DEFAULT_TEMPLATES={
   sms_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe reviens vers vous suite à ma proposition de RDV du {dateDemande} concernant \"{demarche}\" prévu le {date} à {heure}.\n\nMerci de me confirmer rapidement votre venue par SMS.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
   mail_relance_sujet:"Rappel — Votre RDV du {date} — {demarche}",
   mail_relance:"Bonjour {civilite} {nom} {prenom},\n\nJe me permets de revenir vers vous suite à ma proposition de rendez-vous du {dateDemande} concernant votre démarche \"{demarche}\".\n\nVotre RDV est prévu le {date} à {heure} au :\n📍 {adresse}\n\nMerci de bien vouloir me confirmer par retour mail ou par SMS si ce créneau vous convient toujours.\n\nDans l'attente de votre retour, je reste à votre disposition.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
+  sms_lapin:"Bonjour {civilite} {nom} {prenom},\n\nVous ne vous êtes pas présenté(e) à votre rendez-vous du {date} au CMS {cms}. Nos créneaux étant très sollicités, nous aurions aimé être prévenus en cas d'empêchement afin de proposer le créneau à un autre usager.\n\nVotre collaboration nous aide à mieux servir chacun.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
+  mail_lapin_sujet:"Absence à votre RDV du {date} — CMS {cms}",
+  mail_lapin:"Bonjour {civilite} {nom} {prenom},\n\nNous avons constaté votre absence à votre rendez-vous du {date} au CMS {cms}.\n\nNos créneaux étant très sollicités, nous aurions aimé être prévenus en cas d'empêchement afin de proposer le créneau à un autre usager.\n\nVotre collaboration nous aide à mieux servir chacun.\n\nCordialement,\nMichel Aswad\nConseiller Numérique\nConseil Départemental du Lot-et-Garonne.",
 };
 var LABELS={
   sms_proposition:"💬 SMS — Proposition (non joint)",
@@ -318,6 +321,9 @@ var LABELS={
   sms_relance:"💬 SMS — Relance",
   mail_relance_sujet:"✉️ Mail — Objet Relance",
   mail_relance:"✉️ Mail — Corps Relance",
+  sms_lapin:"💬 SMS — Absence (Lapin)",
+  mail_lapin_sujet:"✉️ Mail — Objet Absence (Lapin)",
+  mail_lapin:"✉️ Mail — Corps Absence (Lapin)",
 };
 var HISTORY_MAX=99999;
 
@@ -745,6 +751,22 @@ function lancerRelance(h){
   var body=fillTemplate(bodyTpl,vars);
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='relance';S._relanceCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
+}
+/* même principe que lancerRelance : calcule le message d'absence (Lapin) en lecture seule,
+   sans passer par le formulaire Générer */
+function lancerLapin(h){
+  if(!h)return;
+  var cms=S.cmsList.find(function(c){return String(c.id)===String(h.selectedCMS);});
+  var cmsNom=cms?cms.nom:(h.commune||'[CMS]');
+  var vars={civilite:h.civilite||"",prenom:h.prenom||"",nom:h.nom||"",date:h.date||"",cms:cmsNom,commune:h.commune||""};
+  var canal=h.channel||"sms";
+  var bodyTpl=canal==="sms"
+    ?(S.templates.sms_lapin||DEFAULT_TEMPLATES.sms_lapin)
+    :(S.templates.mail_lapin||DEFAULT_TEMPLATES.mail_lapin);
+  var subjTpl=canal==="mail"?(S.templates.mail_lapin_sujet||DEFAULT_TEMPLATES.mail_lapin_sujet):"";
+  var body=fillTemplate(bodyTpl,vars);
+  var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
+  S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
 function addHistory(item){
   /* doublon : même date + heure + commune + nom → remplace l'existant */
@@ -2718,6 +2740,15 @@ function renderAgenda(){
         relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
         pill.appendChild(relBtn);
       }
+      if(_st==='lapin'){
+        var _dejaLapin=slot.taken.dateLapin;
+        var _lapBg=_dejaLapin?'oklch(0.5 0.14 155 / .18)':'oklch(0.7 0.16 45 / .18)';
+        var _lapCol=_dejaLapin?'oklch(0.32 0.13 155)':'oklch(0.4 0.16 45)';
+        var lapBtn=el('div',{role:'button',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:"+_lapBg+";color:"+_lapCol+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:_dejaLapin?"Message envoyé le "+_dejaLapin.split('-').reverse().join('/'):"Envoyer un message d'absence"});
+        lapBtn.textContent=_dejaLapin?('✓ Envoyé '+_dejaLapin.slice(8,10)+'/'+_dejaLapin.slice(5,7)):'🐇 Absence';
+        lapBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerLapin(s.taken);};})(slot));
+        pill.appendChild(lapBtn);
+      }
       (function(s,d){
         pill.addEventListener('click',function(){
           if(s.taken){
@@ -4464,6 +4495,43 @@ function renderModal(){
     rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
     box.appendChild(rBtnRow);
   }
+  else if(S.modal==='lapin'){
+    var lctx=S._lapinCtx||{};
+    var lh=lctx.h,lbody=lctx.body||'',lsubj=lctx.subj||'',lcanal=lctx.canal||'sms';
+    var lFullName=lh?[lh.civilite,lh.prenom,lh.nom].filter(Boolean).join(' '):'';
+    box.appendChild(header('🐇 Absence'+(lFullName?' — '+lFullName:'')));
+    if(lh&&lh.telephone){
+      var lTelRow=el('div',{style:"display:flex;align-items:center;gap:8px;margin-bottom:10px;"});
+      lTelRow.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);flex:1;"},'📞 '+formatTel(lh.telephone)));
+      lTelRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;white-space:nowrap;",onClick:function(){doCopy(lh.telephone).then(function(ok){if(ok)showToast('✓ Numéro copié');});}},'📋 Copier'));
+      var lCallLink=el('a',{href:'tel:'+lh.telephone,style:"text-decoration:none;font-family:inherit;font-weight:700;font-size:12px;padding:6px 10px;border-radius:9px;border:none;background:oklch(0.5 0.16 155);color:#fff;white-space:nowrap;"},'📞 Appeler');
+      lTelRow.appendChild(lCallLink);
+      box.appendChild(lTelRow);
+    }
+    if(lcanal==='mail'){
+      box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:3px;"},'Objet'));
+      box.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);background:var(--c-hover);border-radius:10px;padding:8px 10px;margin-bottom:10px;"},lsubj));
+    }
+    var lTextarea=el('textarea',{readOnly:true,style:"width:100%;font-family:inherit;font-size:13px;padding:10px;border-radius:10px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);box-sizing:border-box;height:180px;resize:vertical;"});
+    lTextarea.value=lbody;
+    box.appendChild(lTextarea);
+    var lBtnRow=el('div',{style:"display:flex;gap:8px;margin-top:12px;"});
+    lBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){
+      doCopy(lbody).then(function(ok){
+        if(!ok)return;
+        if(lh){
+          var _today=new Date().toISOString().slice(0,10);
+          var targetP=lh._profile||S.activeProfile;
+          var arr=readProfileHistory(targetP);
+          var idx=findHistIdx(arr,lh);
+          if(idx!==-1){arr[idx].dateLapin=_today;lh.dateLapin=_today;writeProfileHistory(targetP,arr);}
+        }
+        S.modal=null;renderModal();renderAgenda();showToast('✓ Message absence copié — envoi enregistré');
+      });
+    }},'📋 Copier'));
+    lBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
+    box.appendChild(lBtnRow);
+  }
   else if(S.modal==='hist'){
     var hi=S.histItem;
     box.appendChild(header(hi?((hi.channel==="sms"?"💬 SMS — ":"✉️ Mail — ")+hi.demarche):""));
@@ -4569,7 +4637,7 @@ function loadProfileData(){
   S.secteurs=ls('ess-secteurs',DEFAULT_SECTEURS);
   S.templates=ls('ess-templates',DEFAULT_TEMPLATES);
   /* migration : forcer les templates builtin à la dernière version par défaut */
-  var _tplV='v4-sms-nocal';
+  var _tplV='v5-lapin-templates';
   if(ls('ess-tpl-version','')!==_tplV){
     S.templates=Object.assign({},DEFAULT_TEMPLATES);
     lsSet('ess-templates',S.templates);
