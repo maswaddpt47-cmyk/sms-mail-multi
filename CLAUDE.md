@@ -115,6 +115,7 @@ de nouvelles entrées.
 6bis. Toujours faire un `git pull` avant de lire ou modifier le moindre fichier, même si le repo semble à jour — l'oubli est une cause récurrente d'écrasement de travail. Respecter la politique de push définie dans le CLAUDE.md du projet (push direct sur `main` vs branche de travail imposée) et signaler tout conflit avec les instructions de session avant d'agir, pas après.
 7. Après toute reprise de session ou résumé de contexte, relire l'état réel du fichier concerné avant de le modifier ou de le renvoyer — ne jamais présumer qu'un correctif précédent est encore en place.
 8. Avant de pousser un changement visuel (CSS/layout), vérifier mentalement les interactions connues à risque (stacking context, overflow, position sticky/fixed) sur les zones sensibles existantes.
+8bis. Utiliser des dates explicites (JJ/MM ou JJ/MM/AAAA) plutôt que des termes relatifs ("hier", "aujourd'hui", "la semaine dernière") dans les messages — la perception du temps de Claude vient d'un contexte injecté en début de session, pas d'une horloge live, et devient peu fiable sur une session filée sur plusieurs jours.
 
 **Bonnes pratiques à maintenir**
 9. Continuer à demander l'avis de Claude avant toute action à fort impact (déploiement, architecture, migration de données) et exécuter vite dès validation courte reçue.
