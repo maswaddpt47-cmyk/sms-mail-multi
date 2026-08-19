@@ -2350,6 +2350,7 @@ function icsUidFor(h){
    non garantie respectée par tous les logiciels de calendrier à l'import */
 var ICS_COLOR_PALETTE=['red','blue','green','orange','purple','brown','teal','magenta','olive','navy'];
 function icsColorFor(h){
+  if(h.statut==='realise')return 'green';
   var key=h.commune||h.date||'';
   var hash=0;for(var i=0;i<key.length;i++){hash=((hash<<5)-hash+key.charCodeAt(i))|0;}
   return ICS_COLOR_PALETTE[Math.abs(hash)%ICS_COLOR_PALETTE.length];
@@ -2372,6 +2373,7 @@ function buildICS(rdvs){
     lines.push('DTEND;TZID=Europe/Paris:'+dtEnd);
     lines.push('SUMMARY:'+summary);
     if(ICS_CANCEL_STATUTS.indexOf(h.statut)!==-1)lines.push('STATUS:CANCELLED');
+    else if(h.statut==='realise')lines.push('STATUS:CONFIRMED');
     lines.push('COLOR:'+icsColorFor(h));
     if(desc)lines.push('DESCRIPTION:'+desc);
     if(h.commune){
