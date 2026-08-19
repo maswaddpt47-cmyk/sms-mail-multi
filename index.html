@@ -353,7 +353,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false,
-  statsCMS:"", calendarType:"google", relanceDelai:3, _agScrollTarget:null,
+  statsCMS:"", calendarType:"google", relanceDelai:3, includeLapinMention:true, _agScrollTarget:null,
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, np:{commune:'',jour:4,debut:'09:00',fin:'15:00',duree:30}, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -669,6 +669,20 @@ function buildCalLink(){
   /* les deux */
   return 'Google : '+googleUrl+'\nOutlook : '+outlookUrl;
 }
+function normTel(t){return (t||'').replace(/\D/g,'');}
+/* vrai seulement si le RDV résolu le plus récent (nom + téléphone, pas nom seul) est un lapin —
+   un lapin honoré ensuite ne doit plus déclencher l'alerte */
+var LAPIN_RESOLVED_STATUTS=['realise','lapin','excuse','pas_de_retour'];
+function lastRdvIsLapin(nom,telephone){
+  var v=(nom||'').trim().toLowerCase();
+  var t=normTel(telephone);
+  if(!v||!t)return false;
+  var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v&&normTel(h.telephone)===t&&LAPIN_RESOLVED_STATUTS.indexOf(h.statut)!==-1;});
+  if(!matches.length)return false;
+  matches.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  return matches[0].statut==='lapin';
+}
+var LAPIN_MENTION="⚠️ Nous avons remarqué que vous ne vous étiez pas présenté(e) à votre dernier rendez-vous. Nous vous remercions par avance de bien vouloir nous prévenir en cas d'empêchement, afin que nous puissions proposer le créneau à un autre usager.";
 function compute(){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
   var dem=S.selectedDemarche==="__autre__"?{nom:S.demarcheAutre||"Autre",documents:[]}:S.demarches.find(function(d){return String(d.id)===String(S.selectedDemarche);});
@@ -684,6 +698,9 @@ function compute(){
     var tpl=S.templates[bodyKey]||DEFAULT_TEMPLATES[bodyKey]||"";
     body=fillTemplate(tpl,vars);
     if(S.channel==="mail")subject=fillTemplate(S.templates[sk[S.msgType]]||DEFAULT_TEMPLATES[sk[S.msgType]]||"",vars);
+  }
+  if(S.includeLapinMention&&S.msgType!=='lapin'&&lastRdvIsLapin(S.nom,S.telephone)){
+    body=/\n\nCordialement/.test(body)?body.replace(/\n\nCordialement/,"\n\n"+LAPIN_MENTION+"\n\nCordialement"):body+"\n\n"+LAPIN_MENTION;
   }
   return {body:body,subject:subject,dem:dem,cms:cms};
 }
@@ -727,7 +744,8 @@ function handleGenerate(){
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:""});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:"",includeLapinMention:true});
+  S._lastLapinDetected=false;
   regen();renderGenerate();
 }
 /* calcule le message de relance directement (sans jamais passer par le formulaire Générer,
@@ -1216,28 +1234,50 @@ function renderGenerate(){
   var pre=el('div');pre.appendChild(el('label',{style:LABEL},"Prénom"));
   pre.appendChild(el('input',{class:'gx-in',style:INPUT,value:S.prenom,placeholder:"Sophie",onInput:function(e){S.prenom=e.target.value;regen();updatePreviewOnly();}}));
   row1.appendChild(pre);
-  var noms=el('div');noms.appendChild(el('label',{style:LABEL},"Nom *"));
+  var nomsLblRow=el('div',{style:"display:flex;align-items:center;gap:5px;"});
+  nomsLblRow.appendChild(el('label',{style:LABEL},"Nom *"));
+  var lapinBadge=el('span',{title:"A déjà posé un lapin",style:"display:none;font-size:13px;"},'🐇');
+  nomsLblRow.appendChild(lapinBadge);
+  var noms=el('div');noms.appendChild(nomsLblRow);
   var nomIn=el('input',{class:'gx-in',style:INPUT,value:S.nom,placeholder:"Dupont",
     onInput:function(e){S.nom=e.target.value;regen();updatePreviewOnly();},
     onBlur:function(){renderGenerate();}});
   noms.appendChild(nomIn);
-  (function(){
-    var hint=el('div',{style:"font-size:11px;color:oklch(0.52 0.18 45);font-weight:700;margin-top:3px;display:none;"});
-    noms.appendChild(hint);
-    nomIn.addEventListener('input',function(){
-      var v=(nomIn.value||'').trim().toLowerCase();
-      if(v.length<2){hint.style.display='none';return;}
-      var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v;});
-      if(matches.length>0){
-        var last=matches[0];
-        var lastInfo=[last.prenom,last.demarche,last.statut?({'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','lapin':'🐇','pas_de_retour':'📵'}[last.statut]||''):''].filter(Boolean).join(' · ');
-        hint.textContent='⚠️ Déjà dans l\'historique ('+matches.length+'x) — '+lastInfo;
-        hint.style.display='block';
+  var lapinHint=el('div',{style:"font-size:11px;color:oklch(0.52 0.18 45);font-weight:700;margin-top:3px;display:none;"});
+  noms.appendChild(lapinHint);
+  var lapinChkRow=el('label',{style:"display:none;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:oklch(0.45 0.18 45);cursor:pointer;"});
+  var lapinChk=el('input',{type:'checkbox'});
+  lapinChkRow.appendChild(lapinChk);
+  lapinChkRow.appendChild(document.createTextNode('Inclure la mention "absence au dernier RDV" dans le message'));
+  noms.appendChild(lapinChkRow);
+  lapinChk.addEventListener('change',function(){S.includeLapinMention=lapinChk.checked;regen();updatePreviewOnly();});
+  function updateLapinHint(){
+    var v=(nomIn.value||'').trim().toLowerCase();
+    if(v.length<2){lapinHint.style.display='none';lapinBadge.style.display='none';lapinChkRow.style.display='none';S._lastLapinDetected=false;return;}
+    var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v;});
+    if(matches.length>0){
+      var last=matches[0];
+      var isLapin=lastRdvIsLapin(nomIn.value,S.telephone);
+      var lastInfo=[last.prenom,last.demarche,last.statut?({'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','lapin':'🐇','pas_de_retour':'📵'}[last.statut]||''):''].filter(Boolean).join(' · ');
+      lapinBadge.style.display=isLapin?'inline':'none';
+      if(isLapin){
+        if(!S._lastLapinDetected)S.includeLapinMention=true;
+        lapinHint.style.color='oklch(0.45 0.18 45)';
+        lapinHint.textContent='🐇 N\'a pas honoré son dernier RDV — '+lastInfo;
+        lapinChk.checked=S.includeLapinMention;
+        lapinChkRow.style.display='flex';
       } else {
-        hint.style.display='none';
+        lapinHint.style.color='oklch(0.52 0.18 45)';
+        lapinHint.textContent='⚠️ Déjà dans l\'historique ('+matches.length+'x) — '+lastInfo;
+        lapinChkRow.style.display='none';
       }
-    });
-  })();
+      S._lastLapinDetected=isLapin;
+      lapinHint.style.display='block';
+    } else {
+      lapinHint.style.display='none';lapinBadge.style.display='none';lapinChkRow.style.display='none';S._lastLapinDetected=false;
+    }
+  }
+  nomIn.addEventListener('input',updateLapinHint);
   row1.appendChild(noms);
   col.appendChild(row1);
 
@@ -1252,10 +1292,12 @@ function renderGenerate(){
     telIn.style.borderColor=(!valid&&digits.length>0)?'oklch(0.6 0.18 25)':'';
     if(!valid&&digits.length>0)showToast('⚠️ Numéro incomplet ('+digits.length+'/10 chiffres)','warn');
     updatePreviewOnly();
+    updateLapinHint();
   }
-  telIn.addEventListener('input',function(e){S.telephone=formatTel(e.target.value);e.target.value=S.telephone;updatePreviewOnly();});
+  telIn.addEventListener('input',function(e){S.telephone=formatTel(e.target.value);e.target.value=S.telephone;updatePreviewOnly();updateLapinHint();});
   telIn.addEventListener('blur',function(e){applyTelFormat(e.target.value);});
   telRow.appendChild(telIn);
+  updateLapinHint();
   var btnS="cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-dim);font-weight:600;font-size:12px;padding:8px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;";
   telRow.appendChild(el('button',{class:'gx-press',title:"Formater le numéro",style:btnS,onClick:function(){applyTelFormat(telIn.value);showToast("✓ Numéro formaté");}},"# Fmt"));
   telRow.appendChild(el('button',{class:'gx-press',title:"Copier le numéro",style:btnS,onClick:function(){if(!S.telephone)return;navigator.clipboard.writeText(S.telephone);showToast("✓ Numéro copié");}},"📋"));
