@@ -1798,6 +1798,25 @@ function renderStats(){
 
   var hist=S.history.filter(function(h){return h.msgType!=='indispo'&&inPeriod(h)&&(!S.statsCMS||h.commune===S.statsCMS);});
 
+  function groupByUsager(entries){
+    var groups={};
+    entries.forEach(function(h){
+      var key=((h.nom||'')+'|'+(h.prenom||'')).toLowerCase();
+      if(!groups[key])groups[key]={civilite:h.civilite,prenom:h.prenom,nom:h.nom,commune:h.commune,telephone:h.telephone,heure:h.heure,date:h.date,_count:0,_entries:[]};
+      groups[key]._count++;
+      groups[key]._entries.push(h);
+      if((h.date||'')>(groups[key].date||'')){groups[key].commune=h.commune;groups[key].telephone=h.telephone;groups[key].heure=h.heure;groups[key].date=h.date;}
+    });
+    return Object.keys(groups).map(function(k){
+      groups[k]._entries.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+      return groups[k];
+    }).sort(function(a,b){return b._count-a._count||(b.date||'').localeCompare(a.date||'');});
+  }
+  function openStatList(title,entries){
+    S._statListCtx={title:title,items:groupByUsager(entries)};
+    S.modal='stat-list';renderModal();
+  }
+
   /* ── Tableau de bord KPI ── */
   (function(){
     var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
@@ -1846,23 +1865,8 @@ function renderStats(){
     var dashboard=el('div',{style:"margin-bottom:22px;"});
     dashboard.appendChild(el('div',{style:"font-size:14px;font-weight:800;color:var(--c-dim);margin-bottom:10px;letter-spacing:-.01em;"},"Tableau de bord"));
     var grid=el('div',{class:'stats-kpi'});
-    function groupByUsager(entries){
-      var groups={};
-      entries.forEach(function(h){
-        var key=((h.nom||'')+'|'+(h.prenom||'')).toLowerCase();
-        if(!groups[key])groups[key]={civilite:h.civilite,prenom:h.prenom,nom:h.nom,commune:h.commune,telephone:h.telephone,heure:h.heure,date:h.date,_count:0,_entries:[]};
-        groups[key]._count++;
-        groups[key]._entries.push(h);
-        if((h.date||'')>(groups[key].date||'')){groups[key].commune=h.commune;groups[key].telephone=h.telephone;groups[key].heure=h.heure;groups[key].date=h.date;}
-      });
-      return Object.keys(groups).map(function(k){
-        groups[k]._entries.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-        return groups[k];
-      }).sort(function(a,b){return b._count-a._count||(b.date||'').localeCompare(a.date||'');});
-    }
     function openLapinList(){
-      S._statListCtx={title:'🐇 Lapin — usagers ne s\'étant pas présentés',items:groupByUsager(S.history.filter(function(h){return h.statut==='lapin';}))};
-      S.modal='stat-list';renderModal();
+      openStatList('🐇 Lapin — usagers ne s\'étant pas présentés',S.history.filter(function(h){return h.statut==='lapin';}));
     }
     [
       [countToday,"RDV aujourd'hui",null,null],
@@ -2131,7 +2135,12 @@ function renderStats(){
     if(!statutMap[k])return;
     anyStatut=true;
     var pct=Math.round(statutMap[k]/statutTotal*100);
-    stw.appendChild(barRow(STATUT_STYLES[k].label,pct,STATUT_STYLES[k].border,statutMap[k]+" ("+pct+"%)",null));
+    var statutRow=barRow(STATUT_STYLES[k].label,pct,STATUT_STYLES[k].border,statutMap[k]+" ("+pct+"%)",null);
+    statutRow.style.cursor='pointer';
+    statutRow.addEventListener('click',(function(key){return function(){
+      openStatList(STATUT_STYLES[key].label,hist.filter(function(h){return h.statut===key;}));
+    };})(k));
+    stw.appendChild(statutRow);
   });
   if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
   statutCard.appendChild(stw);col2.appendChild(statutCard);
