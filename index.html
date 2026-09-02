@@ -1478,7 +1478,7 @@ function renderGenerate(){
   notesIn.value=S.genNotes||'';
   notesIn.addEventListener('input',function(e){S.genNotes=e.target.value;});
   notesDiv.appendChild(notesIn);
-  notesDiv.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:3px;"},"Évitez d'y saisir des informations de santé ou autres données sensibles."));
+  notesDiv.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:3px;"},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
   col.appendChild(notesDiv);
 
   c2.appendChild(col);
@@ -4670,7 +4670,7 @@ function renderModal(){
           if(idx!==-1){arr[idx].excuseMotif=ev.target.value;t.excuseMotif=ev.target.value;writeProfileHistory(targetP,arr);renderAgenda();}
         }});
         box.appendChild(motifIn);
-        box.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:-6px;margin-bottom:10px;"},"Évitez d'y saisir des informations de santé ou autres données sensibles."));
+        box.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:-6px;margin-bottom:10px;"},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
       }
       var detailRows=[['Bénéficiaire',fullName],['Téléphone',t.telephone||'—'],['Démarche',t.demarche||'—'],['Date RDV',(d.dateStr||'').split('-').reverse().join('/')],['Envoi msg',t.dateDemande?(t.dateDemande.split('-').reverse().join('/')):'—']];
       if(t.statut==='excuse'&&t.excuseMotif)detailRows.push(['Motif',t.excuseMotif]);
@@ -4736,7 +4736,7 @@ function renderModal(){
       notesIn2.value=e2.notes||'';
       var notesWrap2=field2('Notes',notesIn2);
       notesWrap2.style.marginBottom="8px";
-      notesWrap2.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:3px;"},"Évitez d'y saisir des informations de santé ou autres données sensibles."));
+      notesWrap2.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:3px;"},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
       box.appendChild(notesWrap2);
       var btnRow2=el('div',{style:"display:flex;gap:8px;margin-top:4px;"});
       btnRow2.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){ar.editing=false;renderModal();}},'← Retour'));
