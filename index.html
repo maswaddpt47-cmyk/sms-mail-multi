@@ -4670,6 +4670,7 @@ function renderModal(){
           if(idx!==-1){arr[idx].excuseMotif=ev.target.value;t.excuseMotif=ev.target.value;writeProfileHistory(targetP,arr);renderAgenda();}
         }});
         box.appendChild(motifIn);
+        box.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:-6px;margin-bottom:10px;"},"Évitez d'y saisir des informations de santé ou autres données sensibles."));
       }
       var detailRows=[['Bénéficiaire',fullName],['Téléphone',t.telephone||'—'],['Démarche',t.demarche||'—'],['Date RDV',(d.dateStr||'').split('-').reverse().join('/')],['Envoi msg',t.dateDemande?(t.dateDemande.split('-').reverse().join('/')):'—']];
       if(t.statut==='excuse'&&t.excuseMotif)detailRows.push(['Motif',t.excuseMotif]);
@@ -4731,8 +4732,12 @@ function renderModal(){
       box.appendChild(field2('📤 Date envoi message',dateDemandeIn2));
       var demIn2=el('input',{type:'text',style:INS2+"margin-bottom:8px;",value:e2.demarche||'',onInput:function(ev){e2.demarche=ev.target.value;}});
       box.appendChild(field2('Démarche',demIn2));
-      var notesIn2=el('textarea',{style:INS2+"height:70px;resize:none;margin-bottom:8px;",placeholder:'Notes…',onInput:function(ev){e2.notes=ev.target.value;}});
-      notesIn2.value=e2.notes||'';box.appendChild(field2('Notes',notesIn2));
+      var notesIn2=el('textarea',{style:INS2+"height:70px;resize:none;",placeholder:'Notes…',onInput:function(ev){e2.notes=ev.target.value;}});
+      notesIn2.value=e2.notes||'';
+      var notesWrap2=field2('Notes',notesIn2);
+      notesWrap2.style.marginBottom="8px";
+      notesWrap2.appendChild(el('div',{style:"font-size:10.5px;color:var(--c-muted);margin-top:3px;"},"Évitez d'y saisir des informations de santé ou autres données sensibles."));
+      box.appendChild(notesWrap2);
       var btnRow2=el('div',{style:"display:flex;gap:8px;margin-top:4px;"});
       btnRow2.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){ar.editing=false;renderModal();}},'← Retour'));
       btnRow2.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:12px;",onClick:function(){
