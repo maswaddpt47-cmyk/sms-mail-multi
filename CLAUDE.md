@@ -9,7 +9,7 @@ vrais usagers) — était commité en clair sur les branches `main` **et** `back
 personnelles étaient donc consultables par n'importe qui sur github.com, sans authentification.
 Même constat fait en parallèle sur `SMS-mail` (repo miroir).
 
-**Plan de remédiation validé par l'utilisateur (tous les points sauf le 3, pour l'instant) :**
+**Plan de remédiation validé par l'utilisateur (tous les points) :**
 1. ✅ **Fait (02/09/2026)** — Repo **privé** dédié créé (`sms-mail-multi-backups`),
    `githubPush()` / `GH_REPO` redirigés vers celui-ci dans `index.html`. Les sauvegardes
    existantes (25 fichiers, sous-dossiers `michel/` et `cynthia/`) ont été migrées dans ce
@@ -21,7 +21,18 @@ Même constat fait en parallèle sur `SMS-mail` (repo miroir).
    les deux. Vérifié via clones frais indépendants (`--depth 1`) : `backups/` absent de
    l'arbre et de l'historique complet des deux branches. Ne garantit pas l'effacement de
    copies déjà potentiellement récupérées pendant que le repo était exposé (20/08 → 02/09).
-3. *(Reporté, pas encore validé par l'utilisateur)* Politique de rétention de l'historique.
+3. ✅ **Fait (02/09/2026)** — Politique de rétention, approche validée : "année en cours +
+   backup année pour les stats". Nouveau bouton "Gestion des données → RGPD — Rétention" :
+   pour chaque année révolue encore présente dans l'historique du **profil actif**,
+   archivage manuel (confirmation obligatoire) qui calcule des statistiques agrégées et
+   **anonymisées** (aucun nom/téléphone — `entryYear`/`computeYearArchive`/`archiveYear`
+   dans `index.html`) puis supprime définitivement le détail nominatif de cette année de
+   l'historique du profil (irréversible). Archive cloisonnée par profil
+   (`ess-<profil>-yearly-stats`, comme `history`/`permanences`), consultable via un
+   sélecteur d'année dans l'onglet Stats, incluse dans `exportDataForProfile()`/
+   `doImport()`. Testé en navigateur réel (Playwright) sur le profil "michel" : archivage,
+   purge, agrégats, sélecteur d'année et **isolation entre profils** tous vérifiés
+   fonctionnels (l'archivage sur un profil ne touche aucune clé localStorage d'un autre).
 4. Point hors code, à charge de l'utilisateur : vérifier avec son employeur (Conseil
    Départemental) si ce traitement est couvert par un registre RGPD / DPO informé.
 5. ✅ **Fait (02/09/2026)** — Avertissement discret ajouté sur les 3 champs de saisie libre
