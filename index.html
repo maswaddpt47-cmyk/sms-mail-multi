@@ -800,10 +800,11 @@ function lancerLapin(h){
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
 function addHistory(item){
-  /* doublon : même date + heure + commune + nom → remplace l'existant */
+  /* doublon : même date + heure + commune + nom + prénom → remplace l'existant
+     (le prénom est inclus pour ne pas fusionner deux personnes de même nom sur le même créneau) */
   if(item.date&&item.heure&&item.nom){
     var di=S.history.findIndex(function(h){
-      return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();
+      return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();
     });
     if(di!==-1){
       var merged=Object.assign({},S.history[di],item);
@@ -996,6 +997,13 @@ function getSlots(commune,dateStr,historyList,permOverride){
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
 }
+/* RDV en attente depuis plus de S.relanceDelai jours sans relance envoyée —
+   formule centralisée ici pour éviter que les points d'affichage divergent entre eux */
+function isDepasse(h){
+  if(!h||h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
+  var t0=new Date();t0.setHours(0,0,0,0);
+  return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
+}
 /* bloque un créneau libre pour indisponibilité (pas un usager) — profil actif uniquement */
 function blockSlot(commune,dateStr,heure,motif){
   if(hasConflict(dateStr,heure,commune))return;
@@ -1172,11 +1180,7 @@ function renderTabs(){
   var today=new Date().toLocaleDateString('fr-FR');
   var todayN=S.history.filter(function(h){return h.ts===today;}).length;
   var orientN=S.orientations.filter(function(o){return !o.done;}).length;
-  var t0Tabs=new Date();t0Tabs.setHours(0,0,0,0);
-  var overdueN=S.history.filter(function(h){
-    if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
-    return Math.round((t0Tabs-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
-  }).length;
+  var overdueN=S.history.filter(isDepasse).length;
   var _todayTab=toLocalDateStr(new Date());
   var agTodayN=S.history.filter(function(h){
     return h.date===_todayTab&&(h.statut==='confirme'||h.statut==='realise');
@@ -1323,7 +1327,7 @@ function renderGenerate(){
   var btnS="cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-dim);font-weight:600;font-size:12px;padding:8px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;";
   telRow.appendChild(el('button',{class:'gx-press',title:"Formater le numéro",style:btnS,onClick:function(){applyTelFormat(telIn.value);showToast("✓ Numéro formaté");}},"# Fmt"));
   telRow.appendChild(el('button',{class:'gx-press',title:"Copier le numéro",style:btnS,onClick:function(){if(!S.telephone)return;navigator.clipboard.writeText(S.telephone);showToast("✓ Numéro copié");}},"📋"));
-  telRow.appendChild(el('button',{class:'gx-press',title:"Ouvrir WhatsApp",style:btnS,onClick:function(){if(!S.telephone)return;var num=S.telephone.replace(/\s/g,'').replace(/^0/,'33');window.open('https://wa.me/'+num,'_blank');}},"💬 WA"));
+  telRow.appendChild(el('button',{class:'gx-press',title:"Ouvrir WhatsApp",style:btnS,onClick:function(){if(!S.telephone)return;var num=S.telephone.replace(/\D/g,'').replace(/^0/,'33');window.open('https://wa.me/'+num,'_blank');}},"💬 WA"));
   telRow.appendChild(el('a',{class:'gx-press',title:"Appeler",href:"#",style:btnS+"text-decoration:none;",onClick:function(e){e.preventDefault();if(!S.telephone)return;window.location.href='tel:'+S.telephone.replace(/\s/g,'');}},"📞"));
   tel.appendChild(telRow);
   col.appendChild(tel);
@@ -2754,13 +2758,7 @@ function renderAgenda(){
 
   /* bannière dépassements */
   (function(){
-    var nowB=new Date();
-    var todayB=nowB.getFullYear()+'-'+String(nowB.getMonth()+1).padStart(2,'0')+'-'+String(nowB.getDate()).padStart(2,'0');
-    var t0B=new Date(todayB+'T00:00:00');
-    var depasses=S.history.filter(function(h){
-      if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
-      return Math.round((t0B-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
-    });
+    var depasses=S.history.filter(isDepasse);
     if(!depasses.length)return;
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
     banner.appendChild(el('span',{style:"font-size:22px;"},"🚨"));
@@ -3168,12 +3166,7 @@ function renderAgenda(){
       } else {
         _ttLines.push('🟢 Créneau libre — '+slot.heure);
       }
-      var _isDepasse=false;
-      if(slot.taken&&_st==='en_attente'&&slot.taken.dateDemande&&!slot.taken.dateRelance){
-        var _nowD=new Date();
-        var _todayD=_nowD.getFullYear()+'-'+String(_nowD.getMonth()+1).padStart(2,'0')+'-'+String(_nowD.getDate()).padStart(2,'0');
-        _isDepasse=Math.round((new Date(_todayD+'T00:00:00')-new Date(slot.taken.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
-      }
+      var _isDepasse=slot.taken?isDepasse(slot.taken):false;
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:10px;border:1px solid "+pillBorder+";background:"+pillBg+";cursor:pointer;font-family:inherit;min-height:52px;"+(_ownerPill?"border-left:3px solid "+_ownerPill.color+";":"");
       var pill=el('button',{class:_isDepasse?'ag-depasse':'',style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0',title:_ttLines.join('\n')});
@@ -5265,11 +5258,7 @@ function bindStaticListenersOnce(){
 function maybeShowOverdueReminder(){
   var todayStr=toLocalDateStr(new Date());
   if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
-  var t0=new Date();t0.setHours(0,0,0,0);
-  var overdue=S.history.filter(function(h){
-    if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
-    return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
-  });
+  var overdue=S.history.filter(isDepasse);
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
   if(!overdue.length)return;
   S.overdueReminder=overdue;
