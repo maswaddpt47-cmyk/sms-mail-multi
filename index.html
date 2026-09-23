@@ -800,10 +800,11 @@ function lancerLapin(h){
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
 function addHistory(item){
-  /* doublon : même date + heure + commune + nom → remplace l'existant */
+  /* doublon : même date + heure + commune + nom + prénom → remplace l'existant
+     (le prénom est inclus pour ne pas fusionner deux personnes de même nom sur le même créneau) */
   if(item.date&&item.heure&&item.nom){
     var di=S.history.findIndex(function(h){
-      return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();
+      return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();
     });
     if(di!==-1){
       var merged=Object.assign({},S.history[di],item);
