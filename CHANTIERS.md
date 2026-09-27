@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **27/09/2026**, commit de référence `7dc108c` (`main`).
+État au **27/09/2026**, commit de référence `8621084` (`main`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,23 +9,48 @@ ne doit pas être défait remonte dans la dernière section.
 
 ## Décisions à trancher
 
-Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
-`AGORA.md` ou non, et pourquoi.
+- **Taux d'occupation (30j et 90j)**, même sujet que celui tranché côté
+  SMS-mail (voir points à ne pas défaire) : avec le calendrier « à la
+  volée » porté ici le 27/09/2026, les deux calculs ne comptent plus que
+  les journées réellement ouvertes, plus toute la grille hebdomadaire —
+  le chiffre n'est plus comparable à celui d'avant le portage, dans le
+  sens d'une hausse. À trancher par l'utilisateur, définition métier pas
+  un choix technique.
 
 ## Chantiers restants (par priorité)
 
-1. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
+1. **Calendrier « à la volée » — porté depuis SMS-mail, à valider en
+   conditions réelles (27/09/2026).** SMS-mail (solo) a servi de terrain
+   d'essai : refonte proposée le 27/09, un bug réel trouvé par contradiction
+   AGORA (`SMS-mail/AGORA.md`, AG-001 — grille rétrécie par l'heure du
+   premier RDV) puis corrigé, testé en conditions réelles par l'utilisateur
+   avant ce portage. Le correctif est intégré dès l'écriture ici
+   (`ensureDayOpen` ouvre toujours 09:00-16:30, jamais sur l'heure du RDV
+   déclencheur) — pas de second cycle de bug à reproduire. **Pas de nouveau
+   bloc AGORA ouvert sur ce dépôt** : décision prise sciemment, pas en
+   silence — c'est un portage mécanique d'un design déjà contradiction
+   puis corrigé, aucun nouveau jugement de conception n'est exercé ici.
+   Revérifié par un script Node isolé (5 scénarios : migration, grille par
+   défaut, journée avec RDV réels, heure hors grille, RDV tardif non
+   tronqué — tous verts), **aucun test dans un navigateur réel côté multi,
+   ni sur les vraies données d'un profil**. Spécifique au multi-profil :
+   le sélecteur d'agenda « mon agenda / collègue / tous » a été adapté
+   (`permanencesOuvertesDe`) — la lecture des permanences d'un autre
+   profil rejoue la migration **en mémoire seulement**, jamais persistée,
+   pour respecter le cloisonnement entre profils.
+2. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
    Départemental si ce traitement figure au registre RGPD / si le DPO est
    informé. Seul point du plan de remédiation encore ouvert (`CLAUDE.md`).
-2. **Dérive SMS-mail ↔ sms-mail-multi — audit du 26/09/2026, oublis de
+3. **Dérive SMS-mail ↔ sms-mail-multi — audit du 26/09/2026, oublis de
    portage corrigés le 27/09/2026.** `check-drift.js` donne 3 faux positifs
    (`normCommune`, `exportHistoryCSV`, `exportOrientationsCSV` en partie : son
    analyseur prend l'apostrophe de la regex `/[-\s']+/` pour une chaîne). Le
-   reste des écarts est voulu (multi-profil) ou cosmétique. **Reste ouvert :**
-   - **Non jugé** : fenêtre Agenda 8 sem. passées/12 futures (SMS-mail)
-     contre 4/8 (multi) ; `handleGenerate` compare la commune strictement
-     dans SMS-mail, avec tolérance « commune vide » dans multi.
-3. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
+   reste des écarts est voulu (multi-profil) ou cosmétique. **Résolu par le
+   portage ci-dessus** : la question de la fenêtre Agenda (8 sem./12 contre
+   4/8) ne se pose plus, il n'y a plus de fenêtre. **Non jugé** :
+   `handleGenerate` compare la commune strictement dans SMS-mail, avec
+   tolérance « commune vide » dans multi.
+4. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
    `SessionStart`) : à copier depuis `ATELIERS_NEWGEN` — reporté le
    26/09/2026 par l'utilisateur, utile quand ce fichier aura grossi.
 
@@ -38,6 +63,12 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   année révolue après agrégation anonymisée — irréversible, confirmation
   obligatoire à conserver.
 - **Cloisonnement par profil** : toute donnée d'usager passe par les clés `ess-<profil>-…` (`pk`/`pkFor`). Une migration ou un archivage sur un profil ne doit toucher aucune clé d'un autre profil.
+- **Une journée s'ouvre toujours sur 09:00-16:30, jamais sur l'heure du RDV
+  qui la déclenche** (`ensureDayOpen`/`migratePermanences`, correctif
+  AGORA AG-001 porté depuis SMS-mail le 27/09/2026) : figer `debut`/`fin`
+  sur cette heure rétrécit silencieusement la grille du sélecteur.
+  `getSlots()` a en plus un filet de sécurité (`start=Math.min(start,09:00)`),
+  mais ne pas en dépendre pour réintroduire cette écriture ailleurs.
 - **Formule de dépassement/relance centralisée dans `isDepasse()`** : elle
   était dupliquée sur 5-6 endroits, source d'incohérences. Ne pas la
   réécrire en ligne ailleurs.
