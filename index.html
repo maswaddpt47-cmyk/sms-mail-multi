@@ -999,6 +999,17 @@ function hasConflict(date,heure,commune){
 }
 /* RDV en attente depuis plus de S.relanceDelai jours sans relance envoyée —
    formule centralisée ici pour éviter que les points d'affichage divergent entre eux */
+function isInMyAgenda(h){
+  /* vrai si le RDV tombe sur une permanence configurée (régulière ou exceptionnelle) du profil actif */
+  if(!h.date||!h.commune)return false;
+  var d=new Date(h.date+'T12:00:00');if(isNaN(d.getTime()))return false;
+  var dow=d.getDay();
+  return S.permanences.some(function(p){
+    if(p.commune!==h.commune)return false;
+    if(p.exceptDate)return p.exceptDate===h.date;
+    return p.jour===dow;
+  });
+}
 function isDepasse(h){
   if(!h||h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
   var t0=new Date();t0.setHours(0,0,0,0);
@@ -1180,7 +1191,7 @@ function renderTabs(){
   var today=new Date().toLocaleDateString('fr-FR');
   var todayN=S.history.filter(function(h){return h.ts===today;}).length;
   var orientN=S.orientations.filter(function(o){return !o.done;}).length;
-  var overdueN=S.history.filter(isDepasse).length;
+  var overdueN=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);}).length;
   var _todayTab=toLocalDateStr(new Date());
   var agTodayN=S.history.filter(function(h){
     return h.date===_todayTab&&(h.statut==='confirme'||h.statut==='realise');
@@ -2758,7 +2769,7 @@ function renderAgenda(){
 
   /* bannière dépassements */
   (function(){
-    var depasses=S.history.filter(isDepasse);
+    var depasses=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
     if(!depasses.length)return;
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
     banner.appendChild(el('span',{style:"font-size:22px;"},"🚨"));
@@ -2837,11 +2848,6 @@ function renderAgenda(){
     best.scrollIntoView({behavior:'smooth',block:'start'});
   }
   var _agNomFilter='';var _agStatutFilter='';
-  /* n'affiche que les entrées dont la commune fait partie des permanences configurées pour le profil actif */
-  function isInMyAgenda(h){
-    if(!h||!h.commune)return true;
-    return S.permanences.some(function(p){return p.commune===h.commune;});
-  }
   function agApplyFilters(){
     var norm=(_agNomFilter||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     var statut=_agStatutFilter||'';
@@ -5258,7 +5264,7 @@ function bindStaticListenersOnce(){
 function maybeShowOverdueReminder(){
   var todayStr=toLocalDateStr(new Date());
   if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
-  var overdue=S.history.filter(isDepasse);
+  var overdue=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
   if(!overdue.length)return;
   S.overdueReminder=overdue;
