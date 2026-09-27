@@ -1210,7 +1210,7 @@ function renderTabs(){
       btn.appendChild(bdgToday);
     }
     if(d[0]==='agenda'&&overdueN>0){
-      var badgeAg=el('span',{title:overdueN+' RDV en attente dépassent 3 jours',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(overdueN));
+      var badgeAg=el('span',{title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(overdueN));
       btn.appendChild(badgeAg);
     }
     nav.appendChild(btn);
@@ -2774,7 +2774,7 @@ function renderAgenda(){
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
     banner.appendChild(el('span',{style:"font-size:22px;"},"🚨"));
     var txt=el('div',{style:"flex:1;"});
-    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.45 0.18 25);"},depasses.length+' RDV en attente dépass'+(depasses.length>1?'ent':'e')+' 3 jours sans confirmation'));
+    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.45 0.18 25);"},depasses.length+' RDV en attente dépass'+(depasses.length>1?'ent':'e')+' '+(S.relanceDelai||3)+' jours sans confirmation'));
     var noms=depasses.slice(0,5).map(function(h){return[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ');}).filter(Boolean);
     if(noms.length)txt.appendChild(el('div',{style:"font-size:11px;color:oklch(0.55 0.14 25);margin-top:3px;"},noms.join(' · ')+(depasses.length>5?' · …':'')));
     banner.appendChild(txt);
@@ -4661,7 +4661,7 @@ function renderModal(){
   }
   else if(S.modal==='rappel-overdue'){
     var overdueList=S.overdueReminder||[];
-    box.appendChild(header('🚨 RDV en attente depuis plus de 3 jours'));
+    box.appendChild(header('🚨 RDV en attente depuis plus de '+(S.relanceDelai||3)+' jours'));
     box.appendChild(el('div',{style:"font-size:13px;color:var(--c-muted);margin-bottom:12px;"},overdueList.length+' RDV n\'ont pas encore été confirmés :'));
     var listDiv2=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:340px;"});
     overdueList.forEach(function(h){
