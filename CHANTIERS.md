@@ -70,6 +70,15 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
 - **Migrations localStorage** : une migration non testée a déjà réduit 11 CMS
   à 6 sur sms-mail-multi. Toute migration/fusion de données délicate mérite
   un test ciblé avant commit.
+- **La commune de « Ouvrir une journée » (Config → Journées) est une liste
+  déroulante, pas un champ texte** (27/09/2026, porté depuis SMS-mail) :
+  avec le modèle « à la volée », une faute de frappe y créerait une
+  journée invisible depuis Générer. Le champ d'édition d'une journée
+  existante reste en texte libre.
+- **Rétention des sauvegardes GitHub portée à 30 jours** (`GH_BACKUP_RETENTION_JOURS`,
+  27/09/2026, porté depuis SMS-mail) : `ghCleanOldBackups()` garde toujours
+  la plus récente quel que soit son âge, supprime le reste au-delà du
+  seuil, et affiche un toast (scopé par profil) si une suppression échoue.
 - **Portage entre jumeaux** : les derniers portages (PR #44 à #50 de SMS-mail,
   #88 à #94 de sms-mail-multi, branche `sms-mail-to-multi-port`) vont de
   SMS-mail vers sms-mail-multi. Quand un sujet est contesté entre les deux,
