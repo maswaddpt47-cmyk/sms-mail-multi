@@ -9,13 +9,8 @@ ne doit pas être défait remonte dans la dernière section.
 
 ## Décisions à trancher
 
-- **Taux d'occupation (30j et 90j)**, même sujet que celui tranché côté
-  SMS-mail (voir points à ne pas défaire) : avec le calendrier « à la
-  volée » porté ici le 27/09/2026, les deux calculs ne comptent plus que
-  les journées réellement ouvertes, plus toute la grille hebdomadaire —
-  le chiffre n'est plus comparable à celui d'avant le portage, dans le
-  sens d'une hausse. À trancher par l'utilisateur, définition métier pas
-  un choix technique.
+Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
+`AGORA.md` ou non, et pourquoi.
 
 ## Chantiers restants (par priorité)
 
@@ -79,6 +74,13 @@ ne doit pas être défait remonte dans la dernière section.
   #88 à #94 de sms-mail-multi, branche `sms-mail-to-multi-port`) vont de
   SMS-mail vers sms-mail-multi. Quand un sujet est contesté entre les deux,
   écrire ici lequel fait référence plutôt que de converger au hasard.
+- **Taux d'occupation (30j et 90j), tranché par l'utilisateur le
+  27/09/2026** (même décision que sur SMS-mail) : ne compte que les
+  journées réellement ouvertes (au moins un RDV/blocage), pas toute la
+  grille hebdomadaire y compris les jours jamais utilisés — reflète
+  l'occupation des jours effectivement travaillés. C'est déjà le
+  comportement du calendrier « à la volée », aucun changement de code
+  n'était nécessaire.
 - **Définitions des stats, tranchées par l'utilisateur le 27/09/2026**,
   identiques dans les deux apps (live et `computeYearArchive`) : taux de
   concrétisation et de lapin = ÷ RDV dont la date est passée, hors créneaux
