@@ -2783,6 +2783,9 @@ function renderAgenda(){
     btnF.addEventListener('click',function(){
       var sel=document.querySelector('#ag-statut-sel');
       if(sel){sel.value='depasse';sel.dispatchEvent(new Event('change'));}
+      /* scroller vers le premier RDV en dépassement */
+      var first=depasses.slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
+      if(first.length&&first[0].date)agScrollTo(first[0].date);
     });
     banner.appendChild(btnF);
     wrap.appendChild(banner);
@@ -2865,6 +2868,29 @@ function renderAgenda(){
       card.style.display=(matchNom&&matchSt)?'':'none';
     });
 
+    /* encart "hors agenda" pour les dépassements sans slot visible */
+    var orphanBox=document.getElementById('ag-orphan-depasse');
+    if(statut==='depasse'){
+      var allDepasses=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
+      /* trouver ceux qui n'ont pas de pill data-depasse=1 dans le DOM */
+      var pillNoms=Array.prototype.slice.call(document.querySelectorAll('[data-depasse="1"]')).map(function(p){return(p.getAttribute('data-nom')||'').trim();});
+      var orphans=allDepasses.filter(function(h){var n=([h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return!pillNoms.some(function(pn){return pn&&pn.indexOf(n.split(' ').pop())!==-1;});});
+      if(!orphanBox&&orphans.length){
+        var obox=el('div',{id:'ag-orphan-depasse',style:"background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;"});
+        obox.appendChild(el('div',{style:"font-size:12px;font-weight:800;color:oklch(0.45 0.18 25);margin-bottom:6px;"},'🚨 '+orphans.length+' RDV en dépassement sans créneau agenda :'));
+        orphans.forEach(function(h){
+          var name=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ');
+          var dateRdv=h.date?(h.date.split('-').reverse().join('/')):'—';
+          var dateDem=h.dateDemande?(h.dateDemande.slice(0,10).split('-').reverse().join('/')):'—';
+          var info=name+' · RDV : '+dateRdv+(h.heure?' à '+h.heure:'')+(h.commune?' ('+h.commune+')':'')+' · Demande : '+dateDem;
+          obox.appendChild(el('div',{style:"font-size:12px;color:oklch(0.5 0.16 25);margin-top:3px;"},info));
+        });
+        var oFirstCard=document.querySelector('[id^="agenda-day-"]');
+        if(oFirstCard&&oFirstCard.parentNode)oFirstCard.parentNode.insertBefore(obox,oFirstCard);
+      } else if(orphanBox&&!orphans.length){orphanBox.remove();}
+    } else {
+      if(orphanBox)orphanBox.remove();
+    }
     /* encarts "pas de retour / lapin / excusé" — scan historique direct car ces dates
        peuvent être hors de la fenêtre agenda affichée (pas de card DOM correspondante) */
     var ORPHAN_ICON={pas_de_retour:'📵',lapin:'🐇',excuse:'🙏'};
