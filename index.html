@@ -1836,7 +1836,7 @@ function computeYearArchive(year){
   hist.forEach(function(h){var k=h.statut||'en_attente';if(arc.statuts[k]===undefined)arc.statuts[k]=0;arc.statuts[k]++;});
   arc.realiseN=arc.statuts.realise||0;
   arc.lapinN=arc.statuts.lapin||0;
-  var concretN=hist.filter(function(h){return h.date;}).length;
+  var concretN=hist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length;
   arc.concretPct=concretN>0?Math.round(arc.realiseN/concretN*100):null;
   arc.lapinPct=concretN>0?Math.round(arc.lapinN/concretN*100):null;
   var reactDiffs=[];hist.forEach(function(h){
@@ -1866,10 +1866,8 @@ function computeYearArchive(year){
   arc.byMonth=monthMap;
   var trendMap={};
   hist.forEach(function(h){
-    if(h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='pas_de_retour')return;
-    var raw=h.ts||'';var m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var key=m?(m[3]+'-'+m[2]):raw.substring(0,7);
-    if(!key||key.length<7)return;
+    if(!h.date||(h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='pas_de_retour'))return;
+    var key=h.date.substring(0,7);
     if(!trendMap[key])trendMap[key]={lapin:0,excuse:0,pas_de_retour:0};
     trendMap[key][h.statut]++;
   });
@@ -2122,19 +2120,13 @@ function renderStats(){
       }
       if(totalSlots>0)occStr=Math.round(takenSlots/totalSlots*100)+'%';
     }
-    /* taux de concrétisation : part des RDV passés en statut "Réalisé" parmi tous les RDV statutés */
-    var concretStr='—';
-    var totalStatut=S.history.filter(function(h){return h.statut;}).length;
-    if(totalStatut>0){
-      var realiseN=S.history.filter(function(h){return h.statut==='realise';}).length;
-      concretStr=Math.round(realiseN/totalStatut*100)+'%';
-    }
-    /* taux de lapin : part des RDV passés en statut "Lapin" parmi tous les RDV statutés */
-    var lapinStr='—';
-    if(totalStatut>0){
-      var lapinN=S.history.filter(function(h){return h.statut==='lapin';}).length;
-      lapinStr=Math.round(lapinN/totalStatut*100)+'%';
-    }
+    /* taux de concrétisation / de lapin : rapportés aux RDV dont la date est passée (hors créneaux bloqués),
+       pas aux RDV à venir qui ne peuvent pas encore être réalisés ni manqués */
+    var realiseN=S.history.filter(function(h){return h.statut==='realise';}).length;
+    var lapinN=S.history.filter(function(h){return h.statut==='lapin';}).length;
+    var concretN=S.history.filter(function(h){return h.date&&h.date<=todayStr&&h.msgType!=='indispo';}).length;
+    var concretStr=concretN>0?Math.round(realiseN/concretN*100)+'%':'—';
+    var lapinStr=concretN>0?Math.round(lapinN/concretN*100)+'%':'—';
     var kpiStyle="background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 16px;box-shadow:0 1px 3px oklch(0.5 0.05 264 / .06);text-align:center;";
     var kpiNumStyle="font-size:32px;font-weight:900;color:oklch(0.45 0.18 266);line-height:1.1;margin-bottom:6px;";
     var kpiLblStyle="font-size:12px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;text-transform:uppercase;";
@@ -2149,8 +2141,8 @@ function renderStats(){
       [countWeek,"RDV cette semaine",null,null],
       [countMonth,"RDV ce mois",null,null],
       [occStr,"Taux d'occupation (30j)","Part des créneaux de permanence occupés sur les 30 prochains jours (les créneaux libérés par un RDV Pas de retour/Lapin/Excusé comptent comme libres).",null],
-      [concretStr,"Taux de concrétisation","Part des RDV passés au statut ✅ Réalisé, parmi tous les RDV auxquels un statut a été attribué.",null],
-      [lapinStr,"Taux de lapin 🐇","Part des RDV passés au statut 🐇 Lapin, parmi tous les RDV auxquels un statut a été attribué.",openLapinList]
+      [concretStr,"Taux de concrétisation","Part des RDV passés au statut ✅ Réalisé. Calculé uniquement sur les RDV dont la date est déjà passée.",null],
+      [lapinStr,"Taux de lapin 🐇","Part des RDV passés au statut 🐇 Lapin. Calculé uniquement sur les RDV dont la date est déjà passée.",openLapinList]
     ].forEach(function(kpi){
       var tile=el('div',{style:kpiStyle+(kpi[3]?'cursor:pointer;':'')});
       if(kpi[3])tile.addEventListener('click',kpi[3]);
