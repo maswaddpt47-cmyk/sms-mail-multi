@@ -14,25 +14,22 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
 
 ## Chantiers restants (par priorité)
 
-1. **Calendrier « à la volée » — porté depuis SMS-mail, à valider en
-   conditions réelles (27/09/2026).** SMS-mail (solo) a servi de terrain
-   d'essai : refonte proposée le 27/09, un bug réel trouvé par contradiction
-   AGORA (`SMS-mail/AGORA.md`, AG-001 — grille rétrécie par l'heure du
-   premier RDV) puis corrigé, testé en conditions réelles par l'utilisateur
-   avant ce portage. Le correctif est intégré dès l'écriture ici
-   (`ensureDayOpen` ouvre toujours 09:00-16:30, jamais sur l'heure du RDV
-   déclencheur) — pas de second cycle de bug à reproduire. **Pas de nouveau
-   bloc AGORA ouvert sur ce dépôt** : décision prise sciemment, pas en
-   silence — c'est un portage mécanique d'un design déjà contradiction
-   puis corrigé, aucun nouveau jugement de conception n'est exercé ici.
-   Revérifié par un script Node isolé (5 scénarios : migration, grille par
-   défaut, journée avec RDV réels, heure hors grille, RDV tardif non
-   tronqué — tous verts), **aucun test dans un navigateur réel côté multi,
-   ni sur les vraies données d'un profil**. Spécifique au multi-profil :
-   le sélecteur d'agenda « mon agenda / collègue / tous » a été adapté
-   (`permanencesOuvertesDe`) — la lecture des permanences d'un autre
-   profil rejoue la migration **en mémoire seulement**, jamais persistée,
-   pour respecter le cloisonnement entre profils.
+1. **Calendrier « à la volée » — en cours de validation en conditions
+   réelles (mis à jour le 28/09/2026).** Porté depuis SMS-mail avec le
+   correctif AG-001 déjà intégré (`ensureDayOpen` ouvre toujours
+   09:00-16:30, jamais sur l'heure du RDV déclencheur). Premier signal réel
+   positif le 28/09 : l'utilisateur a retrouvé et modifié un RDV du 14/10
+   sur le profil « michel » depuis l'Agenda (la migration a donc bien
+   préservé l'historique de ce profil) — mais ça a révélé un **second bug,
+   pré-existant, pas lié à la refonte** : changer le statut d'un RDV en
+   « Pas de retour » depuis le popup Agenda ne libérait pas le créneau
+   dans Générer, parce que changer d'onglet ne re-rendait pas Générer
+   (corrigé dans `0389cb5`). **Toujours pas de confirmation explicite « ça
+   marche »** de l'utilisateur — ne pas présumer que ce point est clos
+   avant qu'il le dise. Spécifique au multi-profil, testé seulement par
+   script Node : le sélecteur d'agenda « mon agenda / collègue / tous »
+   (`permanencesOuvertesDe`), qui rejoue la migration en mémoire pour un
+   autre profil sans jamais l'écrire dans son localStorage.
 2. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
    Départemental si ce traitement figure au registre RGPD / si le DPO est
    informé. Seul point du plan de remédiation encore ouvert (`CLAUDE.md`).
@@ -79,6 +76,14 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   27/09/2026, porté depuis SMS-mail) : `ghCleanOldBackups()` garde toujours
   la plus récente quel que soit son âge, supprime le reste au-delà du
   seuil, et affiche un toast (scopé par profil) si une suppression échoue.
+- **Changer d'onglet re-rend son contenu** : `stats`/`agenda`/`orientations`
+  et maintenant `generate` sont explicitement re-rendus au clic sur
+  l'onglet (28/09/2026, bug pré-existant trouvé en testant le calendrier —
+  un changement de statut fait depuis l'Agenda n'apparaissait pas dans la
+  grille de Générer tant qu'aucune action locale n'y forçait un recalcul).
+  `showActivePane()` seul ne fait qu'afficher/masquer le panneau déjà
+  rendu, jamais le recalculer — tout nouvel onglet a besoin du même
+  branchement explicite.
 - **Portage entre jumeaux** : les derniers portages (PR #44 à #50 de SMS-mail,
   #88 à #94 de sms-mail-multi, branche `sms-mail-to-multi-port`) vont de
   SMS-mail vers sms-mail-multi. Quand un sujet est contesté entre les deux,
