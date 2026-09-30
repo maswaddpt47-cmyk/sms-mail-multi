@@ -14,35 +14,19 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
 
 ## Chantiers restants (par priorité)
 
-1. **Calendrier « à la volée » — en cours de validation en conditions
-   réelles (mis à jour le 28/09/2026).** Porté depuis SMS-mail avec le
-   correctif AG-001 déjà intégré (`ensureDayOpen` ouvre toujours
-   09:00-16:30, jamais sur l'heure du RDV déclencheur). Premier signal réel
-   positif le 28/09 : l'utilisateur a retrouvé et modifié un RDV du 14/10
-   sur le profil « michel » depuis l'Agenda (la migration a donc bien
-   préservé l'historique de ce profil) — mais ça a révélé un **second bug,
-   pré-existant, pas lié à la refonte** : changer le statut d'un RDV en
-   « Pas de retour » depuis le popup Agenda ne libérait pas le créneau
-   dans Générer, parce que changer d'onglet ne re-rendait pas Générer
-   (corrigé dans `0389cb5`). **Toujours pas de confirmation explicite « ça
-   marche »** de l'utilisateur — ne pas présumer que ce point est clos
-   avant qu'il le dise. Spécifique au multi-profil, testé seulement par
-   script Node : le sélecteur d'agenda « mon agenda / collègue / tous »
-   (`permanencesOuvertesDe`), qui rejoue la migration en mémoire pour un
-   autre profil sans jamais l'écrire dans son localStorage.
-2. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
+1. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
    Départemental si ce traitement figure au registre RGPD / si le DPO est
    informé. Seul point du plan de remédiation encore ouvert (`CLAUDE.md`).
-3. **Dérive SMS-mail ↔ sms-mail-multi — audit du 26/09/2026, oublis de
+2. **Dérive SMS-mail ↔ sms-mail-multi — audit du 26/09/2026, oublis de
    portage corrigés le 27/09/2026.** `check-drift.js` donne 3 faux positifs
    (`normCommune`, `exportHistoryCSV`, `exportOrientationsCSV` en partie : son
    analyseur prend l'apostrophe de la regex `/[-\s']+/` pour une chaîne). Le
    reste des écarts est voulu (multi-profil) ou cosmétique. **Résolu par le
-   portage ci-dessus** : la question de la fenêtre Agenda (8 sem./12 contre
-   4/8) ne se pose plus, il n'y a plus de fenêtre. **Non jugé** :
+   calendrier « à la volée »** : la question de la fenêtre Agenda (8 sem./12
+   contre 4/8) ne se pose plus, il n'y a plus de fenêtre. **Non jugé** :
    `handleGenerate` compare la commune strictement dans SMS-mail, avec
    tolérance « commune vide » dans multi.
-4. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
+3. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
    `SessionStart`) : à copier depuis `ATELIERS_NEWGEN` — reporté le
    26/09/2026 par l'utilisateur, utile quand ce fichier aura grossi.
 
@@ -55,6 +39,25 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   année révolue après agrégation anonymisée — irréversible, confirmation
   obligatoire à conserver.
 - **Cloisonnement par profil** : toute donnée d'usager passe par les clés `ess-<profil>-…` (`pk`/`pkFor`). Une migration ou un archivage sur un profil ne doit toucher aucune clé d'un autre profil.
+- **Calendrier « à la volée », validé en conditions réelles le 28/09/2026**
+  sur le profil « michel » : migration testée (RDV existants retrouvés
+  dans l'Agenda), création de RDV, changement de statut. Un bug trouvé au
+  passage et corrigé, pas lié à la refonte elle-même : la libération d'un
+  créneau n'apparaissait pas sans changer d'onglet (`0389cb5`). Un doublon
+  de fiche isolé du 23/09 (avant la refonte, cause non identifiée avec
+  certitude) empêchait aussi un créneau de se libérer — supprimé
+  manuellement par l'utilisateur. Le sélecteur d'agenda multi-profil
+  (« mon agenda / collègue / tous », `permanencesOuvertesDe`) reste testé
+  seulement par script Node, pas vérifié en conditions réelles avec un
+  second profil.
+- **Un champ de saisie ne déclenche jamais un rebuild complet du
+  formulaire tant qu'on tape dedans** (30/09/2026, trouvé sur le champ
+  « Autre heure ») : `onInput` fait une mise à jour légère
+  (`regen()+updatePreviewOnly()`), la reconstruction complète
+  (`setFieldSave`/`renderGenerate`) attend `onBlur` — sinon un input
+  segmenté (`type="time"`) perd le focus en pleine frappe dès qu'un
+  segment devient valide. Pattern déjà utilisé sur `nomIn`, à reprendre
+  pour tout nouveau champ de ce genre.
 - **Une journée s'ouvre toujours sur 09:00-16:30, jamais sur l'heure du RDV
   qui la déclenche** (`ensureDayOpen`/`migratePermanences`, correctif
   AGORA AG-001 porté depuis SMS-mail le 27/09/2026) : figer `debut`/`fin`
