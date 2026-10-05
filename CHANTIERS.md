@@ -57,7 +57,18 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   créneau n'apparaissait pas sans changer d'onglet (`0389cb5`). Un doublon
   de fiche isolé du 23/09 (avant la refonte, cause non identifiée avec
   certitude) empêchait aussi un créneau de se libérer — supprimé
-  manuellement par l'utilisateur. Le sélecteur d'agenda multi-profil
+  manuellement par l'utilisateur.
+  **Deuxième occurrence le 05/10/2026** (Mme LAFAGE, Fumel) : deux fiches
+  sur le même RDV (02/10 15:00), démarches différentes (« DLS » réalisé,
+  « Demande de logement social (SNE/Numéro unique) » restée en_attente) —
+  ce n'est pas un faux positif de `isDepasse()` (qui exclut bien les
+  statuts non-`en_attente`), la fiche en attente était un vrai doublon.
+  Confirmé par l'utilisateur comme doublon, supprimé manuellement. Cause
+  toujours non identifiée côté code (`addHistory` dédoublonne par
+  date+heure+commune+nom+prénom, qui matchaient tous ici — pas
+  d'hypothèse vérifiée sur pourquoi deux fiches ont coexisté). Si une
+  troisième occurrence apparaît, ça passe le critère AGORA n°3 (trois
+  itérations sans résolution). Le sélecteur d'agenda multi-profil
   (« mon agenda / collègue / tous », `permanencesOuvertesDe`) reste testé
   seulement par script Node, pas vérifié en conditions réelles avec un
   second profil.
