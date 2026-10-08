@@ -1055,6 +1055,15 @@ function getSlots(commune,dateStr,historyList,permOverride){
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
 }
+/* même chose pour un profil qui n'est pas forcément le profil actif (RDV d'un collègue
+   modifié depuis l'agenda partagé) */
+function ensureDayOpenFor(profileId,commune,dateStr){
+  if(profileId===S.activeProfile){ensureDayOpen(commune,dateStr);return;}
+  if(!commune||!dateStr)return;
+  var perms=ls(pkFor(profileId,'permanences'),[]);
+  if(perms.some(function(p){return p.commune===commune&&p.exceptDate===dateStr;}))return;
+  lsSet(pkFor(profileId,'permanences'),perms.concat([{id:Date.now()+Math.random(),commune:commune,exceptDate:dateStr,debut:'09:30',fin:'16:30'}]));
+}
 /* RDV en attente depuis plus de S.relanceDelai jours sans relance envoyée —
    formule centralisée ici pour éviter que les points d'affichage divergent entre eux */
 function isInMyAgenda(h){
@@ -5109,7 +5118,10 @@ function renderModal(){
         var targetP=t._profile||S.activeProfile;
         var arr=readProfileHistory(targetP);
         var idx=findHistIdx(arr,t);
-        if(idx!==-1){Object.assign(arr[idx],{civilite:e2.civilite,prenom:e2.prenom,nom:e2.nom,telephone:e2.telephone,demarche:e2.demarche,notes:e2.notes,date:e2.date,heure:e2.heure,dateDemande:e2.dateDemande});writeProfileHistory(targetP,arr);}
+        if(idx!==-1){Object.assign(arr[idx],{civilite:e2.civilite,prenom:e2.prenom,nom:e2.nom,telephone:e2.telephone,demarche:e2.demarche,notes:e2.notes,date:e2.date,heure:e2.heure,dateDemande:e2.dateDemande});writeProfileHistory(targetP,arr);
+          /* un RDV déplacé doit ouvrir sa journée de destination, comme un RDV créé — sinon il
+             s'affiche en journée « Orpheline » (trouvé le 08/10/2026, RDV déplacé au 18/11) */
+          ensureDayOpenFor(targetP,arr[idx].commune,arr[idx].date);}
         ar.editing=false;ar.slot.taken=idx!==-1?arr[idx]:t;renderModal();renderAgenda();showToast('✅ RDV modifié');
       }},'Enregistrer'));
       box.appendChild(btnRow2);
