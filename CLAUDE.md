@@ -154,6 +154,8 @@ Après chaque commit, pousser dans le repo :
 git push -u origin main
 ```
 
+Avant d'écrire « en ligne », « déployé » ou « à recharger » : `MD-LIB/outils/attendre-deploiement.sh` doit avoir dit ✅ pour le commit poussé (règle MD-LIB `deploiement.md`, 13/10/2026 ; à la main si le hook n'a rien dit : `bash /home/user/MD-LIB/outils/attendre-deploiement.sh .`).
+
 ## Résumé du flux
 
 ```
