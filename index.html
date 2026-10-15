@@ -2899,7 +2899,8 @@ function renderAgenda(){
   var wrap=el('div',{style:"max-width:860px;margin:0 auto;padding:clamp(14px,3vw,32px) clamp(12px,4vw,40px);"});
   var head=el('div',{style:"display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:20px;flex-wrap:wrap;"});
   head.appendChild(el('h2',{style:"margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em;"},"Agenda des permanences"));
-  head.appendChild(el('div',{style:"font-size:13px;color:var(--c-muted);font-weight:600;"},S.history.filter(function(h){return h.date&&h.msgType!=='indispo';}).length+' RDV'));
+  var _rdvCount=el('div',{style:"font-size:13px;color:var(--c-muted);font-weight:600;"});
+  head.appendChild(_rdvCount);
   wrap.appendChild(head);
 
   /* sélecteur de portée : mon agenda / un collègue / tous */
@@ -2938,9 +2939,17 @@ function renderAgenda(){
     return permanencesOuvertesDe(pid).map(function(p){return Object.assign({},p,{_profile:pid});});
   }
   var permSource=agendaSourcePermanences();
+  /* historique des profils visibles selon la portée (copies taguées _profile, comme les tuiles) */
+  var scopePids=S.agendaScope==='mine'?[S.activeProfile]:S.agendaScope==='all'?PROFILES.map(function(pf){return pf.id;}):[S.agendaScope];
+  var scopeHist=[];
+  scopePids.forEach(function(pid){readProfileHistory(pid).forEach(function(h){scopeHist.push(Object.assign({},h,{_profile:pid}));});});
+  /* rappels, doublons et dépassements concernent le profil connecté : pas affichés sur l'agenda d'un collègue */
+  var scopeCollegue=S.agendaScope!=='mine'&&S.agendaScope!=='all';
+  _rdvCount.textContent=scopeHist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length+' RDV';
 
   /* bannière dépassements */
   (function(){
+    if(scopeCollegue)return;
     var depasses=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
     if(!depasses.length)return;
     var banner=el('div',{style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
@@ -2965,7 +2974,11 @@ function renderAgenda(){
 
   /* bannière RDV confirmés passés, pas encore marqués Réalisé */
   (function(){
-    var aPointer=aPointerList().sort(function(a,b){return(a.date+(a.heure||'')).localeCompare(b.date+(b.heure||''));});
+    var aPointer=scopeHist.filter(function(h){
+      if(!isAPointer(h))return false;
+      var perms=h._profile===S.activeProfile?S.permanences:ls('ess-'+h._profile+'-permanences',[]);
+      return perms.some(function(p){return p.commune===h.commune&&p.exceptDate===h.date&&!p.archived;});
+    }).sort(function(a,b){return(a.date+(a.heure||'')).localeCompare(b.date+(b.heure||''));});
     if(!aPointer.length)return;
     var n=aPointer.length;
     var banner=el('div',{style:"display:flex;align-items:flex-start;gap:12px;background:oklch(0.97 0.05 80);border:1.5px solid oklch(0.78 0.14 75);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.1 75 / .12);"});
@@ -2997,7 +3010,7 @@ function renderAgenda(){
 
   var today=new Date();today.setHours(0,0,0,0);
   var todayStr=toLocalDateStr(today);
-  renderRappelsEtDoublons(wrap,todayStr);
+  if(!scopeCollegue)renderRappelsEtDoublons(wrap,todayStr);
   if(permSource.length===0){
     wrap.appendChild(el('div',{style:"text-align:center;padding:60px 20px;color:var(--c-muted);font-size:14px;"},"Aucune journée ouverte — elle s'ouvre automatiquement avec votre premier RDV depuis l'onglet Générer."));
     pane.appendChild(wrap);return;
@@ -3044,7 +3057,7 @@ function renderAgenda(){
     if(!best)best=allCards[allCards.length-1];
     best.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  var _agNomFilter='';var _agStatutFilter='';
+  var _agNomFilter='';var _agStatutFilter=S.agStatutFilter||'';
   function agApplyFilters(){
     var norm=(_agNomFilter||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     var statut=_agStatutFilter||'';
@@ -3065,7 +3078,7 @@ function renderAgenda(){
 
     /* encart "hors agenda" pour les dépassements sans slot visible */
     var orphanBox=document.getElementById('ag-orphan-depasse');
-    if(statut==='depasse'){
+    if(statut==='depasse'&&!scopeCollegue){
       var allDepasses=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
       /* trouver ceux qui n'ont pas de pill data-depasse=1 dans le DOM */
       var pillNoms=Array.prototype.slice.call(document.querySelectorAll('[data-depasse="1"]')).map(function(p){return(p.getAttribute('data-nom')||'').trim();});
@@ -3118,7 +3131,7 @@ function renderAgenda(){
     ['pas_de_retour','lapin','excuse'].forEach(renderOrphanStatutBox);
   }
   function agFilterNom(q){_agNomFilter=q;agApplyFilters();}
-  function agFilterStatut(v){_agStatutFilter=v;agApplyFilters();}
+  function agFilterStatut(v){_agStatutFilter=v;S.agStatutFilter=v;agApplyFilters();}
   /* impression / export PDF de la semaine affichée — s'appuie sur window.print() (l'utilisateur peut choisir "Enregistrer en PDF" dans la boîte de dialogue) */
   function printAgendaWeek(refDateStr){
     function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -3219,6 +3232,7 @@ function renderAgenda(){
   btnNext.addEventListener('click',function(){var d=new Date((jumpIn.value||todayStr)+'T12:00:00');d.setDate(d.getDate()+7);var s=toLocalDateStr(d);jumpIn.value=s;agScrollTo(s);});
   var statutSel=el('select',{id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
   [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['libre','🟢 Libre'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  statutSel.value=_agStatutFilter;
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
   btnPrint.addEventListener('click',function(){printAgendaWeek(jumpIn.value||todayStr);});
@@ -3520,6 +3534,7 @@ function renderAgenda(){
     wrap.appendChild(card);
   });
   pane.appendChild(wrap);
+  if(_agStatutFilter)agApplyFilters();
   setTimeout(function(){
     var t=S._agScrollTarget||null;
     S._agScrollTarget=null;
