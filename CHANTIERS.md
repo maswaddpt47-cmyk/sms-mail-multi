@@ -58,6 +58,11 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   journée qui en contient encore (même logique que les RDV en attente).
   Pointage en un clic depuis la bannière (`pointerStatut`, différent entre
   les jumeaux à dessein : multi écrit dans l'historique du bon profil).
+  Multi, 15/10/2026 : la bannière 📌 et le compteur « N RDV » suivent la
+  portée (Mon agenda / collègue / Tous) ; rappels, doublons et dépassements
+  restent ceux du profil connecté et sont masqués sur l'agenda d'un
+  collègue ; le filtre de statut survit au changement de portée
+  (`S.agStatutFilter`). Testé en navigateur sur données fictives.
 - **Aucune donnée d'usager dans un repo public**, même temporairement :
   pas de `backups/`, pas d'export JSON. Les sauvegardes partent vers le repo
   privé `GH_REPO='maswaddpt47-cmyk/sms-mail-multi-backups'` (`index.html`).
