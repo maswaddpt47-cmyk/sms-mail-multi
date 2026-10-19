@@ -48,6 +48,11 @@ ne doit pas être défait remonte dans la dernière section.
   Blocage/libération des indisponibilités sont accessibles dans cette fenêtre.
   Les orphelins respectent la portée choisie et les archives masquées.
   Le filtre « Libre » est retiré de la timeline et son ancien état réinitialisé.
+- Dernier ajustement demandé : masquer le bloc « Votre agenda » et son
+  sous-titre sur l'onglet Agenda, mobile et ordinateur. Le bandeau de dates
+  vient directement après la navigation ; l'onglet actif reste le repère.
+  Les en-têtes des autres écrans restent présents. Changement de CSS seul,
+  sans modification des parcours ni nouveau contrôle fonctionnel.
 - Correctif nécessaire au nouveau sélecteur : l'import ICS crée des
   messages de type `rdv`, jusque-là ignorés par `getSlots`. Après les types
   prioritaires existants, le moteur retient désormais le premier autre RDV
@@ -86,12 +91,12 @@ ne doit pas être défait remonte dans la dernière section.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison agenda RDV fournit un nouveau fichier HTML distinct
+  instruction. La livraison agenda compact fournit un nouveau fichier HTML distinct
   des précédents et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-agenda-rdv.html`, choisir Michel, puis Agenda ou
+  ouvrir `demo-agenda-compact.html`, choisir Michel, puis Agenda ou
   Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
