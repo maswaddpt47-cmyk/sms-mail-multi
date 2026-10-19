@@ -24,17 +24,18 @@ def build(output):
     for name in ['icon-192.png', 'apple-touch-icon.png']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
         html = html.replace('href="' + name + '"', 'href="data:image/png;base64,' + data + '"')
-    standalone = output / 'proposition-popup-rdv.html'
+    standalone = output / 'proposition-agenda-contraste-sombre.html'
     standalone.write_text(html, encoding='utf-8')
     seed = (root / 'scripts/ui-demo-data.js').read_text(encoding='utf-8')
     if '</script' in seed.lower():
         raise ValueError('La démonstration contient une fermeture de script non échappée.')
-    demo = output / 'demo-popup-rdv.html'
+    demo = output / 'demo-agenda-contraste-sombre.html'
     demo_html = html.replace('<script>', '<script>\n' + seed + '\n</script>\n<script>', 1)
     demo.write_text(demo_html, encoding='utf-8')
     readme = (
-        'SMS & MAIL — nouvelle fiche rendez-vous\n\n'
-        'Pour explorer : ouvrir demo-popup-rdv.html dans votre navigateur, choisir Michel, puis Agenda et toucher une tuile RDV.\n'
+        'SMS & MAIL — agenda, contraste sombre\n\n'
+        'Pour explorer : ouvrir demo-agenda-contraste-sombre.html dans votre navigateur, choisir Michel, puis Agenda et activer la lune.\n'
+        'Bordures des tuiles plus claires, fond distinct et repères de statut adaptés au mode sombre.\n'
         'Fiche compacte : identité, téléphone et démarche, statut modifiable, suivi repliable et actions en bas.\n'
         'Sur téléphone la fiche s’ouvre depuis le bas ; son contenu défile entre l’en-tête et les actions.\n'
         'L’agenda commence directement par les dates, sans en-tête Votre agenda ni sous-titre.\n'
@@ -46,7 +47,7 @@ def build(output):
         'Branche de travail : sandbox/ui. Aucun changement sur main sans feu vert utilisateur.\n'
         'Les parcours sont vérifiés avec un DOM simulé ; le rendu navigateur reste à contrôler.\n'
     )
-    archive = output / 'sms-mail-popup-rdv.zip'
+    archive = output / 'sms-mail-agenda-contraste-sombre.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:

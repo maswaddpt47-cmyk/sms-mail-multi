@@ -61,6 +61,13 @@ ne doit pas être défait remonte dans la dernière section.
   et Supprimer restent explicites en second rang. Fermeture Échap et
   circulation Tab, libellés du dialogue et des champs ajoutés.
   Les propositions multiples demandent de choisir le RDV avant ses actions.
+- Mode sombre : bordure des tuiles agenda éclaircie (`#6e8797`), fond
+  distinct (`#182a35`) et rail de statut de 4 px avec une palette plus claire.
+  Le survol et le focus renforcent aussi la bordure. Sélecteurs limités à
+  l'agenda sombre, aucun changement de données ni du thème clair.
+  Contrastes calculés sur les couleurs déclarées : bordure/fond 3,92:1,
+  rails/fond au moins 7,71:1. JavaScript strictement identique à la base ;
+  relecture de la cascade et de la portée CSS, sans contrôle navigateur.
 - Correctifs liés à cette fiche : la modification conserve le propriétaire
   et actualise la date/l'heure du contexte. La duplication passe par les
   disponibilités et reprend les bons IDs CMS/démarche, avec repli « Autre »
@@ -110,12 +117,13 @@ ne doit pas être défait remonte dans la dernière section.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison fiche RDV fournit un nouveau fichier HTML distinct
+  instruction. La livraison contraste sombre fournit un nouveau fichier HTML distinct
   des précédents et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-popup-rdv.html`, choisir Michel, puis Agenda et une tuile.
+  ouvrir `demo-agenda-contraste-sombre.html`, choisir Michel, puis Agenda
+  et activer le thème sombre avec la lune.
   `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
