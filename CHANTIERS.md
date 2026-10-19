@@ -17,12 +17,26 @@ ne doit pas être défait remonte dans la dernière section.
   connecteur GitHub car le proxy du terminal était inaccessible. Les objets
   Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
   Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
-- État : interface inchangée ; syntaxe JavaScript vérifiée. Le workflow
-  Pages écoute seulement les push sur `main` et son lancement manuel ;
-  aucun déploiement n'est demandé pour la sandbox.
-- Prochaine étape : préciser les écrans et la direction visuelle de la
-  refonte, puis travailler sur cette branche. Pas de bloc AGORA nécessaire
-  pour cette préparation réversible et sans changement d'architecture.
+- Proposition fonctionnelle : navigation latérale sur ordinateur,
+  navigation défilante sur mobile ; formulaire en étapes, aperçu compact
+  et modifiable, thèmes clair/sombre et sélection de profil harmonisés.
+  Les neuf écrans et les fonctions métier sont conservés.
+- Correctif lié : `updatePreviewOnly()` cible explicitement le corps et
+  l'objet du message ; la saisie actualise l'aperçu sans écraser les Notes
+  et sans reconstruire le formulaire. L'aide clavier indique les raccourcis
+  existants (Ctrl+Entrée : copier ; Ctrl+Maj+G : générer).
+- Contrôles acquis : syntaxe JS et `git diff --check` ; harnais Node avec
+  DOM, stockage et presse-papiers simulés (SMS/mail, Notes, focus, labels,
+  génération, copie et isolation de profil). Dix fonctions métier sont
+  identiques à la base de la sandbox.
+- Limite : Chromium est bloqué par les permissions de l'environnement ;
+  aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
+  Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
+  instruction. Une copie HTML autonome est fournie pour essai utilisateur.
+- Prochaine étape : retour de l'utilisateur sur la proposition, puis
+  ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
+  réversible, sans changement de stockage ni d'architecture. Le workflow
+  Pages reste limité à `main` et au lancement manuel ; pas de déploiement.
 
 ## Décisions à trancher
 
