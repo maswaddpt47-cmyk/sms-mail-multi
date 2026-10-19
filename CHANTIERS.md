@@ -53,6 +53,20 @@ ne doit pas être défait remonte dans la dernière section.
   vient directement après la navigation ; l'onglet actif reste le repère.
   Les en-têtes des autres écrans restent présents. Changement de CSS seul,
   sans modification des parcours ni nouveau contrôle fonctionnel.
+- Fiche RDV : remplacer l'ancienne modale en lignes et ses boutons colorés.
+  Identité, téléphone et démarche en tête ; statut modifiable ; notes
+  affichées si présentes ; suivi des échanges repliable. Corps défilant
+  entre en-tête et actions ; sur téléphone, panneau depuis le bas.
+  Préparer SMS/mail et Modifier sont les actions principales ; Dupliquer
+  et Supprimer restent explicites en second rang. Fermeture Échap et
+  circulation Tab, libellés du dialogue et des champs ajoutés.
+  Les propositions multiples demandent de choisir le RDV avant ses actions.
+- Correctifs liés à cette fiche : la modification conserve le propriétaire
+  et actualise la date/l'heure du contexte. La duplication passe par les
+  disponibilités et reprend les bons IDs CMS/démarche, avec repli « Autre »
+  pour une démarche libre. Le passage au générateur retire bien la modale.
+  Le ciblage d'une ancienne fiche supprimée ne retombe pas sur un RDV
+  nouvellement créé portant les mêmes coordonnées. Format de stockage inchangé.
 - Correctif nécessaire au nouveau sélecteur : l'import ICS crée des
   messages de type `rdv`, jusque-là ignorés par `getSlots`. Après les types
   prioritaires existants, le moteur retient désormais le premier autre RDV
@@ -88,16 +102,21 @@ ne doit pas être défait remonte dans la dernière section.
   journée, suppression du dernier RDV, navigation sans dates vides,
   profils, archives, orphelins, import ICS réel et priorités des créneaux.
   Les 33 autres fonctions métier protégées sont identiques à la base.
+- Contrôles de la fiche : 21 scénarios passent en DOM simulé, couvrant
+  statut et relance, excuse, édition et conflits, profils, suppression,
+  génération, duplication complète, propositions multiples et clavier.
+  Les 26 contrôles agenda ont aussi passé après la refonte principale ;
+  les correctifs de fermeture et ciblage final sont vérifiés dans les 21.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison agenda compact fournit un nouveau fichier HTML distinct
+  instruction. La livraison fiche RDV fournit un nouveau fichier HTML distinct
   des précédents et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-agenda-compact.html`, choisir Michel, puis Agenda ou
-  Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
+  ouvrir `demo-popup-rdv.html`, choisir Michel, puis Agenda et une tuile.
+  `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
   réversible, sans changement de stockage ni d'architecture. Le workflow
