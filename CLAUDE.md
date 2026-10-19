@@ -8,6 +8,11 @@ et AGORA comprises. Cette consigne prime les workflows historiques décrits
 plus bas. Ne pas lancer manuellement le déploiement Pages pour la sandbox.
 L'état du chantier et la prochaine étape sont dans `CHANTIERS.md`.
 
+**Feu vert reçu le 19/10/2026** : l'utilisateur a validé la refonte et
+autorisé sa fusion dans `main` (« Ça fonctionne, tu peux fusionner dans main »).
+Cette livraison et son déploiement Pages automatique sont donc autorisés.
+Les nouvelles évolutions UI continuent à se préparer sur `sandbox/ui`.
+
 ## ⚠️ Point critique RGPD — exposition de données personnelles (remédiation en grande partie faite)
 
 Constat vérifié le 20/08/2026 : le repo `maswaddpt47-cmyk/sms-mail-multi` était **public**, et

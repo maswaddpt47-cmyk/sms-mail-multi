@@ -7,12 +7,16 @@ continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Sandbox UI
+## Refonte UI validée
 
 - Branche de travail : **`sandbox/ui`**, créée depuis `main` au commit
   `51e75b88bb3e05a6413bad217941a57ee86d8f04` le 19/10/2026.
 - Consigne utilisateur : **aucun push ni merge vers `main` avant son feu
   vert explicite**, y compris la documentation et les blocs AGORA.
+- **Feu vert reçu le 19/10/2026** après essai de la dernière démo et du
+  contraste sombre : « Ça fonctionne, tu peux fusionner dans main ».
+  La fusion de cette livraison dans `main` et le déploiement Pages
+  automatique associé sont autorisés. La version UI validée est `7f0205e`.
 - Copie locale : `/workspace/sms-mail-multi-sandbox`, récupérée via le
   connecteur GitHub car le proxy du terminal était inaccessible. Les objets
   Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
@@ -125,10 +129,11 @@ ne doit pas être défait remonte dans la dernière section.
   ouvrir `demo-agenda-contraste-sombre.html`, choisir Michel, puis Agenda
   et activer le thème sombre avec la lune.
   `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
-- Prochaine étape : retour de l'utilisateur sur la proposition, puis
-  ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
-  réversible, sans changement de stockage ni d'architecture. Le workflow
-  Pages reste limité à `main` et au lancement manuel ; pas de déploiement.
+- Livraison : PR de `sandbox/ui` vers `main`, puis contrôle du workflow
+  Pages pour le commit fusionné avant d'annoncer la mise en ligne. Les
+  nouvelles évolutions restent préparées sur `sandbox/ui`. Pas de bloc
+  AGORA pour cette refonte réversible, sans changement de stockage ni
+  d'architecture. Le workflow Pages se déclenche sur `main`.
 
 ## Décisions à trancher
 
