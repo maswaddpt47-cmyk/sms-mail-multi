@@ -585,15 +585,31 @@
 #pane-agenda .ui-ag-period-nav{display:flex;align-items:center;gap:5px;}
 #pane-agenda .ui-ag-period-nav button{min-width:34px;min-height:34px;font-size:12px!important;}
 #pane-agenda .ui-ag-period-nav #ag-timeline-prev,#pane-agenda .ui-ag-period-nav #ag-timeline-next{font-size:22px!important;line-height:1;padding:3px 10px!important;}
-#pane-agenda .ui-ag-date-strip{grid-column:1 / -1;display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 1px;}
-#pane-agenda .ui-ag-date-strip .ui-ag-date-button{flex:1 0 42px;min-width:42px;max-width:none;display:flex;flex-direction:column;align-items:center;gap:0;padding:5px 8px 2px!important;border-color:transparent!important;background:var(--c-subtle-bg)!important;color:var(--c-dim)!important;cursor:pointer;}
+#pane-agenda .ui-ag-date-strip{grid-column:1 / -1;display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 1px;position:relative;}
+#pane-agenda .ui-ag-date-strip .ui-ag-date-button{flex:0 0 58px;min-width:42px;max-width:64px;display:flex;flex-direction:column;align-items:center;gap:0;padding:5px 8px 2px!important;border-color:transparent!important;background:var(--c-subtle-bg)!important;color:var(--c-dim)!important;cursor:pointer;}
+#pane-agenda .ui-ag-date-month{font-size:9px;line-height:1.4;}
 #pane-agenda .ui-ag-date-button>span:first-child{font-size:9px;text-transform:capitalize;}
 #pane-agenda .ui-ag-date-button>strong{font-size:17px;line-height:1.4;}
 #pane-agenda .ui-ag-date-button .ui-ag-date-dot{font-size:12px;line-height:8px;min-height:8px;color:var(--ui-accent);}
 #pane-agenda .ui-ag-date-button[data-ag-has-day="0"]{opacity:.65;}
 #pane-agenda .ui-ag-date-button[aria-pressed="true"]{background:var(--ui-accent-soft)!important;border-color:var(--ui-accent)!important;color:var(--ui-accent)!important;opacity:1;}
 #pane-agenda .ui-ag-date-button[aria-current="date"]>strong{text-decoration:underline;text-underline-offset:3px;}
-#pane-agenda .ui-ag-filter-panel{grid-column:1 / -1;min-width:0;}
+#pane-agenda .ui-ag-filter-panel{grid-column:1;min-width:0;}
+#pane-agenda .ui-ag-filter-panel[open]{grid-column:1 / -1;}
+#pane-agenda .ui-ag-reserve{grid-column:2;justify-self:end;font-family:inherit;font-size:11px;font-weight:700;border:1px solid var(--ui-accent);border-radius:7px;padding:7px 10px;background:var(--ui-accent-soft);color:var(--ui-accent);cursor:pointer;}
+#pane-agenda .ui-ag-period-nav button:disabled{opacity:.35;cursor:default;}
+.ui-ag-availability-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.ui-ag-availability-controls label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;font-weight:700;color:var(--c-muted);}
+.ui-ag-availability-controls input,.ui-ag-availability-controls select{width:100%;min-width:0;box-sizing:border-box;padding:9px 7px;border:1px solid var(--c-border-in);border-radius:8px;background:var(--c-card);color:var(--c-dim);font:inherit;font-size:12px;}
+.ui-ag-availability-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;overflow-y:auto;min-height:0;}
+.ui-ag-availability-grid section{min-width:0;}
+.ui-ag-availability-grid h3{font-size:12px;margin:0 0 8px;color:var(--c-dim);}
+.ui-ag-availability-grid p{font-size:11px;color:var(--c-muted);}
+.ui-ag-availability-row{display:flex;align-items:stretch;gap:4px;margin-bottom:6px;min-width:0;}
+.ui-ag-availability-row button{font-family:inherit;min-width:0;font-size:11px;border:1px solid var(--c-border);border-radius:7px;padding:9px 6px;background:var(--c-subtle-bg);color:var(--c-dim);cursor:pointer;}
+.ui-ag-availability-row [data-ag-book-hour]{flex:1;color:var(--ui-accent);background:var(--ui-accent-soft);font-weight:700;}
+.ui-ag-availability-row [data-ag-block-hour]{flex:0 0 30px;}
+.ui-ag-availability-row [data-ag-release-hour]{flex:1;}
 #pane-agenda .ui-ag-filter-panel>summary{font-size:10px;font-weight:600;color:var(--c-subtle);cursor:pointer;list-style-position:inside;padding:3px 0;}
 #pane-agenda .ui-ag-filter-panel .ui-ag-scope{padding:8px 0 7px;margin:2px 0 8px;gap:3px;}
 #pane-agenda .ui-ag-filter-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding-bottom:4px;}
@@ -1556,7 +1572,8 @@ function getSlots(commune,dateStr,historyList,permOverride){
       var sansAppels=activeMatches.filter(function(x){return x.msgType==='sans_appel';});
       var relances=activeMatches.filter(function(x){return x.msgType==='relance';});
       var indispos=activeMatches.filter(function(x){return x.msgType==='indispo';});
-      taken=confirmations[0]||propositions[0]||sansAppels[0]||relances[0]||indispos[0]||null;
+      /* Les imports ICS utilisent « rdv » : ils occupent aussi leur créneau. */
+      taken=confirmations[0]||propositions[0]||sansAppels[0]||relances[0]||indispos[0]||activeMatches[0]||null;
       multiPropo=confirmations.length===0&&propositions.length>1;
     } else {
       /* tous libérés : pas de notion de « plus engagé » entre plusieurs usagers différents
@@ -3398,14 +3415,19 @@ function renderAgenda(){
   /* permanences visibles selon la portée choisie, taguées avec le profil propriétaire. Pour un
      profil autre que l'actif, la migration éventuellement encore due n'est jamais persistée ici
      (ça violerait l'isolation entre profils) — juste rejouée en mémoire pour l'affichage. */
-  var archivedCount=0;
+  var archivedCount=0,hiddenArchivedDays={};
+  function rememberArchived(pid,perms,showArch){
+    if(!showArch)perms.forEach(function(p){if(p.archived&&p.exceptDate)hiddenArchivedDays[pid+'|'+p.exceptDate+'|'+p.commune]=true;});
+  }
   function permanencesOuvertesDe(pid){
     var showArch=(pid===S.activeProfile)&&S.agShowArchived;
     if(pid===S.activeProfile){
+      rememberArchived(pid,S.permanences,showArch);
       if(!S.agShowArchived)archivedCount+=S.permanences.filter(function(p){return p.exceptDate&&p.archived;}).length;
       return S.permanences.filter(function(p){return p.exceptDate&&(showArch||!p.archived);});
     }
     var raw=ls('ess-'+pid+'-permanences',[]);
+    rememberArchived(pid,raw,false);
     return migratePermanences(raw,ls('ess-'+pid+'-history',[])).filter(function(p){return !p.archived;});
   }
   function agendaSourcePermanences(){
@@ -3502,13 +3524,16 @@ function renderAgenda(){
     var d=new Date(perm.exceptDate+'T12:00:00');
     days.push({dateStr:perm.exceptDate,perm:perm,date:d,exceptional:true,profile:perm._profile});
   });
-  /* orphelins : sécurité si un RDV existe sans journée ouverte correspondante (profil actif
-     uniquement — même limite que la version précédente) */
-  if(permSource.length)S.history.forEach(function(h){
-    if(!h.date||!h.commune)return;
-    if(days.find(function(x){return x.dateStr===h.date&&x.perm.commune===h.commune;}))return;
-    var synP={commune:h.commune,exceptDate:h.date,debut:h.heure||'09:00',fin:h.heure||'16:30'};
-    days.push({dateStr:h.date,perm:synP,date:new Date(h.date+'T12:00:00'),exceptional:true,orphan:true,profile:S.activeProfile});
+  /* Afficher les RDV sans journée ouverte, dans leur portée et hors archives masquées. */
+  scopeHist.forEach(function(h){
+    if(!h.date||!h.commune||h.msgType==='indispo'||hiddenArchivedDays[h._profile+'|'+h.date+'|'+h.commune])return;
+    if(days.some(function(x){return x.dateStr===h.date&&x.perm.commune===h.commune&&x.profile===h._profile;}))return;
+    var synP={commune:h.commune,exceptDate:h.date,debut:'09:30',fin:'16:30'};
+    days.push({dateStr:h.date,perm:synP,date:new Date(h.date+'T12:00:00'),exceptional:true,orphan:true,profile:h._profile});
+  });
+  days=days.filter(function(day){
+    var history=scopeHist.filter(function(h){return h._profile===day.profile;});
+    return getSlots(day.perm.commune,day.dateStr,history,day.perm).some(function(slot){return slot.taken&&slot.taken.msgType!=='indispo';});
   });
   days.sort(function(a,b){return a.dateStr<b.dateStr?-1:a.dateStr>b.dateStr?1:0;});
   /* supprimer les doublons éventuels */
@@ -3525,17 +3550,32 @@ function renderAgenda(){
   /* --- barre de navigation — sticky dans main (main est maintenant le scroll container) --- */
   var NBTN="cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:9px;border:1.5px solid oklch(0.7 0.1 266);background:oklch(0.94 0.06 266);color:oklch(0.4 0.14 266);";
   var mainEl=document.querySelector('main');
+  if(S.agendaFocusDay&&!days.some(function(day){return dayKey(day)===S.agendaFocusDay;}))S.agendaFocusDay=null;
   var timelineDate=requestedTimelineDate||(S.agendaFocusDay?S.agendaFocusDay.slice(0,10):'')||S.agendaTimelineDate||'';
   if(!/^\d{4}-\d{2}-\d{2}$/.test(timelineDate)){
     var upcoming=days.filter(function(day){return day.dateStr>=todayStr;});
     timelineDate=upcoming.length?upcoming[0].dateStr:(days.length?days[days.length-1].dateStr:todayStr);
   }
+  if(!requestedTimelineDate&&!S.agendaFocusDay&&days.length&&!days.some(function(day){return day.dateStr===timelineDate;})){
+    timelineDate=(days.find(function(day){return day.dateStr>=timelineDate;})||days[days.length-1]).dateStr;
+  }
   S.agendaTimelineDate=timelineDate;
+  if(S.agStatutFilter==='libre')S.agStatutFilter='';
   var _agNomFilter=S.agendaTimelineSearch||'';var _agStatutFilter=S.agStatutFilter||'';
   function timelineMonday(value){var d=new Date(value+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return toLocalDateStr(d);}
   function timelineShift(value,amount){var d=new Date(value+'T12:00:00');d.setDate(d.getDate()+amount);return toLocalDateStr(d);}
   function timelineInPeriod(value){return timelineIsCompact()?value===timelineDate:timelineMonday(value)===timelineMonday(timelineDate);}
   function timelineCards(){return Array.prototype.slice.call(pane.querySelectorAll('[data-ag-date-section]'));}
+  function timelineDates(){return timelineCards().filter(function(card){return card.getAttribute('data-ag-filter-match')!=='0';}).map(function(card){return card.getAttribute('data-ag-date-section');}).filter(function(date,i,list){return list.indexOf(date)===i;}).sort();}
+  function timelineMove(direction){
+    var key=function(value){return timelineIsCompact()?value:timelineMonday(value);};
+    var choices=timelineDates().filter(function(date){return direction<0?key(date)<key(timelineDate):key(date)>key(timelineDate);});
+    if(choices.length)timelineSetDate(direction<0?choices[choices.length-1]:choices[0],false);
+  }
+  function openAvailability(){
+    S.agendaAvailability={dateStr:timelineDate,commune:S.commune||((S.cmsList[0]||{}).nom)||((S.permanences[0]||{}).commune)||''};
+    S.modal='agenda-availability';renderModal();
+  }
   function timelineUpdateMargins(){
     if(!navBar)return;
     var margin=((navBar.offsetHeight)||(timelineIsCompact()?155:200))+12;
@@ -3575,24 +3615,29 @@ function renderAgenda(){
     var monday=timelineMonday(timelineDate),sunday=timelineShift(monday,6);
     var format=function(value,options){return new Date(value+'T12:00:00').toLocaleDateString('fr-FR',options);};
     periodTitle.textContent=timelineIsCompact()?format(timelineDate,{weekday:'long',day:'numeric',month:'long'}):format(monday,{day:'numeric',month:'short'})+' – '+format(sunday,{day:'numeric',month:'short',year:'numeric'});
-    btnPrev.setAttribute('aria-label',timelineIsCompact()?'Jour précédent':'Semaine précédente');
-    btnNext.setAttribute('aria-label',timelineIsCompact()?'Jour suivant':'Semaine suivante');
+    btnPrev.setAttribute('aria-label',timelineIsCompact()?'Jour précédent avec RDV':'Semaine précédente avec RDV');
+    btnNext.setAttribute('aria-label',timelineIsCompact()?'Jour suivant avec RDV':'Semaine suivante avec RDV');
+    var availableDates=timelineDates();
+    var periodKey=function(date){return timelineIsCompact()?date:timelineMonday(date);};
+    btnPrev.disabled=!availableDates.some(function(date){return periodKey(date)<periodKey(timelineDate);});
+    btnNext.disabled=!availableDates.some(function(date){return periodKey(date)>periodKey(timelineDate);});
     clear(dateStrip);
-    for(var i=0;i<7;i++){
-      var date=timelineShift(monday,i);
-      var hasDay=matching.some(function(card){return card.getAttribute('data-ag-date-section')===date;});
-      var button=el('button',{type:'button',class:'ui-ag-date-button',id:'ag-timeline-date-'+date,'data-ag-date':date,'data-ag-has-day':hasDay?'1':'0','aria-pressed':String(date===timelineDate),'aria-current':date===todayStr?'date':null,'aria-label':format(date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})+(hasDay?' · journée ouverte':' · aucune journée ouverte'),onClick:(function(value){return function(){timelineSetDate(value,false);};})(date)},[el('span',{},format(date,{weekday:'short'})),el('strong',{},format(date,{day:'numeric'})),el('span',{class:'ui-ag-date-dot','aria-hidden':'true'},hasDay?'•':'·')]);
+    availableDates.forEach(function(date){
+      var button=el('button',{type:'button',class:'ui-ag-date-button',id:'ag-timeline-date-'+date,'data-ag-date':date,'data-ag-has-day':'1','aria-pressed':String(date===timelineDate),'aria-current':date===todayStr?'date':null,'aria-label':format(date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · rendez-vous prévus',onClick:function(){timelineSetDate(date,false);}},[el('span',{},format(date,{weekday:'short'})),el('strong',{},format(date,{day:'numeric'})),el('span',{class:'ui-ag-date-month'},format(date,{month:'short'}))]);
       dateStrip.appendChild(button);
-    }
+    });
+    var selectedDate=dateStrip.querySelector('[aria-pressed="true"]');
+    if(selectedDate&&typeof selectedDate.offsetLeft==='number')dateStrip.scrollLeft=Math.max(0,selectedDate.offsetLeft-(dateStrip.clientWidth-selectedDate.offsetWidth)/2);
     emptyState.style.display=visibleCount?'none':'';
     clear(emptyState);
     if(!visibleCount){
       var filtered=!!(_agNomFilter||_agStatutFilter);
-      emptyState.appendChild(el('h3',{},filtered?'Aucun résultat pour cette période':'Aucune journée ouverte '+(timelineIsCompact()?'ce jour':'cette semaine')));
-      emptyState.appendChild(el('p',{},filtered?'Changez de date ou ajustez les filtres pour retrouver les rendez-vous.':'Choisissez une autre date ou préparez un rendez-vous depuis Messages.'));
+      emptyState.appendChild(el('h3',{},filtered?'Aucun résultat pour cette période':'Aucun rendez-vous '+(timelineIsCompact()?'ce jour':'cette semaine')));
+      emptyState.appendChild(el('p',{},filtered?'Changez de date ou ajustez les filtres pour retrouver les rendez-vous.':'Les journées apparaissent dès qu’un rendez-vous est enregistré.'));
       var following=matching.filter(function(card){return card.getAttribute('data-ag-date-section')>timelineDate;});
       var next=(following[0]||matching[0]);
-      if(next)emptyState.appendChild(el('button',{class:'gx-press ui-ag-empty-action',onClick:function(){timelineSetDate(next.getAttribute('data-ag-date-section'),false);}},'Voir une journée ouverte'));
+      if(next)emptyState.appendChild(el('button',{class:'gx-press ui-ag-empty-action',onClick:function(){timelineSetDate(next.getAttribute('data-ag-date-section'),false);}},'Voir une journée avec RDV'));
+      emptyState.appendChild(el('button',{class:'gx-press ui-ag-empty-action',onClick:openAvailability},'Réserver un créneau'));
       if(filtered)emptyState.appendChild(el('button',{class:'gx-press ui-ag-empty-action',onClick:function(){_agNomFilter='';_agStatutFilter='';S.agendaTimelineSearch='';S.agStatutFilter='';searchIn.value='';statutSel.value='';agApplyFilters(false);}},'Effacer les filtres'));
     }
     timelineUpdateMargins();
@@ -3767,11 +3812,11 @@ function renderAgenda(){
   var btnToday=el('button',{id:'ag-timeline-today',class:'gx-press',style:NBTN},'Aujourd’hui');
   btnToday.addEventListener('click',function(){agScrollTo(todayStr);});
   var btnPrev=el('button',{id:'ag-timeline-prev',class:'gx-press',style:NBTN},'‹');
-  btnPrev.addEventListener('click',function(){timelineSetDate(timelineShift(timelineDate,timelineIsCompact()?-1:-7),false);});
+  btnPrev.addEventListener('click',function(){timelineMove(-1);});
   var btnNext=el('button',{id:'ag-timeline-next',class:'gx-press',style:NBTN},'›');
-  btnNext.addEventListener('click',function(){timelineSetDate(timelineShift(timelineDate,timelineIsCompact()?1:7),false);});
+  btnNext.addEventListener('click',function(){timelineMove(1);});
   var statutSel=el('select',{'aria-label':'Filtrer par statut',id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
-  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['libre','🟢 Libre'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.value=_agStatutFilter;
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
@@ -3785,12 +3830,12 @@ function renderAgenda(){
   var filterControls=el('div',{class:'ui-ag-filter-controls'},[searchIn,statutSel,jumpIn,btnPrint]);
   filterPanel.appendChild(scopeBar);filterPanel.appendChild(filterControls);
   navBar.appendChild(head);navBar.appendChild(navigation);navBar.appendChild(dateStrip);navBar.appendChild(filterPanel);
+  navBar.appendChild(el('button',{id:'ag-reserve-slot',class:'gx-press ui-ag-reserve',onClick:openAvailability},'+ Réserver'));
   pane.appendChild(navBar);
   /* La marge est mesurée après remplissage du bandeau et à chaque ouverture des filtres. */
 
   function dayKey(d){return d.dateStr+'|'+d.perm.commune+'|'+d.profile;}
   var visibleDays=days;
-  if(S.agendaFocusDay&&!days.some(function(d){return dayKey(d)===S.agendaFocusDay;}))S.agendaFocusDay=null;
   if(S.agendaFocusDay){
     var focusBar=el('div',{id:'ag-timeline-focus',class:'ui-ag-focus',style:"display:flex;align-items:center;gap:10px;background:oklch(0.96 0.04 266);border:1.5px solid oklch(0.78 0.1 266);border-radius:14px;padding:10px 16px;margin-bottom:16px;"});
     focusBar.appendChild(el('span',{style:"font-size:13px;font-weight:700;color:oklch(0.4 0.14 266);"},"🔍 Mode journée — une seule journée affichée"));
@@ -3811,8 +3856,9 @@ function renderAgenda(){
   visibleDays.forEach(function(day){
     var dayHist=readProfileHistory(day.profile).map(function(h){return Object.assign({},h,{_profile:day.profile});});
     var slots=getSlots(day.perm.commune,day.dateStr,dayHist,day.perm);
-    var takenCount=slots.filter(function(s){return s.taken&&!s.freeAgain;}).length;
-    var freeCount=slots.length-takenCount;
+    var rdvSlots=slots.filter(function(slot){return slot.taken&&slot.taken.msgType!=='indispo';});
+    var takenCount=rdvSlots.length;
+    var freeCount=slots.filter(function(slot){return !slot.taken||slot.freeAgain;}).length;
     var isPast=day.date<today;
     var isToday=day.dateStr===todayStr;
     var _uiMonday=new Date(day.date);_uiMonday.setDate(day.date.getDate()-((day.date.getDay()+6)%7));
@@ -3843,7 +3889,7 @@ function renderAgenda(){
     if(day.orphan){
       dayIdentity.appendChild(el('span',{style:"background:oklch(0.94 0.06 38);color:oklch(0.42 0.12 38);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},"Orpheline"));
       /* régularise une journée orpheline (RDV sans journée ouverte) en un clic, 08/10/2026 */
-      (function(d){dayActions.appendChild(el('button',{class:'gx-press',title:'Ouvrir cette journée dans l\'agenda',style:"cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;border:1px solid oklch(0.78 0.1 155);background:oklch(0.97 0.03 155);color:oklch(0.4 0.12 155);margin-left:4px;",onClick:function(e){e.stopPropagation();ensureDayOpen(d.perm.commune,d.dateStr);renderAgenda();showToast('✓ Journée ouverte');}},'📂 Ouvrir cette journée'));})(day);
+      if(day.profile===S.activeProfile)(function(d){dayActions.appendChild(el('button',{class:'gx-press',title:'Ouvrir cette journée dans l\'agenda',style:"cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;border:1px solid oklch(0.78 0.1 155);background:oklch(0.97 0.03 155);color:oklch(0.4 0.12 155);margin-left:4px;",onClick:function(e){e.stopPropagation();ensureDayOpen(d.perm.commune,d.dateStr);renderAgenda();showToast('✓ Journée ouverte');}},'📂 Ouvrir cette journée'));})(day);
     } else {
       if(day.perm.archived)dayIdentity.appendChild(el('span',{style:"background:var(--c-hover);color:var(--c-muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;"},"Archivée"));
       if(day.profile===S.activeProfile)(function(perm){dayActions.appendChild(el('button',{class:'gx-press',title:'Fermer cette journée',style:"cursor:pointer;font-family:inherit;font-size:11px;padding:2px 7px;border-radius:7px;border:1px solid oklch(0.82 0.1 25);background:oklch(0.97 0.03 25);color:oklch(0.5 0.16 25);margin-left:4px;",onClick:function(e){e.stopPropagation();if(confirm('Fermer la journée "'+perm.commune+' — '+perm.exceptDate+'" ?\n\nSes RDV éventuels restent dans l\'historique.')){S.permanences=S.permanences.filter(function(p){return p.commune!==perm.commune||p.exceptDate!==perm.exceptDate;});lsSet(pk('permanences'),S.permanences);renderAgenda();showToast('✓ Journée fermée');}}},'Fermer'));})(day.perm);
@@ -3936,38 +3982,11 @@ function renderAgenda(){
       halfdayLists[period[0]]=el('div',{class:'ui-ag-halfday-slots'});
       halfday.appendChild(halfdayLists[period[0]]);sg.appendChild(halfday);
     });
-    slots.forEach(function(slot){
+    rdvSlots.forEach(function(slot){
       var slotList=halfdayLists[slot.heure<'13:00'?'morning':'afternoon'];
       var who=slot.taken?[slot.taken.nom,slot.taken.prenom].filter(Boolean).join(' '):'';
       var isPropo=slot.taken&&slot.taken.msgType==='proposition';
       var _st=slot.taken&&slot.taken.statut;
-      /* créneaux libres : pastille compacte */
-      if(!slot.taken){
-        var freePill=el('button',{class:'ag-slot ui-ag-slot ui-ag-slot-free',style:"cursor:pointer;font-family:inherit;font-size:10px;font-weight:600;padding:3px 7px;border-radius:6px;border:1px dashed oklch(0.78 0.06 155);background:oklch(0.97 0.02 155);color:oklch(0.62 0.08 155);",'data-nom':'','data-statut':'libre','data-depasse':'0',title:'🟢 Créneau libre — '+slot.heure,onClick:(function(s,d){return function(){S.modal='agenda-new';S.agendaNew={heure:s.heure,dateStr:d.dateStr,commune:d.perm.commune,civilite:'',prenom:'',nom:'',telephone:'',selectedCMS:S.selectedCMS||'',selectedDemarche:S.selectedDemarche||'',demarcheAutre:'',channel:S.channel||'sms'};renderModal();};})(slot,day)});
-        freePill.appendChild(el('span',{class:'ui-ag-time'},slot.heure));
-        var freeIdentity=el('span',{class:'ui-ag-slot-content'});
-        freeIdentity.appendChild(el('span',{class:'ui-ag-name'},'Libre'));
-        freeIdentity.appendChild(el('span',{class:'ui-ag-meta'},'Ajouter un rendez-vous'));
-        freePill.appendChild(freeIdentity);
-        freePill.appendChild(el('span',{class:'ui-ag-slot-actions'},'+ Réserver'));
-        if(day.profile===S.activeProfile){
-          var freeWrap=el('div',{class:'ui-ag-free-wrap'});
-          freeWrap.appendChild(freePill);
-          var blockBtn=el('button',{class:'ui-ag-block',title:"Marquer ce créneau indisponible (pas un usager)",style:"cursor:pointer;font-family:inherit;font-size:9px;padding:3px 4px;border-radius:6px;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-muted);"},'🚫');
-          (function(s,d){blockBtn.addEventListener('click',function(e){
-            e.stopPropagation();
-            var motif=prompt('Motif (facultatif) :','');
-            if(motif===null)return;
-            blockSlot(d.perm.commune,d.dateStr,s.heure,motif);
-            renderAgenda();showToast('✓ Créneau marqué indisponible');
-          });})(slot,day);
-          freeWrap.appendChild(blockBtn);
-          slotList.appendChild(freeWrap);
-        } else {
-          slotList.appendChild(freePill);
-        }
-        return;
-      }
       /* couleurs selon statut, voir STATUT_STYLES */
       var isIndispo=slot.taken&&slot.taken.msgType==='indispo';
       var pillBorder,pillBg,pillTxt;
@@ -4128,7 +4147,7 @@ function renderAgenda(){
       slotList.appendChild(pill);
     });
     Object.keys(halfdayLists).forEach(function(period){
-      if(!halfdayLists[period].children.length)halfdayLists[period].appendChild(el('p',{class:'ui-ag-halfday-empty'},'Aucun créneau'));
+      if(!halfdayLists[period].children.length)halfdayLists[period].appendChild(el('p',{class:'ui-ag-halfday-empty'},'Aucun RDV'));
     });
     card.appendChild(sg);
     board.appendChild(card);
@@ -5683,6 +5702,56 @@ function renderModal(){
       confirmOrientImport();
     }},"✓ Confirmer l'import"));
     box.appendChild(impBtnRow);
+  }
+  else if(S.modal==='agenda-availability'){
+    var availability=S.agendaAvailability||{};
+    S.agendaAvailability=availability;
+    availability.dateStr=availability.dateStr||toLocalDateStr(new Date());
+    var places=[];
+    S.cmsList.map(function(c){return c.nom;}).concat(S.permanences.map(function(p){return p.commune;}),S.history.map(function(h){return h.commune;})).forEach(function(name){if(name&&places.indexOf(name)===-1)places.push(name);});
+    if(places.indexOf(availability.commune)===-1)availability.commune=places[0]||'';
+    box.appendChild(header('Réserver un créneau'));
+    var owner=getProfile(S.activeProfile);
+    box.appendChild(el('p',{style:'font-size:12px;color:var(--c-muted);margin:0;'},'Disponibilités de '+(owner?owner.nom:'votre agenda')+' · La tuile apparaîtra après enregistrement du RDV.'));
+    var controls=el('div',{class:'ui-ag-availability-controls'});
+    var dateInput=el('input',{id:'ag-availability-date',type:'date',value:availability.dateStr,onChange:function(e){if(e.target.value){availability.dateStr=e.target.value;renderModal();}}});
+    var locationInput=el('select',{id:'ag-availability-location',onChange:function(e){availability.commune=e.target.value;renderModal();}});
+    places.forEach(function(name){locationInput.appendChild(el('option',{value:name},name));});locationInput.value=availability.commune;
+    controls.appendChild(el('label',{},['Date',dateInput]));controls.appendChild(el('label',{},['Lieu',locationInput]));box.appendChild(controls);
+    if(!places.length){
+      box.appendChild(el('p',{style:'font-size:12px;color:var(--c-muted);'},'Ajoutez un CMS dans Configuration pour réserver un premier rendez-vous.'));
+    } else {
+      var availabilityGrid=el('div',{class:'ui-ag-availability-grid'});
+      var availableSlots=getSlots(availability.commune,availability.dateStr,S.history);
+      [['morning','Matin'],['afternoon','Après-midi']].forEach(function(period){
+        var group=el('section',{'data-ag-availability-period':period[0]});group.appendChild(el('h3',{},period[1]));
+        var offered=availableSlots.filter(function(slot){return (slot.heure<'13:00'?'morning':'afternoon')===period[0]&&(!slot.taken||slot.freeAgain||slot.taken.msgType==='indispo');});
+        offered.forEach(function(slot){
+          var row=el('div',{class:'ui-ag-availability-row'});
+          if(slot.taken&&slot.taken.msgType==='indispo'){
+            row.appendChild(el('button',{'data-ag-release-hour':slot.heure,'aria-label':'Libérer le créneau indisponible de '+slot.heure,onClick:function(){
+              if(!confirm('Libérer ce créneau ('+slot.heure+') ?'))return;
+              var original=S.history.find(function(h){return h.msgType==='indispo'&&h.date===availability.dateStr&&h.commune===availability.commune&&h.heure===slot.heure;});
+              if(original){releaseSlot(original);renderAgenda();renderModal();}
+            }},slot.heure+' · Libérer'));
+          } else {
+            row.appendChild(el('button',{'data-ag-book-hour':slot.heure,onClick:function(){
+              var cms=S.cmsList.find(function(c){return c.nom===availability.commune;});
+              S.agendaNew={heure:slot.heure,dateStr:availability.dateStr,commune:availability.commune,civilite:'',prenom:'',nom:'',telephone:'',selectedCMS:cms?String(cms.id):'',selectedDemarche:S.selectedDemarche||'',demarcheAutre:'',channel:S.channel||'sms'};
+              S.modal='agenda-new';renderModal();
+            }},slot.heure+' · Réserver'));
+            if(!slot.freeAgain)row.appendChild(el('button',{'data-ag-block-hour':slot.heure,title:'Marquer ce créneau indisponible','aria-label':'Bloquer le créneau de '+slot.heure,onClick:function(){
+              var motif=prompt('Motif (facultatif) :','');if(motif===null)return;
+              blockSlot(availability.commune,availability.dateStr,slot.heure,motif);renderAgenda();renderModal();
+            }},'🚫'));
+          }
+          group.appendChild(row);
+        });
+        if(!offered.length)group.appendChild(el('p',{},'Aucun créneau disponible'));
+        availabilityGrid.appendChild(group);
+      });
+      box.appendChild(availabilityGrid);
+    }
   }
   else if(S.modal==='agenda-new'){
     var an=S.agendaNew||{};

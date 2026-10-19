@@ -31,13 +31,29 @@ ne doit pas être défait remonte dans la dernière section.
   côte à côte, Matin (<13:00) et Après-midi (>=13:00), même sur téléphone.
   L'heure est dans la tuile ; noms et démarches peuvent tenir sur deux
   lignes, avec le détail accessible au toucher. Les journées à une seule
-  demi-journée gardent l'autre colonne avec « Aucun créneau ».
+  demi-journée gardent l'autre colonne avec « Aucun RDV ».
   Bandeau de dates sticky, Aujourd'hui, précédent/suivant ; les filtres et
   actions de journée sont repliables. Les tuiles compactes ouvrent le RDV
   ou réservent un créneau libre ; les créneaux réouverts restent signalés.
   Recherche et rappels révèlent la date concernée, même après un focus.
   La portée reste accessible lorsque l'agenda est vide. Le curseur et la
   recherche sont en mémoire UI, sans nouveau format de stockage.
+- Demande suivante : retirer les créneaux libres et les journées vides.
+  Les colonnes affichent uniquement les RDV enregistrés, y compris les
+  statuts excusé/lapin/pas de retour pour garder leur suivi. Les journées
+  uniquement bloquées ne figurent pas dans la timeline. Le bandeau et les
+  flèches ne parcourent que les dates avec RDV (semaines occupées sur PC).
+  « + Réserver » ouvre les disponibilités du profil actif, date et lieu au
+  choix, même pour une journée vide ; la tuile apparaît après enregistrement.
+  Blocage/libération des indisponibilités sont accessibles dans cette fenêtre.
+  Les orphelins respectent la portée choisie et les archives masquées.
+  Le filtre « Libre » est retiré de la timeline et son ancien état réinitialisé.
+- Correctif nécessaire au nouveau sélecteur : l'import ICS crée des
+  messages de type `rdv`, jusque-là ignorés par `getSlots`. Après les types
+  prioritaires existants, le moteur retient désormais le premier autre RDV
+  actif : le RDV importé reste visible et son horaire n'est plus proposé libre.
+  Aucun changement de format d'historique. Les autres fonctions protégées
+  restent inchangées ; `getSlots` est la seule exception intentionnelle.
 - Correctifs des actions agenda : les copies taguées pour l'affichage ne
   sont pas les objets persistés. La libération individuelle/par plage
   retrouve l'indisponibilité dans l'historique actif ; la fermeture d'une
@@ -62,15 +78,20 @@ ne doit pas être défait remonte dans la dernière section.
   Après séparation Matin/Après-midi, 21 contrôles ciblés passent (les 16
   précédents et 5 pour la répartition, la frontière 13:00 et les actions
   dans la colonne après-midi). Le rendu CSS demeure non vérifié.
+- Contrôles de la timeline RDV : 26 scénarios passent en DOM/stockage
+  simulés, dont réservation complète jusqu'à `handleGenerate`, première
+  journée, suppression du dernier RDV, navigation sans dates vides,
+  profils, archives, orphelins, import ICS réel et priorités des créneaux.
+  Les 33 autres fonctions métier protégées sont identiques à la base.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison matin/après-midi fournit un nouveau fichier HTML distinct
-  de la timeline précédente et une démo à données fictives uniquement en mémoire, pour voir
+  instruction. La livraison agenda RDV fournit un nouveau fichier HTML distinct
+  des précédents et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-agenda-matin-apres-midi.html`, choisir Michel, puis Agenda ou
+  ouvrir `demo-agenda-rdv.html`, choisir Michel, puis Agenda ou
   Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
