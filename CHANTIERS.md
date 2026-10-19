@@ -19,12 +19,24 @@ ne doit pas être défait remonte dans la dernière section.
   Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
 - Proposition V2 : le retour utilisateur du 19/10/2026 constate que V1
   changeait surtout le générateur et conservait les autres tuiles.
-  La refonte porte désormais aussi sur l'agenda (lignes horaires et
-  sections par journée), l'historique et les orientations (registres),
+  La refonte porte désormais aussi sur l'agenda, l'historique et les orientations (registres),
   les statistiques (bandeaux et sections graphiques), les modèles
   (bibliothèque), la configuration (listes et formulaire latéral),
   les mandats et le choix des profils (répertoire en lignes).
   Les neuf écrans et les fonctions métier restent disponibles.
+- Retour utilisateur suivant, approuvé : conserver les tuiles de l'agenda
+  avec moins de défilement sur téléphone. La timeline affiche une date à
+  la fois à 900 px ou moins, et la semaine en colonnes sur ordinateur.
+  Bandeau de dates sticky, Aujourd'hui, précédent/suivant ; les filtres et
+  actions de journée sont repliables. Les tuiles compactes ouvrent le RDV
+  ou réservent un créneau libre ; les créneaux réouverts restent signalés.
+  Recherche et rappels révèlent la date concernée, même après un focus.
+  La portée reste accessible lorsque l'agenda est vide. Le curseur et la
+  recherche sont en mémoire UI, sans nouveau format de stockage.
+- Correctifs des actions agenda : les copies taguées pour l'affichage ne
+  sont pas les objets persistés. La libération individuelle/par plage
+  retrouve l'indisponibilité dans l'historique actif ; la fermeture d'une
+  journée compare commune/date. Les RDV et autres profils sont préservés.
 - Correctif lié : `updatePreviewOnly()` cible explicitement le corps et
   l'objet du message ; la saisie actualise l'aperçu sans écraser les Notes
   et sans reconstruire le formulaire. L'aide clavier indique les raccourcis
@@ -36,15 +48,21 @@ ne doit pas être défait remonte dans la dernière section.
   50 contrôles passent et 34 fonctions métier protégées sont identiques
   à la version d'origine. Le filtre de recherche masque aussi les titres
   des semaines sans journée visible. La démo se charge sans appel réseau.
+- Contrôles timeline : 16 scénarios ciblés passent en DOM simulé, dont
+  navigation jour/semaine, focus et recherche, agenda vide, profils,
+  saut à la date exacte, hauteur du bandeau, changement 390/1280 px,
+  blocage/libération unitaire et par plage, fermeture sans perte de RDV.
+  Les 50 contrôles globaux passent avec l'attendu de période adapté à la
+  semaine sélectionnée ; les 34 fonctions métier restent identiques.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison V2 fournit un nouveau fichier HTML distinct
-  de V1 et une démo à données fictives uniquement en mémoire, pour voir
-  les nouvelles lignes dès l'ouverture, sans modifier le stockage ni les
+  instruction. La livraison timeline fournit un nouveau fichier HTML distinct
+  de V2 et une démo à données fictives uniquement en mémoire, pour voir
+  les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-interface-v2.html`, choisir un profil, puis Agenda ou
+  ouvrir `demo-agenda-timeline.html`, choisir Michel, puis Agenda ou
   Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte

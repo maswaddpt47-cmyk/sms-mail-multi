@@ -24,23 +24,24 @@ def build(output):
     for name in ['icon-192.png', 'apple-touch-icon.png']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
         html = html.replace('href="' + name + '"', 'href="data:image/png;base64,' + data + '"')
-    standalone = output / 'proposition-interface-v2.html'
+    standalone = output / 'proposition-agenda-timeline.html'
     standalone.write_text(html, encoding='utf-8')
     seed = (root / 'scripts/ui-demo-data.js').read_text(encoding='utf-8')
     if '</script' in seed.lower():
         raise ValueError('La démonstration contient une fermeture de script non échappée.')
-    demo = output / 'demo-interface-v2.html'
+    demo = output / 'demo-agenda-timeline.html'
     demo_html = html.replace('<script>', '<script>\n' + seed + '\n</script>\n<script>', 1)
     demo.write_text(demo_html, encoding='utf-8')
     readme = (
-        'SMS & MAIL — proposition UI V2\n\n'
-        'Pour explorer : ouvrir demo-interface-v2.html dans votre navigateur, puis choisir un profil.\n'
+        'SMS & MAIL — agenda en timeline\n\n'
+        'Pour explorer : ouvrir demo-agenda-timeline.html dans votre navigateur, choisir Michel, puis Agenda.\n'
+        'Téléphone : une journée et ses tuiles ; ordinateur : plusieurs journées de la semaine.\n'
         'La démo présente exclusivement des données fictives, en mémoire ; recharger réinitialise tout.\n'
         'Pour essayer sans données de démonstration : ouvrir index.html.\n'
         'Branche de travail : sandbox/ui. Aucun changement sur main sans feu vert utilisateur.\n'
         'Les parcours sont vérifiés avec un DOM simulé ; le rendu navigateur reste à contrôler.\n'
     )
-    archive = output / 'sms-mail-ui-v2.zip'
+    archive = output / 'sms-mail-agenda-timeline.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
