@@ -1,5 +1,13 @@
 # Règles de travail — SMS-mail
 
+## Sandbox UI — consigne utilisateur du 19/10/2026
+
+Le travail sur l'interface se fait sur **`sandbox/ui`**. Aucun push ni merge
+vers `main` avant le **feu vert explicite de l'utilisateur**, documentation
+et AGORA comprises. Cette consigne prime les workflows historiques décrits
+plus bas. Ne pas lancer manuellement le déploiement Pages pour la sandbox.
+L'état du chantier et la prochaine étape sont dans `CHANTIERS.md`.
+
 ## ⚠️ Point critique RGPD — exposition de données personnelles (remédiation en grande partie faite)
 
 Constat vérifié le 20/08/2026 : le repo `maswaddpt47-cmyk/sms-mail-multi` était **public**, et

@@ -1,11 +1,28 @@
 # CHANTIERS — sms-mail-multi
 
-État au **19/10/2026**, commit de référence `24d43ce` (`main`).
+État au **19/10/2026**, base de la sandbox `51e75b8` (`main`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Sandbox UI
+
+- Branche de travail : **`sandbox/ui`**, créée depuis `main` au commit
+  `51e75b88bb3e05a6413bad217941a57ee86d8f04` le 19/10/2026.
+- Consigne utilisateur : **aucun push ni merge vers `main` avant son feu
+  vert explicite**, y compris la documentation et les blocs AGORA.
+- Copie locale : `/workspace/sms-mail-multi-sandbox`, récupérée via le
+  connecteur GitHub car le proxy du terminal était inaccessible. Les objets
+  Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
+  Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
+- État : interface inchangée ; syntaxe JavaScript vérifiée. Le workflow
+  Pages écoute seulement les push sur `main` et son lancement manuel ;
+  aucun déploiement n'est demandé pour la sandbox.
+- Prochaine étape : préciser les écrans et la direction visuelle de la
+  refonte, puis travailler sur cette branche. Pas de bloc AGORA nécessaire
+  pour cette préparation réversible et sans changement d'architecture.
 
 ## Décisions à trancher
 
