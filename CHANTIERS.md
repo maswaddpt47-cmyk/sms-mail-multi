@@ -122,12 +122,18 @@ ne doit pas être défait remonte dans la dernière section.
   disponible dans cette session, contrairement à celle qui a produit la
   refonte) : Agenda et fiche RDV, 1280 px et 390 px, clair et sombre.
   Aucune erreur JS/console. Pas de débordement, contraste et lisibilité
-  corrects, panneau mobile de la fiche glissant bien depuis le bas. Seule
-  réserve mineure, pas un bug : la bande d'onglets mobile (`#tabnav`,
-  `overflow-x:auto` + `scrollbar-width:none`) coupe « Orientations (2) » au
-  bord de l'écran sans indice visuel de défilement — à surveiller si un
-  retour utilisateur le signale, pas de correctif d'office. Captures dans
-  `/tmp/sms-mail-ui-preview/` (session, non committées).
+  corrects, panneau mobile de la fiche glissant bien depuis le bas. Captures
+  dans `/tmp/sms-mail-ui-preview/` (session, non committées).
+- **Indice de défilement sur la bande d'onglets mobile** (20/10/2026) : sur
+  téléphone, `#tabnav` (`overflow-x:auto`, `scrollbar-width:none`) coupait
+  « Orientations (2) » au bord de l'écran sans rien signaler. Correctif CSS
+  pur, pas de JS : `.workspace-sidebar::after` ajoute un dégradé de 28px au
+  bord droit (`transparent` → couleur de fond, `var(--c-card)` en clair,
+  `#102735` en sombre comme le reste du thème sombre), scopé à
+  `@media(max-width:760px)`, `pointer-events:none`. Vérifié en navigateur
+  réel, clair et sombre : le dégradé est visible, aucune régression de mise
+  en page. Statique (ne disparaît pas en fin de défilement, pas de JS) —
+  suffisant pour l'indice recherché.
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
   aucune validation du rendu n'était acquise à ce moment-là.
