@@ -118,10 +118,20 @@ ne doit pas être défait remonte dans la dernière section.
   génération, duplication complète, propositions multiples et clavier.
   Les 26 contrôles agenda ont aussi passé après la refonte principale ;
   les correctifs de fermeture et ciblage final sont vérifiés dans les 21.
-- Limite : Chromium est bloqué par les permissions de l'environnement ;
-  aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
-  Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison contraste sombre fournit un nouveau fichier HTML distinct
+- **Rendu validé en navigateur réel le 19/10/2026** (Playwright/Chromium,
+  disponible dans cette session, contrairement à celle qui a produit la
+  refonte) : Agenda et fiche RDV, 1280 px et 390 px, clair et sombre.
+  Aucune erreur JS/console. Pas de débordement, contraste et lisibilité
+  corrects, panneau mobile de la fiche glissant bien depuis le bas. Seule
+  réserve mineure, pas un bug : la bande d'onglets mobile (`#tabnav`,
+  `overflow-x:auto` + `scrollbar-width:none`) coupe « Orientations (2) » au
+  bord de l'écran sans indice visuel de défilement — à surveiller si un
+  retour utilisateur le signale, pas de correctif d'office. Captures dans
+  `/tmp/sms-mail-ui-preview/` (session, non committées).
+- Limite précédente, levée ci-dessus : Chromium était bloqué par les
+  permissions de l'environnement de la session qui a produit la refonte ;
+  aucune validation du rendu n'était acquise à ce moment-là.
+  La livraison contraste sombre fournit un nouveau fichier HTML distinct
   des précédents et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
