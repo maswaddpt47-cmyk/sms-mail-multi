@@ -17,22 +17,35 @@ ne doit pas être défait remonte dans la dernière section.
   connecteur GitHub car le proxy du terminal était inaccessible. Les objets
   Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
   Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
-- Proposition fonctionnelle : navigation latérale sur ordinateur,
-  navigation défilante sur mobile ; formulaire en étapes, aperçu compact
-  et modifiable, thèmes clair/sombre et sélection de profil harmonisés.
-  Les neuf écrans et les fonctions métier sont conservés.
+- Proposition V2 : le retour utilisateur du 19/10/2026 constate que V1
+  changeait surtout le générateur et conservait les autres tuiles.
+  La refonte porte désormais aussi sur l'agenda (lignes horaires et
+  sections par journée), l'historique et les orientations (registres),
+  les statistiques (bandeaux et sections graphiques), les modèles
+  (bibliothèque), la configuration (listes et formulaire latéral),
+  les mandats et le choix des profils (répertoire en lignes).
+  Les neuf écrans et les fonctions métier restent disponibles.
 - Correctif lié : `updatePreviewOnly()` cible explicitement le corps et
   l'objet du message ; la saisie actualise l'aperçu sans écraser les Notes
   et sans reconstruire le formulaire. L'aide clavier indique les raccourcis
   existants (Ctrl+Entrée : copier ; Ctrl+Maj+G : générer).
-- Contrôles acquis : syntaxe JS et `git diff --check` ; harnais Node avec
-  DOM, stockage et presse-papiers simulés (SMS/mail, Notes, focus, labels,
-  génération, copie et isolation de profil). Dix fonctions métier sont
-  identiques à la base de la sandbox.
+- Contrôles V2 : syntaxe JS et `git diff --check` ; parcours Node avec
+  DOM, stockage et presse-papiers simulés couvrant les neuf écrans,
+  les sous-onglets, les états vides/remplis et les actions principales.
+  Le harnais génération continue de vérifier Notes, focus et copie ;
+  50 contrôles passent et 34 fonctions métier protégées sont identiques
+  à la version d'origine. Le filtre de recherche masque aussi les titres
+  des semaines sans journée visible. La démo se charge sans appel réseau.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. Une copie HTML autonome est fournie pour essai utilisateur.
+  instruction. La livraison V2 fournit un nouveau fichier HTML distinct
+  de V1 et une démo à données fictives uniquement en mémoire, pour voir
+  les nouvelles lignes dès l'ouverture, sans modifier le stockage ni les
+  formats de l'application réelle. Régénérer avec
+  `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
+  ouvrir `demo-interface-v2.html`, choisir un profil, puis Agenda ou
+  Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
   réversible, sans changement de stockage ni d'architecture. Le workflow
