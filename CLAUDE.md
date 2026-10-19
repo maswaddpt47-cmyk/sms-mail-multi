@@ -203,13 +203,14 @@ App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests auto
 - **Harnais Node pour un changement de logique pure** (`getSlots`, `hasConflict`, migrations) : extraire la fonction depuis `index.html`, l'`eval` avec des globals stubbés (`S`, `lsSet`…), rejouer quelques scénarios dont une non-régression de l'ancien comportement. Moins coûteux qu'un Playwright ciblé, plus fiable qu'une vérification de syntaxe seule — porté depuis SMS-mail (AG-001 `8517269`, 7 scénarios ; priorité titulaire actif/libéré `1b910af`).
 - **Test Playwright ciblé uniquement** : si l'utilisateur le demande explicitement pour ce changement, ou en début de session pour valider l'état général de l'app après une reprise/un déploiement. Ne pas en faire un réflexe systématique.
 
-## Portage entre SMS-mail et sms-mail-multi
+## Portage entre SMS-mail et sms-mail-multi — arrêté le 20/10/2026
 
-Ce sont deux repos distincts avec une architecture proche (single-file HTML vanilla JS) — les correctifs sont portés manuellement d'un côté à l'autre, ce qui a déjà causé un oubli. En début (ou fin) de session de portage, avec les deux repos clonés en sibling (`../SMS-mail`) :
-```bash
-node scripts/check-drift.js
-```
-Liste les fonctions communes qui divergent entre les deux apps (portage oublié ou différence voulue — à juger au cas par cas), et celles qui n'existent que d'un côté.
+**SMS-mail (solo) est gelé** : décision de l'utilisateur, plus de
+développement là-bas. `sms-mail-multi` est désormais le seul repo actif.
+Ne plus porter de correctif vers SMS-mail, ne plus lancer
+`scripts/check-drift.js` (comparaison devenue sans objet — la refonte UI du
+19/10/2026 n'existe que sur multi) ; le script reste dans `scripts/` comme
+trace, pas comme outil à utiliser.
 
 ## Collaboration avec Claude
 

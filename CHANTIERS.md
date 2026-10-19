@@ -157,28 +157,26 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
 1. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
    Départemental si ce traitement figure au registre RGPD / si le DPO est
    informé. Seul point du plan de remédiation encore ouvert (`CLAUDE.md`).
-2. **Dérive SMS-mail ↔ sms-mail-multi — audit du 26/09/2026, oublis de
-   portage corrigés le 27/09/2026.** `check-drift.js` ne donne plus de faux
-   positif (il sautait mal les regex contenant une apostrophe, corrigé le
-   10/10/2026 ; ce correctif a révélé un vrai bug, l'export CSV des
-   Orientations de SMS-mail, corrigé le même jour). Le
-   reste des écarts est voulu (multi-profil) ou cosmétique. **Résolu par le
-   calendrier « à la volée »** : la question de la fenêtre Agenda (8 sem./12
-   contre 4/8) ne se pose plus, il n'y a plus de fenêtre. Dernier écart « non
-   jugé » (nom affiché dans l'alerte de conflit de Générer) : SMS-mail
-   aligné sur multi le 10/10/2026.
-3. **Origine du numéro tronqué du 07/10/2026 non identifiée** : un numéro
+2. **Origine du numéro tronqué du 07/10/2026 non identifiée** : un numéro
    de la forme `00 76 15 74 22` (10 chiffres commençant par 00) est arrivé
    dans Générer et a été envoyé sans alerte. L'alerte est en place (voir
    « Points à ne pas défaire »), la cause non : hypothèse non vérifiée,
    cellule mal formée dans le fichier importé (Orientations ne corrige que
    le cas « 9 chiffres → 0 devant »). À creuser au prochain cas, avec le
    fichier source sous les yeux (données fictives ou recadrées).
-4. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
+3. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
    `SessionStart`) : à copier depuis `ATELIERS_NEWGEN` — reporté le
    26/09/2026 par l'utilisateur, utile quand ce fichier aura grossi.
 
 ## Points à ne pas défaire
+
+- **SMS-mail (solo) gelé le 20/10/2026** — décision de l'utilisateur, plus
+  de développement là-bas : `sms-mail-multi` est désormais le seul repo
+  actif. Ne plus porter de correctif vers SMS-mail, ne plus lancer
+  `scripts/check-drift.js`. La refonte UI du 19/10/2026 (`b6d7b03`) n'existe
+  que sur multi et n'y sera jamais portée. L'audit de dérive du 26/09/2026
+  (portage corrigé le 27/09, `check-drift.js` fiabilisé le 10/10/2026) est
+  clos — plus de dérive à surveiller, le gel la rend sans objet.
 
 - **Alerte « À pointer »** (`isAPointer`/`aPointerList`, 15/10/2026) : RDV
   `confirme` dont la date est passée → pastille orange sur l'onglet Agenda,
