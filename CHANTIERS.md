@@ -1,11 +1,139 @@
 # CHANTIERS — sms-mail-multi
 
-État au **19/10/2026**, commit de référence `24d43ce` (`main`).
+État au **19/10/2026**, base de la sandbox `51e75b8` (`main`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Refonte UI validée
+
+- Branche de travail : **`sandbox/ui`**, créée depuis `main` au commit
+  `51e75b88bb3e05a6413bad217941a57ee86d8f04` le 19/10/2026.
+- Consigne utilisateur : **aucun push ni merge vers `main` avant son feu
+  vert explicite**, y compris la documentation et les blocs AGORA.
+- **Feu vert reçu le 19/10/2026** après essai de la dernière démo et du
+  contraste sombre : « Ça fonctionne, tu peux fusionner dans main ».
+  La fusion de cette livraison dans `main` et le déploiement Pages
+  automatique associé sont autorisés. La version UI validée est `7f0205e`.
+- Copie locale : `/workspace/sms-mail-multi-sandbox`, récupérée via le
+  connecteur GitHub car le proxy du terminal était inaccessible. Les objets
+  Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
+  Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
+- Proposition V2 : le retour utilisateur du 19/10/2026 constate que V1
+  changeait surtout le générateur et conservait les autres tuiles.
+  La refonte porte désormais aussi sur l'agenda, l'historique et les orientations (registres),
+  les statistiques (bandeaux et sections graphiques), les modèles
+  (bibliothèque), la configuration (listes et formulaire latéral),
+  les mandats et le choix des profils (répertoire en lignes).
+  Les neuf écrans et les fonctions métier restent disponibles.
+- Retour utilisateur suivant, approuvé : conserver les tuiles de l'agenda
+  avec moins de défilement sur téléphone. La timeline affiche une date à
+  la fois à 900 px ou moins, et la semaine en colonnes sur ordinateur.
+  Ajustement demandé ensuite : chaque journée est divisée en deux colonnes
+  côte à côte, Matin (<13:00) et Après-midi (>=13:00), même sur téléphone.
+  L'heure est dans la tuile ; noms et démarches peuvent tenir sur deux
+  lignes, avec le détail accessible au toucher. Les journées à une seule
+  demi-journée gardent l'autre colonne avec « Aucun RDV ».
+  Bandeau de dates sticky, Aujourd'hui, précédent/suivant ; les filtres et
+  actions de journée sont repliables. Les tuiles compactes ouvrent le RDV
+  ou réservent un créneau libre ; les créneaux réouverts restent signalés.
+  Recherche et rappels révèlent la date concernée, même après un focus.
+  La portée reste accessible lorsque l'agenda est vide. Le curseur et la
+  recherche sont en mémoire UI, sans nouveau format de stockage.
+- Demande suivante : retirer les créneaux libres et les journées vides.
+  Les colonnes affichent uniquement les RDV enregistrés, y compris les
+  statuts excusé/lapin/pas de retour pour garder leur suivi. Les journées
+  uniquement bloquées ne figurent pas dans la timeline. Le bandeau et les
+  flèches ne parcourent que les dates avec RDV (semaines occupées sur PC).
+  « + Réserver » ouvre les disponibilités du profil actif, date et lieu au
+  choix, même pour une journée vide ; la tuile apparaît après enregistrement.
+  Blocage/libération des indisponibilités sont accessibles dans cette fenêtre.
+  Les orphelins respectent la portée choisie et les archives masquées.
+  Le filtre « Libre » est retiré de la timeline et son ancien état réinitialisé.
+- Dernier ajustement demandé : masquer le bloc « Votre agenda » et son
+  sous-titre sur l'onglet Agenda, mobile et ordinateur. Le bandeau de dates
+  vient directement après la navigation ; l'onglet actif reste le repère.
+  Les en-têtes des autres écrans restent présents. Changement de CSS seul,
+  sans modification des parcours ni nouveau contrôle fonctionnel.
+- Fiche RDV : remplacer l'ancienne modale en lignes et ses boutons colorés.
+  Identité, téléphone et démarche en tête ; statut modifiable ; notes
+  affichées si présentes ; suivi des échanges repliable. Corps défilant
+  entre en-tête et actions ; sur téléphone, panneau depuis le bas.
+  Préparer SMS/mail et Modifier sont les actions principales ; Dupliquer
+  et Supprimer restent explicites en second rang. Fermeture Échap et
+  circulation Tab, libellés du dialogue et des champs ajoutés.
+  Les propositions multiples demandent de choisir le RDV avant ses actions.
+- Mode sombre : bordure des tuiles agenda éclaircie (`#6e8797`), fond
+  distinct (`#182a35`) et rail de statut de 4 px avec une palette plus claire.
+  Le survol et le focus renforcent aussi la bordure. Sélecteurs limités à
+  l'agenda sombre, aucun changement de données ni du thème clair.
+  Contrastes calculés sur les couleurs déclarées : bordure/fond 3,92:1,
+  rails/fond au moins 7,71:1. JavaScript strictement identique à la base ;
+  relecture de la cascade et de la portée CSS, sans contrôle navigateur.
+- Correctifs liés à cette fiche : la modification conserve le propriétaire
+  et actualise la date/l'heure du contexte. La duplication passe par les
+  disponibilités et reprend les bons IDs CMS/démarche, avec repli « Autre »
+  pour une démarche libre. Le passage au générateur retire bien la modale.
+  Le ciblage d'une ancienne fiche supprimée ne retombe pas sur un RDV
+  nouvellement créé portant les mêmes coordonnées. Format de stockage inchangé.
+- Correctif nécessaire au nouveau sélecteur : l'import ICS crée des
+  messages de type `rdv`, jusque-là ignorés par `getSlots`. Après les types
+  prioritaires existants, le moteur retient désormais le premier autre RDV
+  actif : le RDV importé reste visible et son horaire n'est plus proposé libre.
+  Aucun changement de format d'historique. Les autres fonctions protégées
+  restent inchangées ; `getSlots` est la seule exception intentionnelle.
+- Correctifs des actions agenda : les copies taguées pour l'affichage ne
+  sont pas les objets persistés. La libération individuelle/par plage
+  retrouve l'indisponibilité dans l'historique actif ; la fermeture d'une
+  journée compare commune/date. Les RDV et autres profils sont préservés.
+- Correctif lié : `updatePreviewOnly()` cible explicitement le corps et
+  l'objet du message ; la saisie actualise l'aperçu sans écraser les Notes
+  et sans reconstruire le formulaire. L'aide clavier indique les raccourcis
+  existants (Ctrl+Entrée : copier ; Ctrl+Maj+G : générer).
+- Contrôles V2 : syntaxe JS et `git diff --check` ; parcours Node avec
+  DOM, stockage et presse-papiers simulés couvrant les neuf écrans,
+  les sous-onglets, les états vides/remplis et les actions principales.
+  Le harnais génération continue de vérifier Notes, focus et copie ;
+  50 contrôles passent et 34 fonctions métier protégées sont identiques
+  à la version d'origine. Le filtre de recherche masque aussi les titres
+  des semaines sans journée visible. La démo se charge sans appel réseau.
+- Contrôles timeline : 16 scénarios ciblés passent en DOM simulé, dont
+  navigation jour/semaine, focus et recherche, agenda vide, profils,
+  saut à la date exacte, hauteur du bandeau, changement 390/1280 px,
+  blocage/libération unitaire et par plage, fermeture sans perte de RDV.
+  Les 50 contrôles globaux passent avec l'attendu de période adapté à la
+  semaine sélectionnée ; les 34 fonctions métier restent identiques.
+  Après séparation Matin/Après-midi, 21 contrôles ciblés passent (les 16
+  précédents et 5 pour la répartition, la frontière 13:00 et les actions
+  dans la colonne après-midi). Le rendu CSS demeure non vérifié.
+- Contrôles de la timeline RDV : 26 scénarios passent en DOM/stockage
+  simulés, dont réservation complète jusqu'à `handleGenerate`, première
+  journée, suppression du dernier RDV, navigation sans dates vides,
+  profils, archives, orphelins, import ICS réel et priorités des créneaux.
+  Les 33 autres fonctions métier protégées sont identiques à la base.
+- Contrôles de la fiche : 21 scénarios passent en DOM simulé, couvrant
+  statut et relance, excuse, édition et conflits, profils, suppression,
+  génération, duplication complète, propositions multiples et clavier.
+  Les 26 contrôles agenda ont aussi passé après la refonte principale ;
+  les correctifs de fermeture et ciblage final sont vérifiés dans les 21.
+- Limite : Chromium est bloqué par les permissions de l'environnement ;
+  aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
+  Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
+  instruction. La livraison contraste sombre fournit un nouveau fichier HTML distinct
+  des précédents et une démo à données fictives uniquement en mémoire, pour voir
+  les tuiles avec des RDV, sans modifier le stockage ni les
+  formats de l'application réelle. Régénérer avec
+  `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
+  ouvrir `demo-agenda-contraste-sombre.html`, choisir Michel, puis Agenda
+  et activer le thème sombre avec la lune.
+  `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
+- Livraison : PR de `sandbox/ui` vers `main`, puis contrôle du workflow
+  Pages pour le commit fusionné avant d'annoncer la mise en ligne. Les
+  nouvelles évolutions restent préparées sur `sandbox/ui`. Pas de bloc
+  AGORA pour cette refonte réversible, sans changement de stockage ni
+  d'architecture. Le workflow Pages se déclenche sur `main`.
 
 ## Décisions à trancher
 
