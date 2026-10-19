@@ -3444,6 +3444,12 @@ function renderAgenda(){
   if(S.agendaTimelineOwner!==S.activeProfile){
     S.agendaTimelineOwner=S.activeProfile;S.agendaTimelineDate='';S.agendaTimelineSearch='';
   }
+  /* un onglet resté ouvert plusieurs jours garde S.agendaTimelineDate figé sur la dernière date
+     consultée ; si le jour a changé depuis le dernier rendu, on revient sur « aujourd'hui »
+     plutôt que de laisser l'agenda ouvert sur une vieille date sans que rien ne le signale */
+  var _agTodayNow=toLocalDateStr(new Date());
+  if(S._agendaLastKnownDay&&S._agendaLastKnownDay!==_agTodayNow){S.agendaTimelineDate='';S.agendaFocusDay=null;}
+  S._agendaLastKnownDay=_agTodayNow;
   var requestedTimelineDate=S._agScrollTarget||'';
   S._agScrollTarget=null;
   if(requestedTimelineDate)S.agendaFocusDay=null;
