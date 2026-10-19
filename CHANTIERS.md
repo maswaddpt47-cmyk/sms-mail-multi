@@ -146,7 +146,7 @@ ne doit pas être défait remonte dans la dernière section.
   si le jour a changé depuis le dernier rendu. Vérifié en navigateur réel
   avec horloge simulée (+2 jours, sans recharger) : la date revient bien sur
   aujourd'hui ; non-régression confirmée (même jour → date consultée
-  inchangée).
+  inchangée). **Validé en conditions réelles par l'utilisateur le 20/10/2026.**
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
   aucune validation du rendu n'était acquise à ce moment-là.
