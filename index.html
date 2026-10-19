@@ -670,7 +670,7 @@ function fillTemplate(tpl,v){
       ? new Date(v.dateDemande).toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
       : "[date de proposition]");
   for(var i=0;i<S.customVars.length;i++){var cv=S.customVars[i];if(cv.nom)r=r.replace(new RegExp("\\{"+cv.nom+"\\}","g"),cv.valeur);}
-  return r.replace(/Bonjour  /g,"Bonjour ");
+  return r.replace(/Bonjour  /g,"Bonjour ").replace(/\n{3,}/g,"\n\n");
 }
 
 function buildCalLink(){
