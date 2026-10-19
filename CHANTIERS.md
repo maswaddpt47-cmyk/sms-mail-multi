@@ -134,6 +134,19 @@ ne doit pas être défait remonte dans la dernière section.
   réel, clair et sombre : le dégradé est visible, aucune régression de mise
   en page. Statique (ne disparaît pas en fin de défilement, pas de JS) —
   suffisant pour l'indice recherché.
+- **Agenda figé sur une vieille date dans un onglet resté ouvert plusieurs
+  jours** (20/10/2026, cas réel signalé par l'utilisateur : l'onglet affichait
+  « Mercredi 21 Octobre » puis une archive du 3 août au lieu du jour réel).
+  `S.agendaTimelineDate` n'est jamais réinitialisé après une navigation ‹ ›
+  tant que la page n'est pas rechargée — un onglet qui reste ouvert d'un jour
+  sur l'autre garde la dernière date consultée au lieu de revenir sur
+  « aujourd'hui ». Corrigé dans `renderAgenda()` : un suivi du dernier jour
+  connu (`S._agendaLastKnownDay`, en mémoire, pas persisté) détecte le
+  changement de jour et réinitialise `agendaTimelineDate`/`agendaFocusDay`
+  si le jour a changé depuis le dernier rendu. Vérifié en navigateur réel
+  avec horloge simulée (+2 jours, sans recharger) : la date revient bien sur
+  aujourd'hui ; non-régression confirmée (même jour → date consultée
+  inchangée).
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
   aucune validation du rendu n'était acquise à ce moment-là.
