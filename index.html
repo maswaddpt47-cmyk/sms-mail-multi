@@ -621,14 +621,16 @@
 #pane-agenda .ui-ag-day-menu>summary:after{content:' ▾';}
 #pane-agenda .ui-ag-day-menu .ui-ag-day-actions{position:absolute;right:0;top:calc(100% + 5px);z-index:35;width:210px;padding:8px;display:flex;flex-direction:column;align-items:stretch;gap:5px;border:1px solid var(--c-border);border-radius:8px;box-shadow:0 8px 30px #0002;background:var(--c-card);margin:0;}
 #pane-agenda .ui-ag-day-menu .ui-ag-day-actions>button{width:100%;text-align:left;min-height:32px;}
-#pane-agenda .ui-ag-board .ui-ag-slots{padding:8px 10px 10px 8px;gap:4px;position:relative;}
-#pane-agenda .ui-ag-board .ui-ag-slots:before{content:'';position:absolute;left:48px;top:12px;bottom:15px;border-left:1px solid var(--c-border);pointer-events:none;}
-#pane-agenda .ui-ag-board .ui-ag-slot{display:grid!important;grid-template-columns:38px minmax(0,1fr);gap:10px;padding:0 0 2px!important;min-height:48px!important;border:0!important;align-items:start!important;position:relative;border-radius:8px!important;}
-#pane-agenda .ui-ag-board .ui-ag-time{font-size:10px!important;text-align:right;padding-top:10px;color:var(--c-subtle)!important;}
-#pane-agenda .ui-ag-board .ui-ag-slot-content{gap:3px;padding:8px 10px;border:1px solid var(--c-border);border-left:3px solid var(--ui-ag-status-color,var(--ui-accent));border-radius:8px;background:var(--c-card);width:100%;min-width:0;}
-#pane-agenda .ui-ag-board .ui-ag-slot-content:before{content:'';position:absolute;left:37px;top:16px;width:7px;border-top:1px solid var(--c-border);}
-#pane-agenda .ui-ag-board .ui-ag-name{font-size:11px!important;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-#pane-agenda .ui-ag-board .ui-ag-demarche{font-size:9px;line-height:1.4;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#pane-agenda .ui-ag-board .ui-ag-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px 10px 10px;gap:10px;align-items:start;}
+#pane-agenda .ui-ag-halfday{min-width:0;}
+#pane-agenda .ui-ag-halfday-title{font-size:11px;font-weight:800;color:var(--c-dim);margin:0 0 8px;padding:0 0 7px;border-bottom:1px solid var(--c-border);}
+#pane-agenda .ui-ag-halfday-slots{display:flex;flex-direction:column;gap:6px;min-width:0;}
+#pane-agenda .ui-ag-halfday-empty{font-size:10px;line-height:1.5;color:var(--c-subtle);margin:4px 0;}
+#pane-agenda .ui-ag-board .ui-ag-slot{display:flex!important;flex-direction:column;gap:5px;padding:8px!important;min-height:48px!important;border:1px solid var(--c-border)!important;border-left:3px solid var(--ui-ag-status-color,var(--ui-accent))!important;align-items:stretch!important;position:relative;border-radius:8px!important;background:var(--c-card)!important;min-width:0;}
+#pane-agenda .ui-ag-board .ui-ag-time{font-size:10px!important;text-align:left;padding:0;color:var(--c-subtle)!important;}
+#pane-agenda .ui-ag-board .ui-ag-slot-content{gap:3px;padding:0;border:0;background:transparent;width:100%;min-width:0;}
+#pane-agenda .ui-ag-board .ui-ag-name{font-size:11px!important;line-height:1.35;white-space:normal!important;overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:100%;text-align:left!important;}
+#pane-agenda .ui-ag-board .ui-ag-demarche{font-size:10px!important;line-height:1.4;max-width:100%;white-space:normal;overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 #pane-agenda .ui-ag-board .ui-ag-meta{display:none;}
 #pane-agenda .ui-ag-board .ui-ag-slot-actions{display:flex;flex-direction:row;justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;max-width:none;font-size:9px;}
 #pane-agenda .ui-ag-board .ui-ag-status{font-size:8px;line-height:1.4;text-align:left;max-width:100%;}
@@ -636,15 +638,12 @@
 #pane-agenda .ui-ag-board .ui-ag-reopened{font-size:8px;font-weight:700;color:var(--ui-accent);}
 #pane-agenda .ui-ag-board .ui-ag-inline-action{width:auto!important;font-size:8px!important;padding:2px 5px!important;margin:0!important;}
 #pane-agenda .ui-ag-board .ui-ag-replaced{font-size:8px!important;text-align:left!important;}
-#pane-agenda .ui-ag-board .ui-ag-slot-free{grid-template-columns:38px minmax(0,1fr) auto;align-items:center!important;min-height:30px!important;gap:10px;}
-#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-time{padding-top:0;}
-#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-slot-content{padding:4px 8px;background:var(--c-subtle-bg);border:1px dashed var(--c-border-in);border-radius:6px;}
-#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-slot-content:before{top:15px;}
-#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-slot-actions{font-size:9px;white-space:nowrap;}
-#pane-agenda .ui-ag-board .ui-ag-free-wrap{grid-template-columns:minmax(0,1fr) 27px;align-items:center;gap:3px;border:0;min-height:32px;}
-#pane-agenda .ui-ag-board .ui-ag-block{height:29px;min-height:29px;width:27px;font-size:9px!important;padding:0!important;}
-#pane-agenda .ui-ag-board .ui-ag-slot-blocked{background:transparent!important;min-height:32px!important;}
-#pane-agenda .ui-ag-board .ui-ag-slot-blocked .ui-ag-slot-content{background:var(--c-subtle-bg);padding-top:5px;padding-bottom:5px;}
+#pane-agenda .ui-ag-board .ui-ag-slot-free{display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:center!important;min-height:48px!important;gap:4px 6px;border:1px dashed var(--c-border-in)!important;background:var(--c-subtle-bg)!important;}
+#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-name{font-size:10px!important;text-align:right!important;}
+#pane-agenda .ui-ag-board .ui-ag-slot-free .ui-ag-slot-actions{grid-column:1 / -1;font-size:9px;white-space:normal;}
+#pane-agenda .ui-ag-board .ui-ag-free-wrap{grid-template-columns:minmax(0,1fr) 27px;align-items:stretch;gap:3px;border:0;min-height:48px;}
+#pane-agenda .ui-ag-board .ui-ag-block{height:auto;min-height:44px;min-width:0;width:27px;font-size:9px!important;padding:0!important;}
+#pane-agenda .ui-ag-board .ui-ag-slot-blocked{background:var(--c-subtle-bg)!important;}
 #pane-agenda .ui-ag-empty{padding:26px 18px;text-align:center;border:1px dashed var(--c-border-in);border-radius:9px;background:var(--c-card);}
 #pane-agenda .ui-ag-empty h3{font-size:14px;margin:0 0 8px;}
 #pane-agenda .ui-ag-empty p{font-size:11px;color:var(--c-subtle);margin:0 0 17px;}
@@ -3928,9 +3927,17 @@ function renderAgenda(){
         card.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);padding:8px 0;"},"Aucun créneau — journée sans permanence associée."));
       }
     }
-    /* grille des créneaux — colonnes fixes pour éviter les trous */
+    /* Deux colonnes par journée, avec le même seuil que les actions de blocage. */
     var sg=el('div',{class:'ui-ag-slots','aria-label':'Créneaux de '+dateLabel});
+    var halfdayLists={};
+    [['morning','Matin'],['afternoon','Après-midi']].forEach(function(period){
+      var halfday=el('section',{class:'ui-ag-halfday','data-ag-halfday':period[0],'aria-label':period[1]+' — '+dateLabel});
+      halfday.appendChild(el('h4',{class:'ui-ag-halfday-title'},period[1]));
+      halfdayLists[period[0]]=el('div',{class:'ui-ag-halfday-slots'});
+      halfday.appendChild(halfdayLists[period[0]]);sg.appendChild(halfday);
+    });
     slots.forEach(function(slot){
+      var slotList=halfdayLists[slot.heure<'13:00'?'morning':'afternoon'];
       var who=slot.taken?[slot.taken.nom,slot.taken.prenom].filter(Boolean).join(' '):'';
       var isPropo=slot.taken&&slot.taken.msgType==='proposition';
       var _st=slot.taken&&slot.taken.statut;
@@ -3955,9 +3962,9 @@ function renderAgenda(){
             renderAgenda();showToast('✓ Créneau marqué indisponible');
           });})(slot,day);
           freeWrap.appendChild(blockBtn);
-          sg.appendChild(freeWrap);
+          slotList.appendChild(freeWrap);
         } else {
-          sg.appendChild(freePill);
+          slotList.appendChild(freePill);
         }
         return;
       }
@@ -4118,7 +4125,10 @@ function renderAgenda(){
           },{passive:true});
         }
       })(slot,day);
-      sg.appendChild(pill);
+      slotList.appendChild(pill);
+    });
+    Object.keys(halfdayLists).forEach(function(period){
+      if(!halfdayLists[period].children.length)halfdayLists[period].appendChild(el('p',{class:'ui-ag-halfday-empty'},'Aucun créneau'));
     });
     card.appendChild(sg);
     board.appendChild(card);

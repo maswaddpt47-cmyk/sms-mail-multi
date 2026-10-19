@@ -27,6 +27,11 @@ ne doit pas être défait remonte dans la dernière section.
 - Retour utilisateur suivant, approuvé : conserver les tuiles de l'agenda
   avec moins de défilement sur téléphone. La timeline affiche une date à
   la fois à 900 px ou moins, et la semaine en colonnes sur ordinateur.
+  Ajustement demandé ensuite : chaque journée est divisée en deux colonnes
+  côte à côte, Matin (<13:00) et Après-midi (>=13:00), même sur téléphone.
+  L'heure est dans la tuile ; noms et démarches peuvent tenir sur deux
+  lignes, avec le détail accessible au toucher. Les journées à une seule
+  demi-journée gardent l'autre colonne avec « Aucun créneau ».
   Bandeau de dates sticky, Aujourd'hui, précédent/suivant ; les filtres et
   actions de journée sont repliables. Les tuiles compactes ouvrent le RDV
   ou réservent un créneau libre ; les créneaux réouverts restent signalés.
@@ -54,15 +59,18 @@ ne doit pas être défait remonte dans la dernière section.
   blocage/libération unitaire et par plage, fermeture sans perte de RDV.
   Les 50 contrôles globaux passent avec l'attendu de période adapté à la
   semaine sélectionnée ; les 34 fonctions métier restent identiques.
+  Après séparation Matin/Après-midi, 21 contrôles ciblés passent (les 16
+  précédents et 5 pour la répartition, la frontière 13:00 et les actions
+  dans la colonne après-midi). Le rendu CSS demeure non vérifié.
 - Limite : Chromium est bloqué par les permissions de l'environnement ;
   aucune validation du rendu ou mesure à 390 px / 1280×720 n'est acquise.
   Ne pas relancer de demande d'autorisation pour ce contrôle sans nouvelle
-  instruction. La livraison timeline fournit un nouveau fichier HTML distinct
-  de V2 et une démo à données fictives uniquement en mémoire, pour voir
+  instruction. La livraison matin/après-midi fournit un nouveau fichier HTML distinct
+  de la timeline précédente et une démo à données fictives uniquement en mémoire, pour voir
   les tuiles avec des RDV, sans modifier le stockage ni les
   formats de l'application réelle. Régénérer avec
   `python scripts/build-ui-preview.py --output-dir /tmp/sms-mail-ui-preview` ;
-  ouvrir `demo-agenda-timeline.html`, choisir Michel, puis Agenda ou
+  ouvrir `demo-agenda-matin-apres-midi.html`, choisir Michel, puis Agenda ou
   Historique. `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
 - Prochaine étape : retour de l'utilisateur sur la proposition, puis
   ajustements sur `sandbox/ui`. Pas de bloc AGORA pour cette refonte
