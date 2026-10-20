@@ -164,9 +164,16 @@ ne doit pas être défait remonte dans la dernière section.
   par un `renderTemplates()` complet à chaque frappe — même pattern que
   `nomIn`/« Autre heure » (points à ne pas défaire), pour ne pas perdre le
   focus en tapant. Message « Aucun modèle trouvé » si rien ne correspond ;
-  la recherche est conservée en changeant de sous-onglet. Vérifié en
-  navigateur réel : focus conservé pendant la frappe, 16→3 résultats sur
-  « lapin », message vide sur requête absurde, persistance au changement
+  la recherche est conservée en changeant de sous-onglet. **Correctif
+  d'apparence le 20/10/2026** (signalé par l'utilisateur, le champ sortait
+  en style brut du navigateur) : `.ui-tpl-search` n'était pas enfant de
+  `.ui-tpl-field`, seul sélecteur qui donne au `.gx-in` sa largeur pleine et
+  son style de cartouche (`.ui-tpl-field>.gx-in`) — ajouté un cadre
+  `.ui-tpl-search` au même format que `.ui-tpl-variables` (bordure, radius
+  11px, fond `var(--c-card)`) et une règle dédiée pour l'input, pleine
+  largeur. Vérifié en navigateur réel : focus conservé pendant la frappe,
+  16→3 résultats sur « lapin », message vide sur requête absurde, persistance
+  au changement
   d'onglet.
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
