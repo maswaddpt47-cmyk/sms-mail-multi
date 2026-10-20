@@ -156,6 +156,18 @@ ne doit pas être défait remonte dans la dernière section.
   confirmés passés non marqués Réalisé) clignotent désormais aussi. Le badge
   vert « RDV du jour » (`agTodayN`) n'est pas une alerte, non concerné.
   Vérifié en navigateur réel : `animation-name` du badge dépassement = `blink`.
+- **Recherche dans l'onglet Modèles** (20/10/2026, demande utilisateur). Champ
+  de recherche au-dessus des sous-onglets « Modèles par défaut »/« Mes
+  modèles », filtrant par nom, type et contenu du texte (normalisé,
+  insensible aux accents/casse, `tplNorm`). Filtrage par affichage/masquage
+  des cartes déjà construites (`data-tpl-search`, `tplApplySearch()`), **pas**
+  par un `renderTemplates()` complet à chaque frappe — même pattern que
+  `nomIn`/« Autre heure » (points à ne pas défaire), pour ne pas perdre le
+  focus en tapant. Message « Aucun modèle trouvé » si rien ne correspond ;
+  la recherche est conservée en changeant de sous-onglet. Vérifié en
+  navigateur réel : focus conservé pendant la frappe, 16→3 résultats sur
+  « lapin », message vide sur requête absurde, persistance au changement
+  d'onglet.
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
   aucune validation du rendu n'était acquise à ce moment-là.
