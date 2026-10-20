@@ -110,17 +110,39 @@
   // Aucun profil actif n’est enregistré : le choix du profil reste le premier écran.
   window.__SMS_MAIL_DEMO__={fictive:true,memoryOnly:true,resetOnReload:true,profiles:profileIds.slice(),today:today,weekStart:monday};
 
+  function previewOrientationImport(){
+    if(!window.S||typeof window.activateProfile!=='function'||typeof window.renderModal!=='function')return;
+    var app=document.getElementById('app-root');
+    if(!window.S.activeProfile||(app&&app.style.display==='none'))window.activateProfile(window.S.activeProfile||'michel');
+    var examples=[
+      {prenom:'Camille',code:'01',centre:0,motif:'Prendre en main une messagerie — exemple fictif'},
+      {prenom:'Noa',code:'02',centre:1,motif:'Effectuer une démarche en ligne et organiser les documents numériques — exemple fictif'},
+      {prenom:'Sacha',code:'03',centre:0,motif:'Utiliser un espace personnel — exemple fictif'},
+      {prenom:'Eden',code:'04',centre:1,motif:'Comprendre les outils de visioconférence — exemple fictif'}
+    ];
+    window.S.orientImportRows=examples.map(function(example){return {
+      id:'demo-import-orientation-'+example.code,nom:'FICTIF IMPORT '+example.code,prenom:example.prenom,
+      telephone:'',communeBenef:example.centre?'Commune fictive Rives':'Commune fictive Centre',
+      structure:cms[example.centre].nom,motif:example.motif,orienteur:'Référent de démonstration fictif',
+      date:today,etat:'Demande fictive à attribuer',include:false,targetProfile:''
+    };});
+    window.S.orientImportCmsFilter='';window.S.orientImportBulkTarget='';window.S.orientImportToolsOpen=undefined;
+    window.S.activeTab='orientations';window.renderTabs();window.showActivePane();window.renderOrientations();
+    window.S.modal='orient-import';window.renderModal();
+  }
+
   function mountBanner(){
     if(document.getElementById('sms-mail-demo-banner'))return;
     var style=document.createElement('style');
     style.id='sms-mail-demo-style';
-    style.textContent='body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}#profile-root,#app-root{grid-column:1;grid-row:2;min-height:0;}#sms-mail-demo-banner{grid-column:1;grid-row:1;padding:9px 18px;background:#fff5d8;color:#684708;border-bottom:1px solid #e7d49b;font:500 11px/1.6 system-ui,sans-serif;text-align:center;overflow-wrap:anywhere;}#sms-mail-demo-banner strong{font-weight:800;}#sms-mail-demo-banner span{margin-left:8px;}@media(max-width:520px){#sms-mail-demo-banner{font-size:10px;padding:8px 12px;}#sms-mail-demo-banner span{display:block;margin-left:0;}}@media print{body{display:block;height:auto;}#sms-mail-demo-banner{display:none!important;}#app-root{height:auto!important;}}';
+    style.textContent='body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}#profile-root,#app-root{grid-column:1;grid-row:2;min-height:0;}#sms-mail-demo-banner{grid-column:1;grid-row:1;padding:9px 18px;background:#fff5d8;color:#684708;border-bottom:1px solid #e7d49b;font:500 11px/1.6 system-ui,sans-serif;text-align:center;overflow-wrap:anywhere;}#sms-mail-demo-banner strong{font-weight:800;}#sms-mail-demo-banner span{margin-left:8px;}#sms-mail-demo-import-preview{display:inline-flex;align-items:center;justify-content:center;min-height:36px;margin:6px 0 0 10px;padding:7px 12px;border:1px solid #967315;border-radius:7px;background:#fffaf0;color:#684708;font:700 11px/1.4 system-ui,sans-serif;cursor:pointer;}#sms-mail-demo-import-preview:focus-visible{outline:2px solid #684708;outline-offset:3px;}@media(max-width:520px){#sms-mail-demo-banner{font-size:10px;padding:8px 12px;}#sms-mail-demo-banner span{display:block;margin-left:0;}#sms-mail-demo-import-preview{min-height:44px;width:100%;max-width:240px;margin:7px 0 0;}}@media print{body{display:block;height:auto;}#sms-mail-demo-banner{display:none!important;}#app-root{height:auto!important;}}';
     document.head.appendChild(style);
     var banner=document.createElement('aside');
     banner.id='sms-mail-demo-banner';banner.className='no-print';banner.setAttribute('aria-label','Mode démonstration');
     var title=document.createElement('strong');title.textContent='DÉMONSTRATION — DONNÉES FICTIVES';
     var text=document.createElement('span');text.textContent='Modifications en mémoire uniquement, réinitialisées au rechargement. Téléphones et connexions non renseignés.';
     banner.appendChild(title);banner.appendChild(text);
+    var preview=document.createElement('button');preview.id='sms-mail-demo-import-preview';preview.type='button';preview.textContent='Aperçu de l’import';preview.addEventListener('click',previewOrientationImport);banner.appendChild(preview);
     document.body.insertBefore(banner,document.body.firstChild);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountBanner,{once:true});

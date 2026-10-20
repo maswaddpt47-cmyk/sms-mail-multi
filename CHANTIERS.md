@@ -1,11 +1,39 @@
 # CHANTIERS — sms-mail-multi
 
-État au **19/10/2026**, base de la sandbox `51e75b8` (`main`).
+État au **20/10/2026**, base actuelle de la sandbox `21f230e` (`main`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Pop-up d’import des orientations — sandbox à faire essayer
+
+- Demande du 20/10 : récupérer les dernières modifications et appliquer la
+  charte UI au dialogue d’import Excel des orientations. `main` actualisé
+  à `21f230e` avant intervention ; ses changements d’agenda et de modèles
+  sont conservés. Cette nouvelle livraison reste sur **`sandbox/ui`** ;
+  le feu vert de la refonte précédente ne couvre pas sa fusion.
+- Dialogue turquoise, fiches lisibles même non sélectionnées, compteurs de
+  sélection/attribution, filtres et attribution groupée repliables (fermés
+  initialement sur téléphone). Liste défilante entre en-tête et actions ;
+  panneau depuis le bas sur mobile. Bordures renforcées en mode sombre.
+- Le CMS filtre seulement l’affichage ; l’attribution groupée ne concerne
+  que les lignes affichées. L’import confirme toutes les lignes cochées,
+  même masquées par un filtre. Choisir un conseiller coche la ligne.
+  Aucun changement du parseur, du stockage par profil, de la déduplication
+  ni de `confirmOrientImport()`. Aucun enregistrement avant confirmation.
+- Fermeture Échap/croix/fond : conserve le brouillon, comme auparavant.
+  Annuler : abandonne le brouillon. Focus clavier et position de défilement
+  conservés lors d’un choix ; résumé accessible quand les outils sont fermés.
+- Démo autonome : `demo-import-orientations.html`, bouton **Aperçu de
+  l’import** dans le bandeau. Brouillons entièrement fictifs, stockage en
+  mémoire uniquement ; ce bouton est absent de l’application réelle.
+  Reconstruction : `python scripts/build-ui-preview.py --output-dir <dossier>`.
+- Vérifications ciblées : syntaxe JavaScript et parcours dans un DOM simulé.
+  Le navigateur local n’a pas pu démarrer ; aucun rendu ni débordement
+  mesuré. Essai visuel clair/sombre sur ordinateur et téléphone restant
+  nécessaire avant validation utilisateur.
 
 ## Refonte UI validée
 

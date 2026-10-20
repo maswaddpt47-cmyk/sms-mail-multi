@@ -24,30 +24,27 @@ def build(output):
     for name in ['icon-192.png', 'apple-touch-icon.png']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
         html = html.replace('href="' + name + '"', 'href="data:image/png;base64,' + data + '"')
-    standalone = output / 'proposition-agenda-contraste-sombre.html'
+    standalone = output / 'proposition-import-orientations.html'
     standalone.write_text(html, encoding='utf-8')
     seed = (root / 'scripts/ui-demo-data.js').read_text(encoding='utf-8')
     if '</script' in seed.lower():
         raise ValueError('La démonstration contient une fermeture de script non échappée.')
-    demo = output / 'demo-agenda-contraste-sombre.html'
+    demo = output / 'demo-import-orientations.html'
     demo_html = html.replace('<script>', '<script>\n' + seed + '\n</script>\n<script>', 1)
     demo.write_text(demo_html, encoding='utf-8')
     readme = (
-        'SMS & MAIL — agenda, contraste sombre\n\n'
-        'Pour explorer : ouvrir demo-agenda-contraste-sombre.html dans votre navigateur, choisir Michel, puis Agenda et activer la lune.\n'
-        'Bordures des tuiles plus claires, fond distinct et repères de statut adaptés au mode sombre.\n'
-        'Fiche compacte : identité, téléphone et démarche, statut modifiable, suivi repliable et actions en bas.\n'
-        'Sur téléphone la fiche s’ouvre depuis le bas ; son contenu défile entre l’en-tête et les actions.\n'
-        'L’agenda commence directement par les dates, sans en-tête Votre agenda ni sous-titre.\n'
-        'La timeline ne contient que les journées avec RDV, en deux colonnes Matin / Après-midi.\n'
-        'Les disponibilités et les créneaux bloqués sont accessibles depuis + Réserver.\n'
-        'Une nouvelle tuile apparaît après enregistrement du rendez-vous dans Messages.\n'
+        'SMS & MAIL — import des orientations\n\n'
+        'Pour explorer : ouvrir demo-import-orientations.html puis cliquer sur « Aperçu de l’import » dans le bandeau de démonstration.\n'
+        'Sans profil choisi, ce bouton ouvre automatiquement Michel et présente quatre orientations entièrement fictives.\n'
+        'Les quatre lignes commencent décochées et sans conseiller attribué ; rien n’est importé à l’ouverture.\n'
+        'Essayez le filtre par structure, l’attribution groupée et le choix individuel du conseiller avant de confirmer.\n'
+        'Pour comparer les thèmes clair et sombre : fermer le pop-up, utiliser le bouton lune/soleil de l’application, puis rouvrir « Aperçu de l’import ».\n'
         'La démo présente exclusivement des données fictives, en mémoire ; recharger réinitialise tout.\n'
         'Pour essayer sans données de démonstration : ouvrir index.html.\n'
         'Branche de travail : sandbox/ui. Aucun changement sur main sans feu vert utilisateur.\n'
         'Les parcours sont vérifiés avec un DOM simulé ; le rendu navigateur reste à contrôler.\n'
     )
-    archive = output / 'sms-mail-agenda-contraste-sombre.zip'
+    archive = output / 'sms-mail-import-orientations.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
