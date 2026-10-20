@@ -1,19 +1,37 @@
 # CHANTIERS — sms-mail-multi
 
-État au **20/10/2026**, base actuelle de la sandbox `21f230e` (`main`).
+État au **20/10/2026**, base `282b113` (pop-up d’import), `main` actualisé à `21f230e` avant intervention.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Pop-up d’import des orientations — sandbox à faire essayer
+## Publication et bloc Votre message
+
+- Consigne explicite du 20/10 : **push systématique sur `main` dorénavant,
+  sans nouvelle demande de feu vert**, inscrite dans `AGENTS.md` et
+  `CLAUDE.md`. Remplace les restrictions de sandbox du 19/10. Cette livraison
+  comprend le pop-up d’import et le bloc Votre message repliable.
+- Le bloc Votre message commence replié. Son en-tête cliquable garde le
+  canal, le type et le modèle choisis visibles ; Modifier/Réduire et un
+  chevron signalent l’action. Contrôle natif `details/summary`, utilisable
+  au clavier. Les champs du rendez-vous et l’aperçu restent accessibles.
+- Le choix ouvert/fermé reste en mémoire UI lors des rendus du formulaire,
+  sans nouvelle clé de stockage. Le repli ne régénère pas le message et
+  ne supprime aucune saisie. Les options canal/type/modèle restent identiques.
+- Démo : `demo-message-repliable.html`, choisir Michel puis Messages et
+  cliquer sur Votre message. L’aperçu d’import fictif reste accessible.
+- Vérification de syntaxe et revue ciblée ; rendu navigateur non vérifié
+  (échec de lancement Chromium pendant cette session).
+
+## Pop-up d’import des orientations
 
 - Demande du 20/10 : récupérer les dernières modifications et appliquer la
   charte UI au dialogue d’import Excel des orientations. `main` actualisé
   à `21f230e` avant intervention ; ses changements d’agenda et de modèles
-  sont conservés. Cette nouvelle livraison reste sur **`sandbox/ui`** ;
-  le feu vert de la refonte précédente ne couvre pas sa fusion.
+  sont conservés. Préparé sur `sandbox/ui` (`282b113`), puis publication sur
+  `main` autorisée par la consigne du 20/10 ci-dessus.
 - Dialogue turquoise, fiches lisibles même non sélectionnées, compteurs de
   sélection/attribution, filtres et attribution groupée repliables (fermés
   initialement sur téléphone). Liste défilante entre en-tête et actions ;
@@ -26,7 +44,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Fermeture Échap/croix/fond : conserve le brouillon, comme auparavant.
   Annuler : abandonne le brouillon. Focus clavier et position de défilement
   conservés lors d’un choix ; résumé accessible quand les outils sont fermés.
-- Démo autonome : `demo-import-orientations.html`, bouton **Aperçu de
+- Démo autonome actuelle : `demo-message-repliable.html`, bouton **Aperçu de
   l’import** dans le bandeau. Brouillons entièrement fictifs, stockage en
   mémoire uniquement ; ce bouton est absent de l’application réelle.
   Reconstruction : `python scripts/build-ui-preview.py --output-dir <dossier>`.
@@ -39,8 +57,8 @@ ne doit pas être défait remonte dans la dernière section.
 
 - Branche de travail : **`sandbox/ui`**, créée depuis `main` au commit
   `51e75b88bb3e05a6413bad217941a57ee86d8f04` le 19/10/2026.
-- Consigne utilisateur : **aucun push ni merge vers `main` avant son feu
-  vert explicite**, y compris la documentation et les blocs AGORA.
+- Ancienne consigne du 19/10 : aucun push ni merge vers `main` avant feu
+  vert ; remplacée le 20/10 par le push systématique sur `main`.
 - **Feu vert reçu le 19/10/2026** après essai de la dernière démo et du
   contraste sombre : « Ça fonctionne, tu peux fusionner dans main ».
   La fusion de cette livraison dans `main` et le déploiement Pages
@@ -48,7 +66,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Copie locale : `/workspace/sms-mail-multi-sandbox`, récupérée via le
   connecteur GitHub car le proxy du terminal était inaccessible. Les objets
   Git et les fichiers de cette base ont été vérifiés ; historique superficiel.
-  Le push par défaut cible `sandbox/ui` ; un hook local refuse `main`.
+  La cible de publication est désormais `main` (consigne du 20/10).
 - Proposition V2 : le retour utilisateur du 19/10/2026 constate que V1
   changeait surtout le générateur et conservait les autres tuiles.
   La refonte porte désormais aussi sur l'agenda, l'historique et les orientations (registres),
@@ -227,11 +245,11 @@ ne doit pas être défait remonte dans la dernière section.
   ouvrir `demo-agenda-contraste-sombre.html`, choisir Michel, puis Agenda
   et activer le thème sombre avec la lune.
   `scripts/ui-demo-data.js` n'est chargé que dans cette copie.
-- Livraison : PR de `sandbox/ui` vers `main`, puis contrôle du workflow
-  Pages pour le commit fusionné avant d'annoncer la mise en ligne. Les
-  nouvelles évolutions restent préparées sur `sandbox/ui`. Pas de bloc
-  AGORA pour cette refonte réversible, sans changement de stockage ni
-  d'architecture. Le workflow Pages se déclenche sur `main`.
+- Livraison actuelle : push sur `main` conformément à la consigne du
+  20/10, puis contrôle du workflow Pages pour le commit publié avant
+  d'annoncer la mise en ligne. Pas de bloc AGORA pour cette refonte
+  réversible, sans changement de stockage ni d'architecture. Le workflow
+  Pages se déclenche sur `main`.
 
 ## Décisions à trancher
 

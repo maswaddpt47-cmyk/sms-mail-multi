@@ -212,6 +212,21 @@
   .ui-step{display:grid;place-items:center;width:29px;height:29px;border-radius:8px;background:var(--ui-accent-soft);color:var(--ui-accent);font-size:11px;font-weight:800;flex-shrink:0;}
   .ui-section-head h2{font-size:14px;font-weight:800;margin:0;letter-spacing:-.15px;}
   .ui-section-head p{font-size:10px;color:var(--c-muted);margin:2px 0 0;}
+  #pane-generate .ui-message-settings{padding:0!important;min-width:0;}
+  .ui-message-settings-summary{display:flex;align-items:center;gap:12px;min-height:44px;padding:19px 22px;cursor:pointer;list-style:none;border-radius:12px;}
+  .ui-message-settings-summary::-webkit-details-marker{display:none;}
+  .ui-message-settings-summary::marker{content:'';}
+  .ui-message-settings-summary .ui-section-head{flex:1;min-width:0;margin:0;}
+  .ui-message-settings-summary .ui-section-head>span:last-child{min-width:0;}
+  .ui-message-settings-title{display:block;font-size:14px;font-weight:800;letter-spacing:-.15px;}
+  .ui-message-settings-description{display:block;font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--c-muted);margin-top:2px;}
+  .ui-message-settings-toggle{display:flex;align-items:center;gap:10px;flex-shrink:0;color:var(--ui-accent);font-size:11px;font-weight:700;}
+  .ui-message-settings-chevron{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 2px 4px 0;}
+  .ui-message-settings[open] .ui-message-settings-chevron{transform:rotate(225deg);margin-top:5px;}
+  .ui-message-settings[open] .ui-message-settings-expand,.ui-message-settings:not([open]) .ui-message-settings-collapse{display:none;}
+  .ui-message-settings-content{padding:0 22px 22px;}
+  .ui-message-settings-summary:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px;}
+  @media(max-width:600px){.ui-message-settings-summary{padding:16px;gap:8px;}.ui-message-settings-content{padding:0 16px 16px;}.ui-message-settings-toggle{font-size:10px;gap:7px;}}
   .ui-form-subtitle{font-size:11px;font-weight:800;color:var(--c-text);padding:8px 0 0;border-top:1px solid var(--c-border);margin-top:3px;}
   #pane-generate label{letter-spacing:0!important;text-transform:none!important;font-size:11px!important;color:var(--c-dim)!important;}
   #pane-generate .gx-in{border-width:1px!important;border-radius:8px!important;font-size:12px!important;padding:10px 11px!important;min-width:0;min-height:39px;}
@@ -966,7 +981,7 @@ function getProfile(id){return PROFILES.find(function(p){return p.id===id;});}
 /* ============================== STATE ============================== */
 var S={
   activeProfile:null, agendaScope:"mine",
-  channel:"sms", msgType:"proposition", selectedTemplate:"__default__",
+  channel:"sms", msgType:"proposition", selectedTemplate:"__default__", uiMessageSettingsOpen:false,
   selectedCMS:"", selectedDemarche:"", commune:"",
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
@@ -1977,6 +1992,8 @@ function showActivePane(){
 
 /* ============================== RENDER: GENERATE ============================== */
 function renderGenerate(){
+  var previousSettings=document.getElementById('message-settings');
+  if(previousSettings)S.uiMessageSettingsOpen=previousSettings.open;
   var pane=document.getElementById('pane-generate');clear(pane);
   var isMail=S.channel==="mail";var isSms=!isMail;
 
@@ -1984,8 +2001,15 @@ function renderGenerate(){
 
   var left=el('div',{class:'gen-form'});
 
-  var c1=el('section',{class:'gx-card gx-lift',style:CARD});
-  c1.appendChild(workspaceSection('01','Votre message','Choisissez le canal et le contexte.'));
+  var settings=el('details',{id:'message-settings',class:'gx-card gx-lift ui-message-settings',style:CARD,open:S.uiMessageSettingsOpen});
+  var selectedModel=S.customTemplates.find(function(template){return String(template.id)===String(S.selectedTemplate)&&template.canal===S.channel&&template.type===S.msgType;});
+  var settingsLabel=(isMail?'E-mail':'SMS')+' · '+(TLABEL[S.msgType]||S.msgType||'Message')+' · '+(selectedModel?selectedModel.nom:'Modèle par défaut');
+  settings.appendChild(el('summary',{id:'message-settings-summary',class:'ui-message-settings-summary'},[
+    el('span',{class:'ui-section-head'},[el('span',{class:'ui-step'},'01'),el('span',{},[el('span',{class:'ui-message-settings-title'},'Votre message'),el('span',{class:'ui-message-settings-description'},settingsLabel)])]),
+    el('span',{class:'ui-message-settings-toggle','aria-hidden':'true'},[el('span',{class:'ui-message-settings-expand'},'Modifier'),el('span',{class:'ui-message-settings-collapse'},'Réduire'),el('span',{class:'ui-message-settings-chevron'})])
+  ]));
+  settings.addEventListener('toggle',function(){if(document.getElementById('message-settings')===settings)S.uiMessageSettingsOpen=settings.open;});
+  var c1=el('div',{class:'ui-message-settings-content'});
   var chGrid=el('div',{class:'ui-channel-grid','aria-label':'Canal du message'});
   chGrid.appendChild(el('button',{class:'gx-press ui-channel','aria-pressed':String(isSms),onClick:function(){S.channel="sms";S.selectedTemplate="__default__";regen();renderGenerate();}},[workspaceIcon('message'),'SMS']));
   chGrid.appendChild(el('button',{class:'gx-press ui-channel','aria-pressed':String(isMail),onClick:function(){S.channel="mail";S.selectedTemplate="__default__";regen();renderGenerate();}},[workspaceIcon('mail'),'E-mail']));
@@ -2008,7 +2032,7 @@ function renderGenerate(){
     selectOpts(sel,compat.map(function(t){return{value:String(t.id),label:t.nom};}),S.selectedTemplate);
     wrap.appendChild(sel);c1.appendChild(wrap);
   }
-  left.appendChild(c1);
+  settings.appendChild(c1);left.appendChild(settings);
 
   var c2=el('section',{class:'gx-card gx-lift',style:CARD});
   c2.appendChild(workspaceSection('02','Le rendez-vous','Les champs marqués * sont obligatoires.'));

@@ -24,27 +24,29 @@ def build(output):
     for name in ['icon-192.png', 'apple-touch-icon.png']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
         html = html.replace('href="' + name + '"', 'href="data:image/png;base64,' + data + '"')
-    standalone = output / 'proposition-import-orientations.html'
+    standalone = output / 'proposition-message-repliable.html'
     standalone.write_text(html, encoding='utf-8')
     seed = (root / 'scripts/ui-demo-data.js').read_text(encoding='utf-8')
     if '</script' in seed.lower():
         raise ValueError('La démonstration contient une fermeture de script non échappée.')
-    demo = output / 'demo-import-orientations.html'
+    demo = output / 'demo-message-repliable.html'
     demo_html = html.replace('<script>', '<script>\n' + seed + '\n</script>\n<script>', 1)
     demo.write_text(demo_html, encoding='utf-8')
     readme = (
-        'SMS & MAIL — import des orientations\n\n'
-        'Pour explorer : ouvrir demo-import-orientations.html puis cliquer sur « Aperçu de l’import » dans le bandeau de démonstration.\n'
+        'SMS & MAIL — message repliable et import des orientations\n\n'
+        'Pour explorer : ouvrir demo-message-repliable.html, choisir Michel, puis ouvrir Messages.\n'
+        'Cliquer sur « Votre message » pour déplier ou replier ses réglages. Le résumé affiche le canal, le type et le modèle choisis.\n'
+        'Le bouton « Aperçu de l’import » reste accessible dans le bandeau de démonstration pour découvrir le pop-up des orientations.\n'
         'Sans profil choisi, ce bouton ouvre automatiquement Michel et présente quatre orientations entièrement fictives.\n'
         'Les quatre lignes commencent décochées et sans conseiller attribué ; rien n’est importé à l’ouverture.\n'
         'Essayez le filtre par structure, l’attribution groupée et le choix individuel du conseiller avant de confirmer.\n'
-        'Pour comparer les thèmes clair et sombre : fermer le pop-up, utiliser le bouton lune/soleil de l’application, puis rouvrir « Aperçu de l’import ».\n'
+        'Pour comparer les thèmes clair et sombre : utiliser le bouton lune/soleil de l’application ; fermer le pop-up avant de changer de thème, puis le rouvrir avec « Aperçu de l’import ».\n'
         'La démo présente exclusivement des données fictives, en mémoire ; recharger réinitialise tout.\n'
         'Pour essayer sans données de démonstration : ouvrir index.html.\n'
-        'Branche de travail : sandbox/ui. Aucun changement sur main sans feu vert utilisateur.\n'
+        'Publication : chaque modification terminée est poussée sur main, conformément à la demande utilisateur.\n'
         'Les parcours sont vérifiés avec un DOM simulé ; le rendu navigateur reste à contrôler.\n'
     )
-    archive = output / 'sms-mail-import-orientations.zip'
+    archive = output / 'sms-mail-message-repliable.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
