@@ -156,6 +156,19 @@ ne doit pas être défait remonte dans la dernière section.
   confirmés passés non marqués Réalisé) clignotent désormais aussi. Le badge
   vert « RDV du jour » (`agTodayN`) n'est pas une alerte, non concerné.
   Vérifié en navigateur réel : `animation-name` du badge dépassement = `blink`.
+  **Correction au même jour** : la prémisse de ce point était fausse — je n'avais
+  vérifié que le badge du menu, pas la tuile elle-même ; voir le point suivant.
+- **Les tuiles de l'Agenda ne clignotaient plus depuis la refonte du 19/10/2026**
+  (signalé par l'utilisateur le 20/10/2026 après le point précédent). La règle
+  `.ag-depasse,.ag-apointer{animation:blink...}` existe depuis avant la refonte,
+  mais `#pane-agenda .ui-ag-slot{...animation:none;}` (ajoutée par la refonte
+  pour couper l'animation d'entrée des cartes) a une spécificité plus forte
+  (ID + classe contre classes seules) et l'écrasait silencieusement — casse
+  **antérieure** à mes correctifs d'hier, pas causée par eux. Corrigé par une
+  règle à spécificité égale ou supérieure,
+  `#pane-agenda .ui-ag-slot.ag-depasse,#pane-agenda .ui-ag-slot.ag-apointer`.
+  Vérifié en navigateur réel avec données réelles (sauvegarde Michel) :
+  `animation-name` de la tuile `.ag-depasse` = `blink`.
 - **Recherche dans l'onglet Modèles** (20/10/2026, demande utilisateur). Champ
   de recherche au-dessus des sous-onglets « Modèles par défaut »/« Mes
   modèles », filtrant par nom, type et contenu du texte (normalisé,
