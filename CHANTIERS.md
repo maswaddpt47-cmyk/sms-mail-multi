@@ -147,6 +147,15 @@ ne doit pas être défait remonte dans la dernière section.
   avec horloge simulée (+2 jours, sans recharger) : la date revient bien sur
   aujourd'hui ; non-régression confirmée (même jour → date consultée
   inchangée). **Validé en conditions réelles par l'utilisateur le 20/10/2026.**
+- **Badges clignotants sur l'onglet Agenda** (20/10/2026, demande utilisateur
+  après avoir confirmé que le pill d'un RDV dépassé clignote déjà et s'arrête
+  une fois résolu, `@keyframes blink`/`.ag-depasse,.ag-apointer`). Même
+  traitement étendu aux badges du menu (pas seulement les pills dans la
+  grille) : le badge rouge « dépassement » (`overdueN`, RDV en attente au-delà
+  du délai de relance) et le badge orange « à pointer » (`aPointerN`, RDV
+  confirmés passés non marqués Réalisé) clignotent désormais aussi. Le badge
+  vert « RDV du jour » (`agTodayN`) n'est pas une alerte, non concerné.
+  Vérifié en navigateur réel : `animation-name` du badge dépassement = `blink`.
 - Limite précédente, levée ci-dessus : Chromium était bloqué par les
   permissions de l'environnement de la session qui a produit la refonte ;
   aucune validation du rendu n'était acquise à ce moment-là.

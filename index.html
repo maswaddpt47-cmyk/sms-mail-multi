@@ -1909,11 +1909,11 @@ function renderTabs(){
       btn.appendChild(bdgToday);
     }
     if(d[0]==='agenda'&&overdueN>0){
-      var badgeAg=el('span',{title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(overdueN));
+      var badgeAg=el('span',{title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
       btn.appendChild(badgeAg);
     }
     if(d[0]==='agenda'&&aPointerN>0){
-      var bdgP=el('span',{title:aPointerN+' RDV confirmé'+(aPointerN>1?'s':'')+' passé'+(aPointerN>1?'s':'')+', à marquer Réalisé',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.62 0.15 70);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(aPointerN));
+      var bdgP=el('span',{title:aPointerN+' RDV confirmé'+(aPointerN>1?'s':'')+' passé'+(aPointerN>1?'s':'')+', à marquer Réalisé',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.62 0.15 70);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(aPointerN));
       btn.appendChild(bdgP);
     }
     nav.appendChild(btn);
