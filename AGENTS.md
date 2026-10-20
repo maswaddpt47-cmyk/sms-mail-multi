@@ -1,9 +1,18 @@
 # Consignes de travail pour Codex
 
-Consignes de l’utilisateur du 19/10/2026, adaptées des règles de MD-LIB.
+Consignes de l’utilisateur, mises à jour le 20/10/2026, adaptées des règles de MD-LIB.
 Cette copie contient les règles essentielles pour démarrer sans dépendre
 d’un accès réseau. Les consignes explicites de la session et les règles
 spécifiques du projet restent applicables.
+
+## Publication — consigne utilisateur du 20/10/2026
+
+**Pousser systématiquement les changements terminés et vérifiés sur `main`,
+sans redemander de feu vert.** Consigne explicite : « push systématiquement
+sur main dorénavant !!! ». Elle remplace la restriction du 19/10 imposant
+`sandbox/ui` et une validation avant fusion. Actualiser depuis GitHub avant
+de travailler et de publier ; préserver les changements concurrents, sans
+force-push. Vérifier le déploiement Pages avant d’annoncer une mise en ligne.
 
 ## Au début de chaque session
 

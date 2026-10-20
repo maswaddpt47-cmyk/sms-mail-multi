@@ -1,17 +1,14 @@
 # Règles de travail — SMS-mail
 
-## Sandbox UI — consigne utilisateur du 19/10/2026
+## Publication sur main — consigne utilisateur du 20/10/2026
 
-Le travail sur l'interface se fait sur **`sandbox/ui`**. Aucun push ni merge
-vers `main` avant le **feu vert explicite de l'utilisateur**, documentation
-et AGORA comprises. Cette consigne prime les workflows historiques décrits
-plus bas. Ne pas lancer manuellement le déploiement Pages pour la sandbox.
-L'état du chantier et la prochaine étape sont dans `CHANTIERS.md`.
-
-**Feu vert reçu le 19/10/2026** : l'utilisateur a validé la refonte et
-autorisé sa fusion dans `main` (« Ça fonctionne, tu peux fusionner dans main »).
-Cette livraison et son déploiement Pages automatique sont donc autorisés.
-Les nouvelles évolutions UI continuent à se préparer sur `sandbox/ui`.
+**Pousser systématiquement sur `main` après les vérifications, sans
+redemander de feu vert.** L’utilisateur a demandé : « push systématiquement
+sur main dorénavant !!! », puis « note le dans AGENTS ». Cette consigne,
+inscrite dans `AGENTS.md`, remplace la restriction du 19/10 sur `sandbox/ui`.
+Actualiser depuis GitHub, préserver les changements concurrents et vérifier
+le déploiement Pages avant d’annoncer la mise en ligne. L’état du chantier
+reste dans `CHANTIERS.md`.
 
 ## ⚠️ Point critique RGPD — exposition de données personnelles (remédiation en grande partie faite)
 
@@ -118,7 +115,7 @@ vérifié dans le code avant d'être retenu, rapport hors dépôt public.
 6. En contexte multi-repo, utiliser `cd /chemin/complet &&` systématiquement ; vérifier `git status`/`git log` et la cohérence CLAUDE.md vs instructions de session avant d'agir, pas après.
 6bis. Toujours faire un `git pull` avant de lire ou modifier le moindre fichier, même si le repo semble à jour. Respecter la politique de push définie plus bas dans ce fichier et signaler tout conflit avec les instructions de session avant d'agir, pas après.
 
-   > ⚠️ Conflit actif signalé : ce fichier documente un flux "push direct sur `main`" (section Workflow ci-dessous). En pratique, dans cet environnement Claude Code, les instructions de session imposent de développer sur une branche dédiée (`claude/sms-mail-multi-profile-u32i0j`) puis PR + merge — ces instructions de session priment. Les deux flux coexistent selon le canal d'exécution ; vérifier lequel s'applique en début de session plutôt que de supposer.
+   > Mise à jour du 20/10/2026 : l’utilisateur exige désormais le push systématique sur `main` après vérifications (`AGENTS.md`). Les anciennes restrictions de branche de cette session sont remplacées.
 
 7. Après toute reprise de session ou résumé de contexte, relire l'état réel du fichier concerné avant de le modifier ou de le renvoyer — ne jamais présumer qu'un correctif précédent est encore en place.
 8. Avant de pousser un changement visuel (CSS/layout), vérifier mentalement les interactions connues à risque (stacking context, overflow, position sticky/fixed) sur les zones sensibles existantes.
