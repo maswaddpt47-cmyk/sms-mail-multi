@@ -1,11 +1,35 @@
 # CHANTIERS — sms-mail-multi
 
-État au **20/10/2026**, base `282b113` (pop-up d’import), `main` actualisé à `21f230e` avant intervention.
+État au **20/10/2026**, `main` actualisé à `031043e` avant la compaction de l’agenda.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Agenda compact — navigation seule fixe
+
+- Demande du 20/10 : sur PC, le bandeau occupe presque tout l’espace.
+  Précisions utilisateur : Précédent, Suivant **et Aujourd’hui** doivent
+  rester accessibles. Ces trois boutons et le titre de la période sont
+  regroupés dans une petite barre sticky, frère direct du reste de l’agenda.
+  Les dates, la recherche, les filtres et Réserver défilent avec le contenu.
+- Sur PC (>900 px), hauteur CSS minimale du bandeau global Agenda réduite
+  de 78 à 52 px ; dates sur deux lignes compactes. Tuiles, colonnes
+  Matin/Après-midi et données inchangées. Les autres onglets gardent leur
+  bandeau habituel. La navigation seule fixe s’applique aussi sur mobile.
+- Filtres fermés initialement, ouverture conservée en mémoire UI ; leur
+  résumé indique la portée et le nombre de filtres actifs (nom/statut).
+  Le badge se met à jour pendant la saisie et après effacement. Les anciens
+  événements toggle détachés sont ignorés. La marge de défilement se mesure
+  uniquement sur la barre sticky ; commandes masquées à l’impression.
+- Démo actuelle : `demo-agenda-compact.html`, choisir Michel puis Agenda,
+  faire défiler et utiliser Précédent/Aujourd’hui/Suivant. Les données sont
+  fictives et en mémoire ; aperçu de l’import toujours accessible.
+- Validation : syntaxe JavaScript, revue des règles de grille/sticky et
+  des changements de filtres, archive conforme à la source. Aucun rendu
+  navigateur ni débordement mesuré dans cet environnement ; vérifier à
+  l’écran que les trois boutons restent visibles et les tuiles remontent.
 
 ## Publication et bloc Votre message
 
@@ -20,7 +44,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Le choix ouvert/fermé reste en mémoire UI lors des rendus du formulaire,
   sans nouvelle clé de stockage. Le repli ne régénère pas le message et
   ne supprime aucune saisie. Les options canal/type/modèle restent identiques.
-- Démo : `demo-message-repliable.html`, choisir Michel puis Messages et
+- Démo actuelle : `demo-agenda-compact.html`, choisir Michel puis Messages et
   cliquer sur Votre message. L’aperçu d’import fictif reste accessible.
 - Vérification de syntaxe et revue ciblée ; rendu navigateur non vérifié
   (échec de lancement Chromium pendant cette session).
@@ -44,7 +68,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Fermeture Échap/croix/fond : conserve le brouillon, comme auparavant.
   Annuler : abandonne le brouillon. Focus clavier et position de défilement
   conservés lors d’un choix ; résumé accessible quand les outils sont fermés.
-- Démo autonome actuelle : `demo-message-repliable.html`, bouton **Aperçu de
+- Démo autonome actuelle : `demo-agenda-compact.html`, bouton **Aperçu de
   l’import** dans le bandeau. Brouillons entièrement fictifs, stockage en
   mémoire uniquement ; ce bouton est absent de l’application réelle.
   Reconstruction : `python scripts/build-ui-preview.py --output-dir <dossier>`.

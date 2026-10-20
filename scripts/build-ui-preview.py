@@ -24,18 +24,21 @@ def build(output):
     for name in ['icon-192.png', 'apple-touch-icon.png']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
         html = html.replace('href="' + name + '"', 'href="data:image/png;base64,' + data + '"')
-    standalone = output / 'proposition-message-repliable.html'
+    standalone = output / 'proposition-agenda-compact.html'
     standalone.write_text(html, encoding='utf-8')
     seed = (root / 'scripts/ui-demo-data.js').read_text(encoding='utf-8')
     if '</script' in seed.lower():
         raise ValueError('La démonstration contient une fermeture de script non échappée.')
-    demo = output / 'demo-message-repliable.html'
+    demo = output / 'demo-agenda-compact.html'
     demo_html = html.replace('<script>', '<script>\n' + seed + '\n</script>\n<script>', 1)
     demo.write_text(demo_html, encoding='utf-8')
     readme = (
-        'SMS & MAIL — message repliable et import des orientations\n\n'
-        'Pour explorer : ouvrir demo-message-repliable.html, choisir Michel, puis ouvrir Messages.\n'
-        'Cliquer sur « Votre message » pour déplier ou replier ses réglages. Le résumé affiche le canal, le type et le modèle choisis.\n'
+        'SMS & MAIL — agenda compact\n\n'
+        'Pour explorer : ouvrir demo-agenda-compact.html, choisir Michel, puis ouvrir Agenda.\n'
+        'Pendant le défilement, seuls les boutons Précédent, Aujourd’hui et Suivant restent visibles.\n'
+        'Les dates, la recherche, les filtres et le bouton Réserver défilent avec la page.\n'
+        'Les filtres sont fermés au départ ; leur titre indique les filtres actifs.\n'
+        'Sur ordinateur, l’en-tête occupe moins de hauteur. Les tuiles de rendez-vous restent inchangées.\n'
         'Le bouton « Aperçu de l’import » reste accessible dans le bandeau de démonstration pour découvrir le pop-up des orientations.\n'
         'Sans profil choisi, ce bouton ouvre automatiquement Michel et présente quatre orientations entièrement fictives.\n'
         'Les quatre lignes commencent décochées et sans conseiller attribué ; rien n’est importé à l’ouverture.\n'
@@ -46,7 +49,7 @@ def build(output):
         'Publication : chaque modification terminée est poussée sur main, conformément à la demande utilisateur.\n'
         'Les parcours sont vérifiés avec un DOM simulé ; le rendu navigateur reste à contrôler.\n'
     )
-    archive = output / 'sms-mail-message-repliable.zip'
+    archive = output / 'sms-mail-agenda-compact.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
