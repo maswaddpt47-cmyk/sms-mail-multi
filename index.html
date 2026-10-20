@@ -925,7 +925,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
-  statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, includeLapinMention:true, _agScrollTarget:null,
+  statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], yearlyStats:{}, mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, agShowArchived:false, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -4266,6 +4266,26 @@ function renderTemplates(){
     sub.appendChild(el('button',{type:'button',class:'gx-press ui-tpl-tab','aria-pressed':String(S.subTab===s[0]),onClick:function(){S.subTab=s[0];renderTemplates();}},s[1]));
   });
   wrap.appendChild(sub);
+  function tplNorm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+  var tplEmptyMsg=null;
+  function tplApplySearch(){
+    var q=tplNorm(searchIn?searchIn.value:S.tplSearch);
+    var visible=0;
+    pane.querySelectorAll('[data-tpl-search]').forEach(function(card){
+      var match=!q||card.getAttribute('data-tpl-search').indexOf(q)!==-1;
+      card.style.display=match?'':'none';
+      if(match)visible++;
+    });
+    if(tplEmptyMsg)tplEmptyMsg.style.display=(q&&!visible)?'':'none';
+  }
+  var searchIn=null;
+  if(S.subTab==='builtin'||S.subTab==='custom'){
+    var searchBox=el('div',{class:'ui-tpl-search'});
+    searchIn=el('input',{class:'gx-in',type:'search',placeholder:'Rechercher un modèle (nom, type, texte)…','aria-label':'Rechercher un modèle',onInput:function(){S.tplSearch=searchIn.value;tplApplySearch();}});
+    searchIn.value=S.tplSearch;
+    searchBox.appendChild(searchIn);
+    wrap.appendChild(searchBox);
+  }
   var varsBox=el('details',{class:'ui-tpl-variables'});
   varsBox.appendChild(el('summary',{},[el('span',{},'Variables disponibles'),el('span',{class:'ui-tpl-summary-help'},'Personnalisez automatiquement vos messages')]));
   var varsContent=el('div',{class:'ui-tpl-variables-content'});
@@ -4287,7 +4307,7 @@ function renderTemplates(){
       var canal=k.indexOf('sms')===0?'sms':'mail';
       var type=['proposition','confirmation','sans_appel','relance'].find(function(t){return k.indexOf(t)>=0;})||(k.indexOf('rappel_veille')>=0?'Rappel la veille':'Absence (Lapin)');
       var isSubject=k.indexOf('sujet')>=0;
-      var card=el('article',{class:'ui-tpl-card'+(editing?' ui-tpl-card-editing':'')});
+      var card=el('article',{class:'ui-tpl-card'+(editing?' ui-tpl-card-editing':''),'data-tpl-search':tplNorm([LABELS[k],type,canal,S.templates[k]||DEFAULT_TEMPLATES[k]||''].join(' '))});
       var cardHead=el('div',{class:'ui-tpl-card-head'});
       cardHead.appendChild(metadata(canal,type,isSubject?'Objet':'Message'));
       cardHead.appendChild(el('h3',{},LABELS[k].replace(/^[^—]+—\s*/,'')));
@@ -4340,7 +4360,7 @@ function renderTemplates(){
     if(S.customTemplates.length===0)personal.appendChild(el('div',{class:'ui-tpl-empty'},[el('h3',{},'Votre premier modèle commence ici'),el('p',{},'Créez un texte personnel ou dupliquez un modèle par défaut.')]));
     else S.customTemplates.forEach(function(t){
       var isEd=S.editTpl&&S.editTpl.id===t.id;
-      var card=el('article',{class:'ui-tpl-card'+(isEd?' ui-tpl-card-editing':'')});
+      var card=el('article',{class:'ui-tpl-card'+(isEd?' ui-tpl-card-editing':''),'data-tpl-search':tplNorm([t.nom,t.type,t.canal,t.sujet||'',t.body||''].join(' '))});
       var hd=el('div',{class:'ui-tpl-card-head'});
       hd.appendChild(metadata(t.canal,t.type));hd.appendChild(el('h3',{},t.nom));card.appendChild(hd);
       if(isEd){
@@ -4403,7 +4423,12 @@ function renderTemplates(){
     });
     layout.appendChild(variableList);wrap.appendChild(layout);
   }
+  if(S.subTab==='builtin'||S.subTab==='custom'){
+    tplEmptyMsg=el('div',{class:'ui-tpl-empty',style:'display:none;'},[el('h3',{},'Aucun modèle trouvé'),el('p',{},'Essayez un autre mot, ou effacez la recherche.')]);
+    wrap.appendChild(tplEmptyMsg);
+  }
   pane.appendChild(wrap);
+  tplApplySearch();
 }
 
 /* ============================== RENDER: CONFIG ============================== */
