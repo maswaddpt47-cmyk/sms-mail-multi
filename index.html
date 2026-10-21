@@ -1526,8 +1526,9 @@ function copyBody(){
     }
     flashCopied('body');showToast("✓ Copié !");
   }
-  /* copie enrichie : HTML avec "cliquer sur ce lien" + fallback texte brut */
-  if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write&&window.isSecureContext){
+  /* SMS : texte brut pour conserver les retours dans les messageries web.
+     E-mail : copie enrichie avec liens cliquables et repli en texte brut. */
+  if(S.channel==='mail'&&window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write&&window.isSecureContext){
     var html=text
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/\n/g,'<br>')
@@ -2377,7 +2378,7 @@ function renderGenerate(){
   right.appendChild(previewCard);
   right.appendChild(el('button',{class:'gx-press ui-copy-button',onClick:copyBody},[workspaceIcon('copy'),S.copied.body?'Message copié !':(isMail?'Copier l’e-mail':'Copier le SMS')]));
   if(isMail)right.appendChild(el('button',{class:'gx-press ui-copy-secondary',onClick:copySubject},S.copied.subject?'Objet copié !':"Copier l’objet"));
-  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
+  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. '+(isMail?'':'Le SMS est copié en texte brut, avec les mêmes retours à la ligne. ')+'La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
 
   grid.appendChild(left);grid.appendChild(right);pane.appendChild(grid);
   labelGenerateFields(pane);updatePartsLabel();

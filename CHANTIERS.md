@@ -1,11 +1,23 @@
 # CHANTIERS — sms-mail-multi
 
-État au **21/10/2026**, base `main` `43b32b7` avant les fonds de statut.
+État au **21/10/2026**, base `main` `ab35b33` avant la copie SMS en texte brut.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Copie SMS et espacements dans Google Messages pour le Web
+
+- La copie SMS utilise uniquement le texte brut, sans ajouter ni supprimer
+  de retours. La copie HTML avec liens cliquables est réservée aux e-mails.
+  Le libellé d’aide Messages précise le format SMS. Modèles et historique
+  inchangés ; les lignes vides déjà présentes dans un modèle sont conservées.
+- La présence du HTML dans l’ancien presse-papiers est vérifiée ; son rôle
+  dans l’espacement constaté chez Google Messages reste une hypothèse à
+  confirmer par un nouvel essai utilisateur après déploiement.
+- Vérification ciblée : formats de presse-papiers SMS/e-mail et fidélité du
+  texte avec des données fictives ; pas de test dans Google Messages réel.
 
 ## Couleur de statut sur toute la tuile
 
