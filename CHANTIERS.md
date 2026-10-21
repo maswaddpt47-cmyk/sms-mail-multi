@@ -1,13 +1,40 @@
 # CHANTIERS — sms-mail-multi
 
-État au **21/10/2026**, base `main` `b5a7530` avant l'ajustement des paragraphes SMS.
+État au **21/10/2026**, base `main` `45d182c` ; étude de la liaison SMS sans copier-coller.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Copie SMS et espacements dans Google Messages pour le Web
+## Liaison SMS sans copier-coller — choix technique en attente
+
+- Demande du 21/10 : générer dans notre application puis transmettre le
+  texte directement à la messagerie sur PC. **Les vrais SMS sont
+  indispensables**, même si le bénéficiaire n'a pas WhatsApp. Un bouton
+  « Copier et ouvrir » ne répond pas au besoin exprimé.
+- Aucun lien fiable de préremplissage Google Messages Web confirmé. Lecture
+  du JavaScript public officiel : la route `/web/share` accepte uniquement
+  un partage YouTube avec contrôle d'origine et contenu ; elle n'accepte pas
+  notre SMS arbitraire. Ne pas inventer des paramètres `phone`/`body` ni
+  falsifier l'origine. Aucune session Google ni donnée de bénéficiaire lue.
+- Piste étudiée : [SMSGate](https://docs.sms-gate.app/pricing/), application
+  Android gratuite sans quota logiciel local, utilisant la SIM et le forfait.
+  Installation possible sur le téléphone d'envoi : question posée, réponse
+  en attente. Limites opérateur/Android toujours applicables.
+- Intégration PC non immédiate : le [client officiel](https://github.com/android-sms-gateway/client-ts)
+  précise que l'API n'émet pas d'en-têtes CORS ; un relais serveur serait
+  nécessaire pour notre site statique. Pas de nouveau serveur, dépendance,
+  identifiant ou envoi mis en place. Si cette architecture est retenue,
+  soumettre l'ajout de dépendance/contrat à l'AGORA avant implémentation.
+- WhatsApp peut préremplir un message via son lien officiel, mais exige un
+  compte chez le destinataire ; aucune détection automatique fiable n'existe
+  dans notre application. Vérification manuelle dans WhatsApp seulement.
+
+## Espacements SMS — arrêté à la demande de l'utilisateur
+
+- Retour après `45d182c` : le rendu reçu reste insatisfaisant ; l'utilisateur
+  demande d'arrêter ces retouches. Ne pas annoncer le problème résolu.
 
 - Retour utilisateur du 21/10 après `b5a7530` : retirer toutes les lignes
   vides rend le texte trop dense. Le format conserve désormais au maximum
