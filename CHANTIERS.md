@@ -1,11 +1,24 @@
 # CHANTIERS — sms-mail-multi
 
-État au **20/10/2026**, `main` actualisé à `031043e` avant la compaction de l’agenda.
+État au **21/10/2026**, base `main` `43b32b7` avant les fonds de statut.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Couleur de statut sur toute la tuile
+
+- Le fond reprend la couleur déjà calculée pour le libellé, y compris les
+  réservations multiples et les statuts par défaut. Teinte adoucie en clair,
+  assombrie en sombre ; survol et focus gardent cette couleur. Les bordures
+  sombres et les clignotements restent présents. Aucun changement métier.
+- Textes secondaires renforcés sur les fonds colorés. Mesures Chromium sur
+  six statuts fictifs, à 390 px et 1280×720, clair/sombre : aucun débordement ;
+  contraste minimal du texte hors animation 5,26:1 en clair et 8,08:1 en sombre.
+  Le fond sombre relatif est sous `@supports`, avec repli `color-mix()`.
+- Démo reconstruite via `scripts/build-ui-preview.py` ; choisir Michel,
+  puis Agenda et utiliser lune/soleil pour comparer les deux thèmes.
 
 ## Agenda compact — navigation seule fixe
 
