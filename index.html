@@ -1365,9 +1365,9 @@ function lastRdvIsLapin(nom,telephone){
   return matches[0].statut==='lapin';
 }
 var LAPIN_MENTION="⚠️ Nous avons remarqué que vous ne vous étiez pas présenté(e) à votre dernier rendez-vous. Nous vous remercions par avance de bien vouloir nous prévenir en cas d'empêchement, afin que nous puissions proposer le créneau à un autre usager.";
-/* SMS : un seul retour entre les blocs, y compris avec un modèle enregistré en CRLF. */
+/* SMS : une ligne vide maximum entre les paragraphes ; listes et signature restent serrées. */
 function compactSmsText(text){
-  return (text||"").replace(/\r\n?/g,"\n").replace(/\n(?:[ \t\u00a0]*\n)+/g,"\n");
+  return (text||"").replace(/\r\n?/g,"\n").replace(/\n(?:[ \t\u00a0]*\n)+/g,"\n\n");
 }
 function compute(){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
@@ -1534,7 +1534,7 @@ function copyBody(){
     }
     flashCopied('body');showToast("✓ Copié !");
   }
-  /* SMS : texte brut compact, sans ligne vide entre les blocs.
+  /* SMS : texte brut, avec une ligne vide maximum entre les paragraphes.
      E-mail : copie enrichie avec liens cliquables et repli en texte brut. */
   if(S.channel==='mail'&&window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write&&window.isSecureContext){
     var html=text
@@ -2386,7 +2386,7 @@ function renderGenerate(){
   right.appendChild(previewCard);
   right.appendChild(el('button',{class:'gx-press ui-copy-button',onClick:copyBody},[workspaceIcon('copy'),S.copied.body?'Message copié !':(isMail?'Copier l’e-mail':'Copier le SMS')]));
   if(isMail)right.appendChild(el('button',{class:'gx-press ui-copy-secondary',onClick:copySubject},S.copied.subject?'Objet copié !':"Copier l’objet"));
-  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. '+(isMail?'':'Le SMS est copié en texte brut, avec un seul retour à la ligne entre les blocs. Les lignes vides sont retirées à la copie. ')+'La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
+  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. '+(isMail?'':'Le SMS est copié en texte brut, avec au maximum une ligne vide entre les paragraphes. ')+'La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
 
   grid.appendChild(left);grid.appendChild(right);pane.appendChild(grid);
   labelGenerateFields(pane);updatePartsLabel();

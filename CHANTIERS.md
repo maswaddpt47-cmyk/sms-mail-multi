@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **21/10/2026**, base `main` `3def047` avant le compactage des SMS.
+État au **21/10/2026**, base `main` `b5a7530` avant l'ajustement des paragraphes SMS.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,25 +9,26 @@ ne doit pas être défait remonte dans la dernière section.
 
 ## Copie SMS et espacements dans Google Messages pour le Web
 
-- Le retour utilisateur après `3def047`, vérifié déployé, constate encore
-  de grands espaces. Les modèles contiennent des doubles retours que le
-  passage en texte brut conservait ; aucune transformation propre à Google
-  Messages n'a été démontrée.
-- Les nouveaux SMS utilisent un seul retour entre les blocs : CRLF/CR
-  normalisés et lignes vides retirées, y compris celles avec espaces. Ce
-  format couvre le générateur standard/personnalisé, les relances, les
-  messages d'absence et les rappels de veille. La mention d'absence est
-  insérée avant compactage pour garder sa position avant la signature.
-- Après modification manuelle, Copier le SMS compacte aussi le brouillon
+- Retour utilisateur du 21/10 après `b5a7530` : retirer toutes les lignes
+  vides rend le texte trop dense. Le format conserve désormais au maximum
+  une ligne vide entre les paragraphes (`\n\n`), tout en gardant les retours
+  simples dans les listes et la signature. CRLF/CR et lignes vides avec
+  espaces sont normalisés ; aucune transformation propre à Google Messages
+  n'a été démontrée.
+- Ce format couvre le générateur standard/personnalisé, les relances, les
+  messages d'absence et les rappels de veille. La mention d'absence reste
+  insérée avant normalisation pour garder sa position avant la signature.
+- Après modification manuelle, Copier le SMS normalise aussi le brouillon
   et synchronise aperçu, compteur et texte enregistré. Les e-mails gardent
   leurs retours et leur copie HTML ; les copies génériques restent intactes.
   Les modèles enregistrés et les anciennes archives ne sont pas réécrits ;
   recopier une archive garde son texte historique exact.
-- Syntaxe JavaScript et archive de démonstration vérifiées. Deux groupes
-  ciblés passent : génération/copie/suivi SMS compacts et e-mails inchangés,
-  sur fonctions réelles avec presse-papiers et persistance simulés sous Node.
-  Le rendu dans Google Messages réel reste à confirmer par l'utilisateur
-  après régénération et nouvelle copie (les messages envoyés ne changent pas).
+- Syntaxe JavaScript et archive de démonstration vérifiées. Les deux groupes
+  Node ciblés passent : séparation des paragraphes, listes/signature, copie
+  identique à l'aperçu/historique et e-mails inchangés ; presse-papiers et
+  persistance simulés. Le rendu dans Google Messages réel reste à confirmer
+  après régénération depuis le modèle et nouvelle copie : un brouillon déjà
+  compacté ne permet pas de retrouver ses anciens paragraphes.
 
 ## Couleur de statut sur toute la tuile
 
