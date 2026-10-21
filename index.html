@@ -1365,6 +1365,10 @@ function lastRdvIsLapin(nom,telephone){
   return matches[0].statut==='lapin';
 }
 var LAPIN_MENTION="⚠️ Nous avons remarqué que vous ne vous étiez pas présenté(e) à votre dernier rendez-vous. Nous vous remercions par avance de bien vouloir nous prévenir en cas d'empêchement, afin que nous puissions proposer le créneau à un autre usager.";
+/* SMS : un seul retour entre les blocs, y compris avec un modèle enregistré en CRLF. */
+function compactSmsText(text){
+  return (text||"").replace(/\r\n?/g,"\n").replace(/\n(?:[ \t\u00a0]*\n)+/g,"\n");
+}
 function compute(){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
   var dem=S.selectedDemarche==="__autre__"?{nom:S.demarcheAutre||"Autre",documents:[]}:S.demarches.find(function(d){return String(d.id)===String(S.selectedDemarche);});
@@ -1384,6 +1388,7 @@ function compute(){
   if(S.includeLapinMention&&S.msgType!=='lapin'&&lastRdvIsLapin(S.nom,S.telephone)){
     body=/\n\nCordialement/.test(body)?body.replace(/\n\nCordialement/,"\n\n"+LAPIN_MENTION+"\n\nCordialement"):body+"\n\n"+LAPIN_MENTION;
   }
+  if(S.channel==='sms')body=compactSmsText(body);
   return {body:body,subject:subject,dem:dem,cms:cms};
 }
 function regen(){var r=compute();S.generatedBody=r.body;S.generatedSubject=r.subject;}
@@ -1451,6 +1456,7 @@ function lancerRelance(h){
     :(S.templates.mail_relance||DEFAULT_TEMPLATES.mail_relance);
   var subjTpl=canal==="mail"?(S.templates.mail_relance_sujet||DEFAULT_TEMPLATES.mail_relance_sujet):"";
   var body=fillTemplate(bodyTpl,vars);
+  if(canal==='sms')body=compactSmsText(body);
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='relance';S._relanceCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
@@ -1467,6 +1473,7 @@ function lancerLapin(h){
     :(S.templates.mail_lapin||DEFAULT_TEMPLATES.mail_lapin);
   var subjTpl=canal==="mail"?(S.templates.mail_lapin_sujet||DEFAULT_TEMPLATES.mail_lapin_sujet):"";
   var body=fillTemplate(bodyTpl,vars);
+  if(canal==='sms')body=compactSmsText(body);
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
@@ -1514,7 +1521,8 @@ function isDuplicate(nom,demarche,date){
   });
 }
 function copyBody(){
-  var text=S.generatedBody;
+  var text=S.channel==='sms'?compactSmsText(S.generatedBody):S.generatedBody;
+  if(text!==S.generatedBody){S.generatedBody=text;updatePreviewOnly();}
   function afterCopy(ok){
     if(!ok)return;
     if(text&&(!S.history.length||S.history[0].body!==text)){
@@ -1526,7 +1534,7 @@ function copyBody(){
     }
     flashCopied('body');showToast("✓ Copié !");
   }
-  /* SMS : texte brut pour conserver les retours dans les messageries web.
+  /* SMS : texte brut compact, sans ligne vide entre les blocs.
      E-mail : copie enrichie avec liens cliquables et repli en texte brut. */
   if(S.channel==='mail'&&window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write&&window.isSecureContext){
     var html=text
@@ -2378,7 +2386,7 @@ function renderGenerate(){
   right.appendChild(previewCard);
   right.appendChild(el('button',{class:'gx-press ui-copy-button',onClick:copyBody},[workspaceIcon('copy'),S.copied.body?'Message copié !':(isMail?'Copier l’e-mail':'Copier le SMS')]));
   if(isMail)right.appendChild(el('button',{class:'gx-press ui-copy-secondary',onClick:copySubject},S.copied.subject?'Objet copié !':"Copier l’objet"));
-  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. '+(isMail?'':'Le SMS est copié en texte brut, avec les mêmes retours à la ligne. ')+'La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
+  right.appendChild(el('p',{class:'ui-preview-note'},'Collez le message dans votre messagerie pour l’envoyer. '+(isMail?'':'Le SMS est copié en texte brut, avec un seul retour à la ligne entre les blocs. Les lignes vides sont retirées à la copie. ')+'La copie conserve aussi le message dans l’historique lorsque le rendez-vous est renseigné.'));
 
   grid.appendChild(left);grid.appendChild(right);pane.appendChild(grid);
   labelGenerateFields(pane);updatePartsLabel();
@@ -3481,7 +3489,7 @@ function texteRappelVeille(h){
   var cms=S.cmsList.find(function(c){return String(c.id)===String(h.selectedCMS);});
   var dem=h.selectedDemarche==="__autre__"?{nom:h.demarcheAutre||"Autre"}:S.demarches.find(function(d){return String(d.id)===String(h.selectedDemarche);})||{nom:h.demarche||""};
   var vars={civilite:h.civilite||"",prenom:h.prenom||"",nom:h.nom||"",demarche:dem.nom||"",date:h.date||"",heure:h.heure||"",adresse:cms?cms.adresse:"[adresse]",documents:[],commune:h.commune||"",dateDemande:h.dateDemande||"",lienCalendrier:""};
-  return fillTemplate(S.templates.sms_rappel_veille||DEFAULT_TEMPLATES.sms_rappel_veille,vars);
+  return compactSmsText(fillTemplate(S.templates.sms_rappel_veille||DEFAULT_TEMPLATES.sms_rappel_veille,vars));
 }
 function doublonsDeFiche(todayStr){
   var depuis=toLocalDateStr(new Date(new Date(todayStr+'T12:00:00').getTime()-30*86400000));

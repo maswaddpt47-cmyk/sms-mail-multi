@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **21/10/2026**, base `main` `ab35b33` avant la copie SMS en texte brut.
+État au **21/10/2026**, base `main` `3def047` avant le compactage des SMS.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,15 +9,25 @@ ne doit pas être défait remonte dans la dernière section.
 
 ## Copie SMS et espacements dans Google Messages pour le Web
 
-- La copie SMS utilise uniquement le texte brut, sans ajouter ni supprimer
-  de retours. La copie HTML avec liens cliquables est réservée aux e-mails.
-  Le libellé d’aide Messages précise le format SMS. Modèles et historique
-  inchangés ; les lignes vides déjà présentes dans un modèle sont conservées.
-- La présence du HTML dans l’ancien presse-papiers est vérifiée ; son rôle
-  dans l’espacement constaté chez Google Messages reste une hypothèse à
-  confirmer par un nouvel essai utilisateur après déploiement.
-- Vérification ciblée : formats de presse-papiers SMS/e-mail et fidélité du
-  texte avec des données fictives ; pas de test dans Google Messages réel.
+- Le retour utilisateur après `3def047`, vérifié déployé, constate encore
+  de grands espaces. Les modèles contiennent des doubles retours que le
+  passage en texte brut conservait ; aucune transformation propre à Google
+  Messages n'a été démontrée.
+- Les nouveaux SMS utilisent un seul retour entre les blocs : CRLF/CR
+  normalisés et lignes vides retirées, y compris celles avec espaces. Ce
+  format couvre le générateur standard/personnalisé, les relances, les
+  messages d'absence et les rappels de veille. La mention d'absence est
+  insérée avant compactage pour garder sa position avant la signature.
+- Après modification manuelle, Copier le SMS compacte aussi le brouillon
+  et synchronise aperçu, compteur et texte enregistré. Les e-mails gardent
+  leurs retours et leur copie HTML ; les copies génériques restent intactes.
+  Les modèles enregistrés et les anciennes archives ne sont pas réécrits ;
+  recopier une archive garde son texte historique exact.
+- Syntaxe JavaScript et archive de démonstration vérifiées. Deux groupes
+  ciblés passent : génération/copie/suivi SMS compacts et e-mails inchangés,
+  sur fonctions réelles avec presse-papiers et persistance simulés sous Node.
+  Le rendu dans Google Messages réel reste à confirmer par l'utilisateur
+  après régénération et nouvelle copie (les messages envoyés ne changent pas).
 
 ## Couleur de statut sur toute la tuile
 

@@ -39,7 +39,7 @@ def build(output):
         'Les dates, la recherche, les filtres et le bouton Réserver défilent avec la page.\n'
         'Les filtres sont fermés au départ ; leur titre indique les filtres actifs.\n'
         'Sur ordinateur, l’en-tête occupe moins de hauteur. Le fond de chaque tuile reprend la couleur de son statut, en clair comme en sombre.\n'
-        'Dans Messages, Copier le SMS transmet du texte brut avec les retours à la ligne du message ; la copie e-mail garde ses liens enrichis.\n'
+        'Dans Messages, les SMS ont un seul retour à la ligne entre les blocs ; les lignes vides sont retirées, y compris à la copie après modification manuelle. La copie e-mail garde sa mise en forme et ses liens enrichis.\n'
         'Le bouton « Aperçu de l’import » reste accessible dans le bandeau de démonstration pour découvrir le pop-up des orientations.\n'
         'Sans profil choisi, ce bouton ouvre automatiquement Michel et présente quatre orientations entièrement fictives.\n'
         'Les quatre lignes commencent décochées et sans conseiller attribué ; rien n’est importé à l’ouverture.\n'
