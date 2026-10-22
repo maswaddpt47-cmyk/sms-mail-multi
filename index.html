@@ -2655,6 +2655,25 @@ function preparationStats(history){
   });
   return {avg:count?Math.round(sum/count*10)/10:null,count:count,excluded:excluded};
 }
+/* Estimation pour les fiches antérieures à premierePreparationAt (22/10/2026) : réception →
+   date du message (ts), en jours ouvrés, médiane. ts est réécrit à chaque régénération : les
+   relances repérables sont exclues, les autres régénérations ne laissent aucune trace — d'où
+   la médiane, peu sensible à ces valeurs aberrantes. Calcul d'affichage, rien n'est stocké. */
+function legacyPreparationEstimate(history){
+  var delays=[];
+  history.forEach(function(h){
+    if(h.msgType==='indispo'||h.msgType==='relance'||h.dateRelance)return;
+    if(preparationParisDay(h.premierePreparationAt))return;
+    var m=String(h.ts||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);if(!m)return;
+    var delay=businessDaysBetween(receptionDateFor(h),m[3]+'-'+m[2]+'-'+m[1]);
+    if(delay!==null)delays.push(delay);
+  });
+  if(!delays.length)return {median:null,count:0,sameDay:0};
+  delays.sort(function(a,b){return a-b;});
+  var mid=Math.floor(delays.length/2);
+  return {median:delays.length%2?delays[mid]:(delays[mid-1]+delays[mid])/2,count:delays.length,
+    sameDay:delays.filter(function(d){return d===0;}).length};
+}
 /* ts ne sert qu'à situer les exclusions anciennes, jamais à calculer leur délai. */
 function preparationCohort(history,start,end,cms){
   return history.filter(function(h){
@@ -3182,7 +3201,9 @@ function renderStats(){
   var smsN=hist.filter(function(h){return h.channel==="sms";}).length;
   var mailN=hist.filter(function(h){return h.channel==="mail";}).length;
   var usagers={};hist.forEach(function(h){var k=(h.nom||"")+(h.prenom||"");if(k)usagers[k]=1;});
-  var prepMetrics=preparationStats(preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS));
+  var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
+  var prepMetrics=preparationStats(prepCohort);
+  var legacyPrep=legacyPreparationEstimate(prepCohort);
   /* avg days between ts and date (appointment) */
   var diffs=[];hist.forEach(function(h){
     if(!h.ts||!h.date)return;
@@ -3205,11 +3226,20 @@ function renderStats(){
     (function tick(){var p=Math.min(1,(Date.now()-start)/dur);valEl.textContent=String(Math.round(p*target));if(p<1)requestAnimationFrame(tick);})();
   });
   var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
-  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
+  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
   reactC.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
   kpiRow.appendChild(reactC);
+  if(legacyPrep.median!==null){
+    var legacyC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
+    /* 0 j se lit « nul » : un traitement le jour même s'affiche en clair (demande utilisateur 22/10) */
+    legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPrep.median===0?'Le jour même':'≈ '+legacyPrep.median.toLocaleString('fr-FR')+' j'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Réactivité estimée (lun.–ven.)'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},Math.round(legacyPrep.sameDay/legacyPrep.count*100)+' % traitées le jour même · médiane sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → date du dernier message : une fiche régénérée compte plus long. Repère en attendant la préparation moyenne.'));
+    kpiRow.appendChild(legacyC);
+  }
   /* avg RDV delay */
   if(avgRdv!==null){
     var rdvC=el('div',{class:'ui-stats-metric'});
