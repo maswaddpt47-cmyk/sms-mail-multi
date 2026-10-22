@@ -555,9 +555,11 @@
 .ui-permanence-label span{overflow-wrap:anywhere;}
 .ui-permanence-value{font-size:12px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
 .ui-permanence-track{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;}
-.ui-permanence-track>span{height:10px;border-radius:3px;background:var(--c-card);border:1px solid var(--c-border-in);}
-.ui-permanence-track>.is-booked{background:var(--chart-sms);border-color:var(--chart-sms);}
-.ui-permanence-track>.is-blocked{background:var(--c-dim);border-color:var(--c-dim);}
+.ui-permanence-mark{display:block;height:10px;border-radius:3px;background:var(--c-card);border:1px solid var(--c-border-in);}
+.ui-permanence-mark.is-booked{background:var(--chart-sms);border-color:var(--chart-sms);}
+.ui-permanence-mark.is-blocked{background:var(--c-dim);border-color:var(--c-dim);}
+.ui-stats-priority .ui-permanence-legend{min-height:0;margin-bottom:12px;}
+.ui-permanence-legend .ui-permanence-mark{display:inline-block;width:16px;height:10px;border-radius:3px;}
 .ui-permanence-row small{grid-column:1/-1;font-size:10px;color:var(--c-dim);}
 .ui-stats-svg{position:relative;}
 .ui-stats-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -3092,6 +3094,12 @@ function renderStats(){
   ],true));
   var fillCard=card('Prochaines permanences');fillCard.classList.add('ui-permanence-chart');
   fillCard.appendChild(el('p',{class:'ui-chart-description'},'6 créneaux par permanence · à partir de ce jour, pour le CMS choisi. Cette prévision est indépendante du filtre de période passée.'));
+  var permanenceLegend=el('div',{class:'ui-chart-legend ui-permanence-legend','aria-label':'Couleurs des créneaux'});
+  [['is-booked','Réservé'],['is-blocked','Bloqué'],['is-free','Disponible']].forEach(function(item){
+    var entry=el('span',{class:'ui-chart-legend-item'});
+    entry.appendChild(el('i',{class:'ui-permanence-mark '+item[0],'aria-hidden':'true'}));
+    entry.appendChild(el('span',{},item[1]));permanenceLegend.appendChild(entry);
+  });fillCard.appendChild(permanenceLegend);
   var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
   rdv.days.forEach(function(day){
     var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
@@ -3101,7 +3109,7 @@ function renderStats(){
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
     var summary=day.occupied+' '+bookedLabel+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
     var track=el('div',{class:'ui-permanence-track',role:'img','aria-label':summary+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
-    for(var i=0;i<6;i++)track.appendChild(el('span',{'aria-hidden':'true',class:i<day.occupied?'is-booked':i<day.occupied+day.blocked?'is-blocked':'is-free'}));
+    for(var i=0;i<6;i++)track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(i<day.occupied?'is-booked':i<day.occupied+day.blocked?'is-blocked':'is-free')}));
     row.appendChild(track);row.appendChild(el('small',{},summary));
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
     if(day.overbooked)row.appendChild(el('small',{},day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de 6'));

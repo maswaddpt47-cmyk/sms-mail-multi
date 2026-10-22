@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `3b9e57e` avant les prochaines permanences sur six places.
+État au **22/10/2026**, base `main` `e61bb0f` avant la légende des créneaux.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -34,6 +34,11 @@ ne doit pas être défait remonte dans la dernière section.
   indiqués séparément. Un dépassement garde le vrai nombre (`7/6`) et un texte,
   sans disponibilité négative. Propositions multiples : libellé « créneaux
   réservés » ; RDV déjà réalisés du jour identifiés, sans les appeler prévus.
+- Couleurs des places : **Réservé** vert, **Bloqué** gris foncé,
+  **Disponible** case vide. Légende permanente au-dessus de la liste défilante,
+  mêmes classes CSS que les six repères pour garder les teintes identiques.
+  Mesures Chromium à 390/1280 px clair/sombre : aucun débordement et correspondance
+  des couleurs/bordures, cas fictif 1 réservé + 4 bloqués + 1 disponible.
 - Archives annuelles agrégées inchangées, sans reconstruction depuis ces nouvelles
   vues ; filtres live masqués et portée annuelle expliquée. Aucun stockage modifié,
   aucune nouvelle dépendance. La version solo reste gelée.
@@ -625,7 +630,10 @@ fonctionnalité validée ou sur demande de revue. Une piste écartée ne se
 repropose pas sans fait nouveau.
 
 **Proposées, en attente**
-_(aucune — les deux pistes du 15/10/2026 ont été faites le jour même)_
+- 22/10/2026 — rappeler date/lieu dans le texte de dépassement des six places.
+  La capture des prochaines permanences montre ce texte isolé en haut de la liste ;
+  hypothèse étayée par le CSS : fin de ligne précédente coupée par le défilement
+  interne. Proposition à confirmer, sans changement du calcul ni des données.
 
 **Écartées** (date — piste — raison)
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR
