@@ -80,6 +80,11 @@
         body:body,subject:spec.channel==='mail'?'[DÉMO] Rendez-vous — '+dem.nom:'',
         notes:'Exemple entièrement fictif pour explorer l’interface.'
       };
+      /* Quelques anciennes fiches restent sans dates fiables pour montrer la couverture. */
+      if(index<5){
+        item.dateReception=localDay(shifted(creationDate,-(index%3)));
+        item.premierePreparationAt=localDay(creationDate)+'T10:00:00Z';
+      }
       if(spec.statut==='excuse')item.excuseMotif='Indisponibilité fictive — créneau à nouveau libre.';
       if(spec.statut==='annule')item.annulationMotif='Annulation fictive — rendez-vous à reprogrammer.';
       return item;

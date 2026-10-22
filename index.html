@@ -1056,7 +1056,7 @@ var S={
   activeProfile:null, agendaScope:"mine",
   channel:"sms", msgType:"proposition", selectedTemplate:"__default__", uiMessageSettingsOpen:false,
   selectedCMS:"", selectedDemarche:"", commune:"",
-  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateDemande:new Date().toISOString().slice(0,10),
+  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
   statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
@@ -1067,7 +1067,7 @@ var S={
   editBuiltin:null, editBuiltinText:"",
   nt:{nom:"",canal:"sms",type:"proposition",sujet:"",body:""},
   nv:{nom:"",valeur:""},
-  nc:{nom:"",adresse:""}, ns:"", nd:{nom:"",docs:"",theme:""}, editTheme:null, demSearch:"", editDem:null, editHistIdx:null, editHistBody:"", editHistNotes:"", editHistDateDemande:"", editHistTel:"", genNotes:"",
+  nc:{nom:"",adresse:""}, ns:"", nd:{nom:"",docs:"",theme:""}, editTheme:null, demSearch:"", editDem:null, editHistIdx:null, editHistBody:"", editHistNotes:"", editHistDateDemande:"", editHistDateReception:"", editHistTel:"", genNotes:"",
   editCms:null, editSect:null, editVar:null, editTpl:null,
   exportText:"", importText:"", importError:"",
   copied:{}, toast:null,
@@ -1475,12 +1475,12 @@ function handleGenerate(){
   }
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
-  addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",ts:new Date().toLocaleString('fr-FR')});
+  addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR')},true);
   showToast("✓ Message généré et enregistré");
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:"",includeLapinMention:true});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:"",includeLapinMention:true});
   S._lastLapinDetected=false;
   regen();renderGenerate();
 }
@@ -1525,7 +1525,7 @@ function lancerLapin(h){
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
-function addHistory(item){
+function addHistory(item,prepared){
   /* doublon : même date + heure + commune + nom + prénom → remplace l'existant
      (le prénom est inclus pour ne pas fusionner deux personnes de même nom sur le même créneau) */
   if(item.date&&item.heure&&item.nom){
@@ -1533,11 +1533,17 @@ function addHistory(item){
       return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();
     });
     if(di!==-1){
-      var merged=Object.assign({},S.history[di],item);
+      var previous=S.history[di],merged=Object.assign({},previous,item);
+      /* Une ancienne génération ne devient jamais une première préparation fiable.
+         Une fiche purement Agenda/ICS sans message peut être préparée pour la première fois. */
+      if(previous.premierePreparationAt)merged.premierePreparationAt=previous.premierePreparationAt;
+      else if(prepared&&!previous.body&&(!previous.ts||previous.msgType==='rdv'))merged.premierePreparationAt=new Date().toISOString();
+      else delete merged.premierePreparationAt;
       if(merged.body&&(!merged.statut||merged.statut==='libre'))merged.statut='en_attente';
       S.history.splice(di,1,merged);lsSet(pk('history'),S.history);ensureDayOpen(item.commune,item.date);return;
     }
   }
+  if(prepared&&!item.premierePreparationAt)item.premierePreparationAt=new Date().toISOString();
   if(item.body&&!item.statut)item.statut='en_attente';
   var h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
   S.history=h;lsSet(pk('history'),h);
@@ -1573,11 +1579,15 @@ function copyBody(){
   if(text!==S.generatedBody){S.generatedBody=text;updatePreviewOnly();}
   function afterCopy(ok){
     if(!ok)return;
+    var receptionRecord=S.history.find(function(h){return h.date===S.date&&h.heure===S.heure&&h.commune===S.commune&&(h.nom||'').toLowerCase()===(S.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(S.prenom||'').toLowerCase();});
+    if(receptionRecord&&(receptionRecord.dateReception||'')!==(S.dateReception||'')){
+      receptionRecord.dateReception=S.dateReception||'';lsSet(pk('history'),S.history);
+    }
     if(text&&(!S.history.length||S.history[0].body!==text)){
       var r=compute();var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
       if(cms&&r.dem){
         if(isDuplicate(S.nom,r.dem.nom,S.date))showToast('⚠️ Doublon détecté : '+S.nom+' / '+r.dem.nom+' déjà dans l\'historique','warn');
-        addHistory({channel:S.channel,msgType:S.msgType,body:text,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:r.dem.nom,selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||'',ts:new Date().toLocaleString('fr-FR')});
+        addHistory({channel:S.channel,msgType:S.msgType,body:text,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:r.dem.nom,selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',ts:new Date().toLocaleString('fr-FR')},true);
       }
     }
     flashCopied('body');showToast("✓ Copié !");
@@ -1896,9 +1906,9 @@ function copyHistModal(){var h=S.histItem;if(!h)return;doCopy(h.body).then(funct
 function clearHistory(){S.history=[];lsSet(pk('history'),[]);renderHistory();}
 function exportHistoryCSV(){
   if(!S.history.length){showToast("Aucun historique à exporter","warn");return;}
-  var cols=["Date","Canal","Type","Civilité","Prénom","Nom","Téléphone","Démarche","Commune","CMS","Corps"];
+  var cols=["Date","Canal","Type","Civilité","Prénom","Nom","Téléphone","Démarche","Commune","CMS","Corps","Réception de la demande","Première préparation"];
   var esc=function(v){return '"'+(String(v||"").replace(/"/g,'""'))+'"';};
-  var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body].map(esc).join(";");});
+  var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,h.dateReception||"",h.premierePreparationAt||""].map(esc).join(";");});
   var csv="﻿"+cols.map(esc).join(";")+"\n"+rows.join("\n");
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download="historique-ess-cms-"+new Date().toISOString().slice(0,10)+".csv";a.click();
@@ -1915,14 +1925,14 @@ function exportOrientationsCSV(){
   showToast("✓ Export CSV téléchargé");
 }
 function deleteHistItem(realIdx){S.history.splice(realIdx,1);lsSet(pk('history'),S.history);renderHistoryList();}
-function saveHistItem(realIdx){S.history[realIdx].body=S.editHistBody;S.history[realIdx].notes=S.editHistNotes||"";S.history[realIdx].dateDemande=S.editHistDateDemande||"";S.history[realIdx].telephone=S.editHistTel||"";lsSet(pk('history'),S.history);S.editHistIdx=null;S.editHistBody="";S.editHistNotes="";S.editHistDateDemande="";S.editHistTel="";renderHistoryList();}
+function saveHistItem(realIdx){S.history[realIdx].body=S.editHistBody;S.history[realIdx].notes=S.editHistNotes||"";S.history[realIdx].dateDemande=S.editHistDateDemande||"";S.history[realIdx].dateReception=S.editHistDateReception||"";S.history[realIdx].telephone=S.editHistTel||"";lsSet(pk('history'),S.history);S.editHistIdx=null;S.editHistBody="";S.editHistNotes="";S.editHistDateDemande="";S.editHistDateReception="";S.editHistTel="";renderHistoryList();}
 function reuseHistItem(h){
   S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
   S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date="";S.heure="";
+  S.date="";S.heure="";S.dateReception="";
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
   showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
@@ -1934,7 +1944,7 @@ function openHistInGen(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date=h.date||"";S.heure=h.heure||"";
+  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=h.dateReception||"";
   S.dateDemande=h.dateDemande||new Date().toISOString().slice(0,10);
   S.genNotes=h.notes||"";
   S.selectedTemplate="__default__";
@@ -2282,7 +2292,11 @@ function renderGenerate(){
   row2.appendChild(hh);
   col.appendChild(row2);
 
-  var ddem=el('div');ddem.appendChild(el('label',{style:LABEL},"Date de réception de la demande"));
+  var reception=el('div');reception.appendChild(el('label',{'for':'message-date-reception',style:LABEL},'Réception de la demande'));
+  reception.appendChild(el('input',{id:'message-date-reception',class:'gx-in',style:INPUT,type:'date',value:S.dateReception||'',onChange:function(e){S.dateReception=e.target.value;}}));
+  reception.appendChild(el('p',{class:'ui-chart-description'},'Facultatif. Sans date de réception, ce dossier ne participe pas au délai moyen de préparation.'));
+  col.appendChild(reception);
+  var ddem=el('div');ddem.appendChild(el('label',{style:LABEL},'Date du message / proposition (suivi)'));
   ddem.appendChild(el('input',{class:'gx-in',style:INPUT,type:"date",value:S.dateDemande,onChange:function(e){S.dateDemande=e.target.value;}}));
   col.appendChild(ddem);
 
@@ -2512,7 +2526,7 @@ function renderHistoryCard(h,realIdx,container){
   if(!isEditing){
     actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-primary',onClick:function(e){e.stopPropagation();openHistInGen(h);}},'Ouvrir le dossier'));
     actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();reuseHistItem(h);}},'Réutiliser'));
-    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
+    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistDateReception=h.dateReception||"";S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
   }
   actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-danger',onClick:function(e){e.stopPropagation();if(confirm("Supprimer cette entrée ?"))deleteHistItem(realIdx);}},'Supprimer'));
   card.appendChild(actions);
@@ -2523,8 +2537,11 @@ function renderHistoryCard(h,realIdx,container){
     var ta=el('textarea',{id:bodyId,class:'gx-in',rows:8,onInput:function(e){S.editHistBody=e.target.value;}});
     ta.value=S.editHistBody;editing.appendChild(ta);
     var fields=el('div',{class:'ui-record-edit-fields'});
-    var dateField=el('div');dateField.appendChild(el('label',{'for':'ui-record-date-'+realIdx},'Date de réception de la demande'));
+    var dateField=el('div');dateField.appendChild(el('label',{'for':'ui-record-date-'+realIdx},'Date du message / proposition (suivi)'));
     var ddIn=el('input',{id:'ui-record-date-'+realIdx,class:'gx-in',type:'date',onInput:function(e){S.editHistDateDemande=e.target.value;}});ddIn.value=S.editHistDateDemande||'';dateField.appendChild(ddIn);fields.appendChild(dateField);
+    var receptionField=el('div');receptionField.appendChild(el('label',{'for':'ui-record-reception-'+realIdx},'Réception de la demande'));
+    receptionField.appendChild(el('input',{id:'ui-record-reception-'+realIdx,class:'gx-in',type:'date',value:S.editHistDateReception||'',onInput:function(e){S.editHistDateReception=e.target.value;}}));fields.appendChild(receptionField);
+    editing.appendChild(el('p',{class:'ui-chart-description'},'Première préparation : '+(preparationParisDay(h.premierePreparationAt)||'non connue pour ce dossier')));
     var telField=el('div');telField.appendChild(el('label',{'for':'ui-record-tel-'+realIdx},'Téléphone'));
     var telIn=el('input',{id:'ui-record-tel-'+realIdx,class:'gx-in',type:'tel',placeholder:'0600000000',onInput:function(e){S.editHistTel=e.target.value;}});telIn.value=S.editHistTel||'';telField.appendChild(telIn);fields.appendChild(telField);editing.appendChild(fields);
     editing.appendChild(el('label',{'for':'ui-record-notes-'+realIdx},'Notes internes'));
@@ -2604,6 +2621,44 @@ function renderHistoryList(){
     container.appendChild(list);
   }
 }
+/* ============================== PREPARATION METRICS ============================== */
+function preparationDayUTC(value){
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return null;
+  var parts=value.split('-').map(Number),stamp=Date.UTC(parts[0],parts[1]-1,parts[2]),d=new Date(stamp);
+  return d.getUTCFullYear()===parts[0]&&d.getUTCMonth()===parts[1]-1&&d.getUTCDate()===parts[2]?stamp:null;
+}
+function preparationParisDay(value){
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)||preparationDayUTC(value.slice(0,10))===null)return null;
+  var d=new Date(value);if(isNaN(d.getTime()))return null;
+  var parts=new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d),out={};
+  parts.forEach(function(p){out[p.type]=p.value;});return out.year+'-'+out.month+'-'+out.day;
+}
+/* Réception exclue, préparation incluse ; week-ends exclus, jours fériés conservés. */
+function businessDaysBetween(startDay,endDay){
+  var start=preparationDayUTC(startDay),end=preparationDayUTC(endDay);if(start===null||end===null||end<start)return null;
+  var days=(end-start)/86400000,weeks=Math.floor(days/7),n=weeks*5;
+  for(var i=1;i<=days%7;i++){var day=new Date(start+(weeks*7+i)*86400000).getUTCDay();if(day!==0&&day!==6)n++;}
+  return n;
+}
+function preparationStats(history){
+  var sum=0,count=0,excluded=0;
+  history.forEach(function(h){
+    if(h.msgType==='indispo')return;
+    var day=preparationParisDay(h.premierePreparationAt),delay=day?businessDaysBetween(h.dateReception,day):null;
+    if(delay===null){excluded++;return;}sum+=delay;count++;
+  });
+  return {avg:count?Math.round(sum/count*10)/10:null,count:count,excluded:excluded};
+}
+/* ts ne sert qu'à situer les exclusions anciennes, jamais à calculer leur délai. */
+function preparationCohort(history,start,end,cms){
+  return history.filter(function(h){
+    if(h.msgType==='indispo'||cms&&h.commune!==cms)return false;if(!start)return true;
+    var day=preparationParisDay(h.premierePreparationAt);
+    if(!day){var raw=h.ts||'',m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);day=m?m[3]+'-'+m[2]+'-'+m[1]:raw.slice(0,10);}
+    return preparationDayUTC(day)!==null&&day>=start&&day<=end;
+  });
+}
+
 /* ============================== ARCHIVAGE ANNUEL (RGPD — rétention) ============================== */
 /* Année d'une entrée d'historique : priorité à la date du RDV, sinon à la date d'envoi (ts). */
 function entryYear(h){
@@ -2636,14 +2691,8 @@ function computeYearArchive(year){
   var concretN=hist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length;
   arc.concretPct=concretN>0?Math.round(arc.realiseN/concretN*100):null;
   arc.lapinPct=concretN>0?Math.round(arc.lapinN/concretN*100):null;
-  var reactDiffs=[];hist.forEach(function(h){
-    if(!h.dateDemande||!h.ts)return;
-    var dem=new Date(h.dateDemande);
-    var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var sendDate=m?new Date(parseInt(m[3],10),parseInt(m[2],10)-1,parseInt(m[1],10)):null;
-    if(sendDate&&!isNaN(dem.getTime())&&sendDate>=dem)reactDiffs.push(Math.round((sendDate-dem)/86400000));
-  });
-  arc.avgReact=reactDiffs.length?Math.round(reactDiffs.reduce(function(s,d){return s+d;},0)/reactDiffs.length):null;
+  arc.preparationMetrics=Object.assign({basis:'reception-first-preparation-mon-fri-v1'},preparationStats(hist));
+  arc.avgReact=null; /* ancien champ conservé pour compatibilité, nouvelle unité séparée */
   var rdvDiffs=[];hist.forEach(function(h){
     if(!h.ts||!h.date)return;
     var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -2790,10 +2839,11 @@ function renderArchivedYearStats(wrap,arc){
   }else cmsCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucune donnée CMS"));
   wrap.appendChild(cmsCard);
 
-  if(arc.avgReact!==null||arc.avgRdv!==null){
+  if(arc.preparationMetrics||arc.avgReact!=null||arc.avgRdv!=null){
     var avgCard=card('Délais moyens');
     var row=el('div',{style:"display:flex;gap:20px;flex-wrap:wrap;"});
-    if(arc.avgReact!==null)row.appendChild(el('div',{style:"font-size:13px;color:var(--c-dim);font-weight:600;"},'⚡ Réactivité moy. : '+arc.avgReact+'j'));
+    if(arc.preparationMetrics){var pm=arc.preparationMetrics;row.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;'},'Préparation moy. (lun.–ven.) : '+(pm.avg===null?'—':Number(pm.avg).toLocaleString('fr-FR')+' j')+' · '+pm.count+' dossiers mesurés, '+pm.excluded+' non mesurables'));}
+    else if(arc.avgReact!=null)row.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;'},'Ancienne réactivité : '+arc.avgReact+' jours calendaires (estimation historique, première préparation non vérifiable)'));
     if(arc.avgRdv!==null)row.appendChild(el('div',{style:"font-size:13px;color:var(--c-dim);font-weight:600;"},'📅 Délai moy. RDV : '+arc.avgRdv+'j'));
     avgCard.appendChild(row);
     wrap.appendChild(avgCard);
@@ -3126,15 +3176,7 @@ function renderStats(){
   var smsN=hist.filter(function(h){return h.channel==="sms";}).length;
   var mailN=hist.filter(function(h){return h.channel==="mail";}).length;
   var usagers={};hist.forEach(function(h){var k=(h.nom||"")+(h.prenom||"");if(k)usagers[k]=1;});
-  /* avg reactivity: days between dateDemande and ts (send date) */
-  var reactDiffs=[];hist.forEach(function(h){
-    if(!h.dateDemande||!h.ts)return;
-    var dem=new Date(h.dateDemande);
-    var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var sendDate=m?new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1])):null;
-    if(sendDate&&!isNaN(dem.getTime())&&sendDate>=dem){reactDiffs.push(Math.round((sendDate-dem)/86400000));}
-  });
-  var avgReact=reactDiffs.length?Math.round(reactDiffs.reduce(function(s,d){return s+d;},0)/reactDiffs.length):null;
+  var prepMetrics=preparationStats(preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS));
   /* avg days between ts and date (appointment) */
   var diffs=[];hist.forEach(function(h){
     if(!h.ts||!h.date)return;
@@ -3156,13 +3198,12 @@ function renderStats(){
     var target=k.val,start=Date.now(),dur=600;
     (function tick(){var p=Math.min(1,(Date.now()-start)/dur);valEl.textContent=String(Math.round(p*target));if(p<1)requestAnimationFrame(tick);})();
   });
-  /* reactivity KPI */
-  if(avgReact!==null){
-    var reactC=el('div',{class:'ui-stats-metric'});
-    reactC.appendChild(el('div',{class:'ui-stats-number'},avgReact+"j"));
-    reactC.appendChild(el('div',{class:'ui-stats-metric-label'},"Réactivité moy."));
-    kpiRow.appendChild(reactC);
-  }
+  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
+  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
+  reactC.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
+  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
+  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
+  kpiRow.appendChild(reactC);
   /* avg RDV delay */
   if(avgRdv!==null){
     var rdvC=el('div',{class:'ui-stats-metric'});
@@ -5650,6 +5691,7 @@ function renderOrientations(){
       S.genNotes=o.motif||(o.orienteur?'Orienté par '+o.orienteur:'');
       /* dateDemande = date d'envoi du message, toujours aujourd'hui — o.date est la date de la demande d'orientation d'origine (peut être ancienne), pas la date d'envoi du SMS/mail généré maintenant */
       S.dateDemande=new Date().toISOString().slice(0,10);
+      S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';
       S.msgType='sans_appel';
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
@@ -5744,13 +5786,13 @@ function renderAgendaRdvDialog(overlay,box){
     if(t.notes)body.appendChild(el('section',{class:'ui-rdv-notes'},[el('h4',{},'Notes'),el('p',{},t.notes)]));
     var followup=el('details',{id:'ag-rdv-followup',class:'ui-rdv-followup'});
     followup.appendChild(el('summary',{},'Suivi des échanges'));
-    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Message envoyé'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseigné')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
+    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},t.dateReception?formatDate(t.dateReception):'Non renseignée')]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
     var primary=el('div',{class:'ui-rdv-primary-actions'});
     primary.appendChild(action('ag-rdv-generate','Préparer SMS / mail','ui-rdv-action-primary',function(){
-      Object.assign(S,messageFields(),{date:date,heure:heure,msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
+      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:t.dateReception||'',dateDemande:t.dateDemande||toLocalDateStr(new Date()),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
-    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',date:date,heure:heure,dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
+    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',date:date,heure:heure,dateReception:t.dateReception||'',dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
     var secondary=el('div',{class:'ui-rdv-secondary-actions'});
     secondary.appendChild(action('ag-rdv-duplicate','Dupliquer sur un autre créneau','ui-rdv-action-link',function(){
       S.agendaAvailability={dateStr:date,commune:commune,duplicate:messageFields()};S.modal='agenda-availability';renderModal();
@@ -5767,7 +5809,7 @@ function renderAgendaRdvDialog(overlay,box){
       var wrapper=field('ag-rdv-edit-'+key,label,input);if(wide)wrapper.classList.add('ui-rdv-field-wide');form.appendChild(wrapper);return input;
     }
     var civ=el('select',{onChange:function(event){edit.civilite=event.target.value;}});[['','—'],['M.','M.'],['Mme','Mme']].forEach(function(option){civ.appendChild(el('option',{value:option[0]},option[1]));});civ.value=edit.civilite||'';
-    form.appendChild(field('ag-rdv-edit-civilite','Civilité',civ));editInput('prenom','Prénom');editInput('nom','Nom *');editInput('telephone','Téléphone','tel');editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateDemande','Date d’envoi du message','date',true);
+    form.appendChild(field('ag-rdv-edit-civilite','Civilité',civ));editInput('prenom','Prénom');editInput('nom','Nom *');editInput('telephone','Téléphone','tel');editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateReception','Réception de la demande','date',true);editInput('dateDemande','Date du message / proposition (suivi)','date',true);
     var notes=el('textarea',{rows:3,onInput:function(event){edit.notes=event.target.value;}});notes.value=edit.notes||'';
     var noteField=field('ag-rdv-edit-notes','Notes',notes);noteField.classList.add('ui-rdv-field-wide');form.appendChild(noteField);body.appendChild(form);
     body.appendChild(el('p',{class:'ui-rdv-help'},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
@@ -5780,7 +5822,7 @@ function renderAgendaRdvDialog(overlay,box){
         var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===commune||!h.commune||!commune)&&['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
         if(occupied&&!confirm('Créneau déjà pris le '+edit.date.split('-').reverse().join('/')+' à '+edit.heure+(occupied.nom?' — '+[occupied.civilite,occupied.prenom,occupied.nom].filter(Boolean).join(' '):'')+'\n\nEnregistrer quand même ?'))return;
       }
-      var saved=update({civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});
+      var saved=update({civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});
       if(!saved)return;ensureDayOpenFor(owner,saved.commune,saved.date);ar.editing=false;renderAgenda();renderTabs();renderModal();showToast('RDV modifié');
     }));footer.appendChild(editActions);
   }
@@ -6193,7 +6235,7 @@ function renderModal(){
     /* bouton générer */
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;margin-top:4px;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){
       if(!an.nom||!an.selectedCMS||!an.selectedDemarche){showToast('⚠️ Nom, CMS et démarche requis','warn');return;}
-      Object.assign(S,{civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
+      Object.assign(S,{dateReception:"",civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
         selectedCMS:an.selectedCMS,selectedDemarche:an.selectedDemarche,demarcheAutre:an.demarcheAutre||'',
         commune:an.commune,date:an.dateStr,heure:an.heure,channel:an.channel});
       S.modal=null;S.agendaNew=null;renderModal();
@@ -6374,6 +6416,7 @@ function migrateSharedCmsList(){
   if(merged.length)lsSet('ess-cms',merged);
 }
 function loadProfileData(){
+  S.dateReception='';
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
   migrateSharedCmsList();

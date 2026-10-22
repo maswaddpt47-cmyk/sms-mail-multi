@@ -1,30 +1,43 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `f040ec5`, audit de la réactivité moyenne en lecture seule.
+État au **22/10/2026**, base `main` `36289b6` avant le délai de première préparation en jours de semaine.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Réactivité moyenne — limites constatées, définition à confirmer
+## Préparation moyenne — contrat à conserver
 
-- Question utilisateur du 22/10 : « 4 j me paraît long », week-ends inclus ?
-  Oui : `renderStats` et `computeYearArchive` font la différence calendaire
-  `ts − dateDemande` puis arrondissent les jours et la moyenne. Exemple exécuté
-  sur la formule réelle : vendredi 16/10 → lundi 19/10 = 3 jours.
-- Provenance vérifiée : `handleGenerate` et certaines copies datent `ts` au
-  moment de la préparation ; `addHistory` peut écraser ce champ lors d’une
-  nouvelle génération du même RDV. La première préparation n’est pas conservée.
-- `dateDemande` signifie réception dans le formulaire/historique, mais envoi
-  dans le dialogue Agenda ; l’orientation → message le force au jour courant,
-  sans utiliser `o.date`. Ce KPI ne garantit donc pas réception → premier contact.
-  La relance dédiée conserve `ts` ; l’import conserve les valeurs reçues.
-- Aucun recomptage des 4 jours réels : aucune sauvegarde personnelle lue.
-  Pas de modification du calcul, des champs ni des archives. Proposition à
-  confirmer : réception distincte, première préparation conservée, délai en jours
-  du lundi au vendredi. Les dates d’envoi réelles ne sont pas connues du site.
-  Avant toute nouvelle valeur persistée/migration, soumettre le contrat à l’AGORA.
+- « Go » du 22/10 après audit : remplacer l’ancienne réactivité calendaire par
+  **Préparation moy. (lun.–ven.)**, entre `dateReception` (jour ISO renseigné)
+  et `premierePreparationAt` (premier instant ISO avec fuseau, converti en jour Paris).
+  Réception exclue, préparation incluse ; même jour = 0, vendredi → lundi = 1.
+  Samedis/dimanches exclus, **jours fériés inclus** ; moyenne à une décimale.
+- Seule une véritable première préparation via Générer/copie initialise l’instant.
+  `addHistory` le conserve sur les régénérations ; les fiches anciennes déjà
+  préparées restent sans première date fiable. Exception : fiche Agenda/ICS sans
+  message préparée pour la première fois. Aucun remplissage rétroactif depuis `ts`.
+- Réception distincte et facultative dans Messages, historique et édition Agenda.
+  Première préparation affichée en lecture seule. Orientation → réception d’origine
+  si ISO valide ; nouvelle demande, duplication et changement de profil la vident.
+  La copie inchangée enregistre une réception corrigée sans déplacer `ts` ni la
+  première préparation. L’ancien `dateDemande` reste le suivi du message/relances.
+- Population moyenne/couverture identique : CMS et période au jour de première
+  préparation ; le `ts` legacy sert uniquement à situer les exclusions anciennes.
+  Sans deux dates valides/cohérentes, fiche non mesurable, compteur explicite.
+  Zéro fiche mesurable affiche — ; aucun chiffre réel recalculé depuis une sauvegarde.
+- JSON/sauvegardes conservent les champs ; CSV d’historique les expose. Nouveaux
+  agrégats annuels dans `preparationMetrics` avec unité/version, moyenne, mesurés et
+  exclus ; ancien `avgReact` non réécrit et présenté comme estimation calendaire.
+  Contrat additif soumis à l’AGORA AG-002 ; version solo gelée.
+- Vérifications fictives : `node scripts/check-reactivity.js` (12 intervalles,
+  minuit Paris, changements d’heure, couverture, lecture seule et idempotence),
+  `node scripts/check-stats-rdv.js`. Chromium : génération/régénération, vieille
+  fiche, premier message après ICS, export JSON, correction Agenda, réutilisation et
+  profils ; moyennes/archives anciennes séparées. Copie avec presse-papiers simulé.
+  Mesures 390 px/1280×720 clair/sombre : aucun débordement du formulaire/statistiques.
+  Démo avec dates fiables et fiches anciennes non mesurables.
 
 ## Statistiques — indicateurs et graphes à conserver
 
