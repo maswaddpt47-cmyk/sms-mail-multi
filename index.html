@@ -690,6 +690,7 @@
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="en_attente"]{--ui-ag-dark-rail:#f0a8d6;}
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="realise"]{--ui-ag-dark-rail:#70d4ae;}
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="excuse"]{--ui-ag-dark-rail:#edd28a;}
+[data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="annule"]{--ui-ag-dark-rail:#ffaaa5;}
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="lapin"]{--ui-ag-dark-rail:#f5b080;}
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot[data-statut="pas_de_retour"]{--ui-ag-dark-rail:#b2bfd8;}
 [data-theme="dark"] #pane-agenda .ui-ag-board .ui-ag-slot:is(:hover,:focus-visible){background:color-mix(in oklab,var(--ui-ag-status-bg,#182a35) 30%,#101c24)!important;border-color:#9fb8c7!important;border-left-color:var(--ui-ag-dark-rail,#b4c7d1)!important;}
@@ -1045,7 +1046,7 @@ function countTodayRdv(profileId){
   });
   var count=0;
   Object.keys(groups).forEach(function(key){
-    var arr=groups[key];
+    var arr=groups[key].filter(function(h){return ['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
     var taken=arr.filter(function(x){return x.msgType==='confirmation';})[0]||arr.filter(function(x){return x.msgType==='proposition';})[0]||arr.filter(function(x){return x.msgType==='sans_appel';})[0]||null;
     if(taken&&taken.statut!=='pas_de_retour'&&taken.statut!=='lapin'&&taken.statut!=='excuse')count++;
   });
@@ -1354,7 +1355,7 @@ function buildCalLink(){
 function normTel(t){return (t||'').replace(/\D/g,'');}
 /* vrai seulement si le RDV résolu le plus récent (nom + téléphone, pas nom seul) est un lapin —
    un lapin honoré ensuite ne doit plus déclencher l'alerte */
-var LAPIN_RESOLVED_STATUTS=['realise','lapin','excuse','pas_de_retour'];
+var LAPIN_RESOLVED_STATUTS=['realise','lapin','excuse','pas_de_retour','annule'];
 function lastRdvIsLapin(nom,telephone){
   var v=(nom||'').trim().toLowerCase();
   var t=normTel(telephone);
@@ -1421,7 +1422,7 @@ function handleGenerate(){
   var telPb=telProblem(S.telephone);
   if(telPb&&!confirm('⚠️ '+telPb+' : '+S.telephone+'\n\nGénérer quand même ?'))return;
   if(hasConflict(S.date,S.heure,S.commune)){
-    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
+    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
     var conf=matches.filter(function(x){return x.msgType==='confirmation';})[0]||matches.filter(function(x){return x.msgType==='proposition';})[0]||matches.filter(function(x){return x.msgType==='sans_appel';})[0]||matches[0];
     var who=conf?[conf.civilite,conf.prenom,conf.nom].filter(Boolean).join(' '):'';
     showToast('⚠️ Créneau déjà pris'+(who?' — '+who:''),'warn');
@@ -1442,6 +1443,7 @@ function onReset(){
    modale de relance en lecture seule */
 function lancerRelance(h){
   if(!h)return;
+  if(h.statut==='annule'){showToast('Ce rendez-vous est annulé : aucune relance.','warn');return;}
   var cms=S.cmsList.find(function(c){return String(c.id)===String(h.selectedCMS);});
   var dem=h.selectedDemarche==="__autre__"
     ?{nom:h.demarcheAutre||"Autre",documents:[]}
@@ -1669,7 +1671,7 @@ function aPointerList(){
   return S.history.filter(function(h){return isAPointer(h)&&S.permanences.some(function(p){return p.commune===h.commune&&p.exceptDate===h.date&&!p.archived;});});
 }
 /* pointage depuis la bannière 📌 : même enregistrement que le sélecteur de statut
-   de la fenêtre RDV ; Excusé ouvre ensuite cette fenêtre pour saisir le motif */
+   de la fenêtre RDV ; Excusé et Annulé ouvrent ensuite la saisie du motif */
 function pointerStatut(h,statut){
   var targetP=h._profile||S.activeProfile;
   var arr=readProfileHistory(targetP);
@@ -1678,7 +1680,7 @@ function pointerStatut(h,statut){
   arr[idx].statut=statut;h.statut=statut;
   writeProfileHistory(targetP,arr);
   renderAgenda();renderTabs();
-  if(statut==='excuse'){
+  if(statut==='excuse'||statut==='annule'){
     var perm=S.permanences.find(function(p){return p.commune===h.commune&&p.exceptDate===h.date;})||{commune:h.commune};
     S.modal='agenda-rdv';S.agendaRdv={slot:{heure:h.heure,taken:h},day:{dateStr:h.date,perm:perm}};renderModal();
   }
@@ -1709,7 +1711,7 @@ function getSlots(commune,dateStr,historyList,permOverride){
   function buildSlot(heure){
     if(seenHeures[heure])return;seenHeures[heure]=true;
     var matches=historyList.filter(function(x){return x.date===dateStr&&x.heure===heure&&(x.commune===commune||!x.commune);});
-    var isFreed=function(x){return x.statut==='pas_de_retour'||x.statut==='lapin'||x.statut==='excuse';};
+    var isFreed=function(x){return x.statut==='pas_de_retour'||x.statut==='lapin'||x.statut==='excuse'||x.statut==='annule';};
     /* une réservation libérée (excusé/lapin/pas de retour) ne doit jamais l'emporter face à une
        nouvelle réservation active sur le même créneau, quel que soit son type de message — sinon
        une relance (priorité basse) reste masquée derrière l'ancienne excusée (ex: proposition) */
@@ -1746,7 +1748,7 @@ function getSlots(commune,dateStr,historyList,permOverride){
   return slots;
 }
 function hasConflict(date,heure,commune){
-  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
+  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
 }
 /* même chose pour un profil qui n'est pas forcément le profil actif (RDV d'un collègue
    modifié depuis l'agenda partagé) */
@@ -1915,6 +1917,7 @@ var STATUT_STYLES={
   en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
   realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
   excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙅 Excusé'},
+  annule:{border:'oklch(0.58 0.22 25)',bg:'oklch(0.93 0.07 25)',text:'oklch(0.34 0.16 25)',label:'✕ Annulé'},
   lapin:{border:'oklch(0.65 0.2 45)',bg:'oklch(0.93 0.1 45)',text:'oklch(0.38 0.18 45)',label:'🐇 Lapin'},
   pas_de_retour:{border:'oklch(0.62 0.04 266)',bg:'oklch(0.91 0.02 266)',text:'oklch(0.42 0.06 266)',label:'📵 Pas de retour'}
 };
@@ -2107,7 +2110,7 @@ function renderGenerate(){
     if(matches.length>0){
       var last=matches[0];
       var isLapin=lastRdvIsLapin(nomIn.value,S.telephone);
-      var lastInfo=[last.prenom,last.demarche,last.statut?({'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','lapin':'🐇','pas_de_retour':'📵'}[last.statut]||''):''].filter(Boolean).join(' · ');
+      var lastInfo=[last.prenom,last.demarche,last.statut?({'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','annule':'✕','lapin':'🐇','pas_de_retour':'📵'}[last.statut]||''):''].filter(Boolean).join(' · ');
       lapinBadge.style.display=isLapin?'inline':'none';
       if(isLapin){
         if(!S._lastLapinDetected)S.includeLapinMention=true;
@@ -2213,7 +2216,7 @@ function renderGenerate(){
          sans aucun avertissement. Averti mais pas bloqué : parfois le chevauchement est
          volontaire (double-réservation assumée, correction d'une erreur de saisie…). */
       if(S.commune&&hasConflict(S.date,v,S.commune)){
-        var occ=S.history.find(function(h){return h.date===S.date&&h.heure===v&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse';});
+        var occ=S.history.find(function(h){return h.date===S.date&&h.heure===v&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
         var occName=occ?([occ.civilite,occ.prenom,occ.nom].filter(Boolean).join(' ')||'quelqu\'un'):'quelqu\'un';
         if(!confirm('⚠️ '+v+' est déjà pris par '+occName+'.\n\nRéserver quand même ce créneau ?')){
           e.target.value=S.heure||'';renderGenerate();return;
@@ -2457,6 +2460,7 @@ function renderHistoryCard(h,realIdx,container){
   badges.appendChild(el('span',{class:'ui-record-chip'},h.channel==='sms'?'SMS':'E-mail'));
   badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted'},TLABEL[h.msgType]||h.msgType||'Message'));
   if(h.statut&&STATUT_STYLES[h.statut])badges.appendChild(el('span',{class:'ui-record-chip',style:statutBadgeStyle(h.statut)},STATUT_STYLES[h.statut].label));
+  if(h.statut==='annule'&&h.annulationMotif)details.appendChild(el('div',{class:'ui-record-meta'},'Motif de l’annulation : '+h.annulationMotif));
   details.appendChild(badges);main.appendChild(details);card.appendChild(main);
   var actions=el('div',{class:'ui-record-actions'});
   if(!isEditing){
@@ -2505,7 +2509,7 @@ function renderHistoryList(){
     if(S.historyDateFrom&&(!h.date||h.date<S.historyDateFrom))return false;
     if(S.historyDateTo&&(!h.date||h.date>S.historyDateTo))return false;
     if(!q)return true;
-    return ([h.civilite,h.prenom,h.nom,h.demarche,h.telephone,h.notes].join(" ").toLowerCase().indexOf(q)!==-1);
+    return ([h.civilite,h.prenom,h.nom,h.demarche,h.telephone,h.notes,h.annulationMotif].join(" ").toLowerCase().indexOf(q)!==-1);
   });
   /* tri par date de RDV (la plus récente d'abord) — pas par date d'envoi du message */
   filtered.sort(function(a,b){return ((b.date||'')+(b.heure||'')).localeCompare((a.date||'')+(a.heure||''));});
@@ -2524,7 +2528,7 @@ function renderHistoryList(){
       groups[key].push(h);
     });
     groupOrder.sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
-    var STATUT_ICON={'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','lapin':'🐇','pas_de_retour':'📵'};
+    var STATUT_ICON={'en_attente':'⏳','confirme':'✓','realise':'✅','excuse':'🙏','annule':'✕','lapin':'🐇','pas_de_retour':'📵'};
     groupOrder.forEach(function(key){
       var grpWrap=el('section',{class:'ui-record-group'});
       var entries=groups[key];
@@ -2578,7 +2582,7 @@ function computeYearArchive(year){
   arc.mailN=hist.filter(function(h){return h.channel==='mail';}).length;
   var usagers={};hist.forEach(function(h){var k=(h.nom||'')+(h.prenom||'');if(k)usagers[k]=1;});
   arc.usagersN=Object.keys(usagers).length;
-  var statutKeys=['confirme','en_attente','realise','excuse','lapin','pas_de_retour'];
+  var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
   arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});
   hist.forEach(function(h){var k=h.statut||'en_attente';if(arc.statuts[k]===undefined)arc.statuts[k]=0;arc.statuts[k]++;});
   arc.realiseN=arc.statuts.realise||0;
@@ -2692,7 +2696,7 @@ function renderArchivedYearStats(wrap,arc){
   });
   wrap.appendChild(rateRow);
 
-  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙅'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵']];
+  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙅'],['annule','Annulé','✕'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵']];
   var statCard=card('Répartition par statut');
   var statGrid=el('div',{class:'ui-stats-status-list'});
   statMeta.forEach(function(s){
@@ -2891,7 +2895,7 @@ function renderStats(){
       [countToday,"RDV aujourd'hui",null,null],
       [countWeek,"RDV cette semaine",null,null],
       [countMonth,"RDV ce mois",null,null],
-      [occStr,"Taux d'occupation (30j)","Part des créneaux occupés sur les journées ouvertes des 30 prochains jours (les créneaux libérés par un RDV Pas de retour/Lapin/Excusé comptent comme libres).",null,occSub],
+      [occStr,"Taux d'occupation (30j)","Part des créneaux occupés sur les journées ouvertes des 30 prochains jours (les créneaux libérés par un RDV Pas de retour/Lapin/Excusé/Annulé comptent comme libres).",null,occSub],
       [concretStr,"Taux de concrétisation","Part des RDV passés au statut ✅ Réalisé. Calculé uniquement sur les RDV dont la date est déjà passée. Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Part des RDV passés au statut 🐇 Lapin. Calculé uniquement sur les RDV dont la date est déjà passée.",openLapinList]
     ].forEach(function(kpi){
@@ -3147,10 +3151,10 @@ function renderStats(){
   /* Colonne droite: statut + type + CMS */
   var col2=el('div',{class:'ui-stats-stack'});
 
-  var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,lapin:0,pas_de_retour:0};
+  var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
   hist.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
   var statutCard=card("Répartition par statut");
-  var statutKeys=["en_attente","confirme","realise","excuse","lapin","pas_de_retour"];
+  var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour"];
   var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
   var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   var anyStatut=false;
@@ -3361,6 +3365,7 @@ function icsUidFor(h){
    non garantie respectée par tous les logiciels de calendrier à l'import */
 var ICS_COLOR_PALETTE=['red','blue','green','orange','purple','brown','teal','magenta','olive','navy'];
 function icsColorFor(h){
+  if(h.statut==='annule')return 'red';
   if(h.statut==='realise')return 'green';
   var key=h.commune||h.date||'';
   var hash=0;for(var i=0;i<key.length;i++){hash=((hash<<5)-hash+key.charCodeAt(i))|0;}
@@ -3405,7 +3410,7 @@ function downloadICS(icsText,filename){
 /* statuts qui annulent un RDV auparavant confirmé — exportés en STATUS:CANCELLED
    plutôt qu'omis, pour que la ré-importation dans Google Agenda retire l'événement
    déjà présent (confirmé par un test réel d'import sur SMS-mail) */
-var ICS_CANCEL_STATUTS=['excuse','lapin','pas_de_retour'];
+var ICS_CANCEL_STATUTS=['excuse','lapin','pas_de_retour','annule'];
 /* seuls les RDV confirmés (à venir), réalisés (passés) ou annulés après coup
    (excusé/lapin/pas de retour, exportés en CANCELLED) ont vocation à apparaître
    sur un calendrier externe — les propositions encore en attente ne sont pas
@@ -3479,7 +3484,7 @@ function importPlanningJson(){
    prêt à copier ; « envoyé » se note sur la fiche (h.rappelVeille = date du RDV).
    doublons : même personne, même jour, même commune, au moins deux fiches actives — deux cas
    réels (23/09 et 05/10) découverts seulement quand un créneau refusait de se libérer. */
-var RAPPEL_EXCLUS=['pas_de_retour','lapin','excuse','realise'];
+var RAPPEL_EXCLUS=['pas_de_retour','lapin','excuse','annule','realise'];
 function prochainJourOuvre(){
   var d=new Date();d.setHours(12,0,0,0);
   do{d.setDate(d.getDate()+1);}while(d.getDay()===0||d.getDay()===6);
@@ -3501,7 +3506,7 @@ function doublonsDeFiche(todayStr){
   });
   return Object.keys(groups).filter(function(k){return groups[k].length>1;}).map(function(k){return groups[k];}).sort(function(a,b){return a[0].date<b[0].date?-1:1;});
 }
-var FREE_STATUTS_DOUBLON=['pas_de_retour','lapin','excuse'];
+var FREE_STATUTS_DOUBLON=['pas_de_retour','lapin','excuse','annule'];
 function renderRappelsEtDoublons(wrap,todayStr){
   var fmtD=function(d){return d.split('-').reverse().slice(0,2).join('/');};
   var BTN="cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-dim);white-space:nowrap;";
@@ -3654,13 +3659,13 @@ function renderAgenda(){
     var banner=el('div',{class:'ui-ag-notice',style:"display:flex;align-items:flex-start;gap:12px;background:oklch(0.97 0.05 80);border:1.5px solid oklch(0.78 0.14 75);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.1 75 / .12);"});
     banner.appendChild(el('span',{style:"font-size:22px;"},"📌"));
     var txt=el('div',{style:"flex:1;"});
-    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.42 0.13 65);"},n+' RDV confirmé'+(n>1?'s':'')+' passé'+(n>1?'s':'')+' à pointer : Réalisé, Lapin ou Excusé ?'));
+    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.42 0.13 65);"},n+' RDV confirmé'+(n>1?'s':'')+' passé'+(n>1?'s':'')+' à pointer : Réalisé, Lapin, Excusé ou Annulé ?'));
     var liste=el('div',{style:"margin-top:6px;max-height:220px;overflow-y:auto;"});
     var PBTN="cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;white-space:nowrap;";
     aPointer.forEach(function(h){
       var ligne=el('div',{style:"display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0;border-top:1px solid oklch(0.88 0.06 80);"});
       ligne.appendChild(el('span',{style:"flex:1;min-width:140px;font-size:12px;font-weight:600;color:oklch(0.42 0.12 65);"},([h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'—')+' · '+h.date.split('-').reverse().join('/')+(h.heure?' '+h.heure:'')+(h.commune?' · '+h.commune:'')));
-      [['realise','✅ Réalisé','oklch(0.38 0.14 155)','oklch(0.93 0.06 155)'],['lapin','🐇 Lapin','oklch(0.45 0.18 45)','oklch(0.95 0.07 45)'],['excuse','🙏 Excusé','oklch(0.4 0.13 85)','oklch(0.95 0.07 85)']].forEach(function(b){
+      [['realise','✅ Réalisé','oklch(0.38 0.14 155)','oklch(0.93 0.06 155)'],['lapin','🐇 Lapin','oklch(0.45 0.18 45)','oklch(0.95 0.07 45)'],['excuse','🙏 Excusé','oklch(0.4 0.13 85)','oklch(0.95 0.07 85)'],['annule','✕ Annulé','oklch(0.34 0.16 25)','oklch(0.93 0.07 25)']].forEach(function(b){
         ligne.appendChild(el('button',{class:'gx-press',style:PBTN+"border:1.5px solid "+b[2]+";background:"+b[3]+";color:"+b[2]+";",onClick:function(){pointerStatut(h,b[0]);}},b[1]));
       });
       liste.appendChild(ligne);
@@ -3855,8 +3860,8 @@ function renderAgenda(){
     }
     /* encarts "pas de retour / lapin / excusé" — scan historique direct car ces dates
        peuvent être hors de la fenêtre agenda affichée (pas de card DOM correspondante) */
-    var ORPHAN_ICON={pas_de_retour:'📵',lapin:'🐇',excuse:'🙏'};
-    var ORPHAN_LABEL={pas_de_retour:'RDV sans retour',lapin:'RDV Lapin',excuse:'RDV Excusé'};
+    var ORPHAN_ICON={pas_de_retour:'📵',lapin:'🐇',excuse:'🙏',annule:'✕'};
+    var ORPHAN_LABEL={pas_de_retour:'RDV sans retour',lapin:'RDV Lapin',excuse:'RDV Excusé',annule:'RDV Annulé'};
     function renderOrphanStatutBox(key){
       var boxId='ag-orphan-'+key;
       var box=document.getElementById(boxId);
@@ -3874,7 +3879,7 @@ function renderAgenda(){
         var row=el('div',{style:"display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:oklch(0.42 0.06 266);margin-top:5px;padding:5px 0;border-bottom:1px solid oklch(0.88 0.04 266);flex-wrap:wrap;"});
         var info=el('span');info.textContent=name+' · RDV : '+dateRdv+(h.heure?' à '+h.heure:'')+(h.commune?' ('+h.commune+')':'')+(h.demarche?' — '+h.demarche:'');
         var relInfo=el('span',{style:"font-size:11px;font-weight:700;color:"+(h.dateRelance?'oklch(0.42 0.12 155)':'oklch(0.5 0.16 25)')});
-        relInfo.textContent=h.dateRelance?('✓ Relancé '+dateRel):'⚠️ '+dateRel;
+        relInfo.textContent=key==='annule'?(h.annulationMotif?'Motif : '+h.annulationMotif:'Motif non renseigné'):(h.dateRelance?('✓ Relancé '+dateRel):'⚠️ '+dateRel);
         row.appendChild(info);row.appendChild(relInfo);
         b.appendChild(row);
       });
@@ -3882,7 +3887,7 @@ function renderAgenda(){
       if(firstCard&&firstCard.parentNode)firstCard.parentNode.insertBefore(b,firstCard);
       else{var ap=document.getElementById('pane-agenda');if(ap)ap.appendChild(b);}
     }
-    ['pas_de_retour','lapin','excuse'].forEach(renderOrphanStatutBox);
+    ['pas_de_retour','lapin','excuse','annule'].forEach(renderOrphanStatutBox);
   }
   function agFilterNom(q){_agNomFilter=q;S.agendaTimelineSearch=q;agApplyFilters(true);}
   function agFilterStatut(v){_agStatutFilter=v;S.agStatutFilter=v;agApplyFilters(true);}
@@ -3986,7 +3991,7 @@ function renderAgenda(){
   var btnNext=el('button',{id:'ag-timeline-next',class:'gx-press',style:NBTN},'›');
   btnNext.addEventListener('click',function(){timelineMove(1);});
   var statutSel=el('select',{'aria-label':'Filtrer par statut',id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
-  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.value=_agStatutFilter;
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
@@ -4183,6 +4188,7 @@ function renderAgenda(){
         var _stLabel=(STATUT_STYLES[_st]&&STATUT_STYLES[_st].label)||'';
         if(_stLabel)_ttLines.push(_stLabel);
         if(_st==='excuse'&&_t.excuseMotif)_ttLines.push('📝 '+_t.excuseMotif);
+        if(_st==='annule'&&_t.annulationMotif)_ttLines.push('📝 Motif de l’annulation : '+_t.annulationMotif);
         if(_t._profile&&_t._profile!==S.activeProfile){var _ownerT=getProfile(_t._profile);if(_ownerT)_ttLines.push('👤 '+_ownerT.nom);}
       } else {
         _ttLines.push('🟢 Créneau libre — '+slot.heure);
@@ -4206,7 +4212,7 @@ function renderAgenda(){
            quand le titulaire affiché était actif ; si le titulaire lui-même est libéré,
            les autres libérés disparaissaient complètement du pill (trouvé 02/10/2026,
            deux usagers distincts sur le même créneau, tous deux excusés) */
-        var _RICON={'pas_de_retour':'📵','lapin':'🐇','excuse':'🙏'};
+        var _RICON={'pas_de_retour':'📵','lapin':'🐇','excuse':'🙏','annule':'✕'};
         function appendReplacedList(){
           if(slot.replaced&&slot.replaced.length>0){
             slot.replaced.forEach(function(r){
@@ -4254,7 +4260,7 @@ function renderAgenda(){
         }
         if(_ago&&_st!=='confirme')pillContent.appendChild(el('span',{class:'ui-ag-meta',style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
       }
-      if(_isDepasse||(slot.taken&&slot.taken.dateRelance)){
+      if(_st!=='annule'&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
         var _dejaRelance=slot.taken.dateRelance;
         var _relBg=_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
@@ -5636,7 +5642,7 @@ function renderAgendaRdvDialog(overlay,box){
     var found=locate();if(!found)return null;
     Object.assign(found.entry,patch);writeProfileHistory(owner,found.history);
     t=Object.assign({},found.entry,{_profile:owner});
-    ar.slot=Object.assign({},ar.slot,{taken:t,heure:t.heure,freeAgain:['excuse','lapin','pas_de_retour'].indexOf(t.statut)!==-1});
+    ar.slot=Object.assign({},ar.slot,{taken:t,heure:t.heure,freeAgain:['excuse','lapin','pas_de_retour','annule'].indexOf(t.statut)!==-1});
     ar.day=Object.assign({},ar.day,{profile:owner,dateStr:t.date,perm:Object.assign({},(ar.day||{}).perm,{commune:t.commune||commune})});
     return t;
   }
@@ -5671,11 +5677,16 @@ function renderAgendaRdvDialog(overlay,box){
       if(event.target.value==='pas_de_retour'&&!t.dateRelance)patch.dateRelance=new Date().toISOString().slice(0,10);
       if(update(patch)){renderAgenda();renderTabs();renderModal();}
     }});
-    [['','— Statut —'],['en_attente','En attente'],['confirme','Confirmé'],['realise','Réalisé'],['excuse','Excusé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']].forEach(function(option){status.appendChild(el('option',{value:option[0]},option[1]));});status.value=t.statut||'';
+    [['','— Statut —'],['en_attente','En attente'],['confirme','Confirmé'],['realise','Réalisé'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']].forEach(function(option){status.appendChild(el('option',{value:option[0]},option[1]));});status.value=t.statut||'';
     body.appendChild(el('label',{class:'ui-rdv-status-row','for':'ag-rdv-status'},[el('span',{},'Statut du RDV'),status]));
     if(t.statut==='excuse'){
       var excuse=el('input',{type:'text',value:t.excuseMotif||'',placeholder:'Motif facultatif',onChange:function(event){if(update({excuseMotif:event.target.value}))renderAgenda();}});
       body.appendChild(field('ag-rdv-excuse','Motif de l’excuse',excuse));
+      body.appendChild(el('p',{class:'ui-rdv-help'},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
+    }
+    if(t.statut==='annule'){
+      var annulation=el('input',{type:'text',value:t.annulationMotif||'',placeholder:'Motif facultatif',onChange:function(event){if(update({annulationMotif:event.target.value}))renderAgenda();}});
+      body.appendChild(field('ag-rdv-annulation','Motif de l’annulation',annulation));
       body.appendChild(el('p',{class:'ui-rdv-help'},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
     }
     if(t.notes)body.appendChild(el('section',{class:'ui-rdv-notes'},[el('h4',{},'Notes'),el('p',{},t.notes)]));
@@ -5713,8 +5724,8 @@ function renderAgendaRdvDialog(overlay,box){
     editActions.appendChild(action('ag-rdv-save','Enregistrer','ui-rdv-action-primary',function(){
       if(!String(edit.nom||'').trim()||!edit.date||!edit.heure){showToast('Nom, date et heure requis','warn');return;}
       var found=locate();if(!found)return;
-      if(edit.date!==t.date||edit.heure!==t.heure){
-        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===commune||!h.commune||!commune)&&['pas_de_retour','lapin','excuse'].indexOf(h.statut)===-1;});
+      if(t.statut!=='annule'&&(edit.date!==t.date||edit.heure!==t.heure)){
+        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===commune||!h.commune||!commune)&&['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
         if(occupied&&!confirm('Créneau déjà pris le '+edit.date.split('-').reverse().join('/')+' à '+edit.heure+(occupied.nom?' — '+[occupied.civilite,occupied.prenom,occupied.nom].filter(Boolean).join(' '):'')+'\n\nEnregistrer quand même ?'))return;
       }
       var saved=update({civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});

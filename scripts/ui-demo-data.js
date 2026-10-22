@@ -56,6 +56,7 @@
       {date:today,heure:'09:30',statut:'confirme',channel:'sms',msgType:'confirmation',prenom:'Camille',code:'01',dem:0},
       {date:today,heure:'10:30',statut:'en_attente',channel:'mail',msgType:'proposition',prenom:'Alex',code:'02',dem:1},
       {date:today,heure:'13:30',statut:'excuse',channel:'mail',msgType:'confirmation',prenom:'Sacha',code:'03',dem:2},
+      {date:today,heure:'14:30',statut:'annule',channel:'sms',msgType:'confirmation',prenom:'Eden',code:'07',dem:1},
       {date:monday,heure:'11:30',statut:'realise',channel:'sms',msgType:'confirmation',prenom:'Charlie',code:'04',dem:0},
       {date:friday,heure:'15:30',statut:'confirme',channel:'mail',msgType:'confirmation',prenom:'Lou',code:'05',dem:2},
       {date:previous,heure:'14:30',statut:'lapin',channel:'sms',msgType:'confirmation',prenom:'Noa',code:'06',dem:1}
@@ -80,6 +81,7 @@
         notes:'Exemple entièrement fictif pour explorer l’interface.'
       };
       if(spec.statut==='excuse')item.excuseMotif='Indisponibilité fictive — créneau à nouveau libre.';
+      if(spec.statut==='annule')item.annulationMotif='Annulation fictive — rendez-vous à reprogrammer.';
       return item;
     });
     history.sort(function(a,b){function stamp(h){var parts=h.ts.slice(0,10).split('/');return parts.reverse().join('-')+h.ts.slice(10);}return stamp(b).localeCompare(stamp(a));});

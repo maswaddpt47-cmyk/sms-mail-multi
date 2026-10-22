@@ -1,23 +1,33 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `a6390d7` ; ajout du statut Annulé.
+État au **22/10/2026**, base `main` `d50c1e8` avant livraison du statut Annulé.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Statut Annulé — en cours
+## Statut Annulé — comportement à conserver
 
 - Demande du 22/10 : nouveau statut **Annulé**, couleur **rouge**, champ de
-  motif. Ajout prévu : `annule` et `annulationMotif` facultatif, séparés
+  motif. `annule` et `annulationMotif` facultatif sont séparés
   d'Excusé ; fiche conservée, créneau libéré, aucun rappel ni relance.
-- Audit des disponibilités, conflits, filtres, profils propriétaires,
-  exports et statistiques effectué en lecture seule. JSON/sauvegardes
-  conservent déjà les objets complets ; aucune migration nécessaire.
-- AG-001 ouvert pour le contrat de données. Ajouter le comptage séparé
-  live/archives sans modifier les formules de taux ni les archives déjà
-  agrégées. Vérifications ciblées et publication restent à faire.
+- Choisir Annulé dans la fiche affiche le motif, enregistré à sa modification
+  dans le profil propriétaire. Motif également visible dans l'historique et
+  l'infobulle ; filtre Agenda et pointage rapide compatibles. JSON/sauvegardes
+  conservent les champs sans migration ; ICS produit CANCELLED avec même UID.
+- Le compteur quotidien filtre les créneaux libérés avant la priorité par
+  type de message : une ancienne confirmation annulée ne masque pas le
+  nouveau rendez-vous actif. Les libérés restent dans le suivi du créneau.
+- Comptage séparé live/archives ; formules de taux conservées (Annulé inclus
+  dans les RDV passés au dénominateur, comme Excusé), archives agrégées non
+  recalculées. AG-001 reste ouvert pour le contrat de données.
+- Vérifications : deux groupes Node ciblés passent (disponibilités/conflits,
+  rappels, ICS, statistiques, vraie modale avec stockage simulé et isolation
+  des profils). Mesures Chromium sur démo fictive : 390 px et 1280×720,
+  clair/sombre, aucun débordement tuile/modale/motif ; contraste minimal
+  6,10:1 clair et 8,53:1 sombre. Démo reconstruite : choisir Michel, Agenda,
+  tuile Annulé à 14:30 de la journée courante.
 
 ## Liaison SMS sans copier-coller — choix technique en attente
 
@@ -32,8 +42,9 @@ ne doit pas être défait remonte dans la dernière section.
   falsifier l'origine. Aucune session Google ni donnée de bénéficiaire lue.
 - Piste étudiée : [SMSGate](https://docs.sms-gate.app/pricing/), application
   Android gratuite sans quota logiciel local, utilisant la SIM et le forfait.
-  Installation possible sur le téléphone d'envoi : question posée, réponse
-  en attente. Limites opérateur/Android toujours applicables.
+  APK officiel installé sur le téléphone selon l'utilisateur ; PC verrouillé,
+  aucun programme de relais local autorisé. Limites opérateur/Android toujours
+  applicables. État Online et accès au tableau de bord pas encore confirmés.
 - Intégration PC non immédiate : le [client officiel](https://github.com/android-sms-gateway/client-ts)
   précise que l'API n'émet pas d'en-têtes CORS ; un relais serveur serait
   nécessaire pour notre site statique. Pas de nouveau serveur, dépendance,
