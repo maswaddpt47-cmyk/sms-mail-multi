@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `d50c1e8` avant livraison du statut Annulé.
+État au **22/10/2026**, base `main` `92b32da` avant renforcement du rouge Annulé.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -12,6 +12,10 @@ ne doit pas être défait remonte dans la dernière section.
 - Demande du 22/10 : nouveau statut **Annulé**, couleur **rouge**, champ de
   motif. `annule` et `annulationMotif` facultatif sont séparés
   d'Excusé ; fiche conservée, créneau libéré, aucun rappel ni relance.
+- Rouge renforcé après retour visuel : fond, badge, bordure et pointage
+  distincts du jaune Excusé ; textes secondaires assombris sur la tuile
+  claire, rail sombre plus vif. La palette partagée colore aussi la barre
+  Annulé de la répartition statistique.
 - Choisir Annulé dans la fiche affiche le motif, enregistré à sa modification
   dans le profil propriétaire. Motif également visible dans l'historique et
   l'infobulle ; filtre Agenda et pointage rapide compatibles. JSON/sauvegardes
@@ -26,7 +30,7 @@ ne doit pas être défait remonte dans la dernière section.
   rappels, ICS, statistiques, vraie modale avec stockage simulé et isolation
   des profils). Mesures Chromium sur démo fictive : 390 px et 1280×720,
   clair/sombre, aucun débordement tuile/modale/motif ; contraste minimal
-  6,10:1 clair et 8,53:1 sombre. Démo reconstruite : choisir Michel, Agenda,
+  5,39:1 clair et 8,10:1 sombre après renforcement du rouge. Démo : Michel, Agenda,
   tuile Annulé à 14:30 de la journée courante.
 
 ## Liaison SMS sans copier-coller — choix technique en attente
