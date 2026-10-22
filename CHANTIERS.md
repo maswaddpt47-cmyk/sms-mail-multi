@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `e61bb0f` avant la légende des créneaux.
+État au **22/10/2026**, base `main` `b27e638` avant la couleur En attente dans les barres.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -34,11 +34,14 @@ ne doit pas être défait remonte dans la dernière section.
   indiqués séparément. Un dépassement garde le vrai nombre (`7/6`) et un texte,
   sans disponibilité négative. Propositions multiples : libellé « créneaux
   réservés » ; RDV déjà réalisés du jour identifiés, sans les appeler prévus.
-- Couleurs des places : **Réservé** vert, **Bloqué** gris foncé,
+- Couleurs des places : **Réservé** vert, **En attente** rose du statut Agenda,
+  **Bloqué** gris foncé,
   **Disponible** case vide. Légende permanente au-dessus de la liste défilante,
   mêmes classes CSS que les six repères pour garder les teintes identiques.
   Mesures Chromium à 390/1280 px clair/sombre : aucun débordement et correspondance
-  des couleurs/bordures, cas fictif 1 réservé + 4 bloqués + 1 disponible.
+  des couleurs/bordures. Attentes séparées visuellement des autres réservations,
+  sans changer leur occupation : 4 verts + 2 roses sur 6, puis un cas mixte
+  2 verts + 1 rose + 2 bloqués + 1 libre. Libellé accessible avec nombre d’attentes.
 - Archives annuelles agrégées inchangées, sans reconstruction depuis ces nouvelles
   vues ; filtres live masqués et portée annuelle expliquée. Aucun stockage modifié,
   aucune nouvelle dépendance. La version solo reste gelée.
