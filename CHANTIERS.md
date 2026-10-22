@@ -1,28 +1,40 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `8d3653e` avant refonte visuelle des graphiques.
+État au **22/10/2026**, base `main` `402b953` avant les nouveaux indicateurs et graphes de rendez-vous.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
 
-## Graphiques statistiques — rendu à conserver
+## Statistiques — indicateurs et graphes à conserver
 
-- Demande du 22/10 : qualité graphique et lisibilité insuffisantes face à GDINV2.
-  Les deux graphiques mensuels partagent un rendu SVG à dimensions réelles,
-  sans étirement du texte. Deux cartes sur PC, une colonne sur mobile,
-  graduations entières, valeurs sur les barres et légendes HTML avec totaux.
-- Détail au survol, au toucher et au clavier ; tableau repliable « Voir les
-  données ». Défilement horizontal limité au graphique pour les longues séries.
-  Thèmes clair/sombre, aucun ajout de dépendance ni modification du stockage.
-- Les populations et filtres restent inchangés : messages au mois de génération,
-  suivi Lapin/Excusé/Pas de retour au mois du RDV. Annulé reste dans la
-  répartition par statut ; les formules de taux ne changent pas.
-- Démo : Michel → Statistiques. Mesures Chromium à 390 px et 1280×720,
-  clair/sombre, avec démo puis douze mois fictifs : aucune déformation,
-  aucun débordement de page ni chevauchement des valeurs ; détail clavier
-  et tableau accessibles. Le contrôle visuel utilisateur reste à faire.
+- Proposition acceptée le 22/10 : remplacer RDV aujourd’hui par **RDV réalisés**,
+  privilégier l’évolution des RDV par statut et le remplissage par permanence,
+  classer les démarches par accompagnements réalisés. Les messages viennent après.
+- En tête : réalisés, RDV de la période, usagers accompagnés (nom/prénom),
+  occupation des permanences, concrétisation et lapin. `statsRdvModel` applique
+  période/CMS au **jour du RDV**, y compris pour la liste ouverte depuis un KPI.
+  Les messages restent filtrés au jour de génération. Les périodes finies vont
+  de la date de recul (fin de mois bornée) jusqu’au jour courant inclus ; Tout
+  garde les RDV à venir. Les taux portent uniquement sur les RDV au plus tard
+  du jour courant : Annulé/Excusé restent dans le dénominateur, jamais au numérateur.
+- Le graphe mensuel empilé sépare sept statuts, dont Confirmé, En attente et
+  Annulé ; le tableau « Voir les données » donne les valeurs exactes.
+  Les fiches restent l’unité existante de l’historique ; aucune fusion automatique.
+- Remplissage : journées réellement ouvertes, archivées incluses, dédoublonnées
+  par date/lieu ; calcul via `getSlots` avec historique complet du profil et grille
+  propre à la journée. Bloqués exclus de la capacité, créneaux libérés disponibles.
+  Le taux représente l’état actuel des réservations, **pas une reconstitution de
+  l’occupation passée**. Liste défilante bornée en hauteur, lieu/date et effectifs visibles.
+- Archives annuelles agrégées inchangées, sans reconstruction depuis ces nouvelles
+  vues ; filtres live masqués et portée annuelle expliquée. Aucun stockage modifié,
+  aucune nouvelle dépendance. La version solo reste gelée.
+- Rendu : SVG aux dimensions réelles, échelle entière, légendes HTML, valeurs,
+  détail au survol/toucher/clavier, tableaux ; deux cartes PC et une colonne mobile.
+  Vérifications fictives : `node scripts/check-stats-rdv.js` et parcours Chromium
+  à 390 px/1280×720 clair/sombre (période, clavier, RDV créé avant la période).
+  Le comptage réel de l’utilisateur et son appréciation visuelle restent à confirmer.
 
 ## Statut Annulé — comportement à conserver
 
@@ -581,13 +593,14 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   #88 à #94 de sms-mail-multi, branche `sms-mail-to-multi-port`) vont de
   SMS-mail vers sms-mail-multi. Quand un sujet est contesté entre les deux,
   écrire ici lequel fait référence plutôt que de converger au hasard.
-- **Taux d'occupation (30j et 90j), tranché par l'utilisateur le
+- **Journées ouvertes pour le taux d’occupation**, tranché par l’utilisateur le
   27/09/2026** (même décision que sur SMS-mail) : ne compte que les
   journées réellement ouvertes (au moins un RDV/blocage), pas toute la
   grille hebdomadaire y compris les jours jamais utilisés — reflète
   l'occupation des jours effectivement travaillés. C'est déjà le
-  comportement du calendrier « à la volée », aucun changement de code
-  n'était nécessaire.
+  comportement du calendrier « à la volée ». Depuis la proposition acceptée
+  le 22/10, les vues live utilisent la période/CMS sélectionnés et affichent
+  la capacité hors créneaux bloqués ; les anciennes archives restent inchangées.
 - **Définitions des stats, tranchées par l'utilisateur le 27/09/2026**,
   identiques dans les deux apps (live et `computeYearArchive`) : taux de
   concrétisation et de lapin = ÷ RDV dont la date est passée, hors créneaux

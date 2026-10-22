@@ -543,6 +543,20 @@
 .ui-chart-table th:first-child{text-align:left;}
 [data-theme="dark"] .ui-stats-charts{--chart-sms:#50c9a1;--chart-mail:#91a4ff;--chart-lapin:#ff9559;--chart-excuse:#e8bd4d;--chart-retour:#abb9d0;}
 @media(max-width:1100px){.ui-stats-charts{grid-template-columns:minmax(0,1fr);}}
+
+.ui-stats-charts{--chart-annule:#dc323e;--chart-attente:#9b7ab8;}
+[data-theme="dark"] .ui-stats-charts{--chart-annule:#ff7581;--chart-attente:#c3a1e3;}
+.ui-stats-messages{grid-template-columns:minmax(0,1fr);}
+.ui-stats-priority .ui-chart-legend{min-height:68px;}
+.ui-stats-priority .ui-stats-section{margin-bottom:0;}
+.ui-permanence-list{max-height:325px;overflow-y:auto;padding-right:5px;scrollbar-gutter:stable;}
+.ui-permanence-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;padding:12px 0;border-bottom:1px solid var(--c-border);}
+.ui-permanence-label{display:flex;gap:5px 10px;flex-wrap:wrap;font-size:11px;color:var(--c-dim);}
+.ui-permanence-label span{overflow-wrap:anywhere;}
+.ui-permanence-value{font-size:12px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
+.ui-permanence-track{grid-column:1/-1;height:10px;background:var(--c-border);border-radius:5px;overflow:hidden;}
+.ui-permanence-track>div{height:100%;border-radius:5px;}
+.ui-permanence-row small{grid-column:1/-1;font-size:10px;color:var(--c-dim);}
 .ui-stats-svg{position:relative;}
 .ui-stats-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .ui-stats-archive-note{font-size:11px;line-height:1.8;padding:13px 16px;border-left:3px solid var(--ui-accent);background:var(--ui-accent-soft);color:var(--c-dim);margin-bottom:24px;}
@@ -2781,6 +2795,41 @@ function renderArchivedYearStats(wrap,arc){
   }
 }
 
+/* Statistiques de RDV : lecture seule du profil actif, au jour du rendez-vous.
+   Les fiches suivent l'unité existante de l'historique (addHistory remplace la
+   même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
+function statsRdvModel(history,permanences,period,cms,now){
+  var today=toLocalDateStr(now),start=null;
+  var months={ '1m':1,'3m':3,'6m':6 };
+  if(months[period]){
+    var d=new Date(now.getFullYear(),now.getMonth()-months[period],1,12);
+    d.setDate(Math.min(now.getDate(),new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));
+    start=toLocalDateStr(d);
+  }
+  function inRange(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&(!start||(date>=start&&date<=today));}
+  var entries=history.filter(function(h){return h.msgType!=='indispo'&&inRange(h.date)&&(!cms||h.commune===cms);});
+  var past=entries.filter(function(h){return h.date<=today;}),realised=past.filter(function(h){return h.statut==='realise';});
+  var lapins=past.filter(function(h){return h.statut==='lapin';});
+  var byMonth={},byDemarche={};
+  var keys=['realise','confirme','en_attente','annule','excuse','lapin','pas_de_retour'];
+  entries.forEach(function(h){var key=h.date.slice(0,7);if(!byMonth[key]){byMonth[key]={};keys.forEach(function(k){byMonth[key][k]=0;});}
+    byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
+  });
+  realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;});
+  var seen={},days=[];
+  permanences.forEach(function(p){
+    if(!inRange(p.exceptDate)||cms&&p.commune!==cms)return;
+    var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
+    var slots=getSlots(p.commune,p.exceptDate,history,p);
+    var available=slots.filter(function(slot){return !slot.taken||slot.taken.msgType!=='indispo';});
+    var occupied=available.filter(function(slot){return slot.taken&&!slot.freeAgain;}).length;
+    days.push({date:p.exceptDate,commune:p.commune,total:available.length,occupied:occupied,free:available.length-occupied,blocked:slots.length-available.length});
+  });
+  days.sort(function(a,b){return a.date.localeCompare(b.date)||a.commune.localeCompare(b.commune);});
+  var capacity=days.reduce(function(n,d){return n+d.total;},0),occupied=days.reduce(function(n,d){return n+d.occupied;},0);
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,capacity:capacity,occupied:occupied};
+}
+
 /* ============================== RENDER: STATS ============================== */
 function renderStats(){
   (renderStats._chartObservers||[]).forEach(function(o){o.disconnect();});
@@ -2792,17 +2841,10 @@ function renderStats(){
 
   /* ── filtre de période ── */
   var now=new Date();
-  function cutoff(p){
-    if(p==='1m'){var d=new Date(now);d.setMonth(d.getMonth()-1);return d;}
-    if(p==='3m'){var d=new Date(now);d.setMonth(d.getMonth()-3);return d;}
-    if(p==='6m'){var d=new Date(now);d.setMonth(d.getMonth()-6);return d;}
-    return null;
-  }
   function inPeriod(h){
-    var c=cutoff(S.statsPeriod);if(!c)return true;
-    var raw=h.ts||"";var m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var d=m?new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1])):new Date(h.date||"");
-    return d>=c;
+    var raw=h.ts||'',m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    var date=m?m[3]+'-'+m[2]+'-'+m[1]:(/^\d{4}-\d{2}-\d{2}/.test(raw)?raw.slice(0,10):h.date||'');
+    return S.statsPeriod==='all'||!!date&&date>=rdv.start&&date<=rdv.today;
   }
 
   var headRow=el('div',{class:'ui-stats-heading'});
@@ -2834,6 +2876,8 @@ function renderStats(){
     wrap.appendChild(yearRow);
   }
   if(S.statsYear!=='live'){
+    pills.style.display='none';
+    wrap.appendChild(el('p',{class:'ui-chart-description'},'Archive annuelle complète : les filtres de période et de CMS des données courantes ne s’appliquent pas à ces agrégats.'));
     renderArchivedYearStats(wrap,S.yearlyStats[S.statsYear]);
     pane.appendChild(wrap);
     return;
@@ -2853,6 +2897,7 @@ function renderStats(){
     wrap.appendChild(cmsRow);
   }
 
+  var rdv=statsRdvModel(S.history,S.permanences||[],S.statsPeriod,S.statsCMS,now);
   var hist=S.history.filter(function(h){return h.msgType!=='indispo'&&inPeriod(h)&&(!S.statsCMS||h.commune===S.statsCMS);});
 
   function groupByUsager(entries){
@@ -2874,59 +2919,31 @@ function renderStats(){
     S.modal='stat-list';renderModal();
   }
 
+  wrap.appendChild(el('p',{class:'ui-chart-description'},rdv.start?'Rendez-vous du '+rdv.start.split('-').reverse().join('/')+' au '+rdv.today.split('-').reverse().join('/')+' · profil actif'+(S.statsCMS?' · '+S.statsCMS:''): 'Tous les rendez-vous datés du profil actif, y compris à venir'+(S.statsCMS?' · '+S.statsCMS:'')+'.'));
+
   /* ── Tableau de bord KPI ── */
   (function(){
-    var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-    var weekStart=new Date(now);weekStart.setDate(now.getDate()-((now.getDay()+6)%7));
-    var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
-    function toDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-    var weekStartStr=toDateStr(weekStart);var weekEndStr=toDateStr(weekEnd);
-    var monthStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    function isCountedRdv(h){return h.statut==='confirme'||h.statut==='realise';}
-    var countToday=S.history.filter(function(h){return h.date&&h.date===todayStr&&isCountedRdv(h);}).length;
-    var countWeek=S.history.filter(function(h){return h.date&&h.date>=weekStartStr&&h.date<=weekEndStr&&isCountedRdv(h);}).length;
-    var countMonth=S.history.filter(function(h){return h.date&&h.date.substring(0,7)===monthStr&&isCountedRdv(h);}).length;
-    /* taux d'occupation sur 30 jours */
-    var occStr='—',occJours=0;
-    if(S.permanences&&S.permanences.length){
-      var occEnd=toDateStr(new Date(now.getTime()+30*86400000));
-      var totalSlots=0,takenSlots=0;
-      var occJoursSet={};
-      S.permanences.filter(function(p){return p.exceptDate&&!p.archived&&p.exceptDate>=todayStr&&p.exceptDate<=occEnd;}).forEach(function(p){
-        var sls=getSlots(p.commune,p.exceptDate);
-        totalSlots+=sls.length;
-        takenSlots+=sls.filter(function(sl){return sl.taken&&!sl.freeAgain;}).length;
-        occJoursSet[p.exceptDate+'|'+p.commune]=1;
-      });
-      occJours=Object.keys(occJoursSet).length;
-      if(totalSlots>0)occStr=Math.round(takenSlots/totalSlots*100)+'%';
-    }
-    /* le taux ne compte que les journées réellement ouvertes (pas toute une grille hebdomadaire
-       comme avant) : un taux élevé sur très peu de jours ouverts peut donner une fausse impression
-       de charge — le nombre de jours sert de contexte, décision utilisateur du 27/09/2026 */
-    var occSub=occJours?(occJours+' jour'+(occJours>1?'s':'')+' ouvert'+(occJours>1?'s':'')):'';
-    /* taux de concrétisation / de lapin : rapportés aux RDV dont la date est passée (hors créneaux bloqués),
-       pas aux RDV à venir qui ne peuvent pas encore être réalisés ni manqués */
-    var realiseN=S.history.filter(function(h){return h.statut==='realise';}).length;
-    var lapinN=S.history.filter(function(h){return h.statut==='lapin';}).length;
-    var concretN=S.history.filter(function(h){return h.date&&h.date<=todayStr&&h.msgType!=='indispo';}).length;
-    var concretStr=concretN>0?Math.round(realiseN/concretN*100)+'%':'—';
-    var nonPointesN=S.history.filter(isAPointer).length;
-    var concretSub=nonPointesN?('dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':'')):'';
-    var lapinStr=concretN>0?Math.round(lapinN/concretN*100)+'%':'—';
+    var realiseN=rdv.realised.length,lapinN=rdv.lapins.length,concretN=rdv.past.length;
+    var concretStr=concretN?Math.round(realiseN/concretN*100)+'%':'—';
+    var lapinStr=concretN?Math.round(lapinN/concretN*100)+'%':'—';
+    var nonPointesN=rdv.past.filter(isAPointer).length;
+    var concretSub=nonPointesN?'dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'';
+    var occStr=rdv.capacity?Math.round(rdv.occupied/rdv.capacity*100)+'%':'—';
+    var occSub=rdv.days.length+' journée'+(rdv.days.length>1?'s':'')+' · '+rdv.occupied+'/'+rdv.capacity+' créneaux';
+    var accompanied={};rdv.realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
     var dashboard=el('section',{class:'ui-stats-overview'});
     dashboard.appendChild(el('h3',{class:'ui-stats-group-title'},'Le suivi des rendez-vous'));
     var grid=el('div',{class:'ui-stats-metric-band ui-stats-dashboard-band'});
     function openLapinList(){
-      openStatList('🐇 Lapin — usagers ne s\'étant pas présentés',S.history.filter(function(h){return h.statut==='lapin';}));
+      openStatList('🐇 Lapin — usagers ne s\'étant pas présentés',rdv.lapins);
     }
     [
-      [countToday,"RDV aujourd'hui",null,null],
-      [countWeek,"RDV cette semaine",null,null],
-      [countMonth,"RDV ce mois",null,null],
-      [occStr,"Taux d'occupation (30j)","Part des créneaux occupés sur les journées ouvertes des 30 prochains jours (les créneaux libérés par un RDV Pas de retour/Lapin/Excusé/Annulé comptent comme libres).",null,occSub],
-      [concretStr,"Taux de concrétisation","Part des RDV passés au statut ✅ Réalisé. Calculé uniquement sur les RDV dont la date est déjà passée. Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
-      [lapinStr,"Taux de lapin 🐇","Part des RDV passés au statut 🐇 Lapin. Calculé uniquement sur les RDV dont la date est déjà passée.",openLapinList]
+      [realiseN,"RDV réalisés",'Rendez-vous réalisés, datés au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);}],
+      [rdv.entries.length,"RDV sur la période",'Fiches de rendez-vous datées, tous statuts, hors créneaux bloqués.',null],
+      [Object.keys(accompanied).length,"Usagers accompagnés",'Personnes distinctes par nom et prénom parmi les RDV réalisés de la période.',null],
+      [occStr,"Occupation des permanences","Part des créneaux occupés sur les journées ouvertes de la période sélectionnée. Créneaux bloqués exclus ; Annulé, Excusé, Lapin et Pas de retour libèrent la place. Ce taux décrit l'état actuel des réservations, sans reconstruire l'occupation passée.",null,occSub],
+      [concretStr,"Taux de concrétisation","Part des RDV de la période et du CMS au statut Réalisé, parmi les RDV datés au plus tard de ce jour. Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
+      [lapinStr,"Taux de lapin 🐇","Part des RDV de la période et du CMS au statut Lapin, parmi les RDV datés au plus tard de ce jour.",openLapinList]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){
@@ -2946,11 +2963,6 @@ function renderStats(){
     dashboard.appendChild(grid);
     wrap.appendChild(dashboard);
   })();
-
-  if(!hist.length){
-    wrap.appendChild(el('div',{style:"text-align:center;padding:60px 20px;color:var(--c-muted);font-size:15px;"},"Aucune donnée sur cette période."));
-    pane.appendChild(wrap);return;
-  }
 
   /* ── helpers ── */
   function card(title){
@@ -3002,7 +3014,7 @@ function renderStats(){
   }
 
   /* SVG à dimensions réelles : textes non étirés, défilement local si beaucoup de mois. */
-  function monthlyChart(title,description,months,map,series){
+  function monthlyChart(title,description,months,map,series,stacked){
     var c=card(title);c.classList.add('ui-monthly-chart');
     c.appendChild(el('p',{class:'ui-chart-description'},description));
     if(!months.length){c.appendChild(el('p',{class:'ui-chart-description'},'Aucune donnée sur cette période.'));return c;}
@@ -3031,10 +3043,10 @@ function renderStats(){
     function draw(){
       if(!scroll.clientWidth)return;
       clear(svg);
-      var width=Math.max(scroll.clientWidth,months.length*(series.length===2?76:100)+42),height=238,left=38,right=12,top=26,bottom=34;
+      var width=Math.max(scroll.clientWidth,months.length*(stacked?76:series.length===2?76:100)+42),height=238,left=38,right=12,top=26,bottom=34;
       svg.setAttribute('width',width);svg.setAttribute('viewBox','0 0 '+width+' '+height);
       var plotH=height-top-bottom,plotW=width-left-right,step=plotW/months.length;
-      var max=Math.max.apply(null,months.map(function(m){return Math.max.apply(null,series.map(function(item){return map[m][item.key]||0;}));}));
+      var max=Math.max.apply(null,months.map(function(m){return stacked?series.reduce(function(n,item){return n+(map[m][item.key]||0);},0):Math.max.apply(null,series.map(function(item){return map[m][item.key]||0;}));}));
       var rawStep=Math.max(1,max/4),power=Math.pow(10,Math.floor(Math.log10(rawStep))),fraction=rawStep/power;
       var tick=Math.max(1,(fraction<=1?1:fraction<=2?2:fraction<=5?5:10)*power),ceiling=Math.max(tick,Math.ceil(max/tick)*tick);
       for(var v=0;v<=ceiling;v+=tick){
@@ -3049,13 +3061,14 @@ function renderStats(){
         group.addEventListener('mouseenter',select);group.addEventListener('focus',select);group.addEventListener('click',select);
         group.addEventListener('mouseleave',function(){band.setAttribute('opacity','0');});group.addEventListener('blur',function(){band.setAttribute('opacity','0');});
         group.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}});
-        var bw=Math.min(22,(step-24)/series.length-4),start=left+i*step+(step-series.length*(bw+4)+4)/2;
+        var bw=stacked?Math.min(32,step*.5):Math.min(22,(step-24)/series.length-4),start=stacked?left+i*step+(step-bw)/2:left+i*step+(step-series.length*(bw+4)+4)/2,accumulated=0;
         series.forEach(function(item,j){
-          var n=map[m][item.key]||0,h=n/ceiling*plotH,x=start+j*(bw+4),y=top+plotH-h;
+          var n=map[m][item.key]||0,h=n/ceiling*plotH,x=stacked?start:start+j*(bw+4),y=top+plotH-h-(stacked?accumulated/ceiling*plotH:0);accumulated+=n;
           var bar=svgEl('rect',{x:x,y:y,width:bw,height:h,rx:3,fill:item.color});
           var nativeTitle=svgEl('title');nativeTitle.textContent=item.label+' : '+n;bar.appendChild(nativeTitle);group.appendChild(bar);
-          if(n){var value=svgEl('text',{x:x+bw/2,y:y-7,'text-anchor':'middle',class:'ui-chart-value'});value.textContent=n;group.appendChild(value);}
+          if(n&&!stacked){var value=svgEl('text',{x:x+bw/2,y:y-7,'text-anchor':'middle',class:'ui-chart-value'});value.textContent=n;group.appendChild(value);}
         });
+        if(stacked&&accumulated){var totalLabel=svgEl('text',{x:start+bw/2,y:top+plotH-accumulated/ceiling*plotH-7,'text-anchor':'middle',class:'ui-chart-value'});totalLabel.textContent=accumulated;group.appendChild(totalLabel);}
         var label=svgEl('text',{x:left+(i+.5)*step,y:height-11,'text-anchor':'middle',class:'ui-chart-tick'});label.textContent=monthLabel(m);group.appendChild(label);svg.appendChild(group);
       });
     }
@@ -3063,6 +3076,32 @@ function renderStats(){
     requestAnimationFrame(draw);
     return c;
   }
+
+  var priorityCharts=el('div',{class:'ui-stats-charts ui-stats-priority'});
+  priorityCharts.appendChild(monthlyChart('Rendez-vous par mois','Tous les statuts · mois du rendez-vous',Object.keys(rdv.byMonth).sort(),rdv.byMonth,[
+    {key:'realise',label:'Réalisé',color:'var(--chart-sms)'},{key:'confirme',label:'Confirmé',color:'var(--chart-mail)'},
+    {key:'en_attente',label:'En attente',color:'var(--chart-attente)'},{key:'annule',label:'Annulé',color:'var(--chart-annule)'},
+    {key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},
+    {key:'pas_de_retour',label:'Pas de retour',color:'var(--chart-retour)'}
+  ],true));
+  var fillCard=card('Remplissage par permanence');fillCard.classList.add('ui-permanence-chart');
+  fillCard.appendChild(el('p',{class:'ui-chart-description'},'État actuel des réservations · journées de la période, archivées incluses. Créneaux bloqués exclus.'));
+  var fillLegend=el('div',{class:'ui-chart-legend'});
+  [['Occupés','var(--chart-sms)'],['Disponibles','var(--c-border)']].forEach(function(x){var item=el('span',{class:'ui-chart-legend-item'});item.appendChild(el('i',{'aria-hidden':'true',style:'background:'+x[1]}));item.appendChild(el('span',{},x[0]));fillLegend.appendChild(item);});fillCard.appendChild(fillLegend);
+  var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Journées de permanence'});
+  rdv.days.forEach(function(day){
+    var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
+    label.appendChild(el('strong',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'})));
+    label.appendChild(el('span',{},day.commune));row.appendChild(label);
+    var pct=day.total?Math.round(day.occupied/day.total*100):null;
+    row.appendChild(el('span',{class:'ui-permanence-value'},pct===null?'—':pct+' %'));
+    var track=el('div',{class:'ui-permanence-track',role:'img','aria-label':day.occupied+' créneaux occupés, '+day.free+' disponibles, '+day.blocked+' bloqués'});
+    track.appendChild(el('div',{style:'width:'+(pct||0)+'%;background:var(--chart-sms);'}));row.appendChild(track);
+    row.appendChild(el('small',{},day.occupied+' occupé'+(day.occupied>1?'s':'')+' · '+day.free+' disponible'+(day.free>1?'s':'')+(day.blocked?' · '+day.blocked+' bloqué'+(day.blocked>1?'s':''):'')));
+    daysWrap.appendChild(row);
+  });
+  if(!rdv.days.length)daysWrap.appendChild(el('p',{class:'ui-chart-description'},'Aucune permanence ouverte sur cette période.'));
+  fillCard.appendChild(daysWrap);priorityCharts.appendChild(fillCard);wrap.appendChild(priorityCharts);
 
   /* ── KPI ── */
   var total=hist.length;
@@ -3124,46 +3163,35 @@ function renderStats(){
     monthMap[key][h.channel==="mail"?"mail":"sms"]++;
   });
   var months=Object.keys(monthMap).sort();
-  var charts=el('div',{class:'ui-stats-charts'});
+  var charts=el('div',{class:'ui-stats-charts ui-stats-messages'});
   charts.appendChild(monthlyChart('Messages par mois','Nombre de messages · mois de génération',months,monthMap,[
     {key:'sms',label:'SMS',color:'var(--chart-sms)'},{key:'mail',label:'E-mail',color:'var(--chart-mail)'}
   ]));
 
-  /* ── Tendance mensuelle Lapin / Excusé / Pas de retour ── */
-  var trendMap={};
-  hist.forEach(function(h){
-    if(!h.date||['lapin','excuse','pas_de_retour'].indexOf(h.statut)===-1)return;
-    var key=h.date.substring(0,7);
-    if(!trendMap[key])trendMap[key]={lapin:0,excuse:0,pas_de_retour:0};
-    trendMap[key][h.statut]++;
-  });
-  var trendMonths=Object.keys(trendMap).sort();
-  charts.appendChild(monthlyChart('Suivi des rendez-vous','Lapin, excusé et pas de retour · mois du rendez-vous',trendMonths,trendMap,[
-    {key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},{key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'pas_de_retour',label:'Pas de retour',color:'var(--chart-retour)'}
-  ]));
   wrap.appendChild(charts);
 
   /* ── Grille 2 colonnes responsive ── */
   var grid2=el('div',{class:'ui-stats-grid'});
 
   /* Démarches */
-  var demMap={};hist.forEach(function(h){if(h.demarche)demMap[h.demarche]=(demMap[h.demarche]||0)+1;});
+  var demMap=rdv.byDemarche;
   var demList=Object.keys(demMap).map(function(k){return{nom:k,n:demMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,10);
-  var demCard=card("Classement des démarches (top 10)");
+  var demCard=card("Démarches accompagnées (top 10)");
+  demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de RDV réalisés sur la période sélectionnée.'));
   if(demList.length){
     var maxD=demList[0].n;
     var dw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
     demList.forEach(function(d,i){var colors=["oklch(0.56 0.15 266)","oklch(0.52 0.14 266)","oklch(0.48 0.13 266)"];dw.appendChild(barRow(d.nom,Math.round(d.n/maxD*100),colors[Math.min(i,2)],String(d.n),String(i+1)));});
     demCard.appendChild(dw);
-  }else{demCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucune démarche"));}
+  }else{demCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun accompagnement réalisé sur cette période."));}
   grid2.appendChild(demCard);
 
   /* Colonne droite: statut + type + CMS */
   var col2=el('div',{class:'ui-stats-stack'});
 
   var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
-  hist.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
-  var statutCard=card("Répartition par statut");
+  rdv.entries.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
+  var statutCard=card("Statuts des RDV de la période");
   var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour"];
   var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
   var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -3175,7 +3203,7 @@ function renderStats(){
     var statutRow=barRow(STATUT_STYLES[k].label,pct,STATUT_STYLES[k].border,statutMap[k]+" ("+pct+"%)",null);
     statutRow.style.cursor='pointer';
     statutRow.addEventListener('click',(function(key){return function(){
-      openStatList(STATUT_STYLES[key].label,hist.filter(function(h){return h.statut===key;}));
+      openStatList(STATUT_STYLES[key].label,rdv.entries.filter(function(h){return h.statut===key;}));
     };})(k));
     stw.appendChild(statutRow);
   });
@@ -3281,37 +3309,6 @@ function renderStats(){
     heatCard.appendChild(heatWrap);
     wrap.appendChild(heatCard);
     wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
-  })();
-
-  /* ── Taux de remplissage par CMS (90 derniers jours) ── */
-  (function(){
-    var fillCard=card("Taux de remplissage par CMS (90 derniers jours)");
-    var communesSet={};
-    (S.permanences||[]).forEach(function(p){communesSet[p.commune]=1;});
-    var communesFill=Object.keys(communesSet);
-    if(communesFill.length){
-      var results=[];
-      communesFill.forEach(function(commune){
-        var totalSlots=0,takenSlots=0;
-        var cutoffDS=toLocalDateStr(new Date(Date.now()-90*86400000));var todayDS=toLocalDateStr(new Date());
-        S.permanences.filter(function(p){return p.commune===commune&&p.exceptDate&&p.exceptDate>=cutoffDS&&p.exceptDate<=todayDS;}).forEach(function(p){
-          var sls=getSlots(p.commune,p.exceptDate);
-          totalSlots+=sls.length;
-          takenSlots+=sls.filter(function(sl){return sl.taken&&!sl.freeAgain;}).length;
-        });
-        results.push({commune:commune,pct:totalSlots?Math.round(takenSlots/totalSlots*100):0});
-      });
-      results.sort(function(a,b){return b.pct-a.pct;});
-      var fw=el('div',{style:"display:flex;flex-direction:column;gap:9px;"});
-      results.forEach(function(r){
-        var col='oklch('+(0.75-r.pct/100*0.35).toFixed(2)+' '+(0.08+r.pct/100*0.16).toFixed(2)+' 266)';
-        fw.appendChild(barRow(r.commune,r.pct,col,r.pct+'%',null));
-      });
-      fillCard.appendChild(fw);
-    } else {
-      fillCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucune permanence configurée"));
-    }
-    wrap.appendChild(fillCard);
   })();
 
   pane.appendChild(wrap);

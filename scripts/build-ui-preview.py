@@ -42,7 +42,7 @@ def build(output):
         'Les journées archivées se consultent aussi dans ce menu : seules celles avec des rendez-vous sont comptées, et Afficher ouvre directement une ancienne date. Masquer revient à la période précédente.\n'
         'Sur ordinateur, l’en-tête occupe moins de hauteur. Le fond de chaque tuile reprend la couleur de son statut, en clair comme en sombre.\n'
         'Dans Agenda, ouvrir la tuile rouge Annulé : le motif est modifiable dans la fiche. Le créneau est à nouveau disponible et aucun rappel automatique n’est proposé.\n'
-        'Dans Statistiques, les graphiques mensuels gardent des textes non déformés, une échelle chiffrée et un détail au survol, au toucher ou au clavier. Voir les données ouvre le tableau correspondant.\n'
+        'Dans Statistiques, RDV réalisés remplace RDV aujourd’hui. Les premiers graphes montrent les statuts par mois et les places occupées/disponibles de chaque permanence ; le classement des démarches porte sur les accompagnements réalisés. Les filtres de période et de CMS suivent la date du RDV, ceux des messages sa date de génération. Voir les données ouvre le tableau mensuel.\n'
         'Dans Messages, les SMS gardent au maximum une ligne vide entre les paragraphes, sans ajouter de blanc dans les listes ; les espacements excessifs sont réduits aussi à la copie après modification manuelle. La copie e-mail garde sa mise en forme et ses liens enrichis.\n'
         'Le bouton « Aperçu de l’import » reste accessible dans le bandeau de démonstration pour découvrir le pop-up des orientations.\n'
         'Sans profil choisi, ce bouton ouvre automatiquement Michel et présente quatre orientations entièrement fictives.\n'
