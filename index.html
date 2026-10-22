@@ -1580,7 +1580,7 @@ function copyBody(){
   function afterCopy(ok){
     if(!ok)return;
     var receptionRecord=S.history.find(function(h){return h.date===S.date&&h.heure===S.heure&&h.commune===S.commune&&(h.nom||'').toLowerCase()===(S.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(S.prenom||'').toLowerCase();});
-    if(receptionRecord&&(receptionRecord.dateReception||'')!==(S.dateReception||'')){
+    if(receptionRecord&&receptionDateFor(receptionRecord)!==(S.dateReception||'')){
       receptionRecord.dateReception=S.dateReception||'';lsSet(pk('history'),S.history);
     }
     if(text&&(!S.history.length||S.history[0].body!==text)){
@@ -1908,7 +1908,7 @@ function exportHistoryCSV(){
   if(!S.history.length){showToast("Aucun historique à exporter","warn");return;}
   var cols=["Date","Canal","Type","Civilité","Prénom","Nom","Téléphone","Démarche","Commune","CMS","Corps","Réception de la demande","Première préparation"];
   var esc=function(v){return '"'+(String(v||"").replace(/"/g,'""'))+'"';};
-  var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,h.dateReception||"",h.premierePreparationAt||""].map(esc).join(";");});
+  var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,receptionDateFor(h),h.premierePreparationAt||""].map(esc).join(";");});
   var csv="﻿"+cols.map(esc).join(";")+"\n"+rows.join("\n");
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download="historique-ess-cms-"+new Date().toISOString().slice(0,10)+".csv";a.click();
@@ -1944,7 +1944,7 @@ function openHistInGen(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=h.dateReception||"";
+  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionDateFor(h);
   S.dateDemande=h.dateDemande||new Date().toISOString().slice(0,10);
   S.genNotes=h.notes||"";
   S.selectedTemplate="__default__";
@@ -2526,7 +2526,7 @@ function renderHistoryCard(h,realIdx,container){
   if(!isEditing){
     actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-primary',onClick:function(e){e.stopPropagation();openHistInGen(h);}},'Ouvrir le dossier'));
     actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();reuseHistItem(h);}},'Réutiliser'));
-    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistDateReception=h.dateReception||"";S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
+    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistDateReception=receptionDateFor(h);S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
   }
   actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-danger',onClick:function(e){e.stopPropagation();if(confirm("Supprimer cette entrée ?"))deleteHistItem(realIdx);}},'Supprimer'));
   card.appendChild(actions);
@@ -2640,11 +2640,17 @@ function businessDaysBetween(startDay,endDay){
   for(var i=1;i<=days%7;i++){var day=new Date(start+(weeks*7+i)*86400000).getUTCDay();if(day!==0&&day!==6)n++;}
   return n;
 }
+/* Le champ historique était saisi comme réception : reprise confirmée par l'utilisateur.
+   Une nouvelle réception explicitement vide reste inconnue, sans repli sur une date d'envoi. */
+function receptionDateFor(h){
+  var value=Object.prototype.hasOwnProperty.call(h,'dateReception')?h.dateReception:h.dateDemande;
+  return preparationDayUTC(value)!==null?value:'';
+}
 function preparationStats(history){
   var sum=0,count=0,excluded=0;
   history.forEach(function(h){
     if(h.msgType==='indispo')return;
-    var day=preparationParisDay(h.premierePreparationAt),delay=day?businessDaysBetween(h.dateReception,day):null;
+    var day=preparationParisDay(h.premierePreparationAt),delay=day?businessDaysBetween(receptionDateFor(h),day):null;
     if(delay===null){excluded++;return;}sum+=delay;count++;
   });
   return {avg:count?Math.round(sum/count*10)/10:null,count:count,excluded:excluded};
@@ -5786,13 +5792,13 @@ function renderAgendaRdvDialog(overlay,box){
     if(t.notes)body.appendChild(el('section',{class:'ui-rdv-notes'},[el('h4',{},'Notes'),el('p',{},t.notes)]));
     var followup=el('details',{id:'ag-rdv-followup',class:'ui-rdv-followup'});
     followup.appendChild(el('summary',{},'Suivi des échanges'));
-    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},t.dateReception?formatDate(t.dateReception):'Non renseignée')]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
+    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},receptionDateFor(t)?formatDate(receptionDateFor(t)):'Non renseignée')]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
     var primary=el('div',{class:'ui-rdv-primary-actions'});
     primary.appendChild(action('ag-rdv-generate','Préparer SMS / mail','ui-rdv-action-primary',function(){
-      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:t.dateReception||'',dateDemande:t.dateDemande||toLocalDateStr(new Date()),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
+      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||toLocalDateStr(new Date()),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
-    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',date:date,heure:heure,dateReception:t.dateReception||'',dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
+    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
     var secondary=el('div',{class:'ui-rdv-secondary-actions'});
     secondary.appendChild(action('ag-rdv-duplicate','Dupliquer sur un autre créneau','ui-rdv-action-link',function(){
       S.agendaAvailability={dateStr:date,commune:commune,duplicate:messageFields()};S.modal='agenda-availability';renderModal();

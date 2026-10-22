@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `36289b6` avant le délai de première préparation en jours de semaine.
+État au **22/10/2026**, base `main` `fe8b21d` avant la reprise de la réception historique.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -23,6 +23,14 @@ ne doit pas être défait remonte dans la dernière section.
   si ISO valide ; nouvelle demande, duplication et changement de profil la vident.
   La copie inchangée enregistre une réception corrigée sans déplacer `ts` ni la
   première préparation. L’ancien `dateDemande` reste le suivi du message/relances.
+- Précision utilisateur du 22/10 : l’ancienne date de réception de l’historique
+  constitue déjà le point zéro. `receptionDateFor` reprend `dateDemande` lorsque
+  le nouveau champ est absent, sans migration ni ressaisie. Une `dateReception`
+  présente, même explicitement vide, prime toujours (aucun repli sur une date
+  d’envoi récente). Moyenne, ouverture/édition, fiche Agenda et CSV partagent
+  cette lecture. La première préparation manquante reste non reconstruite.
+  Tests : réception historique + première date connue, nouvelle réception vide,
+  effacement volontaire après reprise et affichage Agenda ; données lues intactes.
 - Population moyenne/couverture identique : CMS et période au jour de première
   préparation ; le `ts` legacy sert uniquement à situer les exclusions anciennes.
   Sans deux dates valides/cohérentes, fiche non mesurable, compteur explicite.

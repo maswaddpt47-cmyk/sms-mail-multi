@@ -139,6 +139,11 @@ identifiées en jours calendaires, sans recalculer leurs agrégats.
 **Où regarder** : `addHistory`, `handleGenerate`, `copyBody`, `renderGenerate`,
 `openHistInGen`, `renderAgendaRdvDialog`, `preparationStats`, `computeYearArchive`.
 
+**Précision utilisateur — 22/10/2026** : la date de réception déjà saisie dans
+l’historique est bien le point zéro. Le lecteur compatible reprend `dateDemande`
+uniquement si le nouveau champ `dateReception` est absent. Une nouvelle valeur
+explicitement vide reste inconnue. Aucune première préparation n’est déduite de `ts`.
+
 # Blocs tranchés
 
 Aucun. **Total au 27/09/2026 : 0 amendé, 0 confirmé, 0 contredit.**

@@ -58,4 +58,9 @@ const invalid=[
 check(invalid,{avg:null,count:0,excluded:invalid.length},'données manquantes, anciennes ou incohérentes');
 check(valid.concat(invalid,{id:'fictif-blocked',msgType:'indispo'}),{avg:0.5,count:2,excluded:invalid.length},'indisponibilités hors population');
 check([],{avg:null,count:0,excluded:0},'population vide');
+// La réception déjà renseignée dans l'ancien champ est conservée comme point zéro.
+check([{msgType:'confirmation',dateDemande:'2026-10-16',premierePreparationAt:'2026-10-19T08:00:00Z'}],{avg:1,count:1,excluded:0},'réception historique et première préparation connue');
+check([{msgType:'confirmation',dateReception:'',dateDemande:'2026-10-16',premierePreparationAt:'2026-10-19T08:00:00Z'}],{avg:null,count:0,excluded:1},'nouvelle réception vide sans repli sur date du message');
+assert.equal(context.receptionDateFor({dateDemande:'2026-10-16'}),'2026-10-16');
+assert.equal(context.receptionDateFor({dateReception:'2026-10-15',dateDemande:'2026-10-16'}),'2026-10-15');
 console.log('Réactivité : '+intervals.length+' intervalles vérifiés ; moyenne, provenance Paris, couverture, idempotence et lecture seule conformes.');
