@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `92b32da` avant renforcement du rouge Annulé.
+État au **22/10/2026**, base `main` `de3c2fd` avant regroupement des rappels dans le menu Agenda.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -12,7 +12,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Demande du 22/10 : nouveau statut **Annulé**, couleur **rouge**, champ de
   motif. `annule` et `annulationMotif` facultatif sont séparés
   d'Excusé ; fiche conservée, créneau libéré, aucun rappel ni relance.
-- Rouge renforcé après retour visuel : fond, badge, bordure et pointage
+- Rouge renforcé après retour visuel : fond, badge et bordure
   distincts du jaune Excusé ; textes secondaires assombris sur la tuile
   claire, rail sombre plus vif. La palette partagée colore aussi la barre
   Annulé de la répartition statistique.
@@ -113,13 +113,23 @@ ne doit pas être défait remonte dans la dernière section.
   Le badge se met à jour pendant la saisie et après effacement. Les anciens
   événements toggle détachés sont ignorés. La marge de défilement se mesure
   uniquement sur la barre sticky ; commandes masquées à l’impression.
+- Demande du 22/10 : « Rappels et points à traiter » est désormais dans le
+  menu **☰ Mon agenda · filtres et rappels**, après la recherche et les
+  filtres. Le bloc ne prend plus de ligne séparée au-dessus des journées.
+  Son repli interne et ses actions sont conservés. Le hamburger est décoratif
+  et reste présent après recherche, changement de portée et nouveau rendu ;
+  seul le texte du résumé est actualisé. Le contrôle natif reste accessible
+  au clavier. Les styles de barre d'outils excluent les boutons du bloc déplacé.
 - Démo actuelle : `demo-agenda-compact.html`, choisir Michel puis Agenda,
   faire défiler et utiliser Précédent/Aujourd’hui/Suivant. Les données sont
   fictives et en mémoire ; aperçu de l’import toujours accessible.
-- Validation : syntaxe JavaScript, revue des règles de grille/sticky et
-  des changements de filtres, archive conforme à la source. Aucun rendu
-  navigateur ni débordement mesuré dans cet environnement ; vérifier à
-  l’écran que les trois boutons restent visibles et les tuiles remontent.
+- Validation du regroupement : syntaxe et archive conformes ; mesures
+  Chromium à 390 px et 1280×720, clair/sombre : aucun débordement, bloc caché
+  dans le menu fermé, ouverture/mémoire/clavier conservés, hamburger stable,
+  Filtrer du pointage et navigation sticky fonctionnels. Démo entièrement
+  fictive, avec une confirmation passée ajoutée en mémoire pour ce contrôle.
+  Les boutons du pointage gardent leur palette neutre préexistante imposée
+  par `.ui-ag-notice button` ; aucune nouvelle couleur affirmée pour eux.
 
 ## Publication et bloc Votre message
 
