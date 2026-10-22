@@ -1,11 +1,23 @@
 # CHANTIERS — sms-mail-multi
 
-État au **21/10/2026**, base `main` `45d182c` ; étude de la liaison SMS sans copier-coller.
+État au **22/10/2026**, base `main` `a6390d7` ; ajout du statut Annulé.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Statut Annulé — en cours
+
+- Demande du 22/10 : nouveau statut **Annulé**, couleur **rouge**, champ de
+  motif. Ajout prévu : `annule` et `annulationMotif` facultatif, séparés
+  d'Excusé ; fiche conservée, créneau libéré, aucun rappel ni relance.
+- Audit des disponibilités, conflits, filtres, profils propriétaires,
+  exports et statistiques effectué en lecture seule. JSON/sauvegardes
+  conservent déjà les objets complets ; aucune migration nécessaire.
+- AG-001 ouvert pour le contrat de données. Ajouter le comptage séparé
+  live/archives sans modifier les formules de taux ni les archives déjà
+  agrégées. Vérifications ciblées et publication restent à faire.
 
 ## Liaison SMS sans copier-coller — choix technique en attente
 

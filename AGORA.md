@@ -100,7 +100,24 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-001 — Statut Annulé et motif facultatif — ouvert le 22/10/2026
+**Auteur** : session `cx2210an` — lu sur `a6390d7`.
+**Proposition** : ajouter `statut: 'annule'` et `annulationMotif` facultatif aux
+fiches, sans migration ; afficher Annulé en rouge et libérer le créneau.
+Exclure rappels/relances et exporter l'événement ICS annulé avec son UID existant.
+**Critère déclencheur** : n° 1 (`CLAUDE.md`, section AGORA), nouvelle valeur
+persistée et champ conservés dans les exports/sauvegardes.
+**Ce que ça engage** : les versions consommatrices doivent connaître ce nouvel
+état ; ne jamais le convertir en Excusé ni supprimer son motif.
+**Non vérifié par l'auteur** : relecture d'un export contenant Annulé par une
+ancienne version externe de l'application ; aucune donnée réelle utilisée.
+**Si personne ne répond, je fais quoi ?** — livrer l'ajout demandé, additif et
+sans migration. Différer toute redéfinition des dénominateurs statistiques :
+la répartition compte Annulé séparément, les formules de taux restent celles
+existantes (RDV passés, comme Excusé). Aucune archive agrégée recalculée.
+**Où regarder** : `index.html` : `getSlots`, `hasConflict`, `STATUT_STYLES`,
+`renderAgendaRdvDialog`, `computeYearArchive`, `ICS_CANCEL_STATUTS` ;
+`writeProfileHistory`/`exportDataForProfile`/`doImport` conservent les champs.
 
 # Blocs tranchés
 
