@@ -1,11 +1,28 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `54e5ede` avant correction des archives et refonte visuelle des graphiques.
+État au **22/10/2026**, base `main` `8d3653e` avant refonte visuelle des graphiques.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Graphiques statistiques — rendu à conserver
+
+- Demande du 22/10 : qualité graphique et lisibilité insuffisantes face à GDINV2.
+  Les deux graphiques mensuels partagent un rendu SVG à dimensions réelles,
+  sans étirement du texte. Deux cartes sur PC, une colonne sur mobile,
+  graduations entières, valeurs sur les barres et légendes HTML avec totaux.
+- Détail au survol, au toucher et au clavier ; tableau repliable « Voir les
+  données ». Défilement horizontal limité au graphique pour les longues séries.
+  Thèmes clair/sombre, aucun ajout de dépendance ni modification du stockage.
+- Les populations et filtres restent inchangés : messages au mois de génération,
+  suivi Lapin/Excusé/Pas de retour au mois du RDV. Annulé reste dans la
+  répartition par statut ; les formules de taux ne changent pas.
+- Démo : Michel → Statistiques. Mesures Chromium à 390 px et 1280×720,
+  clair/sombre, avec démo puis douze mois fictifs : aucune déformation,
+  aucun débordement de page ni chevauchement des valeurs ; détail clavier
+  et tableau accessibles. Le contrôle visuel utilisateur reste à faire.
 
 ## Statut Annulé — comportement à conserver
 
