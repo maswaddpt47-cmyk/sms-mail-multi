@@ -1,11 +1,30 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `b27e638` avant la couleur En attente dans les barres.
+État au **22/10/2026**, base `main` `f040ec5`, audit de la réactivité moyenne en lecture seule.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Réactivité moyenne — limites constatées, définition à confirmer
+
+- Question utilisateur du 22/10 : « 4 j me paraît long », week-ends inclus ?
+  Oui : `renderStats` et `computeYearArchive` font la différence calendaire
+  `ts − dateDemande` puis arrondissent les jours et la moyenne. Exemple exécuté
+  sur la formule réelle : vendredi 16/10 → lundi 19/10 = 3 jours.
+- Provenance vérifiée : `handleGenerate` et certaines copies datent `ts` au
+  moment de la préparation ; `addHistory` peut écraser ce champ lors d’une
+  nouvelle génération du même RDV. La première préparation n’est pas conservée.
+- `dateDemande` signifie réception dans le formulaire/historique, mais envoi
+  dans le dialogue Agenda ; l’orientation → message le force au jour courant,
+  sans utiliser `o.date`. Ce KPI ne garantit donc pas réception → premier contact.
+  La relance dédiée conserve `ts` ; l’import conserve les valeurs reçues.
+- Aucun recomptage des 4 jours réels : aucune sauvegarde personnelle lue.
+  Pas de modification du calcul, des champs ni des archives. Proposition à
+  confirmer : réception distincte, première préparation conservée, délai en jours
+  du lundi au vendredi. Les dates d’envoi réelles ne sont pas connues du site.
+  Avant toute nouvelle valeur persistée/migration, soumettre le contrat à l’AGORA.
 
 ## Statistiques — indicateurs et graphes à conserver
 
