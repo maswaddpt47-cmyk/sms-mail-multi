@@ -119,6 +119,26 @@ existantes (RDV passés, comme Excusé). Aucune archive agrégée recalculée.
 `renderAgendaRdvDialog`, `computeYearArchive`, `ICS_CANCEL_STATUTS` ;
 `writeProfileHistory`/`exportDataForProfile`/`doImport` conservent les champs.
 
+## AG-002 — Réception et première préparation, délai lundi–vendredi — ouvert le 22/10/2026
+**Auteur** : session `cx2210rp` — lu sur `6e0c16f`.
+**Proposition** : champs additifs `dateReception` (jour ISO) et
+`premierePreparationAt` (instant ISO avec fuseau), séparés du legacy `dateDemande`.
+Moyenne réception → première préparation en jours lundi–vendredi, couverture affichée.
+**Critère déclencheur** : n° 1 (`CLAUDE.md`, section AGORA), contrat persistant
+et agrégat annuel additif `preparationMetrics` distinct de l’ancien `avgReact`.
+**Ce que ça engage** : conserver la première préparation lors des régénérations,
+exports/imports et modifications de fiche ; aucune assimilation à un envoi réel.
+`dateDemande` garde son rôle legacy pour les échanges/relances.
+**Non vérifié par l'auteur** : les vraies dates de réception/première préparation
+des fiches anciennes ; `ts` est écrasable et ne permet pas de les reconstruire.
+**Si personne ne répond, je fais quoi ?** — appliquer la demande explicite « Go »
+sans migration automatique : seul un nouveau message préparé initialise le premier
+instant ; une fiche ancienne déjà préparée reste sans premier instant fiable.
+Afficher le nombre de fiches mesurables/exclues, garder les anciennes archives
+identifiées en jours calendaires, sans recalculer leurs agrégats.
+**Où regarder** : `addHistory`, `handleGenerate`, `copyBody`, `renderGenerate`,
+`openHistInGen`, `renderAgendaRdvDialog`, `preparationStats`, `computeYearArchive`.
+
 # Blocs tranchés
 
 Aucun. **Total au 27/09/2026 : 0 amendé, 0 confirmé, 0 contredit.**
