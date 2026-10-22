@@ -39,6 +39,7 @@ def build(output):
         'Les dates, la recherche, les filtres et le bouton Réserver défilent avec la page.\n'
         'Les filtres sont fermés au départ ; leur titre indique les filtres actifs.\n'
         'Le menu « ☰ Mon agenda · filtres et rappels » regroupe recherche, filtres et « Rappels et points à traiter », pour libérer de la place au-dessus des rendez-vous.\n'
+        'Les journées archivées se consultent aussi dans ce menu : seules celles avec des rendez-vous sont comptées, et Afficher ouvre directement une ancienne date. Masquer revient à la période précédente.\n'
         'Sur ordinateur, l’en-tête occupe moins de hauteur. Le fond de chaque tuile reprend la couleur de son statut, en clair comme en sombre.\n'
         'Dans Agenda, ouvrir la tuile rouge Annulé : le motif est modifiable dans la fiche. Le créneau est à nouveau disponible et aucun rappel automatique n’est proposé.\n'
         'Dans Messages, les SMS gardent au maximum une ligne vide entre les paragraphes, sans ajouter de blanc dans les listes ; les espacements excessifs sont réduits aussi à la copie après modification manuelle. La copie e-mail garde sa mise en forme et ses liens enrichis.\n'

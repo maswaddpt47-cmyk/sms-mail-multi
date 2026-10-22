@@ -3590,7 +3590,7 @@ function renderAgenda(){
   /* permanences visibles selon la portée choisie, taguées avec le profil propriétaire. Pour un
      profil autre que l'actif, la migration éventuellement encore due n'est jamais persistée ici
      (ça violerait l'isolation entre profils) — juste rejouée en mémoire pour l'affichage. */
-  var archivedCount=0,hiddenArchivedDays={};
+  var hiddenArchivedDays={};
   function rememberArchived(pid,perms,showArch){
     if(!showArch)perms.forEach(function(p){if(p.archived&&p.exceptDate)hiddenArchivedDays[pid+'|'+p.exceptDate+'|'+p.commune]=true;});
   }
@@ -3598,7 +3598,6 @@ function renderAgenda(){
     var showArch=(pid===S.activeProfile)&&S.agShowArchived;
     if(pid===S.activeProfile){
       rememberArchived(pid,S.permanences,showArch);
-      if(!S.agShowArchived)archivedCount+=S.permanences.filter(function(p){return p.exceptDate&&p.archived;}).length;
       return S.permanences.filter(function(p){return p.exceptDate&&(showArch||!p.archived);});
     }
     var raw=ls('ess-'+pid+'-permanences',[]);
@@ -3622,6 +3621,15 @@ function renderAgenda(){
   var scopePids=S.agendaScope==='mine'?[S.activeProfile]:S.agendaScope==='all'?PROFILES.map(function(pf){return pf.id;}):[S.agendaScope];
   var scopeHist=[];
   scopePids.forEach(function(pid){readProfileHistory(pid).forEach(function(h){scopeHist.push(Object.assign({},h,{_profile:pid}));});});
+  /* Même périmètre que les tuiles : une journée vide ou seulement bloquée ne peut rien afficher. */
+  var archivedKeys={};
+  var archivedDays=scopePids.indexOf(S.activeProfile)===-1?[]:S.permanences.filter(function(p){
+    if(!p.exceptDate||!p.archived)return false;
+    var key=p.exceptDate+'|'+p.commune;if(archivedKeys[key])return false;archivedKeys[key]=true;
+    return getSlots(p.commune,p.exceptDate,S.history,p).some(function(slot){return slot.taken&&slot.taken.msgType!=='indispo';});
+  }).sort(function(a,b){return a.exceptDate.localeCompare(b.exceptDate);});
+  var archivedCount=archivedDays.length;
+  var hasArchivedDays=scopePids.indexOf(S.activeProfile)!==-1&&S.permanences.some(function(p){return p.exceptDate&&p.archived;});
   /* rappels, doublons et dépassements concernent le profil connecté : pas affichés sur l'agenda d'un collègue */
   var scopeCollegue=S.agendaScope!=='mine'&&S.agendaScope!=='all';
   _rdvCount.textContent=scopeHist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length+' RDV au total';
@@ -3713,12 +3721,29 @@ function renderAgenda(){
   days.sort(function(a,b){return a.dateStr<b.dateStr?-1:a.dateStr>b.dateStr?1:0;});
   /* supprimer les doublons éventuels */
   var seen={};days=days.filter(function(d){var k=d.dateStr+d.perm.commune+d.profile;if(seen[k])return false;seen[k]=1;return true;});
-  if(archivedCount){
-    var archLine=el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:14px;"});
-    var archToggle=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:8px;"},S.agShowArchived?'Masquer les journées archivées':'Afficher les '+archivedCount+' journée'+(archivedCount>1?'s':'')+' archivée'+(archivedCount>1?'s':''));
-    archToggle.addEventListener('click',function(){S.agShowArchived=!S.agShowArchived;renderAgenda();});
-    archLine.appendChild(archToggle);
-    wrap.appendChild(archLine);
+  var archLine=null;
+  if(hasArchivedDays){
+    archLine=el('div',{id:'ag-archive-controls',style:"font-size:11px;color:var(--c-muted);margin-top:10px;"});
+    if(archivedCount){
+      var archToggle=el('button',{id:'ag-archive-toggle',type:'button',class:'gx-press','aria-pressed':String(!!S.agShowArchived),style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:8px;"},S.agShowArchived?'Masquer les journées archivées':'Afficher '+(archivedCount===1?'la journée archivée':'les '+archivedCount+' journées archivées')+' avec RDV');
+      archToggle.addEventListener('click',function(){
+        var show=!S.agShowArchived;
+        if(show){S.agendaArchiveReturnDate=S.agendaTimelineDate;S.agendaTimelineDate=archivedDays[archivedDays.length-1].exceptDate;}
+        else{S.agendaTimelineDate=S.agendaArchiveReturnDate||toLocalDateStr(new Date());S.agendaArchiveReturnDate=null;}
+        S.agShowArchived=show;S.agendaFocusDay=null;renderAgenda();
+        if(show){
+          var matching=Array.prototype.slice.call(pane.querySelectorAll('[data-ag-archived="1"]')).filter(function(card){return card.getAttribute('data-ag-filter-match')!=='0';});
+          var target=matching[matching.length-1];
+          if(target){
+            var dateButton=document.getElementById('ag-timeline-date-'+target.getAttribute('data-ag-date-section'));
+            if(dateButton)dateButton.click();
+            target.scrollIntoView({behavior:'smooth',block:'start'});
+          }else showToast('Aucune journée archivée ne correspond aux filtres actuels.','warn');
+        }
+      });
+      archLine.appendChild(archToggle);
+    }
+    archLine.appendChild(el('p',{style:'margin:6px 0 0;line-height:1.5;'},archivedCount?'Consulter les anciens rendez-vous. Les journées vides restent masquées.':'Aucune journée archivée ne contient de rendez-vous à afficher.'));
   }
 
   /* --- barre de navigation rapide — injectée dans le header sticky --- */
@@ -4009,6 +4034,7 @@ function renderAgenda(){
   filterPanel.addEventListener('toggle',function(){if(document.getElementById('ag-timeline-filters')!==filterPanel)return;S.agendaTimelineFiltersOpen=filterPanel.open;timelineUpdateMargins();});
   var filterControls=el('div',{class:'ui-ag-filter-controls'},[searchIn,statutSel,jumpIn,btnPrint]);
   filterPanel.appendChild(scopeBar);filterPanel.appendChild(filterControls);
+  if(archLine)filterPanel.appendChild(archLine);
   navBar.appendChild(head);navBar.appendChild(navigation);
   controlsBar.appendChild(dateStrip);controlsBar.appendChild(filterPanel);
   controlsBar.appendChild(el('button',{id:'ag-reserve-slot',class:'gx-press ui-ag-reserve',onClick:openAvailability},'+ Réserver'));
@@ -4048,7 +4074,7 @@ function renderAgenda(){
       _uiAgWeek=_uiWeekKey;
       board.appendChild(el('h3',{class:'ui-ag-week','data-ag-week-header':_uiWeekKey},'Semaine du '+_uiMonday.getDate()+' '+MONTHS[_uiMonday.getMonth()]+' '+_uiMonday.getFullYear()));
     }
-    var card=el('section',{class:'ui-ag-day'+(isToday?' ui-ag-day-today':'')+(isPast?' ui-ag-day-past':''),'data-ag-week':_uiWeekKey,'data-ag-date-section':day.dateStr,'data-ag-day-key':dayKey(day),id:'agenda-day-'+day.dateStr+'-'+day.perm.commune+'-'+day.profile});
+    var card=el('section',{class:'ui-ag-day'+(isToday?' ui-ag-day-today':'')+(isPast?' ui-ag-day-past':''),'data-ag-week':_uiWeekKey,'data-ag-date-section':day.dateStr,'data-ag-day-key':dayKey(day),'data-ag-archived':day.perm.archived?'1':'0',id:'agenda-day-'+day.dateStr+'-'+day.perm.commune+'-'+day.profile});
     /* La date, le lieu et les commandes forment trois zones distinctes. */
     var dayHead=el('div',{class:'ui-ag-day-head'});
     var dateLabel=JOURS_FR[day.date.getDay()]+' '+day.date.getDate()+' '+MONTHS[day.date.getMonth()];

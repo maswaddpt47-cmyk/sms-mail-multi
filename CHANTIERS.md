@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `de3c2fd` avant regroupement des rappels dans le menu Agenda.
+État au **22/10/2026**, base `main` `54e5ede` avant correction des archives et refonte visuelle des graphiques.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -120,6 +120,12 @@ ne doit pas être défait remonte dans la dernière section.
   et reste présent après recherche, changement de portée et nouveau rendu ;
   seul le texte du résumé est actualisé. Le contrôle natif reste accessible
   au clavier. Les styles de barre d'outils excluent les boutons du bloc déplacé.
+- Les archives sont dans le même menu ☰ : comptage des journées uniques avec
+  RDV, sans journées vides ou seulement bloquées. Afficher ouvre directement
+  une ancienne journée correspondant aux filtres ; Masquer reste disponible et
+  revient à la période précédente. Aucun archivage ni historique modifié.
+  Deux groupes Chromium ciblés passent à 390 et 1280 px : doublons/vides,
+  navigation aller-retour, filtres, portée collègue et données inchangées.
 - Démo actuelle : `demo-agenda-compact.html`, choisir Michel puis Agenda,
   faire défiler et utiliser Précédent/Aujourd’hui/Suivant. Les données sont
   fictives et en mémoire ; aperçu de l’import toujours accessible.
