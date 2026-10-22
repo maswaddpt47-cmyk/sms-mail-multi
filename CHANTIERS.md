@@ -112,6 +112,16 @@ ne doit pas être défait remonte dans la dernière section.
   Node des remplacements, blocages, dépassement et six places.
   Le comptage réel de l’utilisateur et son appréciation visuelle restent à confirmer.
 
+## Délai moyen RDV — par CMS
+
+- Demande du 22/10 : une moyenne tous CMS confondus n'est pas pertinente,
+  chaque permanence a son rythme. Filtre sur « Tous les CMS » : la tuile liste
+  le délai moyen **par CMS** avec le nombre de RDV ; un seul CMS (filtré ou
+  unique) : le chiffre en grand. Inchangés : moyenne en jours calendaires
+  entre la date du dernier message (`ts`) et le RDV, RDV futurs au message
+  seulement ; archives annuelles (`arc.avgRdv`) toujours globales, non
+  recalculées. Vérifié sur données fictives (2 CMS) à 390/1280 px.
+
 ## Statut Annulé — comportement à conserver
 
 - Demande du 22/10 : nouveau statut **Annulé**, couleur **rouge**, champ de

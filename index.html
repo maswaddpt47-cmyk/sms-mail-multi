@@ -3204,15 +3204,20 @@ function renderStats(){
   var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
   var prepMetrics=preparationStats(prepCohort);
   var legacyPrep=legacyPreparationEstimate(prepCohort);
-  /* avg days between ts and date (appointment) */
-  var diffs=[];hist.forEach(function(h){
+  /* avg days between ts and date (appointment) — aussi par CMS : chaque permanence a son propre
+     rythme, une moyenne tous CMS confondus n'est pas pertinente (demande utilisateur 22/10) */
+  var diffs=[],diffsByCms={};hist.forEach(function(h){
     if(!h.ts||!h.date)return;
     var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
     var tsDate=m?new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1])):null;
     var appt=new Date(h.date);
-    if(tsDate&&!isNaN(appt.getTime())&&appt>tsDate){diffs.push(Math.round((appt-tsDate)/86400000));}
+    if(tsDate&&!isNaN(appt.getTime())&&appt>tsDate){
+      var d=Math.round((appt-tsDate)/86400000);diffs.push(d);
+      var c=h.commune||'Sans CMS';(diffsByCms[c]=diffsByCms[c]||[]).push(d);
+    }
   });
   var avgRdv=diffs.length?Math.round(diffs.reduce(function(s,d){return s+d;},0)/diffs.length):null;
+  var rdvByCms=Object.keys(diffsByCms).sort().map(function(c){var a=diffsByCms[c];return {cms:c,avg:Math.round(a.reduce(function(s,d){return s+d;},0)/a.length),n:a.length};});
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Messages et usagers'));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
   [{icon:"📨",val:total,lbl:"Total",col:"oklch(0.5 0.16 266)",isNum:true},{icon:"💬",val:smsN,lbl:"SMS",col:"oklch(0.48 0.14 155)",isNum:true},{icon:"✉️",val:mailN,lbl:"Mails",col:"oklch(0.48 0.13 264)",isNum:true},{icon:"👤",val:Object.keys(usagers).length,lbl:"Usagers",col:"oklch(0.52 0.14 38)",isNum:true}].forEach(function(k){
@@ -3244,9 +3249,18 @@ function renderStats(){
   }
   /* avg RDV delay */
   if(avgRdv!==null){
-    var rdvC=el('div',{class:'ui-stats-metric'});
-    rdvC.appendChild(el('div',{class:'ui-stats-number'},avgRdv+"j"));
-    rdvC.appendChild(el('div',{class:'ui-stats-metric-label'},"Délai moy. RDV"));
+    var rdvC=el('div',{class:'ui-stats-metric',id:'ui-rdv-delay'});
+    if(!S.statsCMS&&rdvByCms.length>1){
+      rdvC.appendChild(el('div',{class:'ui-stats-metric-label'},'Délai moy. RDV par CMS'));
+      rdvByCms.forEach(function(r){
+        rdvC.appendChild(el('div',{class:'ui-stats-metric-note'},r.cms+' : '+r.avg+' j ('+r.n+' RDV)'));
+      });
+    } else {
+      rdvC.appendChild(el('div',{class:'ui-stats-number'},avgRdv+"j"));
+      rdvC.appendChild(el('div',{class:'ui-stats-metric-label'},"Délai moy. RDV"));
+      rdvC.appendChild(el('div',{class:'ui-stats-metric-note'},(S.statsCMS||(rdvByCms[0]&&rdvByCms[0].cms)||'')+' · '+diffs.length+' RDV'));
+    }
+    rdvC.appendChild(el('div',{class:'ui-stats-metric-note'},'Jours calendaires entre le dernier message et le RDV.'));
     kpiRow.appendChild(rdvC);
   }
   wrap.appendChild(kpiRow);
