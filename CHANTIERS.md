@@ -39,6 +39,15 @@ ne doit pas être défait remonte dans la dernière section.
   agrégats annuels dans `preparationMetrics` avec unité/version, moyenne, mesurés et
   exclus ; ancien `avgReact` non réécrit et présenté comme estimation calendaire.
   Contrat additif soumis à l’AGORA AG-002 ; version solo gelée.
+- **Réactivité estimée (lun.–ven.)**, 22/10 sur demande de l'utilisateur
+  (« 0 dossier mesuré » sur 162 fiches) : tuile à côté de la préparation
+  moyenne, pour les fiches sans `premierePreparationAt`. Réception → date du
+  message (`ts`) en jours ouvrés, **médiane** (choix utilisateur : `ts` est
+  réécrit à chaque régénération, sans trace ; seules les relances — `msgType`
+  relance ou `dateRelance` — sont repérables et exclues). Calcul d'affichage,
+  rien n'est stocké ; la tuile disparaît d'elle-même quand plus aucune fiche
+  ancienne n'est dans la période. Harnais Node (médiane, exclusions, ven→lun)
+  et mesure Chromium 390/1280 px sans débordement.
 - Vérifications fictives : `node scripts/check-reactivity.js` (12 intervalles,
   minuit Paris, changements d’heure, couverture, lecture seule et idempotence),
   `node scripts/check-stats-rdv.js`. Chromium : génération/régénération, vieille
