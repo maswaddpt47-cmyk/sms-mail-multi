@@ -31,6 +31,17 @@ ne doit pas être défait remonte dans la dernière section.
   cette lecture. La première préparation manquante reste non reconstruite.
   Tests : réception historique + première date connue, nouvelle réception vide,
   effacement volontaire après reprise et affichage Agenda ; données lues intactes.
+- **Correction du 22/10 (soir), vérifiée dans le code** : l'ancien `dateDemande`
+  n'est **pas** une réception fiable. Le champ, libellé « Date de réception de
+  la demande » jusqu'à `402b953`, était **prérempli avec la date du jour**
+  (état initial et remise à zéro après génération), et la création depuis
+  Orientations le **forçait** à la date du jour (commentaire « date d'envoi du
+  message, toujours aujourd'hui »). Laissé tel quel, il vaut le jour du
+  message. Conséquence : le repli de `receptionDateFor` sur `dateDemande`
+  affiche comme « réception » des dates qui sont souvent des dates d'envoi ;
+  sans effet sur la moyenne tant que ces fiches n'ont pas de première
+  préparation. Garder ou retirer ce repli : **décision à trancher**
+  (utilisateur), non modifié.
 - Population moyenne/couverture identique : CMS et période au jour de première
   préparation ; le `ts` legacy sert uniquement à situer les exclusions anciennes.
   Sans deux dates valides/cohérentes, fiche non mesurable, compteur explicite.
@@ -39,15 +50,10 @@ ne doit pas être défait remonte dans la dernière section.
   agrégats annuels dans `preparationMetrics` avec unité/version, moyenne, mesurés et
   exclus ; ancien `avgReact` non réécrit et présenté comme estimation calendaire.
   Contrat additif soumis à l’AGORA AG-002 ; version solo gelée.
-- **Réactivité estimée (lun.–ven.)**, 22/10 sur demande de l'utilisateur
-  (« 0 dossier mesuré » sur 162 fiches) : tuile à côté de la préparation
-  moyenne, pour les fiches sans `premierePreparationAt`. Réception → date du
-  message (`ts`) en jours ouvrés, **médiane** (choix utilisateur : `ts` est
-  réécrit à chaque régénération, sans trace ; seules les relances — `msgType`
-  relance ou `dateRelance` — sont repérables et exclues). Calcul d'affichage,
-  rien n'est stocké ; la tuile disparaît d'elle-même quand plus aucune fiche
-  ancienne n'est dans la période. Harnais Node (médiane, exclusions, ven→lun)
-  et mesure Chromium 390/1280 px sans débordement.
+- **Réactivité estimée retirée** (22/10, ajoutée puis retirée le même soir) :
+  médiane à 0 j sur 135 anciennes fiches. Cause dans le code, pas une
+  aberration : voir la correction de la précision du 22/10 ci-dessus. Ne pas
+  reproposer d'estimation tirée de `dateDemande` sans fait nouveau.
 - Vérifications fictives : `node scripts/check-reactivity.js` (12 intervalles,
   minuit Paris, changements d’heure, couverture, lecture seule et idempotence),
   `node scripts/check-stats-rdv.js`. Chromium : génération/régénération, vieille
@@ -478,8 +484,14 @@ ne doit pas être défait remonte dans la dernière section.
 
 ## Décisions à trancher
 
-Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
-`AGORA.md` ou non, et pourquoi.
+Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
+
+- **Repli de `receptionDateFor` sur l'ancien `dateDemande`** (22/10) : cette
+  date était préremplie avec le jour même, donc souvent une date d'envoi
+  (voir « Préparation moyenne »). Garder (affichage « Réception » parfois
+  faux sur les anciennes fiches) ou retirer (« Non renseignée »). Pas de bloc
+  AGORA pour l'instant : choix d'affichage qui se défait en un commit, sans
+  migration ; il rejoint AG-002 si l'utilisateur veut un contradicteur.
 
 ## Chantiers restants (par priorité)
 
