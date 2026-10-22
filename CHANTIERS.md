@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `402b953` avant les nouveaux indicateurs et graphes de rendez-vous.
+État au **22/10/2026**, base `main` `3b9e57e` avant les prochaines permanences sur six places.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -13,7 +13,7 @@ ne doit pas être défait remonte dans la dernière section.
   privilégier l’évolution des RDV par statut et le remplissage par permanence,
   classer les démarches par accompagnements réalisés. Les messages viennent après.
 - En tête : réalisés, RDV de la période, usagers accompagnés (nom/prénom),
-  occupation des permanences, concrétisation et lapin. `statsRdvModel` applique
+  places disponibles à venir, concrétisation et lapin. `statsRdvModel` applique
   période/CMS au **jour du RDV**, y compris pour la liste ouverte depuis un KPI.
   Les messages restent filtrés au jour de génération. Les périodes finies vont
   de la date de recul (fin de mois bornée) jusqu’au jour courant inclus ; Tout
@@ -22,18 +22,27 @@ ne doit pas être défait remonte dans la dernière section.
 - Le graphe mensuel empilé sépare sept statuts, dont Confirmé, En attente et
   Annulé ; le tableau « Voir les données » donne les valeurs exactes.
   Les fiches restent l’unité existante de l’historique ; aucune fusion automatique.
-- Remplissage : journées réellement ouvertes, archivées incluses, dédoublonnées
-  par date/lieu ; calcul via `getSlots` avec historique complet du profil et grille
-  propre à la journée. Bloqués exclus de la capacité, créneaux libérés disponibles.
-  Le taux représente l’état actuel des réservations, **pas une reconstitution de
-  l’occupation passée**. Liste défilante bornée en hauteur, lieu/date et effectifs visibles.
+- Demande du 22/10 après essai : le pourcentage de remplissage est jugé peu
+  compréhensible. Il est remplacé par **Prochaines permanences** et **Places
+  disponibles à venir**, sur une base explicite de **6 créneaux par permanence**.
+  Date/lieu, `5/6`, six repères et « 5 rendez-vous prévus · 1 place disponible ».
+  Les vues futures suivent le CMS, dès le jour courant, indépendamment du filtre
+  historique ; journées archivées exclues, dédoublonnage date/lieu conservé.
+- Le calcul résout les réservations avec `getSlots` et l’historique complet.
+  Libre = max(0, 6 − réservés − bloqués), sans modifier la grille Agenda.
+  Annulé/Excusé/Lapin/Pas de retour libèrent la place ; blocages et attentes
+  indiqués séparément. Un dépassement garde le vrai nombre (`7/6`) et un texte,
+  sans disponibilité négative. Propositions multiples : libellé « créneaux
+  réservés » ; RDV déjà réalisés du jour identifiés, sans les appeler prévus.
 - Archives annuelles agrégées inchangées, sans reconstruction depuis ces nouvelles
   vues ; filtres live masqués et portée annuelle expliquée. Aucun stockage modifié,
   aucune nouvelle dépendance. La version solo reste gelée.
 - Rendu : SVG aux dimensions réelles, échelle entière, légendes HTML, valeurs,
   détail au survol/toucher/clavier, tableaux ; deux cartes PC et une colonne mobile.
   Vérifications fictives : `node scripts/check-stats-rdv.js` et parcours Chromium
-  à 390 px/1280×720 clair/sombre (période, clavier, RDV créé avant la période).
+  à 390 px/1280×720 clair/sombre : aucun débordement ; exemple 5/6 avec 1 place
+  disponible, prévision conservée avec filtre historique 1 mois. Vérification
+  Node des remplacements, blocages, dépassement et six places.
   Le comptage réel de l’utilisateur et son appréciation visuelle restent à confirmer.
 
 ## Statut Annulé — comportement à conserver
@@ -599,8 +608,8 @@ Aucune pour l'instant. Toute entrée ajoutée ici dit si elle ouvre un bloc
   grille hebdomadaire y compris les jours jamais utilisés — reflète
   l'occupation des jours effectivement travaillés. C'est déjà le
   comportement du calendrier « à la volée ». Depuis la proposition acceptée
-  le 22/10, les vues live utilisent la période/CMS sélectionnés et affichent
-  la capacité hors créneaux bloqués ; les anciennes archives restent inchangées.
+  le 22/10, le pourcentage est remplacé par la planification des prochaines
+  permanences, à six places chacune ; les anciennes archives restent inchangées.
 - **Définitions des stats, tranchées par l'utilisateur le 27/09/2026**,
   identiques dans les deux apps (live et `computeYearArchive`) : taux de
   concrétisation et de lapin = ÷ RDV dont la date est passée, hors créneaux

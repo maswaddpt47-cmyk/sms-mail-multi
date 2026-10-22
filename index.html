@@ -554,8 +554,10 @@
 .ui-permanence-label{display:flex;gap:5px 10px;flex-wrap:wrap;font-size:11px;color:var(--c-dim);}
 .ui-permanence-label span{overflow-wrap:anywhere;}
 .ui-permanence-value{font-size:12px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
-.ui-permanence-track{grid-column:1/-1;height:10px;background:var(--c-border);border-radius:5px;overflow:hidden;}
-.ui-permanence-track>div{height:100%;border-radius:5px;}
+.ui-permanence-track{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;}
+.ui-permanence-track>span{height:10px;border-radius:3px;background:var(--c-card);border:1px solid var(--c-border-in);}
+.ui-permanence-track>.is-booked{background:var(--chart-sms);border-color:var(--chart-sms);}
+.ui-permanence-track>.is-blocked{background:var(--c-dim);border-color:var(--c-dim);}
 .ui-permanence-row small{grid-column:1/-1;font-size:10px;color:var(--c-dim);}
 .ui-stats-svg{position:relative;}
 .ui-stats-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -2816,18 +2818,23 @@ function statsRdvModel(history,permanences,period,cms,now){
     byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
   });
   realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;});
+  /* Planification distincte des bilans passés : capacité utilisateur de 6 places,
+     indépendante des horaires de la grille Agenda. Historique complet pour les remplacements. */
   var seen={},days=[];
   permanences.forEach(function(p){
-    if(!inRange(p.exceptDate)||cms&&p.commune!==cms)return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived||cms&&p.commune!==cms)return;
     var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
     var slots=getSlots(p.commune,p.exceptDate,history,p);
-    var available=slots.filter(function(slot){return !slot.taken||slot.taken.msgType!=='indispo';});
-    var occupied=available.filter(function(slot){return slot.taken&&!slot.freeAgain;}).length;
-    days.push({date:p.exceptDate,commune:p.commune,total:available.length,occupied:occupied,free:available.length-occupied,blocked:slots.length-available.length});
+    var active=slots.filter(function(slot){return slot.taken&&!slot.freeAgain&&slot.taken.msgType!=='indispo';});
+    var occupied=active.length,blocked=slots.filter(function(slot){return slot.taken&&slot.taken.msgType==='indispo';}).length;
+    days.push({date:p.exceptDate,commune:p.commune,total:6,occupied:occupied,free:Math.max(0,6-occupied-blocked),blocked:blocked,
+      pending:active.filter(function(slot){return slot.taken.statut==='en_attente';}).length,
+      completed:active.filter(function(slot){return slot.taken.statut==='realise';}).length,
+      overbooked:Math.max(0,occupied+blocked-6),multiple:active.some(function(slot){return slot.multiPropo;})});
   });
   days.sort(function(a,b){return a.date.localeCompare(b.date)||a.commune.localeCompare(b.commune);});
-  var capacity=days.reduce(function(n,d){return n+d.total;},0),occupied=days.reduce(function(n,d){return n+d.occupied;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,capacity:capacity,occupied:occupied};
+  var free=days.reduce(function(n,d){return n+d.free;},0);
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,free:free};
 }
 
 /* ============================== RENDER: STATS ============================== */
@@ -2928,8 +2935,7 @@ function renderStats(){
     var lapinStr=concretN?Math.round(lapinN/concretN*100)+'%':'—';
     var nonPointesN=rdv.past.filter(isAPointer).length;
     var concretSub=nonPointesN?'dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'';
-    var occStr=rdv.capacity?Math.round(rdv.occupied/rdv.capacity*100)+'%':'—';
-    var occSub=rdv.days.length+' journée'+(rdv.days.length>1?'s':'')+' · '+rdv.occupied+'/'+rdv.capacity+' créneaux';
+    var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · 6 créneaux chacune':'Aucune prochaine permanence';
     var accompanied={};rdv.realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
     var dashboard=el('section',{class:'ui-stats-overview'});
     dashboard.appendChild(el('h3',{class:'ui-stats-group-title'},'Le suivi des rendez-vous'));
@@ -2941,7 +2947,7 @@ function renderStats(){
       [realiseN,"RDV réalisés",'Rendez-vous réalisés, datés au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);}],
       [rdv.entries.length,"RDV sur la période",'Fiches de rendez-vous datées, tous statuts, hors créneaux bloqués.',null],
       [Object.keys(accompanied).length,"Usagers accompagnés",'Personnes distinctes par nom et prénom parmi les RDV réalisés de la période.',null],
-      [occStr,"Occupation des permanences","Part des créneaux occupés sur les journées ouvertes de la période sélectionnée. Créneaux bloqués exclus ; Annulé, Excusé, Lapin et Pas de retour libèrent la place. Ce taux décrit l'état actuel des réservations, sans reconstruire l'occupation passée.",null,occSub],
+      [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par permanence, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée.",null,freeSub],
       [concretStr,"Taux de concrétisation","Part des RDV de la période et du CMS au statut Réalisé, parmi les RDV datés au plus tard de ce jour. Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Part des RDV de la période et du CMS au statut Lapin, parmi les RDV datés au plus tard de ce jour.",openLapinList]
     ].forEach(function(kpi){
@@ -3084,23 +3090,24 @@ function renderStats(){
     {key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},
     {key:'pas_de_retour',label:'Pas de retour',color:'var(--chart-retour)'}
   ],true));
-  var fillCard=card('Remplissage par permanence');fillCard.classList.add('ui-permanence-chart');
-  fillCard.appendChild(el('p',{class:'ui-chart-description'},'État actuel des réservations · journées de la période, archivées incluses. Créneaux bloqués exclus.'));
-  var fillLegend=el('div',{class:'ui-chart-legend'});
-  [['Occupés','var(--chart-sms)'],['Disponibles','var(--c-border)']].forEach(function(x){var item=el('span',{class:'ui-chart-legend-item'});item.appendChild(el('i',{'aria-hidden':'true',style:'background:'+x[1]}));item.appendChild(el('span',{},x[0]));fillLegend.appendChild(item);});fillCard.appendChild(fillLegend);
-  var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Journées de permanence'});
+  var fillCard=card('Prochaines permanences');fillCard.classList.add('ui-permanence-chart');
+  fillCard.appendChild(el('p',{class:'ui-chart-description'},'6 créneaux par permanence · à partir de ce jour, pour le CMS choisi. Cette prévision est indépendante du filtre de période passée.'));
+  var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
   rdv.days.forEach(function(day){
     var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
-    label.appendChild(el('strong',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'})));
+    label.appendChild(el('strong',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'})));
     label.appendChild(el('span',{},day.commune));row.appendChild(label);
-    var pct=day.total?Math.round(day.occupied/day.total*100):null;
-    row.appendChild(el('span',{class:'ui-permanence-value'},pct===null?'—':pct+' %'));
-    var track=el('div',{class:'ui-permanence-track',role:'img','aria-label':day.occupied+' créneaux occupés, '+day.free+' disponibles, '+day.blocked+' bloqués'});
-    track.appendChild(el('div',{style:'width:'+(pct||0)+'%;background:var(--chart-sms);'}));row.appendChild(track);
-    row.appendChild(el('small',{},day.occupied+' occupé'+(day.occupied>1?'s':'')+' · '+day.free+' disponible'+(day.free>1?'s':'')+(day.blocked?' · '+day.blocked+' bloqué'+(day.blocked>1?'s':''):'')));
+    row.appendChild(el('span',{class:'ui-permanence-value'},day.occupied+'/6'));
+    var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
+    var summary=day.occupied+' '+bookedLabel+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
+    var track=el('div',{class:'ui-permanence-track',role:'img','aria-label':summary+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
+    for(var i=0;i<6;i++)track.appendChild(el('span',{'aria-hidden':'true',class:i<day.occupied?'is-booked':i<day.occupied+day.blocked?'is-blocked':'is-free'}));
+    row.appendChild(track);row.appendChild(el('small',{},summary));
+    if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
+    if(day.overbooked)row.appendChild(el('small',{},day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de 6'));
     daysWrap.appendChild(row);
   });
-  if(!rdv.days.length)daysWrap.appendChild(el('p',{class:'ui-chart-description'},'Aucune permanence ouverte sur cette période.'));
+  if(!rdv.days.length)daysWrap.appendChild(el('p',{class:'ui-chart-description'},'Aucune prochaine permanence ouverte pour ce CMS.'));
   fillCard.appendChild(daysWrap);priorityCharts.appendChild(fillCard);wrap.appendChild(priorityCharts);
 
   /* ── KPI ── */
