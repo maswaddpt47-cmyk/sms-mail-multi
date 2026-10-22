@@ -53,9 +53,10 @@ ne doit pas être défait remonte dans la dernière section.
   message (`ts`) en jours ouvrés, **médiane** (choix utilisateur : `ts` est
   réécrit à chaque régénération, sans trace ; seules les relances — `msgType`
   relance ou `dateRelance` — sont exclues). Médiane 0 sur les données réelles,
-  cohérente avec le constat terrain. **0 s'affiche « Le jour même »** (0 j se
-  lit « nul »), note « N % traitées le jour même » ; même libellé pour la
-  préparation moyenne si elle vaut 0. Calcul d'affichage, rien de stocké ; la
+  cohérente avec le constat terrain. Affichage (demande utilisateur) : **« N % — Traitées
+  le jour même »** en grand, médiane en note (« le jour même » si 0 : 0 j se
+  lit « nul ») ; la préparation moyenne affiche aussi « Le jour même » si elle
+  vaut 0. Calcul d'affichage, rien de stocké ; la
   tuile disparaît quand plus aucune ancienne fiche n'est dans la période.
 - Vérifications fictives : `node scripts/check-reactivity.js` (12 intervalles,
   minuit Paris, changements d’heure, couverture, lecture seule et idempotence),

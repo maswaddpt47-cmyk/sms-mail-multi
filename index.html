@@ -3233,11 +3233,13 @@ function renderStats(){
   kpiRow.appendChild(reactC);
   if(legacyPrep.median!==null){
     var legacyC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
-    /* 0 j se lit « nul » : un traitement le jour même s'affiche en clair (demande utilisateur 22/10) */
-    legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPrep.median===0?'Le jour même':'≈ '+legacyPrep.median.toLocaleString('fr-FR')+' j'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Réactivité estimée (lun.–ven.)'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},Math.round(legacyPrep.sameDay/legacyPrep.count*100)+' % traitées le jour même · médiane sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → date du dernier message : une fiche régénérée compte plus long. Repère en attendant la préparation moyenne.'));
+    /* Le pourcentage traité le jour même parle mieux qu'une médiane à 0 j (lue « nul ») :
+       il passe en grand, la médiane en note (demande utilisateur 22/10). */
+    var legacyPct=Math.round(legacyPrep.sameDay/legacyPrep.count*100);
+    legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPct+' %'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median===0?'le jour même':legacyPrep.median.toLocaleString('fr-FR')+' j (lun.–ven.)')));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Date du dernier message : une fiche régénérée compte plus long. Repère en attendant la préparation moyenne.'));
     kpiRow.appendChild(legacyC);
   }
   /* avg RDV delay */
