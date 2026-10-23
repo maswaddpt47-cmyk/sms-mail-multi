@@ -560,12 +560,15 @@ Aucune pour l'instant.
   reproposer sans fait nouveau. **Mineur RGPD** : polices chargées depuis `fonts.googleapis.com`
   (adresse IP transmise à Google, hors UE) — **fait le 10/10/2026** (`fonts/`).
 
-1. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
-   `SessionStart`) : à copier depuis `ATELIERS_NEWGEN` — reporté le
-   26/09/2026 par l'utilisateur, utile quand ce fichier aura grossi.
+Aucun autre pour l'instant.
 
 ## Points à ne pas défaire
 
+- **Rappel de ménage de ce fichier** (23/10/2026) : `scripts/check-chantiers.sh`,
+  lancé par le hook `SessionStart` de `.claude/settings.json` (copié de
+  NEWGEN, sans ses tests). Signale >300 lignes, en-tête « État au » de plus de
+  7 jours, tâches ✅/barrées. Rappel seul, n'échoue jamais. Il alerte déjà
+  (750 lignes) : c'est voulu, le ménage reste à faire.
 - **SMS-mail (solo) gelé le 20/10/2026** — décision de l'utilisateur, plus
   de développement là-bas : `sms-mail-multi` est désormais le seul repo
   actif. Ne plus porter de correctif vers SMS-mail, ne plus lancer
