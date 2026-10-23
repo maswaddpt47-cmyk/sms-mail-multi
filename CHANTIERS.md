@@ -152,6 +152,9 @@ dans « Points à ne pas défaire ».
 - Mise en page (23/10, « ramassée ») : grille en CSS grid qui remplit la carte, cases
   carrées plafonnées à 22 px, 10 px/semaine minimum (défilement sur écran étroit),
   mois étiquetés sans chevauchement (mois du dimanche de la semaine).
+  **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche
+  reviennent seulement si l'un porte un RDV (rien de masqué ; aucun RDV de
+  week-end dans la sauvegarde du 23/10).
 
 ## Chantiers bloqués ou arrêtés
 
