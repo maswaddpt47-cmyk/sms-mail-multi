@@ -137,13 +137,17 @@ Aucune pour l'instant.
 
 ## Chantiers restants
 
-- **Audit trimestriel du 01/10/2026 — important** : le jeton GitHub
-  (`ess-gh-token`) et l'historique des usagers sont en `localStorage` sur
-  l'origine `maswaddpt47-cmyk.github.io`, **partagée** avec NEWGEN, NextStep et
-  GDINV2 : une faille d'injection dans l'une peut les lire. Pistes : jeton à
-  grain fin limité au dépôt de sauvegarde avec expiration ; à terme, domaine
-  dédié. Portée réelle du jeton non vérifiée. **Reporté par l'utilisateur le
-  10/10/2026** — ne pas reproposer sans fait nouveau.
+- **Audit trimestriel du 01/10/2026 — jeton GitHub** : `ess-gh-token` est en
+  `localStorage` sur l'origine `maswaddpt47-cmyk.github.io`, **partagée** avec
+  NEWGEN, NextStep et GDINV2 : une faille d'injection dans l'une peut le lire.
+  **Portée vérifiée le 23/10/2026** (page GitHub du jeton « SMS-mail backup »,
+  fine-grained, créé le 21/07/2026) : elle couvrait *tous* les dépôts du compte,
+  Contents en lecture/écriture, sans expiration. **Restreint le 23/10/2026 par
+  l'utilisateur** à `sms-mail-multi-backups` seul ; sauvegarde testée OK après.
+  **Reste** : pas d'expiration (choix de l'utilisateur, non modifiable sans
+  « Regenerate token » + recollage dans chaque navigateur/profil) ; à terme,
+  domaine dédié pour ne plus partager le `localStorage`. Ne pas reproposer sans
+  fait nouveau.
 
 ## Points à ne pas défaire
 
