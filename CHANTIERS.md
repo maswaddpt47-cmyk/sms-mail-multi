@@ -155,6 +155,12 @@ dans « Points à ne pas défaire ».
   **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche
   reviennent seulement si l'un porte un RDV (rien de masqué ; aucun RDV de
   week-end dans la sauvegarde du 23/10).
+- **Infobulle de la heatmap au toucher** (23/10, signalé sur téléphone) : l'attribut
+  `title` ne s'affiche pas au toucher ; les cases utilisent `#stat-tooltip` via
+  `attachPermanenceTip` (`data-tip` : « mer. 21 oct. 2026 — N RDV »). Les événements
+  souris émulés après un toucher (`mouseleave`) sont ignorés 1 s, sinon l'infobulle
+  disparaissait aussitôt (constaté en émulation tactile). Vaut aussi pour les
+  cases de « Prochaines permanences ».
 
 ## Chantiers bloqués ou arrêtés
 
