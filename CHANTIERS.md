@@ -72,6 +72,13 @@ dans « Points à ne pas défaire ».
   Jours futurs inchangés (libération immédiate). `statsRdvModel` (`released`,
   `releasedN`) ; test dans `scripts/check-stats-rdv.js`. **Validé en conditions
   réelles par l'utilisateur le 23/10/2026** (Fumel, deux lapins).
+- **Dépassement des places** (23/10) : le texte sous la barre rappelle date et lieu
+  (« ven. 23 oct. · Fumel : 1 créneau au-delà de la capacité de 6 »).
+- **Lapins par permanence** (23/10, carte sous « Prochaines permanences ») :
+  journées passées (jour courant compris) de la période et du CMS filtrés, avec au
+  moins un lapin ; « 2/5 » = lapins / tous les RDV de la journée (même base que le
+  taux de lapin) ; 10 plus récentes, message si d'autres. `lapinDays` dans
+  `statsRdvModel`, testé. Pas encore vu par l'utilisateur sur ses données.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
 - **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
@@ -240,9 +247,7 @@ fonctionnalité validée ou sur demande de revue. Une piste écartée ne se
 repropose pas sans fait nouveau.
 
 **Proposées, en attente**
-- 22/10/2026 — rappeler date/lieu dans le texte de dépassement des six places.
-  La capture montre ce texte isolé en haut de la liste ; hypothèse non vérifiée :
-  fin de ligne précédente coupée par le défilement interne.
+- Aucune.
 
 **Écartées** (date — piste — raison)
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à
