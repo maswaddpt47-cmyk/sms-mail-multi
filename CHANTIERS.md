@@ -144,10 +144,9 @@ Aucune pour l'instant.
   fine-grained, créé le 21/07/2026) : elle couvrait *tous* les dépôts du compte,
   Contents en lecture/écriture, sans expiration. **Restreint le 23/10/2026 par
   l'utilisateur** à `sms-mail-multi-backups` seul ; sauvegarde testée OK après.
-  **Reste** : pas d'expiration (choix de l'utilisateur, non modifiable sans
-  « Regenerate token » + recollage dans chaque navigateur/profil) ; à terme,
-  domaine dédié pour ne plus partager le `localStorage`. Ne pas reproposer sans
-  fait nouveau.
+  **Reste** : à terme, domaine dédié pour ne plus partager le `localStorage`.
+  L'absence d'expiration du jeton est un choix de l'utilisateur : ne pas la
+  reproposer. Ne pas reproposer le reste sans fait nouveau.
 
 ## Points à ne pas défaire
 
