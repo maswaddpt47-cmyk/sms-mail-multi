@@ -2954,10 +2954,14 @@ function statsRdvModel(history,permanences,period,cms,now){
   });
   days.sort(function(a,b){return a.date.localeCompare(b.date)||a.commune.localeCompare(b.commune);});
   /* Lapins par permanence passée (période et CMS du filtre, jour courant compris) : seules les
-     journées avec au moins un lapin ; total = tous les RDV de la journée, comme le taux de lapin. */
+     journées avec au moins un lapin. On compte des **créneaux** (date, CMS, heure), pas des fiches :
+     un créneau libéré puis réattribué porte plusieurs fiches et ne vaut qu'un rendez-vous
+     (constat utilisateur 23/10 : « 2 lapins sur 8 » pour 6 créneaux). */
   var perDay={};
-  past.forEach(function(h){var k=h.date+'|'+(h.commune||'');var d=perDay[k]||(perDay[k]={date:h.date,commune:h.commune||'',lapins:0,total:0});d.total++;if(h.statut==='lapin')d.lapins++;});
-  var lapinDays=Object.keys(perDay).map(function(k){return perDay[k];}).filter(function(d){return d.lapins>0;})
+  past.forEach(function(h){var k=h.date+'|'+(h.commune||'');var d=perDay[k]||(perDay[k]={date:h.date,commune:h.commune||'',slots:{},lapinSlots:{}});
+    d.slots[h.heure||'']=true;if(h.statut==='lapin')d.lapinSlots[h.heure||'']=true;});
+  var lapinDays=Object.keys(perDay).map(function(k){var d=perDay[k];return {date:d.date,commune:d.commune,lapins:Object.keys(d.lapinSlots).length,total:Object.keys(d.slots).length};})
+    .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
   return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,free:free};
@@ -3288,7 +3292,7 @@ function renderStats(){
     label.appendChild(el('strong',{},new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'})));
     label.appendChild(el('span',{},d.commune||'Sans CMS'));row.appendChild(label);
     row.appendChild(el('span',{class:'ui-permanence-value'},d.lapins+'/'+d.total));
-    row.appendChild(el('small',{},d.lapins+' lapin'+(d.lapins>1?'s':'')+' sur '+d.total+' rendez-vous'));
+    row.appendChild(el('small',{},d.lapins+' lapin'+(d.lapins>1?'s':'')+' sur '+d.total+' créneau'+(d.total>1?'x':'')+' de rendez-vous'));
     lapinList.appendChild(row);
   });
   if(!rdv.lapinDays.length)lapinList.appendChild(el('p',{class:'ui-chart-description'},'Aucun lapin sur la période.'));

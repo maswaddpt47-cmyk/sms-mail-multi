@@ -70,4 +70,9 @@ assert.equal(unsorted.marks.join(','),'booked,pending');
 const lp=ctx.statsRdvModel([row('l1','2026-10-20','lapin','09:30'),row('l2','2026-10-20','confirme','10:30'),row('l3','2026-10-21','realise','09:30'),row('l4','2026-10-21','lapin','10:30','B'),row('l5','2026-10-21','lapin','11:30','B'),row('l6',todayStr,'lapin','09:30')],[],'all','',today);
 assert.equal(lp.lapinDays.map(d=>d.date+d.commune+d.lapins+'/'+d.total).join(','),'2026-10-22A1/1,2026-10-21B2/2,2026-10-20A1/2');
 assert.equal(ctx.statsRdvModel([row('l7','2026-10-20','lapin','09:30','B')],[],'all','A',today).lapinDays.length,0);
+// Créneaux, pas fiches : trois fiches sur 14:00 (réalisé, annulé, excusé) ne valent qu'un créneau.
+const slotCount=ctx.statsRdvModel([row('s1',todayStr,'lapin','10:30'),row('s2',todayStr,'lapin','11:30'),row('s3',todayStr,'realise','14:00'),row('s4',todayStr,'annule','14:00'),row('s5',todayStr,'excuse','14:00'),row('s6',todayStr,'lapin','14:00')],[],'all','',today).lapinDays[0];
+assert.equal(slotCount.lapins+'/'+slotCount.total,'3/3');
+const slotCount2=ctx.statsRdvModel([row('t1',todayStr,'lapin','10:30'),row('t2',todayStr,'lapin','10:30'),row('t3',todayStr,'realise','14:00'),row('t4',todayStr,'annule','14:00')],[],'all','',today).lapinDays[0];
+assert.equal(slotCount2.lapins+'/'+slotCount2.total,'1/2');
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
