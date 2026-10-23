@@ -3526,33 +3526,34 @@ function renderStats(){
       var chroma=(0.06+t*0.18).toFixed(2);
       return 'oklch('+light+' '+chroma+' 266)';
     }
+    /* La grille remplit la largeur de la carte (cases carrées, taille plafonnée à 22 px) ; sur écran
+       étroit elle garde 10 px par semaine minimum et défile au lieu de s'écraser (demande 23/10). */
     var heatWrap=el('div',{style:"overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;"});
-    var heatInner=el('div',{style:"display:inline-block;"});
-    var monthRow=el('div',{style:"display:flex;margin-left:22px;margin-bottom:4px;position:relative;height:12px;"});
-    var lastMonth=-1;
+    var heatInner=el('div',{style:"width:100%;min-width:"+(totalWeeks*10+24)+"px;max-width:"+(totalWeeks*26+24)+"px;"});
+    var heatCols='20px repeat('+totalWeeks+',minmax(0,1fr))';
+    var monthRow=el('div',{style:"display:grid;grid-template-columns:"+heatCols+";gap:3px;margin-bottom:4px;"});
+    var lastMonth=-1,lastLabelW=-9;
     for(var w=0;w<totalWeeks;w++){
-      var colDate=days[w*7].date;
-      var mo=colDate.getMonth();
+      var mo=days[w*7+6].date.getMonth(); /* mois du dimanche : la semaine du 29/06 au 05/07 est « juil » */
       if(mo!==lastMonth){
-        monthRow.appendChild(el('div',{style:"position:absolute;left:"+(w*13)+"px;font-size:9px;color:var(--c-muted);"},MONTHS_H[mo]));
         lastMonth=mo;
+        if(w-lastLabelW>=3){
+          monthRow.appendChild(el('div',{style:"grid-column:"+(w+2)+" / span 3;font-size:10px;color:var(--c-muted);white-space:nowrap;"},MONTHS_H[mo]));
+          lastLabelW=w;
+        }
       }
     }
     heatInner.appendChild(monthRow);
-    var gridRow=el('div',{style:"display:flex;gap:2px;"});
-    var dayLabels=el('div',{style:"display:flex;flex-direction:column;gap:2px;margin-right:4px;width:16px;"});
-    ['L','M','M','J','V','S','D'].forEach(function(l,di){dayLabels.appendChild(el('div',{style:"height:11px;font-size:8px;color:var(--c-muted);line-height:11px;"},(di%2===0?l:'')));});
-    gridRow.appendChild(dayLabels);
+    var gridRow=el('div',{style:"display:grid;grid-template-columns:"+heatCols+";gap:3px;"});
+    ['L','M','M','J','V','S','D'].forEach(function(l,di){gridRow.appendChild(el('div',{style:"grid-column:1;grid-row:"+(di+1)+";font-size:9px;color:var(--c-muted);align-self:center;"},(di%2===0?l:'')));});
     for(var w2=0;w2<totalWeeks;w2++){
-      var col=el('div',{style:"display:flex;flex-direction:column;gap:2px;"});
       for(var d2=0;d2<7;d2++){
         var day=days[w2*7+d2];
-        var cell=el('div',{title:day.ds.split('-').reverse().join('/')+' — '+day.n+' RDV',style:"width:11px;height:11px;border-radius:2px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
-        cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.4)';});
+        var cell=el('div',{title:day.ds.split('-').reverse().join('/')+' — '+day.n+' RDV',style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
+        cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.25)';});
         cell.addEventListener('mouseleave',function(){this.style.transform='';});
-        col.appendChild(cell);
+        gridRow.appendChild(cell);
       }
-      gridRow.appendChild(col);
     }
     heatInner.appendChild(gridRow);
     var legendRow=el('div',{style:"display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:8px;font-size:9px;color:var(--c-muted);"});
