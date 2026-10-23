@@ -82,6 +82,9 @@ dans « Points à ne pas défaire ».
   vérifié sur la sauvegarde réelle). Base différente du taux de lapin (par fiche) ;
   10 plus récentes, message si d'autres. `lapinDays` dans
   `statsRdvModel`, testé. Corrigé après retour utilisateur ; à revérifier par lui.
+  **Sélecteur « CMS / commune » répété dans l'en-tête de la carte** (23/10, demande
+  utilisateur : le filtre du haut sort de l'écran) : même filtre `S.statsCMS` que
+  celui du haut (`buildCmsSelect`), défilement conservé au changement.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
 - **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
