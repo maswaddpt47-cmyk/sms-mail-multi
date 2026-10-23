@@ -3518,6 +3518,8 @@ function renderStats(){
       days.push({date:hd,ds:hds,n:hn});
     }
     if(!maxCount)return;
+    /* semaine de 5 jours (demande 23/10) ; samedi/dimanche reviennent seulement s'ils portent un RDV */
+    var rowsN=days.some(function(d,i){return i%7>=5&&d.n>0;})?7:5;
     var heatCard=card("Activité annuelle — "+heatLabel);
     function heatColor(n){
       if(!n)return 'var(--c-border)';
@@ -3545,9 +3547,9 @@ function renderStats(){
     }
     heatInner.appendChild(monthRow);
     var gridRow=el('div',{style:"display:grid;grid-template-columns:"+heatCols+";gap:3px;"});
-    ['L','M','M','J','V','S','D'].forEach(function(l,di){gridRow.appendChild(el('div',{style:"grid-column:1;grid-row:"+(di+1)+";font-size:9px;color:var(--c-muted);align-self:center;"},(di%2===0?l:'')));});
+    ['L','M','M','J','V','S','D'].slice(0,rowsN).forEach(function(l,di){gridRow.appendChild(el('div',{style:"grid-column:1;grid-row:"+(di+1)+";font-size:9px;color:var(--c-muted);align-self:center;"},(di%2===0?l:'')));});
     for(var w2=0;w2<totalWeeks;w2++){
-      for(var d2=0;d2<7;d2++){
+      for(var d2=0;d2<rowsN;d2++){
         var day=days[w2*7+d2];
         var cell=el('div',{title:day.ds.split('-').reverse().join('/')+' — '+day.n+' RDV',style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
         cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.25)';});
