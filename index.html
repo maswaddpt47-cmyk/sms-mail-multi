@@ -3040,14 +3040,28 @@ function renderStats(){
   /* filtre CMS */
   var allCommunes=[];S.history.forEach(function(h){if(h.commune&&allCommunes.indexOf(h.commune)===-1)allCommunes.push(h.commune);});
   allCommunes.sort();
+  /* Le même filtre est répété dans la carte « Lapins par permanence » (demande 23/10) : on garde
+     la position de défilement pour ne pas renvoyer l'utilisateur en haut de page. */
+  function scrollParentOf(node){
+    for(var n=node.parentElement;n;n=n.parentElement){var oy=getComputedStyle(n).overflowY;if((oy==='auto'||oy==='scroll')&&n.scrollHeight>n.clientHeight)return n;}
+    return document.scrollingElement||document.documentElement;
+  }
+  function buildCmsSelect(id){
+    var sel=el('select',{id:id,class:'gx-in ui-stats-select'});
+    sel.appendChild(el('option',{value:""},"Tous les CMS"));
+    allCommunes.forEach(function(c){sel.appendChild(el('option',{value:c,selected:S.statsCMS===c},c));});
+    sel.addEventListener('change',function(){
+      var sc=scrollParentOf(sel),top=sc.scrollTop;
+      S.statsCMS=this.value;renderStats();
+      var again=document.getElementById('pane-stats');var sc2=again?scrollParentOf(again.firstChild||again):sc;
+      sc.scrollTop=top;sc2.scrollTop=top;
+    });
+    return sel;
+  }
   if(allCommunes.length>1){
     var cmsRow=el('div',{class:'ui-stats-cms-filter'});
     cmsRow.appendChild(el('label',{'for':'ui-stats-cms'},'CMS / commune'));
-    var cmsSel=el('select',{id:'ui-stats-cms',class:'gx-in ui-stats-select'});
-    cmsSel.appendChild(el('option',{value:""},"Tous les CMS"));
-    allCommunes.forEach(function(c){cmsSel.appendChild(el('option',{value:c,selected:S.statsCMS===c},c));});
-    cmsSel.addEventListener('change',function(){S.statsCMS=this.value;renderStats();});
-    cmsRow.appendChild(cmsSel);
+    cmsRow.appendChild(buildCmsSelect('ui-stats-cms'));
     wrap.appendChild(cmsRow);
   }
 
@@ -3302,6 +3316,12 @@ function renderStats(){
   fillCard.appendChild(daysWrap);priorityCharts.appendChild(fillCard);wrap.appendChild(priorityCharts);
   /* Lapins par permanence passée : repère les journées où des rendez-vous n'ont pas eu lieu. */
   var lapinCard=card('Lapins par permanence');lapinCard.classList.add('ui-permanence-chart');
+  if(allCommunes.length>1){
+    var lapinCms=el('div',{class:'ui-stats-cms-filter'});
+    lapinCms.appendChild(el('label',{'for':'ui-stats-cms-lapin'},'CMS / commune'));
+    lapinCms.appendChild(buildCmsSelect('ui-stats-cms-lapin'));
+    lapinCard.appendChild(lapinCms);
+  }
   lapinCard.appendChild(el('p',{class:'ui-chart-description'},'Journées passées de la période, pour le CMS choisi · seules celles avec au moins un lapin.'));
   var lapinList=el('div',{class:'ui-permanence-list',tabindex:rdv.lapinDays.length>5?'0':null,'aria-label':'Lapins par permanence'});
   rdv.lapinDays.slice(0,10).forEach(function(d){
