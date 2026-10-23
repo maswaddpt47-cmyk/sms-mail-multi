@@ -3281,13 +3281,18 @@ function renderStats(){
     return parts.filter(Boolean).join(' · ');
   }
   function attachPermanenceTip(node){
+    var lastTouch=0; /* les événements souris émulés après un toucher (mouseleave) ne doivent pas masquer l'infobulle */
+    function fromTouch(){return Date.now()-lastTouch<1000;}
     function show(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;tip.textContent=node.dataset.tip;tip.style.display='block';move(e);}
     function move(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;
       var x=(e.touches?e.touches[0].clientX:e.clientX)+14,y=(e.touches?e.touches[0].clientY:e.clientY)-10;
       if(x+250>window.innerWidth)x=x-270;tip.style.left=x+'px';tip.style.top=y+'px';}
     function hide(){var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';}
-    node.addEventListener('mouseenter',show);node.addEventListener('mousemove',move);node.addEventListener('mouseleave',hide);
-    node.addEventListener('touchstart',show,{passive:true});node.addEventListener('touchend',function(){setTimeout(hide,1800);});
+    node.addEventListener('mouseenter',function(e){if(!fromTouch())show(e);});
+    node.addEventListener('mousemove',function(e){if(!fromTouch())move(e);});
+    node.addEventListener('mouseleave',function(){if(!fromTouch())hide();});
+    node.addEventListener('touchstart',function(e){lastTouch=Date.now();show(e);},{passive:true});
+    node.addEventListener('touchend',function(){lastTouch=Date.now();setTimeout(hide,1800);});
   }
   var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
   rdv.days.forEach(function(day){
@@ -3551,9 +3556,12 @@ function renderStats(){
     for(var w2=0;w2<totalWeeks;w2++){
       for(var d2=0;d2<rowsN;d2++){
         var day=days[w2*7+d2];
-        var cell=el('div',{title:day.ds.split('-').reverse().join('/')+' — '+day.n+' RDV',style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
+        var cell=el('div',{style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
         cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.25)';});
         cell.addEventListener('mouseleave',function(){this.style.transform='';});
+        /* infobulle commune (#stat-tooltip) : l'attribut title ne s'affiche pas au toucher (23/10) */
+        cell.dataset.tip=new Date(day.ds+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' — '+day.n+' RDV';
+        attachPermanenceTip(cell);
         gridRow.appendChild(cell);
       }
     }
