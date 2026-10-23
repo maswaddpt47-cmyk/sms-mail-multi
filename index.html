@@ -4194,17 +4194,16 @@ function renderAgenda(){
   }
   var board=el('div',{class:'ui-ag-board',id:'ag-timeline-board'});wrap.appendChild(board);
   /* swipe gauche/droite pour changer de jour, mobile uniquement (vue compacte : un jour à la
-     fois) ; ignoré si le geste démarre sur une tuile (.ag-slot), qui a son propre swipe pour
-     supprimer un RDV — éviter que les deux gestes s'interprètent sur le même mouvement */
+     fois) ; les tuiles n'ont plus de geste propre (suppression par swipe retirée), donc actif
+     partout sur le conteneur, tuiles comprises */
   (function(){
-    var swipeStartX=0,swipeStartY=0,swipeOnTile=false;
+    var swipeStartX=0,swipeStartY=0;
     board.addEventListener('touchstart',function(e){
       if(!timelineIsCompact())return;
-      swipeOnTile=!!(e.target.closest&&e.target.closest('.ag-slot'));
       swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;
     },{passive:true});
     board.addEventListener('touchend',function(e){
-      if(!timelineIsCompact()||swipeOnTile)return;
+      if(!timelineIsCompact())return;
       var dx=e.changedTouches[0].clientX-swipeStartX;
       var dy=Math.abs(e.changedTouches[0].clientY-swipeStartY);
       if(Math.abs(dx)>60&&dy<40)timelineMove(dx<0?1:-1);
@@ -4483,26 +4482,6 @@ function renderAgenda(){
             renderModal();
           }
         });
-        if(s.taken){
-          var swipeStartX=0,swipeStartY=0;
-          pill.addEventListener('touchstart',function(e){swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;},{passive:true});
-          pill.addEventListener('touchend',function(e){
-            var dx=swipeStartX-e.changedTouches[0].clientX;
-            var dy=Math.abs(swipeStartY-e.changedTouches[0].clientY);
-            if(dx>60&&dy<40){
-              pill.style.transition='transform 200ms ease';pill.style.transform='translateX(-100%)';
-              setTimeout(function(){
-                if(confirm('Supprimer ce RDV ?')){
-                  var targetP=s.taken._profile||S.activeProfile;
-                  var arr=readProfileHistory(targetP);
-                  var idx=findHistIdx(arr,s.taken);
-                  if(idx!==-1){arr.splice(idx,1);writeProfileHistory(targetP,arr);}
-                  renderAgenda();showToast('🗑 RDV supprimé');
-                } else {pill.style.transition='transform 200ms ease';pill.style.transform='';}
-              },200);
-            }
-          },{passive:true});
-        }
       })(slot,day);
       slotList.appendChild(pill);
     });
