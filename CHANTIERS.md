@@ -1,11 +1,30 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/10/2026**, base `main` `fe8b21d` avant la reprise de la réception historique.
+État au **23/10/2026**, base `main` `0cc9d83`, capacité des demi-journées corrigée et vérifiée avant publication.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
 terminée **sort** de ce fichier (son récit est dans `git log`) ; seul ce qui
 ne doit pas être défait remonte dans la dernière section.
+
+## Capacité des demi-journées — contrat à conserver
+
+- Demande utilisateur du 22/10 : le 4 novembre est partagé entre deux lieux,
+  donc **3 places par demi-journée**, 6 au total. Sauvegarde privée consultée en
+  lecture seule : matin occupé dans un lieu, après-midi dans l’autre, moitié
+  opposée fermée par indisponibilités. Aucun nom/téléphone/message exporté.
+- `statsRdvModel.assignedHalf` identifie la moitié ouverte par
+  fermeture complète de l’autre moitié ou horaires explicites. Compte seulement
+  les réservations/blocages de la moitié affectée ; indispo12:30 de pause exclue
+  d’une matinée, un vrai RDV12:30 reste compté. Capacité, compteurs, repères et
+  dépassement dynamiques à 3/6. Grille Agenda et données stockées inchangées.
+- Vérifications : harnais Node statistiques et réactivité passés après synchronisation
+  avec `0cc9d83`. Contrôle Chromium 390 px et 1280×720 : matin 3/3, après-midi
+  1/3 avec deux places libres, filtre CMS stable, aucun débordement ni erreur.
+  État de publication à vérifier sur le commit correspondant dans GitHub Actions.
+- Revue du 23/10 : délai RDV par CMS pertinent ; « Traitées le jour même »
+  reste un repère estimé sur les anciennes fiches, pas une mesure vérifiée de
+  première préparation. Ne pas confondre avec la métrique horodatée.
 
 ## Préparation moyenne — contrat à conserver
 
@@ -83,12 +102,12 @@ ne doit pas être défait remonte dans la dernière section.
   Les fiches restent l’unité existante de l’historique ; aucune fusion automatique.
 - Demande du 22/10 après essai : le pourcentage de remplissage est jugé peu
   compréhensible. Il est remplacé par **Prochaines permanences** et **Places
-  disponibles à venir**, sur une base explicite de **6 créneaux par permanence**.
+  disponibles à venir**, sur une base explicite de **6 créneaux par journée complète, 3 par demi-journée**.
   Date/lieu, `5/6`, six repères et « 5 rendez-vous prévus · 1 place disponible ».
   Les vues futures suivent le CMS, dès le jour courant, indépendamment du filtre
   historique ; journées archivées exclues, dédoublonnage date/lieu conservé.
 - Le calcul résout les réservations avec `getSlots` et l’historique complet.
-  Libre = max(0, 6 − réservés − bloqués), sans modifier la grille Agenda.
+  Libre = max(0, capacité de la permanence − réservés − bloqués), sans modifier la grille Agenda.
   Annulé/Excusé/Lapin/Pas de retour libèrent la place ; blocages et attentes
   indiqués séparément. Un dépassement garde le vrai nombre (`7/6`) et un texte,
   sans disponibilité négative. Propositions multiples : libellé « créneaux
@@ -96,7 +115,7 @@ ne doit pas être défait remonte dans la dernière section.
 - Couleurs des places : **Réservé** vert, **En attente** rose du statut Agenda,
   **Bloqué** gris foncé,
   **Disponible** case vide. Légende permanente au-dessus de la liste défilante,
-  mêmes classes CSS que les six repères pour garder les teintes identiques.
+  mêmes classes CSS que les repères pour garder les teintes identiques.
   Mesures Chromium à 390/1280 px clair/sombre : aucun débordement et correspondance
   des couleurs/bordures. Attentes séparées visuellement des autres réservations,
   sans changer leur occupation : 4 verts + 2 roses sur 6, puis un cas mixte
@@ -687,7 +706,7 @@ Aucune pour l'instant.
   l'occupation des jours effectivement travaillés. C'est déjà le
   comportement du calendrier « à la volée ». Depuis la proposition acceptée
   le 22/10, le pourcentage est remplacé par la planification des prochaines
-  permanences, à six places chacune ; les anciennes archives restent inchangées.
+  permanences, à six places par journée complète et trois par demi-journée ; les anciennes archives restent inchangées.
 - **Définitions des stats, tranchées par l'utilisateur le 27/09/2026**,
   identiques dans les deux apps (live et `computeYearArchive`) : taux de
   concrétisation et de lapin = ÷ RDV dont la date est passée, hors créneaux

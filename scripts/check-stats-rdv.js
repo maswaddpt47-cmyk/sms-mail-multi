@@ -37,4 +37,18 @@ assert.equal(blocked.days[0].occupied,4);assert.equal(blocked.days[0].blocked,1)
 const overload=ctx.statsRdvModel(['09:30','10:30','11:30','12:30','13:30','14:30','15:30'].map((t,i)=>row('surplus-'+i,future,'confirme',t)),futureDays,'1m','A',today);
 assert.equal(overload.days[0].occupied,7);assert.equal(overload.free,0);assert.equal(overload.days[0].overbooked,1);
 const untouched=JSON.stringify({active,futureDays});ctx.statsRdvModel(active,futureDays,'1m','A',today);assert.equal(JSON.stringify({active,futureDays}),untouched);
+// Deux demi-journées complémentaires : ne pas compter les fermetures opposées.
+const splitDate='2026-11-04',am='Lieu fictif matin',pm='Lieu fictif après-midi';
+const splitPerms=[{...futurePerm,exceptDate:splitDate,commune:am},{...futurePerm,exceptDate:splitDate,commune:pm}];
+const splitHistory=['09:30','10:30','11:30'].map((t,i)=>row('matin-'+i,splitDate,i===2?'en_attente':'confirme',t,am));
+splitHistory.push(row('après-midi',splitDate,'confirme','14:00',pm));
+for(const t of ['12:30','13:30','14:30','15:30','16:30'])splitHistory.push(row('fermé matin-'+t,splitDate,null,t,am,'indispo'));
+for(const t of ['09:30','10:30','11:30','12:30'])splitHistory.push(row('fermé après-midi-'+t,splitDate,null,t,pm,'indispo'));
+const beforeSplit=JSON.stringify({splitHistory,splitPerms}),split=ctx.statsRdvModel(splitHistory,splitPerms,'1m','',today);
+assert.equal(split.days.length,2);assert.equal(split.days.reduce((n,d)=>n+d.total,0),6);
+const morning=split.days.find(d=>d.commune===am),afternoon=split.days.find(d=>d.commune===pm);
+assert.equal(morning.half,'morning');assert.equal(morning.total,3);assert.equal(morning.occupied,3);assert.equal(morning.blocked,0);assert.equal(morning.free,0);assert.equal(morning.pending,1);assert.equal(morning.overbooked,0);
+assert.equal(afternoon.half,'afternoon');assert.equal(afternoon.total,3);assert.equal(afternoon.occupied,1);assert.equal(afternoon.blocked,0);assert.equal(afternoon.free,2);assert.equal(split.free,2);
+const filtered=ctx.statsRdvModel(splitHistory,splitPerms,'1m',pm,today);assert.equal(filtered.days.length,1);assert.equal(filtered.days[0].total,3);assert.equal(filtered.free,2);
+assert.equal(JSON.stringify({splitHistory,splitPerms}),beforeSplit);
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
