@@ -65,7 +65,10 @@ dans « Points à ne pas défaire ».
   jour, pas l'heure du créneau. Réattribué → titulaire actif → repasse en
   réservé. **Cases en ordre chronologique** (demande du 23/10, tous types mêlés,
   pauses comprises ; seules les places disponibles, sans heure, finissent la
-  barre : `marks` dans `statsRdvModel`). Jours futurs inchangés (libération immédiate). `statsRdvModel`
+  barre : `marks` dans `statsRdvModel`).
+  **Infobulle par case** (23/10) : heure · statut · nom prénom · démarche (« Place
+  disponible » / « Créneau bloqué » sinon), au survol et au toucher, via
+  `#stat-tooltip` (`markInfo`) ; pas d'accès clavier (cases `aria-hidden`). Jours futurs inchangés (libération immédiate). `statsRdvModel`
   (`released`, `releasedN`) ; test dans `scripts/check-stats-rdv.js`.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
