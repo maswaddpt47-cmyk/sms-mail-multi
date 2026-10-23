@@ -4193,6 +4193,23 @@ function renderAgenda(){
     followup.appendChild(followupBody);filterPanel.appendChild(followup);
   }
   var board=el('div',{class:'ui-ag-board',id:'ag-timeline-board'});wrap.appendChild(board);
+  /* swipe gauche/droite pour changer de jour, mobile uniquement (vue compacte : un jour à la
+     fois) ; ignoré si le geste démarre sur une tuile (.ag-slot), qui a son propre swipe pour
+     supprimer un RDV — éviter que les deux gestes s'interprètent sur le même mouvement */
+  (function(){
+    var swipeStartX=0,swipeStartY=0,swipeOnTile=false;
+    board.addEventListener('touchstart',function(e){
+      if(!timelineIsCompact())return;
+      swipeOnTile=!!(e.target.closest&&e.target.closest('.ag-slot'));
+      swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;
+    },{passive:true});
+    board.addEventListener('touchend',function(e){
+      if(!timelineIsCompact()||swipeOnTile)return;
+      var dx=e.changedTouches[0].clientX-swipeStartX;
+      var dy=Math.abs(e.changedTouches[0].clientY-swipeStartY);
+      if(Math.abs(dx)>60&&dy<40)timelineMove(dx<0?1:-1);
+    },{passive:true});
+  })();
   var emptyState=el('div',{class:'ui-ag-empty',id:'ag-timeline-empty','aria-live':'polite'});wrap.appendChild(emptyState);
   var _uiAgWeek='';
   visibleDays.forEach(function(day){

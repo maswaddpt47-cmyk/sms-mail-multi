@@ -271,6 +271,25 @@ ne doit pas être défait remonte dans la dernière section.
   Les boutons du pointage gardent leur palette neutre préexistante imposée
   par `.ui-ag-notice button` ; aucune nouvelle couleur affirmée pour eux.
 
+## Swipe jour sur l'Agenda (mobile)
+
+- Demande utilisateur du 23/10/2026 : changer de jour par swipe gauche/droite
+  sur l'Agenda, comme le geste existant de suppression d'un RDV (`pill`,
+  touchstart/touchend sur `.ag-slot`). Ajouté sur `#ag-timeline-board`
+  (conteneur des journées), actif seulement en vue compacte
+  (`timelineIsCompact()`, mobile/un jour à la fois) : swipe gauche = jour
+  suivant avec RDV, droite = précédent, via `timelineMove()` (même fonction
+  que les boutons ‹ ›). Seuil 60px horizontal, 40px vertical max pour ne pas
+  interférer avec le défilement.
+- Un geste démarré sur une tuile (`.ag-slot`) est ignoré par ce nouveau swipe
+  (`e.target.closest('.ag-slot')` au `touchstart`) pour ne pas interpréter le
+  même mouvement deux fois avec le swipe de suppression déjà existant sur les
+  tuiles. Vérifié en navigateur réel (Playwright, événements tactiles
+  synthétiques, viewport 390px, données réelles — sauvegarde Michel du
+  22/10) : swipe gauche change bien de jour (23→28 oct, prochain jour avec
+  RDV), swipe droite revient en arrière, swipe démarré sur une tuile ne
+  change rien à la date affichée.
+
 ## Publication et bloc Votre message
 
 - Consigne explicite du 20/10 : **push systématique sur `main` dorénavant,
