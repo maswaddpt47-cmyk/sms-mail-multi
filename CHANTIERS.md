@@ -94,7 +94,7 @@ dans « Points à ne pas défaire ».
 - **Animation des compteurs** (23/10, demande utilisateur) : les tuiles de « Le suivi des
   rendez-vous » comptent de 0 à leur valeur (600 ms, `%` conservé, « — » fixe), comme
   celles de « Messages et usagers » ; `countUp()` partagé, désactivé si le système
-  demande de réduire les mouvements.
+  demande de réduire les mouvements. **Validé par l'utilisateur le 23/10/2026.**
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
