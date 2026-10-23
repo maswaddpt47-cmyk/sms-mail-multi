@@ -149,6 +149,9 @@ dans « Points à ne pas défaire ».
   5 vrais RDV (+ 11 bloqués), constaté sur la sauvegarde réelle. Excusé/Annulé
   comptent encore (comme dans l'Agenda). L'archive annuelle (`arc.heatmap`, jour
   de semaine × heure) n'est pas touchée.
+- Mise en page (23/10, « ramassée ») : grille en CSS grid qui remplit la carte, cases
+  carrées plafonnées à 22 px, 10 px/semaine minimum (défilement sur écran étroit),
+  mois étiquetés sans chevauchement (mois du dimanche de la semaine).
 
 ## Chantiers bloqués ou arrêtés
 
