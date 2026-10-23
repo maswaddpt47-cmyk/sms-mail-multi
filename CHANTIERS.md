@@ -76,9 +76,12 @@ dans « Points à ne pas défaire ».
   (« ven. 23 oct. · Fumel : 1 créneau au-delà de la capacité de 6 »).
 - **Lapins par permanence** (23/10, carte sous « Prochaines permanences ») :
   journées passées (jour courant compris) de la période et du CMS filtrés, avec au
-  moins un lapin ; « 2/5 » = lapins / tous les RDV de la journée (même base que le
+  moins un lapin ; « 2/6 » = créneaux avec lapin / **créneaux** de la journée (date,
+  CMS, heure), **pas** les fiches : un créneau libéré puis réattribué porte plusieurs
+  fiches et ne vaut qu'un RDV (constat utilisateur 23/10 : « 2/8 » pour 6 créneaux,
+  vérifié sur la sauvegarde réelle). Base différente du taux de lapin (par fiche) ;
   taux de lapin) ; 10 plus récentes, message si d'autres. `lapinDays` dans
-  `statsRdvModel`, testé. Pas encore vu par l'utilisateur sur ses données.
+  `statsRdvModel`, testé. Corrigé après retour utilisateur ; à revérifier par lui.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
 - **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
