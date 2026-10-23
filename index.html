@@ -3491,8 +3491,14 @@ function renderStats(){
   (function(){
     var MONTHS_H=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
     var histAll=S.history.filter(function(h){return !S.statsCMS||h.commune===S.statsCMS;});
-    var countByDate={};
-    histAll.forEach(function(h){if(h.date)countByDate[h.date]=(countByDate[h.date]||0)+1;});
+    /* créneaux de RDV par jour (date, CMS, heure) : ni les créneaux bloqués, ni les fiches multiples
+       d'un même créneau (constat utilisateur 23/10 : « 16 RDV le 30/09 » pour 5 vrais RDV) */
+    var countByDate={},seenSlot={};
+    histAll.forEach(function(h){
+      if(!h.date||h.msgType==='indispo')return;
+      var k=h.date+'|'+(h.commune||'')+'|'+(h.heure||'');if(seenSlot[k])return;seenSlot[k]=true;
+      countByDate[h.date]=(countByDate[h.date]||0)+1;
+    });
     var todayH=new Date();todayH.setHours(0,0,0,0);
     var endW=new Date(todayH);endW.setDate(endW.getDate()+(6-((endW.getDay()+6)%7))); /* dimanche de la semaine courante */
     /* départ fixé au 1er juillet de l'année courante (ou précédente si on est avant juillet) */
