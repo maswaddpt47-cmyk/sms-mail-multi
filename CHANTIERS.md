@@ -63,7 +63,9 @@ dans « Points à ne pas défaire ».
   disponible (non réattribuable) : il reste compté, coloré par son statut, et
   le résumé le dit (« 2 lapins · 1 place disponible »). Critère = la date du
   jour, pas l'heure du créneau. Réattribué → titulaire actif → repasse en
-  réservé. Jours futurs inchangés (libération immédiate). `statsRdvModel`
+  réservé. **Cases en ordre chronologique** (demande du 23/10, tous types mêlés,
+  pauses comprises ; seules les places disponibles, sans heure, finissent la
+  barre : `marks` dans `statsRdvModel`). Jours futurs inchangés (libération immédiate). `statsRdvModel`
   (`released`, `releasedN`) ; test dans `scripts/check-stats-rdv.js`.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
