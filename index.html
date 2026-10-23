@@ -2925,7 +2925,8 @@ function statsRdvModel(history,permanences,period,cms,now){
     });
     var active=slots.filter(function(slot){return slot.taken&&!slot.freeAgain&&slot.taken.msgType!=='indispo';});
     var occupied=active.length,blocked=slots.filter(function(slot){return slot.taken&&slot.taken.msgType==='indispo';}).length;
-    if(allSlots.length&&!half&&!occupied&&blocked===allSlots.length)blocked=total;
+    var closedDay=allSlots.length&&!half&&!occupied&&blocked===allSlots.length;
+    if(closedDay)blocked=total;
     /* Le jour même, une place libérée (Lapin, Excusé, Annulé, Pas de retour) n'est pas
        réattribuable : elle reste comptée, colorée par son statut, et n'est plus une place
        disponible. Si elle est réattribuée, le créneau a un titulaire actif et repasse en
@@ -2934,7 +2935,16 @@ function statsRdvModel(history,permanences,period,cms,now){
     if(p.exceptDate===today)slots.forEach(function(slot){
       if(slot.taken&&slot.freeAgain&&released.hasOwnProperty(slot.taken.statut)){released[slot.taken.statut]++;releasedN++;}
     });
-    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,
+    /* Cases dans l'ordre chronologique des créneaux occupés (demande utilisateur 23/10), pauses
+       comprises : seules les places disponibles, sans heure, viennent à la fin. */
+    var marks=slots.map(function(slot){
+      if(!slot.taken)return null;
+      if(slot.taken.msgType==='indispo')return {heure:slot.heure,kind:'blocked'};
+      if(!slot.freeAgain)return {heure:slot.heure,kind:slot.taken.statut==='en_attente'?'pending':'booked'};
+      return p.exceptDate===today&&released.hasOwnProperty(slot.taken.statut)?{heure:slot.heure,kind:slot.taken.statut}:null;
+    }).filter(Boolean).sort(function(a,b){return a.heure.localeCompare(b.heure);}).map(function(m){return m.kind;});
+    if(closedDay)marks=[];while(closedDay&&marks.length<total)marks.push('blocked');
+    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,
       free:Math.max(0,total-occupied-blocked-releasedN),blocked:blocked,
       pending:active.filter(function(slot){return slot.taken.statut==='en_attente';}).length,
       completed:active.filter(function(slot){return slot.taken.statut==='realise';}).length,
@@ -3225,11 +3235,10 @@ function renderStats(){
     var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
     var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:'img','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
-    var releasedList=[];['lapin','excuse','annule','pas_de_retour'].forEach(function(k){for(var r=0;r<day.released[k];r++)releasedList.push(k);});
     for(var i=0;i<day.total;i++){
-      var after=i-day.occupied-day.blocked;
-      if(after>=0&&after<releasedList.length){track.appendChild(releasedMark(releasedList[after]));continue;}
-      track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(i<day.occupied-day.pending?'is-booked':i<day.occupied?'is-pending':i<day.occupied+day.blocked?'is-blocked':'is-free')}));
+      var kind=day.marks[i];
+      if(RELEASED_LABELS[kind]){track.appendChild(releasedMark(kind));continue;}
+      track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')}));
     }
     row.appendChild(track);row.appendChild(el('small',{},summary));
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));

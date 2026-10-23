@@ -61,4 +61,9 @@ assert.equal(realloc.occupied,1);assert.equal(realloc.releasedN,0);assert.equal(
 // Même lapin sur un jour futur : place libre immédiatement (comportement inchangé).
 const futureLapin=ctx.statsRdvModel([row('f1',future,'lapin','09:30')],[futurePerm],'1m','A',today).days[0];
 assert.equal(futureLapin.releasedN,0);assert.equal(futureLapin.free,6);
+// Cases en ordre chronologique, tous types mêlés ; les places disponibles viennent après.
+const chrono=ctx.statsRdvModel([row('c1',todayStr,'confirme','09:30'),row('c2',todayStr,'lapin','10:30'),row('c3',todayStr,'lapin','11:30'),row('c4',todayStr,'en_attente','13:30'),row('c5',todayStr,'confirme','14:30')],[tp],'1m','A',today).days[0];
+assert.equal(chrono.marks.join(','),'booked,lapin,lapin,pending,booked');assert.equal(chrono.free,1);
+const unsorted=ctx.statsRdvModel([row('u1',todayStr,'en_attente','15:30'),row('u2',todayStr,'confirme','09:30')],[tp],'1m','A',today).days[0];
+assert.equal(unsorted.marks.join(','),'booked,pending');
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
