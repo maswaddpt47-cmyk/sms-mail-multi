@@ -68,8 +68,10 @@ dans « Points à ne pas défaire ».
   barre : `marks` dans `statsRdvModel`).
   **Infobulle par case** (23/10) : heure · statut · nom prénom · démarche (« Place
   disponible » / « Créneau bloqué » sinon), au survol et au toucher, via
-  `#stat-tooltip` (`markInfo`) ; pas d'accès clavier (cases `aria-hidden`). Jours futurs inchangés (libération immédiate). `statsRdvModel`
-  (`released`, `releasedN`) ; test dans `scripts/check-stats-rdv.js`.
+  `#stat-tooltip` (`markInfo`) ; pas d'accès clavier (cases `aria-hidden`).
+  Jours futurs inchangés (libération immédiate). `statsRdvModel` (`released`,
+  `releasedN`) ; test dans `scripts/check-stats-rdv.js`. **Validé en conditions
+  réelles par l'utilisateur le 23/10/2026** (Fumel, deux lapins).
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
 - **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
