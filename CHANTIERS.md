@@ -237,19 +237,19 @@ Aucune pour l'instant.
   garde l'ordre de `S.history`, récent d'abord — s'y appuyer pour tout tri).
 - **`fillTemplate` réduit tout saut de ligne triple en `\n\n`** (19/10) : démarche
   sans documents (« Autre »).
-- **Définitions des stats, tranchées le 27/09/2026** : concrétisation et lapin
-  = ÷ RDV passés hors bloqués ; courbe Lapin/Excusé/Pas de retour rattachée au
-  **mois du RDV**. Archives antérieures non recalculables. Taux d'occupation :
-  seules les journées réellement ouvertes comptaient ; remplacé le 22/10 par les
-  prochaines permanences (archives inchangées).
+- **Taux de concrétisation et de lapin PAR CRÉNEAU — décision utilisateur du
+  23/10/2026**, qui remplace le comptage par fiche du 27/09 : un créneau (date,
+  CMS, heure) vaut un RDV même s'il porte plusieurs fiches (libéré puis
+  réattribué) ; « réalisé » s'il porte ≥1 fiche Réalisé, « lapin » s'il porte ≥1
+  fiche Lapin (cumul possible) ; dénominateur = créneaux datés ≤ jour courant,
+  hors bloqués. `slotRates()` ; appliqué aux KPI et à `computeYearArchive`
+  (nouvelles archives seulement ; **archives déjà calculées non recalculées**,
+  elles gardent l'ancien comptage par fiche). Sur la sauvegarde du 23/10 :
+  concrétisation 66 % → 73 %, lapin 9 % → 10 %. « RDV réalisés » et « RDV sur la
+  période » restent des nombres de fiches. Pas de bloc AGORA : c'est l'utilisateur
+  qui tranche explicitement, pas une proposition de Claude contredisant la note.
+  Courbe Lapin/Excusé/Pas de retour toujours rattachée au **mois du RDV**.
 
-## Pistes d'amélioration
-
-Règle 22 de MD-LIB `collaboration.md` : au plus 3 pistes, à la fin d'une
-fonctionnalité validée ou sur demande de revue. Une piste écartée ne se
-repropose pas sans fait nouveau.
-
-**Proposées, en attente**
 - Aucune.
 
 **Écartées** (date — piste — raison)
