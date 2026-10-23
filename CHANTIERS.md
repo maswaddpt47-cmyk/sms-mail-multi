@@ -294,6 +294,7 @@ ne doit pas être défait remonte dans la dernière section.
   aussi en partant d'une tuile. Vérifié en navigateur réel avec données
   réelles : un swipe sur une tuile change de jour (23→28 oct) et ne modifie
   plus l'historique (190 RDV avant/après, aucune suppression).
+  **Validé en conditions réelles par l'utilisateur le 23/10/2026.**
 
 ## Publication et bloc Votre message
 
