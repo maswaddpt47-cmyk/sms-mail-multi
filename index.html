@@ -2926,7 +2926,16 @@ function statsRdvModel(history,permanences,period,cms,now){
     var active=slots.filter(function(slot){return slot.taken&&!slot.freeAgain&&slot.taken.msgType!=='indispo';});
     var occupied=active.length,blocked=slots.filter(function(slot){return slot.taken&&slot.taken.msgType==='indispo';}).length;
     if(allSlots.length&&!half&&!occupied&&blocked===allSlots.length)blocked=total;
-    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,free:Math.max(0,total-occupied-blocked),blocked:blocked,
+    /* Le jour même, une place libérée (Lapin, Excusé, Annulé, Pas de retour) n'est pas
+       réattribuable : elle reste comptée, colorée par son statut, et n'est plus une place
+       disponible. Si elle est réattribuée, le créneau a un titulaire actif et repasse en
+       réservé (demande utilisateur 23/10). Les jours futurs gardent la libération immédiate. */
+    var released={lapin:0,excuse:0,annule:0,pas_de_retour:0},releasedN=0;
+    if(p.exceptDate===today)slots.forEach(function(slot){
+      if(slot.taken&&slot.freeAgain&&released.hasOwnProperty(slot.taken.statut)){released[slot.taken.statut]++;releasedN++;}
+    });
+    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,
+      free:Math.max(0,total-occupied-blocked-releasedN),blocked:blocked,
       pending:active.filter(function(slot){return slot.taken.statut==='en_attente';}).length,
       completed:active.filter(function(slot){return slot.taken.statut==='realise';}).length,
       overbooked:Math.max(0,occupied+blocked-total),multiple:active.some(function(slot){return slot.multiPropo;})});
@@ -3194,9 +3203,16 @@ function renderStats(){
   fillCard.style.setProperty('--permanence-pending-border',STATUT_STYLES.en_attente.text);
   fillCard.appendChild(el('p',{class:'ui-chart-description'},'6 créneaux par journée complète, 3 par demi-journée · à partir de ce jour, pour le CMS choisi, hors filtre de période passée.'));
   var permanenceLegend=el('div',{class:'ui-chart-legend ui-permanence-legend','aria-label':'Couleurs des créneaux'});
-  [['is-booked','Réservé'],['is-pending','En attente'],['is-blocked','Bloqué'],['is-free','Disponible']].forEach(function(item){
+  var RELEASED_LABELS={lapin:['Lapin','lapin','lapins'],excuse:['Excusé','excusé','excusés'],annule:['Annulé','annulé','annulés'],pas_de_retour:['Pas de retour','sans retour','sans retour']};
+  function releasedMark(statut){var st=STATUT_STYLES[statut];return el('span',{'aria-hidden':'true',class:'ui-permanence-mark is-released',style:'background:'+st.border+';border-color:'+st.text+';'});}
+  var legendItems=[['is-booked','Réservé'],['is-pending','En attente'],['is-blocked','Bloqué']];
+  ['lapin','excuse','annule','pas_de_retour'].forEach(function(k){
+    if(k==='lapin'||rdv.days.some(function(d){return d.released[k];}))legendItems.push(['released:'+k,RELEASED_LABELS[k][0]]);
+  });
+  legendItems.push(['is-free','Disponible']);
+  legendItems.forEach(function(item){
     var entry=el('span',{class:'ui-chart-legend-item'});
-    entry.appendChild(el('i',{class:'ui-permanence-mark '+item[0],'aria-hidden':'true'}));
+    entry.appendChild(item[0].indexOf('released:')===0?releasedMark(item[0].slice(9)):el('i',{class:'ui-permanence-mark '+item[0],'aria-hidden':'true'}));
     entry.appendChild(el('span',{},item[1]));permanenceLegend.appendChild(entry);
   });fillCard.appendChild(permanenceLegend);
   var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
@@ -3206,9 +3222,15 @@ function renderStats(){
     label.appendChild(el('span',{},day.commune+(day.half?' · '+(day.half==='morning'?'Matin':'Après-midi'):'')));row.appendChild(label);
     row.appendChild(el('span',{class:'ui-permanence-value'},day.occupied+'/'+day.total));
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
-    var summary=day.occupied+' '+bookedLabel+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
+    var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
+    var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
     var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:'img','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
-    for(var i=0;i<day.total;i++)track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(i<day.occupied-day.pending?'is-booked':i<day.occupied?'is-pending':i<day.occupied+day.blocked?'is-blocked':'is-free')}));
+    var releasedList=[];['lapin','excuse','annule','pas_de_retour'].forEach(function(k){for(var r=0;r<day.released[k];r++)releasedList.push(k);});
+    for(var i=0;i<day.total;i++){
+      var after=i-day.occupied-day.blocked;
+      if(after>=0&&after<releasedList.length){track.appendChild(releasedMark(releasedList[after]));continue;}
+      track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(i<day.occupied-day.pending?'is-booked':i<day.occupied?'is-pending':i<day.occupied+day.blocked?'is-blocked':'is-free')}));
+    }
     row.appendChild(track);row.appendChild(el('small',{},summary));
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
     if(day.overbooked)row.appendChild(el('small',{},day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de '+day.total));

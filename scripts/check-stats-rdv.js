@@ -51,4 +51,14 @@ assert.equal(morning.half,'morning');assert.equal(morning.total,3);assert.equal(
 assert.equal(afternoon.half,'afternoon');assert.equal(afternoon.total,3);assert.equal(afternoon.occupied,1);assert.equal(afternoon.blocked,0);assert.equal(afternoon.free,2);assert.equal(split.free,2);
 const filtered=ctx.statsRdvModel(splitHistory,splitPerms,'1m',pm,today);assert.equal(filtered.days.length,1);assert.equal(filtered.days[0].total,3);assert.equal(filtered.free,2);
 assert.equal(JSON.stringify({splitHistory,splitPerms}),beforeSplit);
+// Le jour même, une place libérée n'est pas réattribuable ; les jours futurs la rendent libre.
+const todayStr='2026-10-22',tp={...perm,exceptDate:todayStr,archived:false};
+const sameDay=ctx.statsRdvModel([row('s1',todayStr,'lapin','09:30'),row('s2',todayStr,'lapin','10:30'),row('s3',todayStr,'confirme','11:30'),row('s4',todayStr,'annule','13:30'),row('s5',todayStr,'excuse','14:30'),row('s6',todayStr,'pas_de_retour','15:30')],[tp],'1m','A',today);
+const sd=sameDay.days[0];assert.equal(sd.occupied,1);assert.equal(sd.releasedN,5);assert.equal(JSON.stringify(sd.released),JSON.stringify({lapin:2,excuse:1,annule:1,pas_de_retour:1}));assert.equal(sd.free,0);assert.equal(sameDay.free,0);
+// Créneau réattribué : titulaire actif → réservé, plus de place libérée comptée.
+const realloc=ctx.statsRdvModel([row('r1',todayStr,'lapin','09:30'),row('r2',todayStr,'confirme','09:30')],[tp],'1m','A',today).days[0];
+assert.equal(realloc.occupied,1);assert.equal(realloc.releasedN,0);assert.equal(realloc.free,5);
+// Même lapin sur un jour futur : place libre immédiatement (comportement inchangé).
+const futureLapin=ctx.statsRdvModel([row('f1',future,'lapin','09:30')],[futurePerm],'1m','A',today).days[0];
+assert.equal(futureLapin.releasedN,0);assert.equal(futureLapin.free,6);
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
