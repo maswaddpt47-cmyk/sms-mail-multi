@@ -2713,9 +2713,10 @@ function computeYearArchive(year){
   hist.forEach(function(h){var k=h.statut||'en_attente';if(arc.statuts[k]===undefined)arc.statuts[k]=0;arc.statuts[k]++;});
   arc.realiseN=arc.statuts.realise||0;
   arc.lapinN=arc.statuts.lapin||0;
-  var concretN=hist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length;
-  arc.concretPct=concretN>0?Math.round(arc.realiseN/concretN*100):null;
-  arc.lapinPct=concretN>0?Math.round(arc.lapinN/concretN*100):null;
+  /* taux par créneau (23/10/2026) ; realiseN/lapinN restent des nombres de fiches */
+  var rates=slotRates(hist.filter(function(h){return h.date&&h.msgType!=='indispo';}));
+  arc.concretPct=rates.total>0?Math.round(rates.realised/rates.total*100):null;
+  arc.lapinPct=rates.total>0?Math.round(rates.lapins/rates.total*100):null;
   arc.preparationMetrics=Object.assign({basis:'reception-first-preparation-mon-fri-v1'},preparationStats(hist));
   arc.avgReact=null; /* ancien champ conservé pour compatibilité, nouvelle unité séparée */
   var rdvDiffs=[];hist.forEach(function(h){
@@ -2964,7 +2965,23 @@ function statsRdvModel(history,permanences,period,cms,now){
     .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),free:free};
+}
+
+/* Taux par créneau (demande utilisateur 23/10, remplace le comptage par fiche du 27/09) : un
+   créneau (date, CMS, heure) vaut un rendez-vous, même s'il porte plusieurs fiches (libéré puis
+   réattribué). Il est « réalisé » s'il porte au moins une fiche Réalisé, « lapin » s'il porte au
+   moins une fiche Lapin. Les deux peuvent se cumuler (lapin puis réattribué et réalisé). */
+function slotRates(entries){
+  var slots={};
+  entries.forEach(function(h){
+    var k=h.date+'|'+(h.commune||'')+'|'+(h.heure||'');
+    var s=slots[k]||(slots[k]={realise:false,lapin:false});
+    if(h.statut==='realise')s.realise=true;
+    if(h.statut==='lapin')s.lapin=true;
+  });
+  var keys=Object.keys(slots);
+  return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length};
 }
 
 /* ============================== RENDER: STATS ============================== */
@@ -3060,9 +3077,9 @@ function renderStats(){
 
   /* ── Tableau de bord KPI ── */
   (function(){
-    var realiseN=rdv.realised.length,lapinN=rdv.lapins.length,concretN=rdv.past.length;
-    var concretStr=concretN?Math.round(realiseN/concretN*100)+'%':'—';
-    var lapinStr=concretN?Math.round(lapinN/concretN*100)+'%':'—';
+    var realiseN=rdv.realised.length,concretN=rdv.slotRates.total;
+    var concretStr=concretN?Math.round(rdv.slotRates.realised/concretN*100)+'%':'—';
+    var lapinStr=concretN?Math.round(rdv.slotRates.lapins/concretN*100)+'%':'—';
     var nonPointesN=rdv.past.filter(isAPointer).length;
     var concretSub=nonPointesN?'dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'';
     var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · '+rdv.days.reduce(function(n,day){return n+day.total;},0)+' créneaux':'Aucune prochaine permanence';
@@ -3078,8 +3095,8 @@ function renderStats(){
       [rdv.entries.length,"RDV sur la période",'Fiches de rendez-vous datées, tous statuts, hors créneaux bloqués.',null],
       [Object.keys(accompanied).length,"Usagers accompagnés",'Personnes distinctes par nom et prénom parmi les RDV réalisés de la période.',null],
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée.",null,freeSub],
-      [concretStr,"Taux de concrétisation","Part des RDV de la période et du CMS au statut Réalisé, parmi les RDV datés au plus tard de ce jour. Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
-      [lapinStr,"Taux de lapin 🐇","Part des RDV de la période et du CMS au statut Lapin, parmi les RDV datés au plus tard de ce jour.",openLapinList]
+      [concretStr,"Taux de concrétisation","Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
+      [lapinStr,"Taux de lapin 🐇","Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){

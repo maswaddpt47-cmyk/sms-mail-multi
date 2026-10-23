@@ -75,4 +75,9 @@ const slotCount=ctx.statsRdvModel([row('s1',todayStr,'lapin','10:30'),row('s2',t
 assert.equal(slotCount.lapins+'/'+slotCount.total,'3/3');
 const slotCount2=ctx.statsRdvModel([row('t1',todayStr,'lapin','10:30'),row('t2',todayStr,'lapin','10:30'),row('t3',todayStr,'realise','14:00'),row('t4',todayStr,'annule','14:00')],[],'all','',today).lapinDays[0];
 assert.equal(slotCount2.lapins+'/'+slotCount2.total,'1/2');
+// Taux par créneau : 14:00 porte réalisé+annulé+excusé = 1 créneau réalisé ; cas 23/10 réel : 2 lapins sur 6.
+const sr=ctx.statsRdvModel([row('q1',todayStr,'realise','09:30'),row('q2',todayStr,'lapin','10:30'),row('q3',todayStr,'lapin','11:30'),row('q4',todayStr,'realise','14:00'),row('q5',todayStr,'annule','14:00'),row('q6',todayStr,'excuse','14:00'),row('q7',todayStr,'realise','15:00'),row('q8',todayStr,'realise','16:00')],[],'all','A',today).slotRates;
+assert.equal(sr.total+'/'+sr.realised+'/'+sr.lapins,'6/4/2');
+const both=ctx.statsRdvModel([row('b1',todayStr,'lapin','10:30'),row('b2',todayStr,'realise','10:30')],[],'all','A',today).slotRates;
+assert.equal(both.total+'/'+both.realised+'/'+both.lapins,'1/1/1');
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
