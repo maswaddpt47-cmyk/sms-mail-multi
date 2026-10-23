@@ -560,17 +560,7 @@ Aucune pour l'instant.
   reproposer sans fait nouveau. **Mineur RGPD** : polices chargées depuis `fonts.googleapis.com`
   (adresse IP transmise à Google, hors UE) — **fait le 10/10/2026** (`fonts/`).
 
-1. **RGPD point 4 — à charge de l'utilisateur** : vérifier avec le Conseil
-   Départemental si ce traitement figure au registre RGPD / si le DPO est
-   informé. Seul point du plan de remédiation encore ouvert (`CLAUDE.md`).
-2. **Origine du numéro tronqué du 07/10/2026 non identifiée** : un numéro
-   de la forme `00 76 15 74 22` (10 chiffres commençant par 00) est arrivé
-   dans Générer et a été envoyé sans alerte. L'alerte est en place (voir
-   « Points à ne pas défaire »), la cause non : hypothèse non vérifiée,
-   cellule mal formée dans le fichier importé (Orientations ne corrige que
-   le cas « 9 chiffres → 0 devant »). À creuser au prochain cas, avec le
-   fichier source sous les yeux (données fictives ou recadrées).
-3. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
+1. **Script de ménage de ce fichier** (`scripts/check-chantiers.sh`, hook
    `SessionStart`) : à copier depuis `ATELIERS_NEWGEN` — reporté le
    26/09/2026 par l'utilisateur, utile quand ce fichier aura grossi.
 
