@@ -80,7 +80,7 @@ dans « Points à ne pas défaire ».
   CMS, heure), **pas** les fiches : un créneau libéré puis réattribué porte plusieurs
   fiches et ne vaut qu'un RDV (constat utilisateur 23/10 : « 2/8 » pour 6 créneaux,
   vérifié sur la sauvegarde réelle). Base différente du taux de lapin (par fiche) ;
-  taux de lapin) ; 10 plus récentes, message si d'autres. `lapinDays` dans
+  10 plus récentes, message si d'autres. `lapinDays` dans
   `statsRdvModel`, testé. Corrigé après retour utilisateur ; à revérifier par lui.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
