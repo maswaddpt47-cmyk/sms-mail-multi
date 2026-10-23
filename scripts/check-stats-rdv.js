@@ -66,4 +66,8 @@ const chrono=ctx.statsRdvModel([row('c1',todayStr,'confirme','09:30'),row('c2',t
 assert.equal(chrono.marks.join(','),'booked,lapin,lapin,pending,booked');assert.equal(chrono.free,1);
 const unsorted=ctx.statsRdvModel([row('u1',todayStr,'en_attente','15:30'),row('u2',todayStr,'confirme','09:30')],[tp],'1m','A',today).days[0];
 assert.equal(unsorted.marks.join(','),'booked,pending');
+// Lapins par permanence passée : groupés date+CMS, plus récents d'abord, total = tous les RDV du jour.
+const lp=ctx.statsRdvModel([row('l1','2026-10-20','lapin','09:30'),row('l2','2026-10-20','confirme','10:30'),row('l3','2026-10-21','realise','09:30'),row('l4','2026-10-21','lapin','10:30','B'),row('l5','2026-10-21','lapin','11:30','B'),row('l6',todayStr,'lapin','09:30')],[],'all','',today);
+assert.equal(lp.lapinDays.map(d=>d.date+d.commune+d.lapins+'/'+d.total).join(','),'2026-10-22A1/1,2026-10-21B2/2,2026-10-20A1/2');
+assert.equal(ctx.statsRdvModel([row('l7','2026-10-20','lapin','09:30','B')],[],'all','A',today).lapinDays.length,0);
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');

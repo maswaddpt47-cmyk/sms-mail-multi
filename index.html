@@ -2953,8 +2953,14 @@ function statsRdvModel(history,permanences,period,cms,now){
       overbooked:Math.max(0,occupied+blocked-total),multiple:active.some(function(slot){return slot.multiPropo;})});
   });
   days.sort(function(a,b){return a.date.localeCompare(b.date)||a.commune.localeCompare(b.commune);});
+  /* Lapins par permanence passée (période et CMS du filtre, jour courant compris) : seules les
+     journées avec au moins un lapin ; total = tous les RDV de la journée, comme le taux de lapin. */
+  var perDay={};
+  past.forEach(function(h){var k=h.date+'|'+(h.commune||'');var d=perDay[k]||(perDay[k]={date:h.date,commune:h.commune||'',lapins:0,total:0});d.total++;if(h.statut==='lapin')d.lapins++;});
+  var lapinDays=Object.keys(perDay).map(function(k){return perDay[k];}).filter(function(d){return d.lapins>0;})
+    .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,free:free};
 }
 
 /* ============================== RENDER: STATS ============================== */
@@ -3268,11 +3274,26 @@ function renderStats(){
     }
     row.appendChild(track);row.appendChild(el('small',{},summary));
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
-    if(day.overbooked)row.appendChild(el('small',{},day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de '+day.total));
+    if(day.overbooked)row.appendChild(el('small',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' · '+day.commune+' : '+day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de '+day.total));
     daysWrap.appendChild(row);
   });
   if(!rdv.days.length)daysWrap.appendChild(el('p',{class:'ui-chart-description'},'Aucune prochaine permanence ouverte pour ce CMS.'));
   fillCard.appendChild(daysWrap);priorityCharts.appendChild(fillCard);wrap.appendChild(priorityCharts);
+  /* Lapins par permanence passée : repère les journées où des rendez-vous n'ont pas eu lieu. */
+  var lapinCard=card('Lapins par permanence');lapinCard.classList.add('ui-permanence-chart');
+  lapinCard.appendChild(el('p',{class:'ui-chart-description'},'Journées passées de la période, pour le CMS choisi · seules celles avec au moins un lapin.'));
+  var lapinList=el('div',{class:'ui-permanence-list',tabindex:rdv.lapinDays.length>5?'0':null,'aria-label':'Lapins par permanence'});
+  rdv.lapinDays.slice(0,10).forEach(function(d){
+    var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
+    label.appendChild(el('strong',{},new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'})));
+    label.appendChild(el('span',{},d.commune||'Sans CMS'));row.appendChild(label);
+    row.appendChild(el('span',{class:'ui-permanence-value'},d.lapins+'/'+d.total));
+    row.appendChild(el('small',{},d.lapins+' lapin'+(d.lapins>1?'s':'')+' sur '+d.total+' rendez-vous'));
+    lapinList.appendChild(row);
+  });
+  if(!rdv.lapinDays.length)lapinList.appendChild(el('p',{class:'ui-chart-description'},'Aucun lapin sur la période.'));
+  else if(rdv.lapinDays.length>10)lapinList.appendChild(el('p',{class:'ui-chart-description'},(rdv.lapinDays.length-10)+' journée'+(rdv.lapinDays.length-10>1?'s':'')+' plus ancienne'+(rdv.lapinDays.length-10>1?'s':'')+' non affichée'+(rdv.lapinDays.length-10>1?'s':'')+' : réduire la période ou choisir un CMS.'));
+  lapinCard.appendChild(lapinList);wrap.appendChild(lapinCard);
 
   /* ── KPI ── */
   var total=hist.length;
