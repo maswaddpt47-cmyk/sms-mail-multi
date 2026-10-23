@@ -143,6 +143,13 @@ dans « Points à ne pas défaire ».
   puis `demo-agenda-compact.html` (profil Michel). `scripts/ui-demo-data.js` n'est
   chargé que dans cette copie.
 
+### Heatmap « Activité annuelle » (23/10)
+- Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités**.
+  Avant : toutes les entrées, créneaux bloqués compris — « 16 RDV le 30/09 » pour
+  5 vrais RDV (+ 11 bloqués), constaté sur la sauvegarde réelle. Excusé/Annulé
+  comptent encore (comme dans l'Agenda). L'archive annuelle (`arc.heatmap`, jour
+  de semaine × heure) n'est pas touchée.
+
 ## Chantiers bloqués ou arrêtés
 
 - **Liaison SMS sans copier-coller** (21/10) : les vrais SMS sont indispensables.
