@@ -2991,6 +2991,15 @@ function renderStats(){
   var pane=document.getElementById('pane-stats');if(!pane)return;clear(pane);
   var wrap=el('div',{class:'ui-stats-page'});
 
+  /* Compteur animé partagé par « Le suivi des rendez-vous » et « Messages et usagers » (23/10) ;
+     sans animation si l'utilisateur a demandé à réduire les mouvements. */
+  function countUp(valEl,target,suffix){
+    suffix=suffix||'';
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){valEl.textContent=String(target)+suffix;return;}
+    var start=Date.now(),dur=600;
+    (function tick(){var p=Math.min(1,(Date.now()-start)/dur);valEl.textContent=String(Math.round(p*target))+suffix;if(p<1)requestAnimationFrame(tick);})();
+  }
+
   if(!S.statsPeriod)S.statsPeriod='all';
 
   /* ── filtre de période ── */
@@ -3117,7 +3126,10 @@ function renderStats(){
         tile.addEventListener('click',kpi[3]);
         tile.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();kpi[3]();}});
       }
-      tile.appendChild(el('div',{class:'ui-stats-number'},String(kpi[0])));
+      var numEl=el('div',{class:'ui-stats-number'},String(kpi[0]));
+      tile.appendChild(numEl);
+      var numMatch=/^(\d+)(%?)$/.exec(String(kpi[0]));
+      if(numMatch)countUp(numEl,parseInt(numMatch[1],10),numMatch[2]); /* « — » reste fixe */
       var lblRow=el('div',{class:'ui-stats-metric-label-row'});
       lblRow.appendChild(el('div',{class:'ui-stats-metric-label'},kpi[1]));
       if(kpi[2]){
@@ -3371,9 +3383,7 @@ function renderStats(){
     c.appendChild(valEl);
     c.appendChild(el('div',{class:'ui-stats-metric-label'},k.lbl));
     kpiRow.appendChild(c);
-    /* count-up */
-    var target=k.val,start=Date.now(),dur=600;
-    (function tick(){var p=Math.min(1,(Date.now()-start)/dur);valEl.textContent=String(Math.round(p*target));if(p<1)requestAnimationFrame(tick);})();
+    countUp(valEl,k.val);
   });
   var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
   reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
