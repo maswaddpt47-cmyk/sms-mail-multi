@@ -2939,12 +2939,14 @@ function statsRdvModel(history,permanences,period,cms,now){
        comprises : seules les places disponibles, sans heure, viennent à la fin. */
     var marks=slots.map(function(slot){
       if(!slot.taken)return null;
-      if(slot.taken.msgType==='indispo')return {heure:slot.heure,kind:'blocked'};
-      if(!slot.freeAgain)return {heure:slot.heure,kind:slot.taken.statut==='en_attente'?'pending':'booked'};
-      return p.exceptDate===today&&released.hasOwnProperty(slot.taken.statut)?{heure:slot.heure,kind:slot.taken.statut}:null;
-    }).filter(Boolean).sort(function(a,b){return a.heure.localeCompare(b.heure);}).map(function(m){return m.kind;});
-    if(closedDay)marks=[];while(closedDay&&marks.length<total)marks.push('blocked');
-    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,
+      var t=slot.taken,info={heure:slot.heure,statut:t.statut,nom:t.nom,prenom:t.prenom,demarche:t.demarche};
+      if(t.msgType==='indispo')return {heure:slot.heure,kind:'blocked',info:info};
+      if(!slot.freeAgain)return {heure:slot.heure,kind:t.statut==='en_attente'?'pending':'booked',info:info};
+      return p.exceptDate===today&&released.hasOwnProperty(t.statut)?{heure:slot.heure,kind:t.statut,info:info}:null;
+    }).filter(Boolean).sort(function(a,b){return a.heure.localeCompare(b.heure);});
+    var markInfo=marks.map(function(m){return m.info;});marks=marks.map(function(m){return m.kind;});
+    if(closedDay){marks=[];markInfo=[];}while(closedDay&&marks.length<total){marks.push('blocked');markInfo.push({heure:'',statut:'',blocked:true});}
+    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,markInfo:markInfo,
       free:Math.max(0,total-occupied-blocked-releasedN),blocked:blocked,
       pending:active.filter(function(slot){return slot.taken.statut==='en_attente';}).length,
       completed:active.filter(function(slot){return slot.taken.statut==='realise';}).length,
@@ -3225,6 +3227,27 @@ function renderStats(){
     entry.appendChild(item[0].indexOf('released:')===0?releasedMark(item[0].slice(9)):el('i',{class:'ui-permanence-mark '+item[0],'aria-hidden':'true'}));
     entry.appendChild(el('span',{},item[1]));permanenceLegend.appendChild(entry);
   });fillCard.appendChild(permanenceLegend);
+  /* Infobulle d'une case : heure, statut, usager et démarche (survol ; toucher sur mobile). */
+  function permanenceMarkTip(kind,info){
+    if(!kind)return 'Place disponible';
+    if(!info||info.blocked)return 'Créneau bloqué';
+    var parts=[info.heure];
+    if(kind==='blocked')parts.push('Créneau bloqué');
+    else{var st=STATUT_STYLES[info.statut];parts.push(st?st.label:info.statut);}
+    var who=[info.nom,info.prenom].filter(Boolean).join(' ');
+    if(who)parts.push(who);
+    if(info.demarche&&kind!=='blocked')parts.push(info.demarche);
+    return parts.filter(Boolean).join(' · ');
+  }
+  function attachPermanenceTip(node){
+    function show(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;tip.textContent=node.dataset.tip;tip.style.display='block';move(e);}
+    function move(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;
+      var x=(e.touches?e.touches[0].clientX:e.clientX)+14,y=(e.touches?e.touches[0].clientY:e.clientY)-10;
+      if(x+250>window.innerWidth)x=x-270;tip.style.left=x+'px';tip.style.top=y+'px';}
+    function hide(){var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';}
+    node.addEventListener('mouseenter',show);node.addEventListener('mousemove',move);node.addEventListener('mouseleave',hide);
+    node.addEventListener('touchstart',show,{passive:true});node.addEventListener('touchend',function(){setTimeout(hide,1800);});
+  }
   var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
   rdv.days.forEach(function(day){
     var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
@@ -3236,9 +3259,12 @@ function renderStats(){
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
     var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:'img','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
     for(var i=0;i<day.total;i++){
-      var kind=day.marks[i];
-      if(RELEASED_LABELS[kind]){track.appendChild(releasedMark(kind));continue;}
-      track.appendChild(el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')}));
+      var kind=day.marks[i],mark;
+      if(RELEASED_LABELS[kind])mark=releasedMark(kind);
+      else mark=el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')});
+      mark.dataset.tip=permanenceMarkTip(kind,day.markInfo[i]);
+      attachPermanenceTip(mark);
+      track.appendChild(mark);
     }
     row.appendChild(track);row.appendChild(el('small',{},summary));
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
