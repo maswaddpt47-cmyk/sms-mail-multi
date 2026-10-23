@@ -58,6 +58,13 @@ dans « Points à ne pas défaire ».
   (`7/6`) sans disponibilité négative ; Annulé/Excusé/Lapin/Pas de retour
   libèrent la place. Couleurs : Réservé vert, En attente rose, Bloqué gris
   foncé, Disponible case vide (mêmes classes CSS que les repères).
+- **Places libérées le jour même** (23/10, demande utilisateur) : sur la journée
+  du jour, un créneau Lapin/Excusé/Annulé/Pas de retour n'est **pas** une place
+  disponible (non réattribuable) : il reste compté, coloré par son statut, et
+  le résumé le dit (« 2 lapins · 1 place disponible »). Critère = la date du
+  jour, pas l'heure du créneau. Réattribué → titulaire actif → repasse en
+  réservé. Jours futurs inchangés (libération immédiate). `statsRdvModel`
+  (`released`, `releasedN`) ; test dans `scripts/check-stats-rdv.js`.
 - Les vues futures suivent le CMS, indépendamment du filtre historique ;
   journées archivées exclues. Archives annuelles agrégées non reconstruites.
 - **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
