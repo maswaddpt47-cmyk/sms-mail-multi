@@ -494,6 +494,7 @@
 .ui-stats-select{font-family:inherit;font-size:12px;padding:8px 32px 8px 11px;min-height:36px;max-width:100%;border:1px solid var(--c-border-in);border-radius:6px;background:var(--c-card);color:var(--c-text);cursor:pointer;}
 .ui-stats-overview{margin-bottom:28px;}
 .ui-stats-group-title{margin:0 0 11px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-dim);}
+.ui-stats-units{margin:-4px 0 12px;font-size:11px;line-height:1.5;}
 .ui-stats-metric-band{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));padding:20px 0;background:var(--c-card);border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border);margin-bottom:26px;}
 .ui-stats-dashboard-band{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:0;}
 .ui-stats-rate-band{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -3104,22 +3105,24 @@ function renderStats(){
     var concretStr=concretN?Math.round(rdv.slotRates.realised/concretN*100)+'%':'—';
     var lapinStr=concretN?Math.round(rdv.slotRates.lapins/concretN*100)+'%':'—';
     var nonPointesN=rdv.past.filter(isAPointer).length;
-    var concretSub=nonPointesN?'dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'';
+    var concretSub='sur '+concretN+' créneau'+(concretN>1?'x':'')+(nonPointesN?' · dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'');
     var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · '+rdv.days.reduce(function(n,day){return n+day.total;},0)+' créneaux':'Aucune prochaine permanence';
     var accompanied={};rdv.realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
     var dashboard=el('section',{class:'ui-stats-overview'});
     dashboard.appendChild(el('h3',{class:'ui-stats-group-title'},'Le suivi des rendez-vous'));
+    /* Unités (25/10) : les volumes comptent des fiches, les taux des créneaux (décision du 23/10). */
+    dashboard.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Les nombres comptent des fiches ; les taux et les places comptent des créneaux (un créneau réattribué ne vaut qu’un rendez-vous).'));
     var grid=el('div',{class:'ui-stats-metric-band ui-stats-dashboard-band'});
     function openLapinList(){
       openStatList('🐇 Lapin — usagers ne s\'étant pas présentés',rdv.lapins);
     }
     [
-      [realiseN,"RDV réalisés",'Rendez-vous réalisés, datés au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);}],
-      [rdv.entries.length,"RDV sur la période",'Fiches de rendez-vous datées, tous statuts, hors créneaux bloqués.',null],
-      [Object.keys(accompanied).length,"Usagers accompagnés",'Personnes distinctes par nom et prénom parmi les RDV réalisés de la période.',null],
-      [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée.",null,freeSub],
-      [concretStr,"Taux de concrétisation","Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
-      [lapinStr,"Taux de lapin 🐇","Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList]
+      [realiseN,"RDV réalisés",'Unité : fiches au statut Réalisé, datées au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);},'fiches'],
+      [rdv.entries.length,"RDV sur la période",'Unité : fiches de rendez-vous datées, tous statuts, hors créneaux bloqués. Un créneau réattribué peut porter plusieurs fiches.',null,'fiches · tous statuts'],
+      [Object.keys(accompanied).length,"Usagers accompagnés",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes'],
+      [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
+      [concretStr,"Taux de concrétisation","Unité : créneaux. Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
+      [lapinStr,"Taux de lapin 🐇","Unité : créneaux. Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){
@@ -3215,7 +3218,7 @@ function renderStats(){
     var tableDetails=el('details',{class:'ui-chart-table'});
     tableDetails.appendChild(el('summary',{},'Voir les données'));
     var tableScroll=el('div',{class:'ui-stats-scroll'}),table=el('table'),thead=el('thead'),head=el('tr');
-    table.appendChild(el('caption',{},title));head.appendChild(el('th',{scope:'col'},'Mois'));
+    table.appendChild(el('caption',{},title+' — '+description));head.appendChild(el('th',{scope:'col'},'Mois'));
     series.forEach(function(item){head.appendChild(el('th',{scope:'col'},item.label));});thead.appendChild(head);table.appendChild(thead);
     var tbody=el('tbody');months.forEach(function(m){var row=el('tr');row.appendChild(el('th',{scope:'row'},monthLabel(m)));series.forEach(function(item){row.appendChild(el('td',{},String(map[m][item.key]||0)));});tbody.appendChild(row);});
     table.appendChild(tbody);tableScroll.appendChild(table);tableDetails.appendChild(tableScroll);c.appendChild(tableDetails);
@@ -3257,7 +3260,7 @@ function renderStats(){
   }
 
   var priorityCharts=el('div',{class:'ui-stats-charts ui-stats-priority'});
-  priorityCharts.appendChild(monthlyChart('Rendez-vous par mois','Tous les statuts · mois du rendez-vous',Object.keys(rdv.byMonth).sort(),rdv.byMonth,[
+  priorityCharts.appendChild(monthlyChart('Rendez-vous par mois','Fiches de rendez-vous, tous statuts · mois du rendez-vous',Object.keys(rdv.byMonth).sort(),rdv.byMonth,[
     {key:'realise',label:'Réalisé',color:'var(--chart-sms)'},{key:'confirme',label:'Confirmé',color:'var(--chart-mail)'},
     {key:'en_attente',label:'En attente',color:'var(--chart-attente)'},{key:'annule',label:'Annulé',color:'var(--chart-annule)'},
     {key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},
@@ -3376,6 +3379,7 @@ function renderStats(){
   var avgRdv=diffs.length?Math.round(diffs.reduce(function(s,d){return s+d;},0)/diffs.length):null;
   var rdvByCms=Object.keys(diffsByCms).sort().map(function(c){var a=diffsByCms[c];return {cms:c,avg:Math.round(a.reduce(function(s,d){return s+d;},0)/a.length),n:a.length};});
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Messages et usagers'));
+  wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Un message = une fiche d’historique, comptée au jour de sa génération.'));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
   [{icon:"📨",val:total,lbl:"Total",col:"oklch(0.5 0.16 266)",isNum:true},{icon:"💬",val:smsN,lbl:"SMS",col:"oklch(0.48 0.14 155)",isNum:true},{icon:"✉️",val:mailN,lbl:"Mails",col:"oklch(0.48 0.13 264)",isNum:true},{icon:"👤",val:Object.keys(usagers).length,lbl:"Usagers",col:"oklch(0.52 0.14 38)",isNum:true}].forEach(function(k){
     var c=el('div',{class:'ui-stats-metric'});
@@ -3389,7 +3393,7 @@ function renderStats(){
   reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
   reactC.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
-  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
+  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
   kpiRow.appendChild(reactC);
   if(legacyPrep.median!==null){
     var legacyC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
@@ -3397,9 +3401,9 @@ function renderStats(){
        il passe en grand, la médiane en note (demande utilisateur 22/10). */
     var legacyPct=Math.round(legacyPrep.sameDay/legacyPrep.count*100);
     legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPct+' %'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même (estimation)'));
     legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median===0?'le jour même':legacyPrep.median.toLocaleString('fr-FR')+' j (lun.–ven.)')));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Date du dernier message : une fiche régénérée compte plus long. Repère en attendant la préparation moyenne.'));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Estimation, pas une mesure : elle part de la date du dernier message, une fiche régénérée compte plus long. À ne pas comparer à la préparation moyenne horodatée.'));
     kpiRow.appendChild(legacyC);
   }
   /* avg RDV delay */
@@ -3443,7 +3447,7 @@ function renderStats(){
   var demMap=rdv.byDemarche;
   var demList=Object.keys(demMap).map(function(k){return{nom:k,n:demMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,10);
   var demCard=card("Démarches accompagnées (top 10)");
-  demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de RDV réalisés sur la période sélectionnée.'));
+  demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches au statut Réalisé sur la période sélectionnée.'));
   if(demList.length){
     var maxD=demList[0].n;
     var dw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -3458,6 +3462,7 @@ function renderStats(){
   var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
   rdv.entries.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
   var statutCard=card("Statuts des RDV de la période");
+  statutCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches par statut ; un créneau réattribué peut en porter plusieurs.'));
   var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour"];
   var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
   var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
