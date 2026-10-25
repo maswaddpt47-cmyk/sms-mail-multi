@@ -104,6 +104,14 @@ dans « Points à ne pas défaire ».
   « Mesure horodatée » distinguent l'estimation de la préparation moyenne. Aucun
   calcul modifié ; archives anciennes non recalculées.
 
+- **Date et lieu des prochaines permanences = lien vers l'Agenda** (25/10, tâche autorisée) :
+  bouton `ui-permanence-link` (clavier : Entrée ; `aria-label` « Ouvrir l'agenda du … à … ») →
+  `S.agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay`
+  (`date|CMS|profil actif`) → mode journée, « Quitter le focus » disponible. Consultation
+  seule ; aucune réservation, filtres statistiques et infobulles inchangés. Testé en démo
+  (souris/clavier et toucher). Une seule permanence/CMS dans la démo : le choix du CMS repose
+  sur la clé `date|CMS|profil`, non éprouvé avec deux CMS le même jour.
+
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
   créneau libéré, ni rappel ni relance ; rouge distinct du jaune Excusé ;
@@ -310,13 +318,7 @@ Codex.** Reprendre après pull, conserver les évolutions concurrentes, un commi
 par modification logique, push sur `main` après vérifications sans redemander
 le même accord. Vérifier Pages avant d'annoncer la mise en ligne.
 
-1. **Ouvrir l'Agenda depuis les statistiques.** Ajouter un lien/bouton accessible
-   sur la date/le lieu des prochaines permanences, ouvrant la bonne journée et
-   le bon CMS du profil actif. Réutiliser la navigation existante ; préserver
-   les infobulles au toucher, les filtres statistiques et le cloisonnement des
-   profils. Le lien consulte l'agenda ; une réservation reste une action explicite.
-   Vérifier journée complète/demi-journée, CMS filtré/tous, mobile/PC et clavier.
-2. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
+1. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
    produisant une page courte avec mois choisi, CMS/profil concernés, résultats,
    démarches et répartition par CMS. Afficher unités, période, source et limites
    des indicateurs ; réutiliser les calculs centraux, sans formule parallèle.
