@@ -1735,11 +1735,23 @@ function getPermanence(commune,dateStr,permList){
    Toujours sur la grille standard (09:30-16:30), jamais sur l'heure du RDV déclencheur : figer
    debut/fin sur cette heure rétrécit silencieusement la grille du sélecteur (bug AG-001 sur
    SMS-mail, corrigé avant même d'arriver ici). Non destructif si la journée existe déjà. */
+function applyLunchBreaks(){
+  var today=toLocalDateStr(new Date()),changed=false,added=false;
+  S.permanences=S.permanences.map(function(p){
+    if(p.pauseAuto||!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived)return p;
+    var entry=lunchBreakEntry(p,S.history,today);
+    if(entry){S.history.push(entry);added=true;}
+    changed=true;return Object.assign({},p,{pauseAuto:true});
+  });
+  if(added)lsSet(pk('history'),S.history);
+  if(changed)lsSet(pk('permanences'),S.permanences);
+}
 function ensureDayOpen(commune,dateStr){
   if(!commune||!dateStr)return;
   if(S.permanences.some(function(p){return p.commune===commune&&p.exceptDate===dateStr;}))return;
   S.permanences=S.permanences.concat([{id:Date.now()+Math.random(),commune:commune,exceptDate:dateStr,debut:'09:30',fin:'16:30'}]);
   lsSet(pk('permanences'),S.permanences);
+  applyLunchBreaks();
 }
 /* RDV confirmé dont la date est passée sans être marqué Réalisé (ni Lapin/Excusé…) :
    à pointer — même logique centralisée que isDepasse */
@@ -1827,6 +1839,19 @@ function getSlots(commune,dateStr,historyList,permOverride){
   slots.sort(function(a,b){return a.heure.localeCompare(b.heure);});
   return slots;
 }
+/* Pause déjeuner d'office (25/10/2026, demande utilisateur) : le créneau de 12:30 est bloqué « Pause déjeuner »
+   sur chaque journée ouverte à venir, une seule fois (`pauseAuto` sur la permanence : une pause libérée à la main
+   ne revient pas). Jamais sur une journée passée, archivée, ni sur une demi-journée sans 12:30, ni si le créneau
+   porte déjà un RDV ou un blocage. Stockage inchangé : une entrée `indispo` comme un blocage manuel. */
+var LUNCH_MOTIF='Pause déjeuner';
+function isLunchBreak(slot){return !!slot&&slot.heure==='12:30'&&!!slot.taken&&slot.taken.msgType==='indispo'&&String(slot.taken.nom||'').trim().toLowerCase()==='pause déjeuner';}
+function lunchBreakEntry(perm,history,todayStr){
+  if(!perm||perm.pauseAuto||perm.archived||!/^\d{4}-\d{2}-\d{2}$/.test(perm.exceptDate||'')||perm.exceptDate<todayStr)return null;
+  if((perm.debut||'')>='13:00'||((perm.fin||'')&&perm.fin<'13:00'))return null;
+  var slot=getSlots(perm.commune,perm.exceptDate,history,perm).find(function(x){return x.heure==='12:30';});
+  if(!slot||(slot.taken&&!slot.freeAgain))return null;
+  return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:new Date().toLocaleString('fr-FR')};
+}
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
 }
@@ -1855,6 +1880,9 @@ function isDepasse(h){
 function blockSlot(commune,dateStr,heure,motif){
   if(hasConflict(dateStr,heure,commune))return;
   ensureDayOpen(commune,dateStr);
+  /* la journée vient peut-être de recevoir sa pause déjeuner : on en met le motif à jour au lieu d'empiler un doublon */
+  var already=S.history.find(function(h){return h.msgType==='indispo'&&h.date===dateStr&&h.commune===commune&&h.heure===heure;});
+  if(already){already.nom=motif||'Indisponible';lsSet(pk('history'),S.history);return;}
   S.history.push({channel:'sms',msgType:'indispo',commune:commune,date:dateStr,heure:heure,nom:motif||'Indisponible',ts:new Date().toLocaleString('fr-FR')});
   lsSet(pk('history'),S.history);
 }
@@ -2967,7 +2995,9 @@ function statsRdvModel(history,permanences,period,cms,now){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived||cms&&p.commune!==cms)return;
     var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
     var allSlots=getSlots(p.commune,p.exceptDate,history,p),half=assignedHalf(p,allSlots),total=half?3:6;
+    var lunchN=allSlots.filter(isLunchBreak).length; /* la pause déjeuner automatique n'est ni une place ni un blocage */
     var slots=allSlots.filter(function(slot){
+      if(isLunchBreak(slot))return false;
       if(half==='afternoon'&&slot.heure<'13:00'||half==='morning'&&slot.heure>='13:00')return false;
       /* La pause de 12:30 ne retire pas une des trois places de la matinée.
          Un véritable RDV à cette heure reste compté et ne sera pas masqué. */
@@ -2975,7 +3005,7 @@ function statsRdvModel(history,permanences,period,cms,now){
     });
     var active=slots.filter(function(slot){return slot.taken&&!slot.freeAgain&&slot.taken.msgType!=='indispo';});
     var occupied=active.length,blocked=slots.filter(function(slot){return slot.taken&&slot.taken.msgType==='indispo';}).length;
-    var closedDay=allSlots.length&&!half&&!occupied&&blocked===allSlots.length;
+    var closedDay=allSlots.length&&!half&&!occupied&&blocked===allSlots.length-lunchN;
     if(closedDay)blocked=total;
     /* Le jour même, une place libérée (Lapin, Excusé, Annulé, Pas de retour) n'est pas
        réattribuable : elle reste comptée, colorée par son statut, et n'est plus une place
@@ -6914,6 +6944,7 @@ function loadProfileData(){
     lsSet(pk('permanences'),S.permanences);
     lsSet(pk('perm-version'),PERM_MODEL_VERSION);
   }
+  applyLunchBreaks();
   S.calendarType=ls('ess-caltype','google');
   S.relanceDelai=ls('ess-relance-delai',3);
   S.agendaScope='mine';

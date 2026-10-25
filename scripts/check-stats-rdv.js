@@ -111,4 +111,26 @@ assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);
 assert.equal(ctx.monthlyReportData(bil,'2026-9','',nowBil),null);
+// Pause déjeuner d'office : conditions d'application, puis les chiffres de places ne bougent pas.
+const lp0={id:'p',commune:'A',exceptDate:'2026-10-30',debut:'09:30',fin:'16:30'},todayL='2026-10-25';
+const lunch=ctx.lunchBreakEntry(lp0,[],todayL);
+assert.equal(lunch.heure+'|'+lunch.nom+'|'+lunch.msgType+'|'+lunch.date,'12:30|Pause déjeuner|indispo|2026-10-30');
+assert.equal(ctx.lunchBreakEntry({...lp0,pauseAuto:true},[],todayL),null);                 // déjà traitée (ou libérée à la main) : ne revient pas
+assert.equal(ctx.lunchBreakEntry({...lp0,exceptDate:'2026-10-20'},[],todayL),null);        // journée passée
+assert.equal(ctx.lunchBreakEntry({...lp0,archived:true},[],todayL),null);
+assert.equal(ctx.lunchBreakEntry({...lp0,debut:'13:30'},[],todayL),null);                  // après-midi seul
+assert.equal(ctx.lunchBreakEntry({...lp0,fin:'12:30'},[],todayL),null);                    // matin seul
+assert.equal(ctx.lunchBreakEntry(lp0,[row('x','2026-10-30','confirme','12:30')],todayL),null);   // 12:30 déjà réservé
+assert.equal(ctx.lunchBreakEntry(lp0,[row('y','2026-10-30',null,'12:30','A','indispo')],todayL),null); // déjà bloqué
+assert.equal(ctx.lunchBreakEntry(lp0,[row('z','2026-10-30','lapin','12:30')],todayL).heure,'12:30');   // créneau libéré : on bloque
+const pauseRow=row('pause','2026-10-30',null,'12:30','A','indispo');pauseRow.nom='Pause déjeuner';
+const withP=(hist)=>[hist,hist.concat([pauseRow])].map(h=>{const d=ctx.statsRdvModel(h,[lp0],'1m','A',new Date(2026,9,25,12)).days[0];return JSON.stringify([d.total,d.occupied,d.free,d.blocked,d.overbooked,d.marks.length]);});
+const base1=[row('a1','2026-10-30','confirme','09:30'),row('a2','2026-10-30','confirme','10:30'),row('a3','2026-10-30','en_attente','14:30')];
+const [noP,yesP]=withP(base1);assert.equal(yesP,noP);                                      // la pause ne retire pas une place
+const allH=['09:30','10:30','11:30','12:30','13:30','14:30','15:30','16:30'];
+const closedOther=allH.map((h,i)=>{const r=row('c'+i,'2026-10-30',null,h,'A','indispo');r.nom='Fermé';return r;});
+const closedPause=closedOther.map(r=>r.heure==='12:30'?{...r,nom:'Pause déjeuner'}:r);
+const dClosedOther=ctx.statsRdvModel(closedOther,[lp0],'1m','A',new Date(2026,9,25,12)).days[0],dClosedPause=ctx.statsRdvModel(closedPause,[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
+assert.equal([dClosedPause.total,dClosedPause.free,dClosedPause.overbooked].join(),[dClosedOther.total,dClosedOther.free,dClosedOther.overbooked].join());
+assert.equal(dClosedPause.free+'|'+dClosedPause.overbooked,'0|0');                         // journée fermée avec pause : 0 place, pas de faux dépassement
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
