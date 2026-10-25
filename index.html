@@ -554,6 +554,9 @@
 .ui-permanence-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;padding:12px 0;border-bottom:1px solid var(--c-border);}
 .ui-permanence-label{display:flex;gap:5px 10px;flex-wrap:wrap;font-size:11px;color:var(--c-dim);}
 .ui-permanence-label span{overflow-wrap:anywhere;}
+.ui-permanence-link{display:flex;gap:5px 10px;flex-wrap:wrap;align-items:baseline;padding:2px 4px;margin:-2px -4px;border:0;border-radius:6px;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+.ui-permanence-link:hover strong,.ui-permanence-link:focus-visible strong{text-decoration:underline;}
+.ui-permanence-link:focus-visible{outline:2px solid var(--c-accent,#4389BD);outline-offset:1px;}
 .ui-permanence-value{font-size:12px;font-weight:800;color:var(--c-text);font-variant-numeric:tabular-nums;}
 .ui-permanence-track{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;}
 .ui-permanence-mark{display:block;height:10px;border-radius:3px;background:var(--c-card);border:1px solid var(--c-border-in);}
@@ -3312,8 +3315,20 @@ function renderStats(){
   var daysWrap=el('div',{class:'ui-permanence-list',tabindex:rdv.days.length>5?'0':null,'aria-label':'Prochaines permanences'});
   rdv.days.forEach(function(day){
     var row=el('div',{class:'ui-permanence-row'}),label=el('div',{class:'ui-permanence-label'});
-    label.appendChild(el('strong',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'})));
-    label.appendChild(el('span',{},day.commune+(day.half?' · '+(day.half==='morning'?'Matin':'Après-midi'):'')));row.appendChild(label);
+    var dateText=new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+    var placeText=day.commune+(day.half?' · '+(day.half==='morning'?'Matin':'Après-midi'):'');
+    /* Date et lieu ouvrent l'Agenda sur cette journée et ce CMS (25/10, tâche autorisée) : navigation
+       existante (onglet + focus journée), uniquement dans l'agenda du profil actif ; consultation seule,
+       aucune réservation. */
+    var openDay=el('button',{type:'button',class:'gx-press ui-permanence-link','aria-label':'Ouvrir l’agenda du '+dateText+' à '+day.commune,
+      onClick:function(){
+        S.agendaScope='mine';S.agShowArchived=false;
+        S.agendaTimelineDate=day.date;S.agendaFocusDay=day.date+'|'+day.commune+'|'+S.activeProfile;
+        S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();
+      }});
+    openDay.appendChild(el('strong',{},dateText));
+    openDay.appendChild(el('span',{},placeText));
+    label.appendChild(openDay);row.appendChild(label);
     row.appendChild(el('span',{class:'ui-permanence-value'},day.occupied+'/'+day.total));
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
     var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
