@@ -69,11 +69,9 @@ dans « Points à ne pas défaire ».
   (`buildCmsSelect`, défilement conservé). Les vues futures suivent le CMS, pas le filtre de période.
 - **Délai moyen RDV par CMS** (22/10) : « Tous les CMS » → liste par CMS ; un CMS → chiffre en grand.
   Jours calendaires `ts` → RDV ; archives (`arc.avgRdv`) toujours globales.
-- **Compteurs animés** (23/10, validé) : `countUp()` partagé (600 ms, `%` conservé, « — » fixe), coupé si
-  le système réduit les mouvements.
 - **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des
   rendez-vous », unité en note de chaque tuile, aides « Unité : … », caption des tableaux = titre +
-  description). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». Aucun calcul modifié.
+  description). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». Aucun calcul modifié. Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
 - **Date et lieu des prochaines permanences → Agenda** (25/10) : `ui-permanence-link` (clavier Entrée) →
   `agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay` (`date|CMS|profil actif`),
   mode journée avec « Quitter le focus ». Consultation seule. Non éprouvé avec deux CMS le même jour.
