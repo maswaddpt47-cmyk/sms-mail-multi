@@ -93,7 +93,7 @@ dans « Points à ne pas défaire ».
 - **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
   mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
   `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
-  `byStatut` partagés avec l'écran. Résultats (fiches/créneaux, unités nommées), statuts, démarches (top 10 +
+  `byStatut` partagés avec l'écran. Résultats (« rendez-vous enregistrés » / « créneaux horaires » ; le mot « fiches », trop interne, est banni du bilan depuis le 25/10 mais reste sur l'écran Statistiques), statuts, démarches (top 10 +
   « autres »), CMS, sources/limites. **Aucun nom, téléphone, note ni message** (testé) ; état vide ; année
   archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
   09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
