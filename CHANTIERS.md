@@ -181,12 +181,10 @@ dans « Points à ne pas défaire ».
 
 ## Chantiers bloqués ou arrêtés
 
-- **Liaison SMS sans copier-coller** (21/10) : les vrais SMS sont indispensables.
-  Aucun lien fiable de préremplissage Google Messages Web (ne pas inventer de
-  paramètres `phone`/`body`). Piste SMSGate (appli Android) : son API n'a pas
-  de CORS, donc il faudrait un relais serveur ; rien mis en place. Si retenu,
-  soumettre dépendance/contrat à l'AGORA avant implémentation. WhatsApp : lien
-  officiel possible mais compte requis chez le destinataire.
+- **Liaison SMS sans copier-coller** (21/10) : les vrais SMS sont indispensables. Aucun lien fiable de
+  préremplissage Google Messages Web (ne pas inventer de paramètres `phone`/`body`). Piste SMSGate (appli
+  Android) : son API n'a pas de CORS, il faudrait un relais serveur ; rien mis en place. Si retenu, soumettre
+  dépendance/contrat à l'AGORA avant implémentation. WhatsApp : lien officiel, mais compte requis.
 - **Espacements SMS** : arrêté à la demande de l'utilisateur après `45d182c`
   (rendu reçu insatisfaisant). Ne pas annoncer le problème résolu. Acquis :
   au plus une ligne vide entre paragraphes, CRLF normalisés, e-mails inchangés ;
