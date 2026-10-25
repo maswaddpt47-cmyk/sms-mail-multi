@@ -2067,12 +2067,20 @@ function renderTabs(){
       var bdgToday=el('span',{title:agTodayN+' RDV aujourd\'hui',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.50 0.16 155);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(agTodayN));
       btn.appendChild(bdgToday);
     }
+    /* un clic sur un badge ouvre l'Agenda au premier RDV concerné (25/10) ; sans stopPropagation, le clic
+       remonterait à l'onglet et un second rendu effacerait la date demandée */
+    function badgeGo(list){return function(e){
+      e.stopPropagation();
+      var dates=list().map(function(h){return h.date;}).filter(Boolean).sort();
+      if(dates[0])S._agScrollTarget=dates[0];
+      S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();
+    };}
     if(d[0]==='agenda'&&overdueN>0){
-      var badgeAg=el('span',{title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
+      var badgeAg=el('span',{onClick:badgeGo(function(){return S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});}),title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
       btn.appendChild(badgeAg);
     }
     if(d[0]==='agenda'&&aPointerN>0){
-      var bdgP=el('span',{title:aPointerN+' RDV confirmé'+(aPointerN>1?'s':'')+' passé'+(aPointerN>1?'s':'')+', à marquer Réalisé',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.62 0.15 70);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(aPointerN));
+      var bdgP=el('span',{onClick:badgeGo(aPointerList),title:aPointerN+' RDV confirmé'+(aPointerN>1?'s':'')+' passé'+(aPointerN>1?'s':'')+', à marquer Réalisé — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.62 0.15 70);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(aPointerN));
       btn.appendChild(bdgP);
     }
     nav.appendChild(btn);
@@ -3422,13 +3430,26 @@ function renderStats(){
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
     var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
-    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:'img','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
+    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:day.free>0?null:'img','aria-label':day.free>0?null:summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
     for(var i=0;i<day.total;i++){
       var kind=day.marks[i],mark;
       if(RELEASED_LABELS[kind])mark=releasedMark(kind);
       else mark=el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')});
       mark.dataset.tip=permanenceMarkTip(kind,day.markInfo[i]);
       attachPermanenceTip(mark);
+      if(!kind){
+        /* place disponible : ouvre les créneaux libres de cette journée (même fenêtre que « + Réserver »),
+           l'heure se choisit ensuite puis le formulaire s'ouvre (25/10, demande utilisateur) */
+        mark.style.cursor='pointer';mark.setAttribute('role','button');mark.setAttribute('tabindex','0');
+        mark.setAttribute('aria-label','Réserver une place le '+dateText+' à '+day.commune);mark.removeAttribute('aria-hidden');
+        mark.dataset.tip='Place disponible — toucher pour réserver';
+        var openBooking=(function(d){return function(){
+          var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';
+          S.agendaAvailability={dateStr:d.date,commune:d.commune};S.modal='agenda-availability';renderModal();
+        };})(day);
+        mark.addEventListener('click',openBooking);
+        mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openBooking();}});
+      }
       track.appendChild(mark);
     }
     row.appendChild(track);row.appendChild(el('small',{},summary));
