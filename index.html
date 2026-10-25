@@ -662,6 +662,9 @@
 #pane-agenda .ui-ag-date-button .ui-ag-date-dot{font-size:12px;line-height:8px;min-height:8px;color:var(--ui-accent);}
 #pane-agenda .ui-ag-date-button[data-ag-has-day="0"]{opacity:.65;}
 #pane-agenda .ui-ag-date-button[aria-pressed="true"]{background:var(--ui-accent-soft)!important;border-color:var(--ui-accent)!important;color:var(--ui-accent)!important;opacity:1;}
+/* jour sélectionné : la règle générale des boutons de la barre d'outils (`.ui-ag-toolbar :is(button…):not(…)`, !important)
+   l'écrasait (spécificité 1,3,1) ; ce sélecteur plus fort (1,4,0) rétablit le marquage (25/10) */
+#pane-agenda .ui-ag-toolbar .ui-ag-date-strip .ui-ag-date-button[aria-pressed="true"]{background:var(--ui-accent-soft)!important;border:2px solid var(--ui-accent)!important;color:var(--ui-accent)!important;font-weight:800;box-shadow:0 1px 4px color-mix(in srgb,var(--ui-accent) 35%,transparent);opacity:1;}
 #pane-agenda .ui-ag-date-button[aria-current="date"]>strong{text-decoration:underline;text-underline-offset:3px;}
 #pane-agenda .ui-ag-filter-panel{grid-column:1;min-width:0;}
 #pane-agenda .ui-ag-filter-panel[open]{grid-column:1 / -1;}
