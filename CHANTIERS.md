@@ -20,28 +20,22 @@ dans « Points à ne pas défaire ».
 ## Contrats à conserver
 
 ### Préparation moyenne (go du 22/10)
-- **Préparation moy. (lun.–ven.)** = écart entre `dateReception` et
-  `premierePreparationAt` (instant ISO avec fuseau, converti en jour Paris).
-  Réception exclue, préparation incluse ; même jour = 0, vendredi → lundi = 1 ;
-  week-ends exclus, **fériés inclus** ; une décimale ; « Le jour même » si 0.
-- Seule une vraie première préparation (Générer/copie) initialise l'instant ;
-  `addHistory` le conserve aux régénérations. Aucun remplissage rétroactif
-  depuis `ts`. Fiches anciennes déjà préparées : non mesurables (compteur
-  explicite) ; zéro mesurable → « — ».
-- `receptionDateFor` reprend l'ancien `dateDemande` si `dateReception` est
-  absente ; une `dateReception` présente, même vide, prime. **Constat terrain
-  (22/10) : la majorité des orientations est traitée le jour même**, donc cette
-  reprise est maintenue — ne pas rouvrir sans donnée réelle contraire.
-- Population identique pour moyenne et couverture : CMS et période au jour de
-  première préparation. JSON/sauvegardes conservent les champs ; CSV les expose ;
-  agrégats annuels dans `preparationMetrics` (unité/version) ; ancien `avgReact`
-  inchangé, présenté comme estimation. Contrat additif soumis à l'AGORA AG-002.
-- **Réactivité estimée** : tuile pour les fiches sans `premierePreparationAt`,
-  réception → `ts` en jours ouvrés, **médiane** (choix utilisateur : `ts` est
-  réécrit à chaque régénération) ; relances exclues. Affiche « N % — Traitées le
-  jour même » + médiane en note. Calcul d'affichage, rien de stocké.
+- **Préparation moy. (lun.–ven.)** = écart `dateReception` → `premierePreparationAt` (instant ISO avec fuseau,
+  converti en jour Paris). Réception exclue, préparation incluse ; même jour = 0, vendredi → lundi = 1 ;
+  week-ends exclus, **fériés inclus** ; une décimale ; « Le jour même » si 0 ; zéro mesurable → « — ».
+- Seule une vraie première préparation (Générer/copie) initialise l'instant ; `addHistory` le conserve aux
+  régénérations. Aucun remplissage rétroactif depuis `ts` ; anciennes fiches déjà préparées : non mesurables
+  (compteur explicite).
+- `receptionDateFor` reprend l'ancien `dateDemande` si `dateReception` est absente ; une `dateReception`
+  présente, même vide, prime. **Constat terrain (22/10) : la majorité des orientations est traitée le jour
+  même** : reprise maintenue, ne pas rouvrir sans donnée réelle contraire.
+- Moyenne et couverture : même population (CMS et période au jour de première préparation). Champs conservés
+  par JSON/sauvegardes, exposés par le CSV ; agrégats annuels dans `preparationMetrics` (unité/version) ;
+  `avgReact` inchangé, présenté comme estimation. Contrat additif soumis à l'AGORA AG-002.
+- **Réactivité estimée** : tuile pour les fiches sans `premierePreparationAt`, réception → `ts` en jours
+  ouvrés, **médiane** (`ts` est réécrit à chaque régénération) ; relances exclues ; « N % — Traitées le jour
+  même » + médiane en note. Calcul d'affichage, rien de stocké.
 - Tests : `node scripts/check-reactivity.js`, `node scripts/check-stats-rdv.js`.
-
 ### Statistiques
 - En tête : RDV réalisés, RDV de la période, usagers accompagnés, places à
   venir, concrétisation, lapin. Période/CMS appliqués au **jour du RDV** ; les
@@ -90,6 +84,12 @@ dans « Points à ne pas défaire ».
   mais était écrasée par `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, spécificité 1,3,1) ; le
   sélecteur renforcé (1,4,0) donne fond teinté, bordure 2 px et gras, en clair comme en sombre. Même piège que
   le clignotement des tuiles : tout nouveau style de bouton dans cette barre doit battre cette règle.
+- **Pause déjeuner d'office** (25/10, demande utilisateur ; remplace « 12h30 compris » du 07/10) : une entrée
+  `indispo` « Pause déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks` au chargement
+  du profil et à l'ouverture d'une journée), une seule fois : `pauseAuto` sur la permanence, donc une pause libérée
+  ne revient pas. Ni passé, ni archivée, ni demi-journée sans 12:30, ni si 12:30 est déjà pris. `statsRdvModel`
+  l'ignore (`isLunchBreak`) : ni place ni blocage. Jours **jamais ouverts** : grille inchangée, pause posée à
+  l'ouverture. Pas d'AGORA : décision explicite de l'utilisateur, libérable en un clic, aucune donnée détruite.
 - **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
   mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
   `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
