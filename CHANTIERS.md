@@ -149,7 +149,8 @@ dans « Points à ne pas défaire ».
 - **Configuration → Journées** (25/10) : sous-onglets « Ouvertes (N) » / « Archivées (M) » (`S.permView`) ; le
   bouton d'archivage RGPD reste dans « Ouvertes », « Restaurer » dans « Archivées ». **Règle d'archivage (25/10,
   choix utilisateur) : tout ce qui précède le 1er du mois en cours** (avant : > 60 jours), sauf journée avec RDV en
-  attente ou à pointer. Aucune donnée supprimée ; archivage toujours manuel (bouton).
+  attente ou à pointer. Aucune donnée supprimée. **Automatique au chargement du profil** (`archiveOldDaysCore(true)`, 25/10)
+  + bouton ; une journée restaurée (`gardeOuverte`) n'est plus archivée d'office, le bouton reste manuel.
 - **Import des orientations** : dialogue refondu ; le CMS ne filtre que l'affichage, l'import confirme toutes les
   lignes cochées ; Échap/croix/fond gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication et
   `confirmOrientImport()` inchangés.
@@ -157,11 +158,9 @@ dans « Points à ne pas défaire ».
   <dossier>` puis `demo-agenda-compact.html` (profil Michel) ; `scripts/ui-demo-data.js` n'y est chargé que là.
 
 ### Heatmap « Activité annuelle » (23/10)
-- Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités**.
-  Avant : toutes les entrées, créneaux bloqués compris — « 16 RDV le 30/09 » pour
-  5 vrais RDV (+ 11 bloqués), constaté sur la sauvegarde réelle. Excusé/Annulé
-  comptent encore (comme dans l'Agenda). L'archive annuelle (`arc.heatmap`, jour
-  de semaine × heure) n'est pas touchée.
+- Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités** (avant : « 16 RDV le 30/09 »
+  pour 5 vrais RDV + 11 bloqués, constaté sur la sauvegarde réelle). Excusé/Annulé comptent encore (comme dans
+  l'Agenda). L'archive annuelle (`arc.heatmap`, jour de semaine × heure) n'est pas touchée.
 - Mise en page (23/10, « ramassée ») : grille en CSS grid qui remplit la carte, cases
   carrées plafonnées à 22 px, 10 px/semaine minimum (défilement sur écran étroit),
   mois étiquetés sans chevauchement (mois du dimanche de la semaine).
