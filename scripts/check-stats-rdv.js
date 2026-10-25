@@ -153,4 +153,10 @@ assert.equal(fAm.half+'|'+fAm.total+'|'+fAm.free,'afternoon|3|3');
 const fMo=ctx.statsRdvModel(['14:00','15:00','16:00'].map(h=>blk('Fumel',h)),[fp],'1m','Fumel',new Date(2026,10,1,12)).days[0];
 assert.equal(fMo.half+'|'+fMo.total+'|'+fMo.free,'morning|3|3');
 delete ctx.S;
+// Journée jamais ouverte : pas de 12:30 dans la grille (la pause y sera posée à l'ouverture) ; journée ouverte : 12:30 présent.
+ctx.getPermanence=()=>null;
+assert.equal(ctx.getSlots('Marmande','2026-11-10',[]).map(s=>s.heure).join(','),'09:30,10:30,11:30,13:30,14:30,15:30');
+assert.match(ctx.getSlots('Marmande','2026-11-10',[row('o1','2026-11-10','confirme','12:30','Marmande')]).map(s=>s.heure).join(','),/11:30,12:30,13:30/);   // RDV déjà pris à 12:30 : conservé
+assert.match(ctx.getSlots('Marmande','2026-11-10',[],{...gp,exceptDate:'2026-11-10'}).map(s=>s.heure).join(','),/11:30,12:30,13:30/);                // journée ouverte : 12:30 présent
+delete ctx.getPermanence;
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');

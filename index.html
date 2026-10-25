@@ -1803,7 +1803,11 @@ function getSlots(commune,dateStr,historyList,permOverride){
   /* journée pas encore ouverte : grille par défaut (09:30-16:30) pour pouvoir quand même
      proposer un premier créneau — la journée n'est réellement ouverte/persistée qu'à
      l'enregistrement du RDV (ensureDayOpen), pas au simple affichage du picker */
-  var perm=permOverride||getPermanence(commune,dateStr)||{debut:'09:30',fin:String(Math.floor(FIN_AFFICHAGE_DEFAUT/60)).padStart(2,'0')+':30'};
+  var storedPerm=permOverride||getPermanence(commune,dateStr);
+  /* journée jamais ouverte : 12:30 n'est pas proposé (la pause déjeuner y sera posée à l'ouverture, 25/10) ;
+     un RDV déjà pris à 12:30 reste affiché (extraHeures), « Autre heure » reste possible */
+  var neverOpened=!storedPerm;
+  var perm=storedPerm||{debut:'09:30',fin:String(Math.floor(FIN_AFFICHAGE_DEFAUT/60)).padStart(2,'0')+':30'};
   var sh=parseInt(perm.debut),sm=parseInt(perm.debut.split(':')[1]||0);
   var eh=parseInt(perm.fin),em=parseInt(perm.fin.split(':')[1]||0);
   /* '09:00' = ancienne grille par défaut stockée sur les journées déjà ouvertes, pas un horaire
@@ -1853,6 +1857,7 @@ function getSlots(commune,dateStr,historyList,permOverride){
   var pmEnd=Math.max(pmStart+(CRENEAUX_APRES_MIDI-1)*DUREE_CRENEAU,(eh*60+em)>FIN_AFFICHAGE_DEFAUT?eh*60+em:0);
   for(var t=start;t<13*60&&t<=end;t+=DUREE_CRENEAU){
     var hh=String(Math.floor(t/60)).padStart(2,'0'),mm=String(t%60).padStart(2,'0');
+    if(neverOpened&&hh+':'+mm==='12:30')continue;
     buildSlot(hh+':'+mm);
   }
   for(var t2=pmStart;t2<=pmEnd;t2+=DUREE_CRENEAU){
