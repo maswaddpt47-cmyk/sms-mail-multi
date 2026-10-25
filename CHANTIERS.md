@@ -293,18 +293,38 @@ de l'existant. Règle 22 de MD-LIB copiée dans `CLAUDE.md` ; ce registre garde
 les pistes et les décisions, sans reproposer une piste écartée sans fait nouveau.
 
 
-### Proposées le 25/10/2026 — en attente de décision
+### À réaliser par Claude — accord utilisateur du 25/10/2026
 
-1. **Rendre les unités statistiques explicites** : les volumes restent par fiche,
-   les taux sont par créneau (choix utilisateur du 23/10). Recommander des libellés
-   et aides qui expliquent cette différence, sans changer les calculs décidés.
-   Bénéfice : éviter de lire des nombres apparemment contradictoires ; charge faible.
-2. **Ouvrir une permanence depuis les statistiques** : les cases donnent une
-   infobulle mais la ligne ne conduit pas à l'Agenda. Recommander un lien date/lieu
-   ouvrant la bonne journée ; moins de navigation, aucune saisie supplémentaire.
-   Charge technique modérée, préserver les infobulles tactiles.
-3. **Bilan mensuel imprimable anonymisé** : exports CSV présents pour historique et
-   orientations, pas de bilan statistique dédié trouvé. Hypothèse à confirmer :
-   besoin de transmettre un bilan à la hiérarchie. Recommander une page courte,
-   période/CMS/unités/sources explicites ; charge modérée, audit des chiffres avant
-   diffusion, aucune donnée nominative. Ne pas le réaliser avant choix utilisateur.
+L'utilisateur a accepté **les trois pistes** (« Fait la totale »), puis demandé
+explicitement de les confier à Claude via ce carnet pour économiser les quotas
+Codex. **Périmètre autorisé ; aucune des trois fonctions encore implémentée par
+Codex.** Reprendre après pull, conserver les évolutions concurrentes, un commit
+par modification logique, push sur `main` après vérifications sans redemander
+le même accord. Vérifier Pages avant d'annoncer la mise en ligne.
+
+1. **Clarifier les unités statistiques.** Les volumes comptent des fiches, les
+   taux des créneaux (décision du 23/10). Adapter libellés, aides et « Voir les
+   données » pour rendre cette différence explicite, sans changer les calculs
+   ni recalculer les archives anciennes. Distinguer préparation horodatée et
+   estimation « Traitées le jour même ». Vérifier les textes associés et leur
+   lisibilité mobile/PC ; syntaxe JS, harnais ciblé seulement si logique modifiée.
+2. **Ouvrir l'Agenda depuis les statistiques.** Ajouter un lien/bouton accessible
+   sur la date/le lieu des prochaines permanences, ouvrant la bonne journée et
+   le bon CMS du profil actif. Réutiliser la navigation existante ; préserver
+   les infobulles au toucher, les filtres statistiques et le cloisonnement des
+   profils. Le lien consulte l'agenda ; une réservation reste une action explicite.
+   Vérifier journée complète/demi-journée, CMS filtré/tous, mobile/PC et clavier.
+3. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
+   produisant une page courte avec mois choisi, CMS/profil concernés, résultats,
+   démarches et répartition par CMS. Afficher unités, période, source et limites
+   des indicateurs ; réutiliser les calculs centraux, sans formule parallèle.
+   Aucun nom, téléphone, note ni message individuel dans le bilan. Prévoir un
+   état sans données et distinguer les archives agrégées des données détaillées.
+   Vérifier l'aperçu d'impression et la concordance des filtres/totaux. Avant
+   diffusion à la hiérarchie, appliquer l'audit des chiffres prévu par MD-LIB
+   (`chiffres-diffuses.md`) ; distinguer tests fictifs et recomptage réel effectué.
+
+Aucune nouvelle dépendance ni migration nécessaire a priori. Si un nouveau
+contrat de données devient nécessaire, appliquer l'AGORA du projet. Actualiser
+ce carnet à chaque livraison ; retirer les tâches achevées en conservant les
+invariants utiles. Ne pas rouvrir la liaison SMS ni les espacements arrêtés.
