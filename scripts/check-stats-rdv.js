@@ -106,7 +106,7 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/fiches/);assert.match(htmlB,/créneaux/);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/Aucun nom, téléphone, note ni message/);
+assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/Aucun nom, téléphone, note ni message/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);

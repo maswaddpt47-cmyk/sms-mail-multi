@@ -3059,7 +3059,7 @@ function monthlyReportHtml(d,meta){
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   var mm=/^(\d{4})-(\d{2})$/.exec(d.month),title=NAMES[Number(mm[2])-1]+' '+mm[1];
   var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
-  function pc(n,total){return total?n+' / '+total+' créneaux · '+Math.round(n/total*100)+' %':'—';}
+  function pc(n,total){return total?n+' / '+total+' créneaux horaires · '+Math.round(n/total*100)+' %':'—';}
   var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
     +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+'</div>';
   if(d.empty){
@@ -3067,30 +3067,30 @@ function monthlyReportHtml(d,meta){
       +(meta.archivedYear?' L’année '+d.year+' a été archivée : le détail nominatif n’existe plus, seules les statistiques annuelles agrégées subsistent (Statistiques → sélecteur d’année). Ce bilan ne reprend jamais les archives.':'')+'</p>';
   } else {
     h+='<section><h2>Résultats du mois</h2><table><tr><th>Indicateur</th><th>Valeur</th><th>Unité</th></tr>'
-      +'<tr><td>Rendez-vous du mois (tous statuts)</td><td class="n">'+d.entries+'</td><td class="unit">fiches</td></tr>'
-      +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">fiches</td></tr>'
+      +'<tr><td>Rendez-vous du mois (tous statuts)</td><td class="n">'+d.entries+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
+      +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
       +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
-      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux échus</td></tr>'
-      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux échus</td></tr></table></section>';
-    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Fiches</th></tr>';
+      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires échus</td></tr>'
+      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires échus</td></tr></table></section>';
+    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th></tr>';
     STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
     h+='</table></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
     if(!d.demarches.length)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
-      h+='<table><tr><th>Démarche</th><th>RDV réalisés (fiches)</th></tr>';
+      h+='<table><tr><th>Démarche</th><th>RDV réalisés</th></tr>';
       d.demarches.forEach(function(x){h+='<tr><td>'+esc(x.nom)+'</td><td class="n">'+x.n+'</td></tr>';});
       if(d.otherDemarches)h+='<tr><td>Autres démarches ('+d.otherDemarches+')</td><td class="n">'+d.otherDemarchesN+'</td></tr>';
       h+='</table>';
     }
     h+='</section>';
-    h+='<section><h2>Répartition par CMS</h2><table><tr><th>CMS</th><th>RDV (fiches)</th><th>Réalisés (fiches)</th><th>Créneaux échus</th><th>Concrétisation</th><th>Lapin</th></tr>';
+    h+='<section><h2>Répartition par CMS</h2><table><tr><th>CMS</th><th>RDV enregistrés</th><th>RDV réalisés</th><th>Créneaux horaires échus</th><th>Concrétisation</th><th>Lapin</th></tr>';
     d.byCms.forEach(function(c){h+='<tr><td>'+esc(c.cms)+'</td><td class="n">'+c.entries+'</td><td class="n">'+c.realised+'</td><td class="n">'+c.slots+'</td><td class="n">'+(c.slots?Math.round(c.realisedSlots/c.slots*100)+' %':'—')+'</td><td class="n">'+(c.slots?Math.round(c.lapinSlots/c.slots*100)+' %':'—')+'</td></tr>';});
     h+='</table></section>';
   }
   h+='<section><h2>Sources, unités et limites</h2><ul>'
-    +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (fiches de rendez-vous), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', créneaux bloqués exclus. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
-    +'<li>Les nombres comptent des <b>fiches</b> ; les taux comptent des <b>créneaux</b> (date, CMS, heure) échus à la date du '+esc(String(d.today).split('-').reverse().join('/'))+' : un créneau réattribué ne vaut qu’un rendez-vous. Un créneau compte comme réalisé (ou lapin) s’il porte au moins une fiche Réalisé (ou Lapin) ; les deux peuvent se cumuler.</li>'
+    +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', créneaux bloqués exclus. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
+    +'<li>Les nombres comptent des <b>rendez-vous enregistrés</b> (un rendez-vous annulé, excusé ou lapin puis remplacé laisse plusieurs enregistrements sur un même créneau) ; les taux comptent des <b>créneaux horaires</b> (date, CMS, heure) échus à la date du '+esc(String(d.today).split('-').reverse().join('/'))+' : un créneau réattribué ne vaut qu’un rendez-vous. Un créneau compte comme réalisé (ou lapin) s’il porte au moins un rendez-vous au statut Réalisé (ou Lapin) ; les deux peuvent se cumuler.</li>'
     +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’ont pas été pointés : ils font baisser la concrétisation.</li>':'')
     +'<li>Aucun nom, téléphone, note ni message individuel ne figure dans ce bilan.</li></ul></section></div>';
   return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */
