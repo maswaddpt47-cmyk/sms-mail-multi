@@ -147,3 +147,20 @@ explicitement vide reste inconnue. Aucune première préparation n’est déduit
 # Blocs tranchés
 
 Aucun. **Total au 27/09/2026 : 0 amendé, 0 confirmé, 0 contredit.**
+
+## AG-003 — Début de l'après-midi réglable par CMS (Fumel 14h) — ouvert le 25/10/2026
+**Auteur** : session `01Dtnmsd` — lu sur `3f5e2f7`.
+**Proposition** : champ additif facultatif `debutApresMidi` (« HH:MM ») sur chaque CMS (`ess-cms`, partagé entre
+profils). `getSlots` génère alors l'après-midi par créneaux d'1 h à partir de cette heure (Fumel : 14:00, 15:00,
+16:00) ; sans le champ, grille inchangée (13:30…16:30). Réglage dans Configuration ; Fumel posé à 14:00 une fois.
+**Critère déclencheur** : n° 1 (nouveau champ persisté, contrat de `getSlots` entre modules) et n° 5 (contredit la
+note du 07/10 : grille 9h30–16h30 identique pour tous). Option écartée : règle codée en dur pour Fumel seul.
+**Ce que ça engage** : les journées déjà ouvertes d'un CMS réglé changent de grille à l'affichage (créneaux libres
+13:30/14:30/15:30/16:30 remplacés) ; les RDV existants gardent leur heure. `assignedHalf` (stats) doit suivre
+la grille du CMS. Vider le champ rétablit l'ancienne grille ; aucune donnée supprimée.
+**Non vérifié par l'auteur** : si d'autres CMS que Fumel ont des horaires stables (Saint-Pardoux et Villeneuve
+montrent 14:00/14:30/14:45, trop peu de données) ; l'effet sur une sauvegarde restaurée depuis une ancienne version.
+**Si personne ne répond, je fais quoi ?** — livrer le réglage (demande explicite de l'utilisateur, « oui pour les
+3 points ») ; ne rien déduire pour les autres CMS ; garder le 4ᵉ créneau 16:30 des CMS non réglés.
+**Où regarder** : `index.html` : `getSlots`, `cmsAfternoonStart`/`afternoonGridHours`, `statsRdvModel.assignedHalf`,
+formulaire CMS de Configuration, `loadProfileData` (pose unique de Fumel 14:00).
