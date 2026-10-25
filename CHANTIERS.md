@@ -118,7 +118,7 @@ dans « Points à ne pas défaire ».
   Créneau libre cliquable → `openMessagesOnSlot(date, CMS, heure)` (Messages, créneau prérempli) ;
   seulement sur **mon** agenda, jours **non passés**, ni archivée ni orpheline ; masqués quand un
   filtre nom/statut est actif (`data-ag-open-slot`). Chaque créneau libre porte un bouton 🚫 (motif demandé,
-  `blockSlot`) ; les créneaux **bloqués** s'affichent avec leur motif (« Sans motif » sinon), regroupés quand
+  `blockSlot`) ; les créneaux **bloqués** s'affichent en gris ardoise rayé (couleur « Bloqué » des stats) avec leur motif (« Sans motif » sinon), regroupés quand
   contigus de même motif, avec « 🔓 Libérer » (`releaseSlot`). Le bouton « Bilan mensuel » est agrandi (52 px).
 - **Swipe de jour** (23/10, validé par l'utilisateur) sur `#ag-timeline-board`,
   vue compacte seulement : seuil 60 px horizontal / 40 px vertical, via
