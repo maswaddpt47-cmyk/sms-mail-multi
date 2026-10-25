@@ -165,7 +165,8 @@ dans « Points à ne pas défaire ».
   `attachPermanenceTip` (`data-tip` : « mer. 21 oct. 2026 — N RDV »). Les événements
   souris émulés après un toucher (`mouseleave`) sont ignorés 1 s, sinon l'infobulle
   disparaissait aussitôt (constaté en émulation tactile). Vaut aussi pour les
-  cases de « Prochaines permanences ».
+  cases de « Prochaines permanences ». **Heatmap (5 jours, infobulle, comptage par créneau) validée par
+  l'utilisateur le 25/10/2026.**
 
 ## Chantiers bloqués ou arrêtés
 
