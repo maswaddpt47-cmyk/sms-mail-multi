@@ -96,6 +96,14 @@ dans « Points à ne pas défaire ».
   celles de « Messages et usagers » ; `countUp()` partagé, désactivé si le système
   demande de réduire les mouvements. **Validé par l'utilisateur le 23/10/2026.**
 
+- **Unités affichées** (25/10, tâche autorisée) : phrase d'unités sous « Le suivi des
+  rendez-vous » (nombres = fiches ; taux et places = créneaux), unité en note sous
+  chaque tuile (« fiches », « personnes distinctes », « sur N créneaux »), aides `i`
+  « Unité : … », caption du tableau « Voir les données » = titre + description,
+  cartes Statuts/Démarches en « fiches ». « Traitées le jour même (estimation) » et
+  « Mesure horodatée » distinguent l'estimation de la préparation moyenne. Aucun
+  calcul modifié ; archives anciennes non recalculées.
+
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
   créneau libéré, ni rappel ni relance ; rouge distinct du jaune Excusé ;
@@ -302,19 +310,13 @@ Codex.** Reprendre après pull, conserver les évolutions concurrentes, un commi
 par modification logique, push sur `main` après vérifications sans redemander
 le même accord. Vérifier Pages avant d'annoncer la mise en ligne.
 
-1. **Clarifier les unités statistiques.** Les volumes comptent des fiches, les
-   taux des créneaux (décision du 23/10). Adapter libellés, aides et « Voir les
-   données » pour rendre cette différence explicite, sans changer les calculs
-   ni recalculer les archives anciennes. Distinguer préparation horodatée et
-   estimation « Traitées le jour même ». Vérifier les textes associés et leur
-   lisibilité mobile/PC ; syntaxe JS, harnais ciblé seulement si logique modifiée.
-2. **Ouvrir l'Agenda depuis les statistiques.** Ajouter un lien/bouton accessible
+1. **Ouvrir l'Agenda depuis les statistiques.** Ajouter un lien/bouton accessible
    sur la date/le lieu des prochaines permanences, ouvrant la bonne journée et
    le bon CMS du profil actif. Réutiliser la navigation existante ; préserver
    les infobulles au toucher, les filtres statistiques et le cloisonnement des
    profils. Le lien consulte l'agenda ; une réservation reste une action explicite.
    Vérifier journée complète/demi-journée, CMS filtré/tous, mobile/PC et clavier.
-3. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
+2. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
    produisant une page courte avec mois choisi, CMS/profil concernés, résultats,
    démarches et répartition par CMS. Afficher unités, période, source et limites
    des indicateurs ; réutiliser les calculs centraux, sans formule parallèle.
