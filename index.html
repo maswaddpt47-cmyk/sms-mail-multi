@@ -3442,10 +3442,19 @@ function renderStats(){
            l'heure se choisit ensuite puis le formulaire s'ouvre (25/10, demande utilisateur) */
         mark.style.cursor='pointer';mark.setAttribute('role','button');mark.setAttribute('tabindex','0');
         mark.setAttribute('aria-label','Réserver une place le '+dateText+' à '+day.commune);mark.removeAttribute('aria-hidden');
-        mark.dataset.tip='Place disponible — toucher pour réserver';
+        mark.dataset.tip='Place disponible — toucher pour préparer le message';
         var openBooking=(function(d){return function(){
           var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';
-          S.agendaAvailability={dateStr:d.date,commune:d.commune};S.modal='agenda-availability';renderModal();
+          /* ouvre Messages (Générer) sur ce jour et ce CMS ; l'heure se choisit dans la grille des créneaux
+             libres. Même appariement CMS → adresse que le sélecteur du formulaire. */
+          S.date=d.date;S.heure='';S.commune=d.commune;
+          var vn=d.commune.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+          var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
+          if(cmsMatch)S.selectedCMS=String(cmsMatch.id);
+          regen();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
+          /* la page garde le défilement des statistiques : retour en haut du formulaire */
+          document.querySelectorAll('.gx-scroll').forEach(function(n){n.scrollTop=0;});window.scrollTo(0,0);
+          showToast('Jour chargé — choisissez l’heure');
         };})(day);
         mark.addEventListener('click',openBooking);
         mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openBooking();}});
@@ -4424,7 +4433,17 @@ function renderAgenda(){
   var navBar=el('div',{class:'ui-ag-toolbar ui-ag-period-bar'});
   var controlsBar=el('div',{class:'ui-ag-toolbar ui-ag-timeline-toolbar'});
   var btnToday=el('button',{id:'ag-timeline-today',class:'gx-press',style:NBTN},'Aujourd’hui');
-  btnToday.addEventListener('click',function(){agScrollTo(todayStr);});
+  /* « Aujourd'hui » ouvre une journée avec un rendez-vous (25/10, demande utilisateur) : aujourd'hui s'il en a,
+     sinon la prochaine, et à défaut la dernière passée. Sur grand écran la vue est hebdomadaire : on compare
+     des semaines, la semaine en cours reste donc affichée si elle contient un RDV. */
+  btnToday.setAttribute('title','Aller à la journée avec rendez-vous la plus proche d’aujourd’hui');
+  btnToday.addEventListener('click',function(){
+    var weekKey=function(value){return timelineIsCompact()?value:timelineMonday(value);};
+    var dates=timelineDates(),todayKey=weekKey(todayStr);
+    var target=dates.find(function(date){return weekKey(date)>=todayKey;})||dates[dates.length-1]||todayStr;
+    agScrollTo(target);
+    if(target!==todayStr&&dates.indexOf(todayStr)===-1&&timelineIsCompact())showToast('Aucun RDV aujourd’hui — journée avec RDV la plus proche : '+target.split('-').reverse().join('/'));
+  });
   var btnPrev=el('button',{id:'ag-timeline-prev',class:'gx-press',style:NBTN},'‹');
   btnPrev.addEventListener('click',function(){timelineMove(-1);});
   var btnNext=el('button',{id:'ag-timeline-next',class:'gx-press',style:NBTN},'›');
