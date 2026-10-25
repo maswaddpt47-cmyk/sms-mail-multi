@@ -92,6 +92,10 @@ dans « Points à ne pas défaire ».
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
+- **Jour sélectionné marqué dans le bandeau de dates** (25/10) : la règle `[aria-pressed="true"]` existait
+  mais était écrasée par `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, spécificité 1,3,1) ; le
+  sélecteur renforcé (1,4,0) donne fond teinté, bordure 2 px et gras, en clair comme en sombre. Même piège que
+  le clignotement des tuiles : tout nouveau style de bouton dans cette barre doit battre cette règle.
 - **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
   mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
   `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
