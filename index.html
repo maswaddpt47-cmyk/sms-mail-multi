@@ -1688,7 +1688,7 @@ function saveCustomTpl(id){var e=S.editTpl;if(!e||!e.nom.trim())return;S.customT
 /* cms (cloisonné par profil) */
 function addCms(){var nom=S.nc.nom,adresse=S.nc.adresse;if(!nom.trim()||!adresse.trim())return;S.cmsList=S.cmsList.concat([{id:Date.now(),nom:nom.trim(),adresse:adresse.trim()}]);S.nc={nom:"",adresse:""};persist();renderConfig();}
 function deleteCms(id){S.cmsList=S.cmsList.filter(function(c){return c.id!==id;});persist();renderConfig();}
-function saveCms(id){var e=S.editCms;if(!e||!e.nom.trim()||!e.adresse.trim())return;S.cmsList=S.cmsList.map(function(c){return c.id===id?{id:c.id,nom:e.nom.trim(),adresse:e.adresse.trim()}:c;});S.editCms=null;persist();renderConfig();}
+function saveCms(id){var e=S.editCms;if(!e||!e.nom.trim()||!e.adresse.trim())return;S.cmsList=S.cmsList.map(function(c){if(c.id!==id)return c;var n={id:c.id,nom:e.nom.trim(),adresse:e.adresse.trim()};if(e.debutApresMidi)n.debutApresMidi=e.debutApresMidi;return n;});S.editCms=null;persist();renderConfig();}
 /* secteurs */
 function addSect(){var v=(S.ns||"").trim();if(!v)return;S.secteurs=S.secteurs.concat([v]);S.ns="";persist();renderConfig();}
 function deleteSect(i){var a=S.secteurs.slice();a.splice(i,1);S.secteurs=a;persist();renderConfig();}
@@ -1779,6 +1779,24 @@ function pointerStatut(h,statut){
 }
 var DUREE_CRENEAU=60; /* durée fixe des créneaux, quelle que soit la commune */
 var DEBUT_GRILLE=9*60+30; /* premier créneau à 9h30 puis toutes les heures (07/10/2026, avant : 9h00) */
+/* Après-midi : trois créneaux d'1 h (comme les 3 places par demi-journée) à partir d'un début réglable par CMS
+   (`debutApresMidi` sur le CMS, défaut 13:30 ; Fumel 14:00) — demande utilisateur du 25/10/2026, qui retire aussi
+   le créneau de 16:30. Les RDV déjà pris à une autre heure restent affichés (créneaux « hors grille »). */
+var CRENEAUX_APRES_MIDI=3;
+function cmsAfternoonStart(commune){
+  var def=13*60+30;
+  if(typeof S==='undefined'||!S||!S.cmsList||!commune)return def;
+  var norm=function(x){return String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase();};
+  var c=S.cmsList.find(function(x){return norm(x.nom)===norm(commune);});
+  var m=c&&/^(\d{2}):(\d{2})$/.exec(c.debutApresMidi||'');
+  if(!m)return def;
+  var v=Number(m[1])*60+Number(m[2]);
+  return v>=13*60&&v<=15*60?v:def;
+}
+function afternoonGridHours(commune){
+  var a=cmsAfternoonStart(commune);
+  return [0,1,2].map(function(i){var t=a+i*60;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
+}
 var FIN_AFFICHAGE_DEFAUT=16*60+30; /* on continue de proposer des créneaux libres jusqu'à 16h30 même après le dernier RDV du jour */
 function getSlots(commune,dateStr,historyList,permOverride){
   historyList=historyList||S.history;
@@ -1830,9 +1848,15 @@ function getSlots(commune,dateStr,historyList,permOverride){
     var replaced=matches.filter(function(x){return x!==taken&&isFreed(x);});
     slots.push({heure:heure,taken:taken||null,freeAgain:!!freeAgain,multiPropo:multiPropo,allPropo:propositions,replaced:replaced});
   }
-  for(var t=start;t<=end;t+=DUREE_CRENEAU){
+  var pmStart=cmsAfternoonStart(commune);
+  /* un blocage ou une fin de journée personnalisés au-delà de 16:30 prolongent l'après-midi ; sinon trois créneaux */
+  var pmEnd=Math.max(pmStart+(CRENEAUX_APRES_MIDI-1)*DUREE_CRENEAU,(eh*60+em)>FIN_AFFICHAGE_DEFAUT?eh*60+em:0);
+  for(var t=start;t<13*60&&t<=end;t+=DUREE_CRENEAU){
     var hh=String(Math.floor(t/60)).padStart(2,'0'),mm=String(t%60).padStart(2,'0');
     buildSlot(hh+':'+mm);
+  }
+  for(var t2=pmStart;t2<=pmEnd;t2+=DUREE_CRENEAU){
+    buildSlot(String(Math.floor(t2/60)).padStart(2,'0')+':'+String(t2%60).padStart(2,'0'));
   }
   /* créneaux hors pas standard (heure modifiée manuellement) */
   extraHeures.forEach(function(h){if(!seenHeures[h])buildSlot(h);});
@@ -2984,7 +3008,7 @@ function statsRdvModel(history,permanences,period,cms,now){
         !slots.some(function(slot){return (slot.heure<'13:00')===morning&&slot.taken&&!slot.freeAgain&&!isBlocked(slot);});
     }
     var morningClosed=closed(['09:30','10:30','11:30','12:30'],true);
-    var afternoonClosed=closed(['13:30','14:30','15:30','16:30'],false);
+    var afternoonClosed=closed(afternoonGridHours(p.commune),false);
     if(/^\d{2}:\d{2}$/.test(p.debut||'')&&p.debut>='13:00')return 'afternoon';
     if(/^\d{2}:\d{2}$/.test(p.fin||'')&&p.fin<'13:00')return 'morning';
     if(morningClosed&&!afternoonClosed)return 'afternoon';
@@ -5180,6 +5204,11 @@ function renderConfig(){
       if(isEd){
         card.appendChild(el('input',{class:'gx-in',style:INPUT+"margin-bottom:8px;",value:S.editCms.nom,onInput:function(e){S.editCms.nom=e.target.value;}}));
         card.appendChild(el('input',{class:'gx-in',style:INPUT+"margin-bottom:10px;",value:S.editCms.adresse,onInput:function(e){S.editCms.adresse=e.target.value;}}));
+        /* début de l'après-midi : trois créneaux d'1 h à partir de cette heure (25/10) */
+        var pmLabel=el('label',{style:"display:block;font-size:12px;font-weight:700;color:var(--c-dim);margin:0 0 4px;"},"Début de l'après-midi (3 créneaux d'1 h)");
+        var pmSel=el('select',{class:'gx-in',style:INPUT+"margin-bottom:10px;cursor:pointer;",'aria-label':"Début de l'après-midi",onChange:function(e){S.editCms.debutApresMidi=e.target.value;}});
+        [['','Par défaut — 13h30, 14h30, 15h30'],['13:00','13h00, 14h00, 15h00'],['14:00','14h00, 15h00, 16h00'],['14:30','14h30, 15h30, 16h30']].forEach(function(o){pmSel.appendChild(el('option',{value:o[0],selected:(S.editCms.debutApresMidi||'')===o[0]},o[1]));});
+        card.appendChild(pmLabel);card.appendChild(pmSel);
         var eb=el('div',{style:"display:flex;gap:8px;"});
         eb.appendChild(el('button',{class:'gx-press',style:BTNP+"flex:1;",onClick:function(){saveCms(c.id);}},"✓ Enregistrer"));
         eb.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid oklch(0.88 0.02 256);background:var(--c-card);color:var(--c-dim);font-size:13px;font-weight:600;padding:8px 14px;border-radius:10px;",onClick:function(){S.editCms=null;renderConfig();}},"Annuler"));
@@ -5190,7 +5219,7 @@ function renderConfig(){
         info.appendChild(el('div',{style:"font-weight:700;font-size:13.5px;"},c.nom));
         info.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-top:2px;"},c.adresse));
         row.appendChild(info);
-        row.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:oklch(0.4 0.1 264);font-size:12px;font-weight:600;padding:5px 9px;border-radius:8px;flex-shrink:0;",onClick:function(){S.editCms={id:c.id,nom:c.nom,adresse:c.adresse};renderConfig();}},"Modifier"));
+        row.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-hover);color:oklch(0.4 0.1 264);font-size:12px;font-weight:600;padding:5px 9px;border-radius:8px;flex-shrink:0;",onClick:function(){S.editCms={id:c.id,nom:c.nom,adresse:c.adresse,debutApresMidi:c.debutApresMidi||''};renderConfig();}},"Modifier"));
         row.appendChild(el('button',{class:'gx-press',style:BTNDEL+"flex-shrink:0;",onClick:function(){deleteCms(c.id);}},"Supprimer"));
         card.appendChild(row);
       }
@@ -6917,6 +6946,11 @@ function loadProfileData(){
   var lastSave=ls('ess-lastSave',null);
   migrateSharedCmsList();
   S.cmsList=ls('ess-cms',DEFAULT_CMS);
+  /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier */
+  if(ls('ess-pm-start-v1','')!=='1'){
+    S.cmsList=S.cmsList.map(function(c){return /^fumel\b/i.test(String(c.nom||'').trim())&&!c.debutApresMidi?Object.assign({},c,{debutApresMidi:'14:00'}):c;});
+    lsSet('ess-cms',S.cmsList);lsSet('ess-pm-start-v1','1');
+  }
   S.demarches=ls('ess-demarches',DEFAULT_DEMARCHES);
   /* fusion : ajouter les démarches par défaut manquantes sans écraser les personnalisations */
   var existingIds=S.demarches.map(function(d){return d.id;});

@@ -133,4 +133,24 @@ const closedPause=closedOther.map(r=>r.heure==='12:30'?{...r,nom:'Pause déjeune
 const dClosedOther=ctx.statsRdvModel(closedOther,[lp0],'1m','A',new Date(2026,9,25,12)).days[0],dClosedPause=ctx.statsRdvModel(closedPause,[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
 assert.equal([dClosedPause.total,dClosedPause.free,dClosedPause.overbooked].join(),[dClosedOther.total,dClosedOther.free,dClosedOther.overbooked].join());
 assert.equal(dClosedPause.free+'|'+dClosedPause.overbooked,'0|0');                         // journée fermée avec pause : 0 place, pas de faux dépassement
+// Grille par CMS : après-midi à 3 créneaux d'1 h, début réglable (défaut 13:30, Fumel 14:00) ; plus de 16:30.
+const gp={commune:'Marmande',exceptDate:'2026-11-03',debut:'09:30',fin:'16:30'};
+const hours=(c,hist=[])=>ctx.getSlots(c,'2026-11-03',hist,{...gp,commune:c}).map(s=>s.heure).join(',');
+ctx.S={cmsList:[{id:1,nom:'Marmande'},{id:2,nom:'Fumel',debutApresMidi:'14:00'},{id:3,nom:'Villeneuve-Sur-Lot',debutApresMidi:'99:99'}]};
+assert.equal(hours('Marmande'),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');
+assert.equal(hours('Fumel'),'09:30,10:30,11:30,12:30,14:00,15:00,16:00');
+assert.equal(hours('FUMEL'),'09:30,10:30,11:30,12:30,14:00,15:00,16:00');                // casse et accents sans effet
+assert.equal(hours('Villeneuve-Sur-Lot'),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');      // valeur invalide : défaut
+assert.equal(hours('Inconnu'),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');
+assert.match(hours('Marmande',[row('t1','2026-11-03','confirme','16:30','Marmande')]),/15:30,16:30$/);   // RDV existant à 16:30 : conservé, hors grille
+assert.match(hours('Fumel',[row('t2','2026-11-03','confirme','13:30','Fumel')]),/12:30,13:30,14:00/);     // RDV existant à 13:30 : conservé
+assert.deepEqual(Array.from(ctx.afternoonGridHours('Fumel')),['14:00','15:00','16:00']);
+// demi-journée ouverte détectée avec la grille du CMS (Fumel : 14:00/15:00/16:00)
+const fp={id:'f',commune:'Fumel',exceptDate:'2026-11-03',debut:'09:30',fin:'16:30'};
+const blk=(c,h)=>{const r=row('k'+c+h,'2026-11-03',null,h,c,'indispo');r.nom='Fermé';return r;};
+const fAm=ctx.statsRdvModel(['09:30','10:30','11:30','12:30'].map(h=>blk('Fumel',h)),[fp],'1m','Fumel',new Date(2026,10,1,12)).days[0];
+assert.equal(fAm.half+'|'+fAm.total+'|'+fAm.free,'afternoon|3|3');
+const fMo=ctx.statsRdvModel(['14:00','15:00','16:00'].map(h=>blk('Fumel',h)),[fp],'1m','Fumel',new Date(2026,10,1,12)).days[0];
+assert.equal(fMo.half+'|'+fMo.total+'|'+fMo.free,'morning|3|3');
+delete ctx.S;
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
