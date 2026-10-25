@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **23/10/2026**, base `main`. Ménage du fichier fait le 23/10 : 753 → ~250 lignes ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **25/10/2026**, base `main`. Ménage du fichier fait les 23 et 25/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,17 +9,13 @@ dans « Points à ne pas défaire ».
 
 ## En cours / à confirmer
 
-- **Capacité des demi-journées** (22/10) : le 4 novembre est partagé entre deux
-  lieux → **3 places par demi-journée, 6 par journée complète**. Corrigé et
-  vérifié (harnais Node + Chromium 390 px/1280×720). Reste : confirmer le
-  déploiement Pages du commit dans GitHub Actions. `statsRdvModel.assignedHalf`
-  identifie la moitié ouverte ; indispo 12:30 de pause exclue d'une matinée, un
-  vrai RDV 12:30 reste compté. Grille Agenda et données stockées inchangées.
-- **Prochaines permanences / Places disponibles à venir** : remplacent le
-  pourcentage de remplissage (jugé peu compréhensible). Le comptage réel et
-  l'appréciation visuelle de l'utilisateur restent à confirmer.
-- **« Traitées le jour même »** = estimation sur les anciennes fiches (pas une
-  mesure) ; ne pas la confondre avec la métrique horodatée de préparation.
+- **Capacité des demi-journées** (22/10, déployée et validée) : 3 places par demi-journée, 6 par journée
+  complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
+  ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
+- **« Traitées le jour même »** = estimation sur les anciennes fiches (pas une mesure) ; ne pas la
+  confondre avec la métrique horodatée de préparation.
+- **À valider par l'utilisateur sur ses données réelles** : bilan mensuel (audit Codex avant diffusion),
+  lien date/lieu → Agenda avec deux CMS le même jour.
 
 ## Contrats à conserver
 
