@@ -145,16 +145,14 @@ dans « Points à ne pas défaire ».
 ### Autres écrans
 - **Modèles** : recherche (nom/type/contenu, sans accents), par masquage des
   cartes via `tplApplySearch()` — jamais de `renderTemplates()` à la frappe.
-- **Votre message** : bloc replié au départ (`details/summary`), choix
-  ouvert/fermé en mémoire UI.
-- **Import des orientations** : dialogue refondu ; le CMS ne filtre que
-  l'affichage, l'import confirme toutes les lignes cochées ; Échap/croix/fond
-  gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication et
-  `confirmOrientImport()` inchangés. Rendu à essayer clair/sombre, PC et mobile.
-- **Refonte UI** validée le 19/10 (`7f0205e`), rendu confirmé en navigateur
-  réel. Démo fictive : `python scripts/build-ui-preview.py --output-dir <dossier>`
-  puis `demo-agenda-compact.html` (profil Michel). `scripts/ui-demo-data.js` n'est
-  chargé que dans cette copie.
+- **Votre message** : bloc replié au départ (`details/summary`), choix ouvert/fermé en mémoire UI.
+- **Configuration → Journées** (25/10) : sous-onglets « Ouvertes (N) » / « Archivées (M) » (`S.permView`) ; le
+  bouton d'archivage RGPD reste dans « Ouvertes », « Restaurer » dans « Archivées ». Aucune donnée touchée.
+- **Import des orientations** : dialogue refondu ; le CMS ne filtre que l'affichage, l'import confirme toutes les
+  lignes cochées ; Échap/croix/fond gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication et
+  `confirmOrientImport()` inchangés.
+- **Refonte UI** validée le 19/10 (`7f0205e`). Démo fictive : `python scripts/build-ui-preview.py --output-dir
+  <dossier>` puis `demo-agenda-compact.html` (profil Michel) ; `scripts/ui-demo-data.js` n'y est chargé que là.
 
 ### Heatmap « Activité annuelle » (23/10)
 - Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités**.
