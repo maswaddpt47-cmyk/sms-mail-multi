@@ -147,7 +147,9 @@ dans « Points à ne pas défaire ».
   cartes via `tplApplySearch()` — jamais de `renderTemplates()` à la frappe.
 - **Votre message** : bloc replié au départ (`details/summary`), choix ouvert/fermé en mémoire UI.
 - **Configuration → Journées** (25/10) : sous-onglets « Ouvertes (N) » / « Archivées (M) » (`S.permView`) ; le
-  bouton d'archivage RGPD reste dans « Ouvertes », « Restaurer » dans « Archivées ». Aucune donnée touchée.
+  bouton d'archivage RGPD reste dans « Ouvertes », « Restaurer » dans « Archivées ». **Règle d'archivage (25/10,
+  choix utilisateur) : tout ce qui précède le 1er du mois en cours** (avant : > 60 jours), sauf journée avec RDV en
+  attente ou à pointer. Aucune donnée supprimée ; archivage toujours manuel (bouton).
 - **Import des orientations** : dialogue refondu ; le CMS ne filtre que l'affichage, l'import confirme toutes les
   lignes cochées ; Échap/croix/fond gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication et
   `confirmOrientImport()` inchangés.
