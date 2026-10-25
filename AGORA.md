@@ -160,7 +160,10 @@ note du 07/10 : grille 9h30–16h30 identique pour tous). Option écartée : rè
 la grille du CMS. Vider le champ rétablit l'ancienne grille ; aucune donnée supprimée.
 **Non vérifié par l'auteur** : si d'autres CMS que Fumel ont des horaires stables (Saint-Pardoux et Villeneuve
 montrent 14:00/14:30/14:45, trop peu de données) ; l'effet sur une sauvegarde restaurée depuis une ancienne version.
-**Si personne ne répond, je fais quoi ?** — livrer le réglage (demande explicite de l'utilisateur, « oui pour les
-3 points ») ; ne rien déduire pour les autres CMS ; garder le 4ᵉ créneau 16:30 des CMS non réglés.
+**Amendé le 25/10 par l'utilisateur** : le créneau de 16:30 est aussi retiré pour **tous** les CMS (après-midi = 3
+créneaux d'1 h, défaut 13:30/14:30/15:30). Un RDV existant à 16:30 reste affiché « hors grille » ; seuls les créneaux
+libres de 16:30 disparaissent.
+**Si personne ne répond, je fais quoi ?** — livrer (demande explicite, « oui pour les 3 points » puis « sors le
+créneau de 16h30 ») ; ne rien déduire pour les autres CMS que Fumel.
 **Où regarder** : `index.html` : `getSlots`, `cmsAfternoonStart`/`afternoonGridHours`, `statsRdvModel.assignedHalf`,
 formulaire CMS de Configuration, `loadProfileData` (pose unique de Fumel 14:00).

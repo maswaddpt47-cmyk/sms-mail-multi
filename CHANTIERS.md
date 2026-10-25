@@ -12,8 +12,7 @@ dans « Points à ne pas défaire ».
 - **Capacité des demi-journées** (22/10, déployée et validée) : 3 places par demi-journée, 6 par journée
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
-- **« Traitées le jour même »** = estimation sur les anciennes fiches (pas une mesure) ; ne pas la
-  confondre avec la métrique horodatée de préparation.
+- **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
 - **À valider par l'utilisateur sur ses données réelles** : bilan mensuel (audit Codex avant diffusion),
   lien date/lieu → Agenda avec deux CMS le même jour.
 
@@ -235,10 +234,11 @@ Aucune pour l'instant.
 - **Un champ de saisie ne déclenche jamais un rebuild complet du formulaire
   pendant la frappe** (« Autre heure », `nomIn`) : `onInput` =
   `regen()+updatePreviewOnly()`, reconstruction à `onBlur`.
-- **Grille des créneaux : 9h30 → 16h30 toutes les heures** (07/10/2026), constante
-  `DEBUT_GRILLE` dans `getSlots()` ; `debut:'09:00'` stocké = ancien défaut. Les
-  RDV hors grille restent affichés à leur heure sans étirer la grille. Aucun jour
-  de semaine n'est attaché à un lieu.
+- **Grille des créneaux** (07/10, **révisée le 25/10/2026**, AG-003 ouvert) : matin 9h30, 10h30, 11h30, 12h30
+  (`DEBUT_GRILLE` dans `getSlots()` ; `debut:'09:00'` = ancien défaut) ; **après-midi = 3 créneaux d'1 h** à partir du
+  `debutApresMidi` du CMS (défaut 13h30 ; **Fumel 14h00**, posé une fois au chargement, réglable dans Configuration →
+  CMS). **Le 16h30 est retiré pour tous** (demande utilisateur). Les RDV hors grille restent affichés à leur heure.
+  Vider le champ rétablit 13h30 ; `assignedHalf` suit la grille du CMS (`afternoonGridHours`).
 - **Une journée s'ouvre sur la grille standard (09:30-16:30)**, jamais sur
   l'heure du RDV déclencheur (`ensureDayOpen`/`migratePermanences`, AG-001 du
   27/09).
