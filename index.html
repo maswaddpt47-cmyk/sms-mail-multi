@@ -429,6 +429,10 @@
 #pane-agenda .ui-ag-open{font-size:9px;color:var(--c-muted);font-weight:500;}
 #pane-agenda .ui-ag-slot-released .ui-ag-open:before{content:"Créneau réouvert · ";}
 #pane-agenda .ui-ag-slot-blocked{background:var(--c-subtle-bg)!important;}
+#pane-agenda .ui-ag-open-slot{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 10px;border:1.5px dashed var(--c-border-in);border-radius:10px;background:transparent;color:var(--c-muted);font:inherit;font-size:12px;cursor:pointer;text-align:left;}
+#pane-agenda .ui-ag-open-slot strong{font-size:12px;color:var(--c-dim);}
+#pane-agenda .ui-ag-open-slot-go{margin-left:auto;font-weight:800;}
+#pane-agenda .ui-ag-open-slot:hover,#pane-agenda .ui-ag-open-slot:focus-visible{border-color:var(--ui-accent);border-style:solid;color:var(--ui-accent);background:var(--ui-accent-soft);}
 #pane-agenda .ui-ag-slot-free .ui-ag-name{color:var(--c-muted)!important;font-weight:500!important;}
 #pane-agenda .ui-ag-slot-free .ui-ag-time{color:var(--c-muted)!important;}
 #pane-agenda .ui-ag-free-wrap{display:grid;grid-template-columns:minmax(0,1fr) 48px;border-bottom:1px solid var(--c-border);}
@@ -496,7 +500,7 @@
 .ui-stats-group-title{margin:0 0 11px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-dim);}
 .ui-stats-units{margin:-4px 0 12px;font-size:11px;line-height:1.5;}
 /* bouton « Bilan mensuel » : visible comme un bouton, pleine largeur sur mobile (25/10) */
-#pane-stats .ui-stats-bilan{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 16px;border:1.5px solid var(--ui-accent,#087f75);border-radius:10px;background:var(--ui-accent-soft,#e8f5f2);color:var(--ui-accent,#087f75);font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+#pane-stats .ui-stats-bilan{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 22px;border:2px solid var(--ui-accent,#087f75);border-radius:12px;background:var(--ui-accent-soft,#e8f5f2);color:var(--ui-accent,#087f75);font:inherit;font-size:16px;font-weight:800;cursor:pointer;}
 #pane-stats .ui-stats-bilan:hover{filter:brightness(.97);}
 @media(max-width:700px){#pane-stats .ui-stats-bilan{width:100%;}}
 .ui-stats-metric-band{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));padding:20px 0;background:var(--c-card);border-top:1px solid var(--c-border);border-bottom:1px solid var(--c-border);margin-bottom:26px;}
@@ -1947,6 +1951,18 @@ function reuseHistItem(h){
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
   showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
+}
+/* ouvre Messages (Générer) sur un jour, un CMS et éventuellement une heure (statistiques, Agenda : 25/10).
+   Même appariement CMS → adresse que le sélecteur du formulaire ; le brouillon d'usager en cours est conservé. */
+function openMessagesOnSlot(dateStr,commune,heure){
+  S.date=dateStr;S.heure=heure||'';S.commune=commune;
+  var vn=commune.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
+  if(cmsMatch)S.selectedCMS=String(cmsMatch.id);
+  regen();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
+  /* la page garde le défilement de l'écran d'origine : retour en haut du formulaire */
+  document.querySelectorAll('.gx-scroll').forEach(function(n){n.scrollTop=0;});window.scrollTo(0,0);
+  showToast(heure?'Créneau chargé — complétez le message':'Jour chargé — choisissez l’heure');
 }
 /* charge la fiche complète (avec date/heure) dans Générer pour consulter/copier le message existant, sans créer de doublon */
 function openHistInGen(h){
@@ -3452,16 +3468,7 @@ function renderStats(){
         mark.dataset.tip='Place disponible — toucher pour préparer le message';
         var openBooking=(function(d){return function(){
           var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';
-          /* ouvre Messages (Générer) sur ce jour et ce CMS ; l'heure se choisit dans la grille des créneaux
-             libres. Même appariement CMS → adresse que le sélecteur du formulaire. */
-          S.date=d.date;S.heure='';S.commune=d.commune;
-          var vn=d.commune.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-          var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
-          if(cmsMatch)S.selectedCMS=String(cmsMatch.id);
-          regen();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
-          /* la page garde le défilement des statistiques : retour en haut du formulaire */
-          document.querySelectorAll('.gx-scroll').forEach(function(n){n.scrollTop=0;});window.scrollTo(0,0);
-          showToast('Jour chargé — choisissez l’heure');
+          openMessagesOnSlot(d.date,d.commune,'');
         };})(day);
         mark.addEventListener('click',openBooking);
         mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openBooking();}});
@@ -4287,6 +4294,7 @@ function renderAgenda(){
         else if(statut&&s===statut)matchSt=true;
       });
       card.setAttribute('data-ag-filter-match',(matchNom&&matchSt)?'1':'0');
+      card.querySelectorAll('[data-ag-open-slot]').forEach(function(t){t.style.display=(norm||statut)?'none':'';});
     });
     timelineSync(!!ensureMatch);
 
@@ -4641,8 +4649,21 @@ function renderAgenda(){
       halfdayLists[period[0]]=el('div',{class:'ui-ag-halfday-slots'});
       halfday.appendChild(halfdayLists[period[0]]);sg.appendChild(halfday);
     });
-    rdvSlots.forEach(function(slot){
+    /* créneaux libres cliquables (25/10, demande utilisateur ; ils avaient été retirés le 19/10) : uniquement
+       sur mon agenda, jours non passés, ni journée archivée ni orpheline */
+    var openSlots=(!isPast&&day.profile===S.activeProfile&&!day.orphan&&!day.perm.archived)?slots.filter(function(s){return !s.taken;}):[];
+    var tileSlots=slots.filter(function(s){return (s.taken&&s.taken.msgType!=='indispo')||openSlots.indexOf(s)!==-1;});
+    tileSlots.forEach(function(slot){
       var slotList=halfdayLists[slot.heure<'13:00'?'morning':'afternoon'];
+      if(!slot.taken){
+        var openTile=el('button',{type:'button',class:'ui-ag-open-slot','data-ag-open-slot':'1','aria-label':'Créneau libre à '+slot.heure+' le '+dateLabel+' à '+day.perm.commune+' — préparer un message',
+          onClick:(function(d,h){return function(){openMessagesOnSlot(d.dateStr,d.perm.commune,h);};})(day,slot.heure)});
+        openTile.appendChild(el('strong',{},slot.heure));
+        openTile.appendChild(el('span',{},'Libre'));
+        openTile.appendChild(el('span',{class:'ui-ag-open-slot-go','aria-hidden':'true'},'＋'));
+        slotList.appendChild(openTile);
+        return;
+      }
       var who=slot.taken?[slot.taken.nom,slot.taken.prenom].filter(Boolean).join(' '):'';
       var isPropo=slot.taken&&slot.taken.msgType==='proposition';
       var _st=slot.taken&&slot.taken.statut;
