@@ -116,8 +116,12 @@ dans « Points à ne pas défaire ».
   « Rappels et points à traiter » et archives sont dans le menu ☰ (filtres fermés
   au départ). Journées uniquement bloquées absentes de la timeline.
 - Timeline : une date à la fois ≤ 900 px, semaine en colonnes sur PC ; Matin
-  (<13:00) / Après-midi (≥13:00) côte à côte ; seuls les RDV enregistrés
-  s'affichent ; « + Réserver » ouvre les disponibilités du profil actif.
+  (<13:00) / Après-midi (≥13:00) côte à côte ; les RDV enregistrés s'affichent, **et depuis le 25/10
+  les créneaux libres** (tuiles pointillées « HH:MM Libre ＋ », demande utilisateur qui remplace celle
+  du 19/10 de les retirer) ; « + Réserver » ouvre les disponibilités du profil actif.
+  Créneau libre cliquable → `openMessagesOnSlot(date, CMS, heure)` (Messages, créneau prérempli) ;
+  seulement sur **mon** agenda, jours **non passés**, ni archivée ni orpheline ; masqués quand un
+  filtre nom/statut est actif (`data-ag-open-slot`). Le bouton « Bilan mensuel » est agrandi (52 px).
 - **Swipe de jour** (23/10, validé par l'utilisateur) sur `#ag-timeline-board`,
   vue compacte seulement : seuil 60 px horizontal / 40 px vertical, via
   `timelineMove()`. **Le geste de suppression par swipe sur une tuile est
