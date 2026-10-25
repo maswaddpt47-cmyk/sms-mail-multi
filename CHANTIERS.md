@@ -102,11 +102,9 @@ dans « Points à ne pas défaire ».
   accent, 40 px, pleine largeur sur mobile.
 
 ### Statut Annulé (22/10)
-- `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
-  créneau libéré, ni rappel ni relance ; rouge distinct du jaune Excusé ;
-  ICS : CANCELLED, même UID. Le compteur quotidien filtre les créneaux libérés
-  avant la priorité par type de message. Taux : Annulé au dénominateur comme
-  Excusé. AG-001 reste ouvert pour le contrat de données.
+- `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
+  distinct d'Excusé ; ICS : CANCELLED, même UID. Compteur quotidien : créneaux libérés filtrés avant la
+  priorité par type de message. Taux : Annulé au dénominateur comme Excusé. AG-001 ouvert (contrat de données).
 
 ### Agenda
 - Navigation seule (Précédent/Aujourd'hui/Suivant + titre) en barre sticky ;
@@ -119,7 +117,9 @@ dans « Points à ne pas défaire ».
   du 19/10 de les retirer) ; « + Réserver » ouvre les disponibilités du profil actif.
   Créneau libre cliquable → `openMessagesOnSlot(date, CMS, heure)` (Messages, créneau prérempli) ;
   seulement sur **mon** agenda, jours **non passés**, ni archivée ni orpheline ; masqués quand un
-  filtre nom/statut est actif (`data-ag-open-slot`). Le bouton « Bilan mensuel » est agrandi (52 px).
+  filtre nom/statut est actif (`data-ag-open-slot`). Chaque créneau libre porte un bouton 🚫 (motif demandé,
+  `blockSlot`) ; les créneaux **bloqués** s'affichent avec leur motif (« Sans motif » sinon), regroupés quand
+  contigus de même motif, avec « 🔓 Libérer » (`releaseSlot`). Le bouton « Bilan mensuel » est agrandi (52 px).
 - **Swipe de jour** (23/10, validé par l'utilisateur) sur `#ag-timeline-board`,
   vue compacte seulement : seuil 60 px horizontal / 40 px vertical, via
   `timelineMove()`. **Le geste de suppression par swipe sur une tuile est
