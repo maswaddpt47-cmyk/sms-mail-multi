@@ -237,7 +237,7 @@ Aucune pour l'instant.
   (`DEBUT_GRILLE` dans `getSlots()` ; `debut:'09:00'` = ancien défaut) ; **après-midi = 3 créneaux d'1 h** à partir du
   `debutApresMidi` du CMS (défaut 13h30 ; **Fumel 14h00**, posé une fois au chargement, réglable dans Configuration →
   CMS). **Le 16h30 est retiré pour tous** (demande utilisateur). Les RDV hors grille restent affichés à leur heure.
-  Vider le champ rétablit 13h30 ; `assignedHalf` suit la grille du CMS (`afternoonGridHours`).
+  Vider le champ rétablit 13h30 ; `assignedHalf` suit la grille du CMS (`afternoonGridHours`). **Grille, pause déjeuner d'office, sous-onglet Archivées et archivage automatique : validés par l'utilisateur le 25/10/2026.**
 - **Une journée s'ouvre sur la grille standard (09:30-16:30)**, jamais sur
   l'heure du RDV déclencheur (`ensureDayOpen`/`migratePermanences`, AG-001 du
   27/09).
