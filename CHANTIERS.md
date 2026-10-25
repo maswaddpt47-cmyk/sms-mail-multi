@@ -87,8 +87,9 @@ dans « Points à ne pas défaire ».
   `indispo` « Pause déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks` au chargement
   du profil et à l'ouverture d'une journée), une seule fois : `pauseAuto` sur la permanence, donc une pause libérée
   ne revient pas. Ni passé, ni archivée, ni demi-journée sans 12:30, ni si 12:30 est déjà pris. `statsRdvModel`
-  l'ignore (`isLunchBreak`) : ni place ni blocage. Jours **jamais ouverts** : grille inchangée, pause posée à
-  l'ouverture. Pas d'AGORA : décision explicite de l'utilisateur, libérable en un clic, aucune donnée détruite.
+  l'ignore (`isLunchBreak`) : ni place ni blocage. Jours **jamais ouverts** : `getSlots` ne propose pas 12:30 (la pause
+  est posée à l'ouverture ; RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : décision explicite,
+  libérable en un clic, aucune donnée détruite.
 - **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
   mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
   `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
@@ -96,7 +97,7 @@ dans « Points à ne pas défaire ».
   « autres »), CMS, sources/limites. **Aucun nom, téléphone, note ni message** (testé) ; état vide ; année
   archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
   09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
-  l'export réel** (`chiffres-diffuses.md`) — non fait.
+  l'export réel** (`chiffres-diffuses.md`) — non fait ; consigne et export pseudonymisé remis à l'utilisateur le 25/10.
   Bouton restylé le 25/10 (l'utilisateur ne le voyait pas : texte sans cadre sous les périodes) : cadre
   accent, 40 px, pleine largeur sur mobile.
 
