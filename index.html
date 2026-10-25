@@ -2901,6 +2901,11 @@ function statsRdvModel(history,permanences,period,cms,now){
     byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
   });
   realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;});
+  /* usagers accompagnés (personnes distinctes parmi les fiches Réalisé) et fiches par statut : calculés
+     ici pour que l'écran et le bilan mensuel partagent la même population (25/10) */
+  var accompanied={};realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
+  var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
+  entries.forEach(function(h){if(h.statut&&byStatut[h.statut]!==undefined)byStatut[h.statut]++;});
   /* Trois places par demi-journée, six par journée complète. Les blocages de
      fermeture de l'autre moitié ne sont pas des places bloquées sur la moitié ouverte. */
   var seen={},days=[];
@@ -2969,7 +2974,7 @@ function statsRdvModel(history,permanences,period,cms,now){
     .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,free:free};
 }
 
 /* Taux par créneau (demande utilisateur 23/10, remplace le comptage par fiche du 27/09) : un
@@ -2986,6 +2991,85 @@ function slotRates(entries){
   });
   var keys=Object.keys(slots);
   return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length};
+}
+
+/* Bilan mensuel imprimable (25/10/2026, tâche autorisée) : réutilise statsRdvModel et slotRates, aucune
+   formule parallèle. Le mois est passé en « Tout » sur les seules fiches du mois, « aujourd'hui » étant
+   la fin du mois (mois échu) ou le jour courant. Aucun nom, téléphone, note ni message : uniquement
+   des comptes, des démarches et des CMS. */
+function monthlyReportData(history,month,cms,now){
+  var mm=/^(\d{4})-(\d{2})$/.exec(month||'');if(!mm)return null;
+  var nowD=now||new Date(),last=new Date(Number(mm[1]),Number(mm[2]),0,12),end=last<nowD?last:nowD;
+  var inMonth=history.filter(function(h){return h.date&&String(h.date).slice(0,7)===month;});
+  function model(commune){return statsRdvModel(inMonth,[],'all',commune,end);}
+  var total=model(cms||'');
+  var communes={};inMonth.forEach(function(h){if(h.msgType!=='indispo'&&h.commune&&(!cms||h.commune===cms))communes[h.commune]=true;});
+  var byCms=Object.keys(communes).sort().map(function(c){var r=model(c);return {cms:c,entries:r.entries.length,realised:r.realised.length,slots:r.slotRates.total,realisedSlots:r.slotRates.realised,lapinSlots:r.slotRates.lapins};});
+  var dem=Object.keys(total.byDemarche).map(function(k){return {nom:k,n:total.byDemarche[k]};}).sort(function(a,b){return b.n-a.n||a.nom.localeCompare(b.nom);});
+  var top=dem.slice(0,10),others=dem.slice(10);
+  function pct(n,d){return d?Math.round(n/d*100):null;}
+  return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,
+    entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
+    slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
+    concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
+    demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
+    byCms:byCms,empty:!total.entries.length,
+    nonPointes:typeof isAPointer==='function'?total.past.filter(isAPointer).length:null};
+}
+
+var BILAN_CSS='.bilan{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.5;}'
+  +'.bilan h1{font-size:20px;margin:0 0 4px;}.bilan h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #333;padding-bottom:3px;}'
+  +'.bilan .sub{font-size:12px;color:#555;margin-bottom:14px;}.bilan table{width:100%;border-collapse:collapse;font-size:12px;}'
+  +'.bilan td,.bilan th{border:1px solid #bbb;padding:5px 8px;text-align:left;vertical-align:top;}.bilan th{background:#f0f0f0;}'
+  +'.bilan td.n{text-align:right;}.bilan .tw{overflow-x:auto;}.bilan ul{margin:6px 0 0;padding-left:18px;font-size:12px;}.bilan .vide{padding:12px;border:1px dashed #999;}'
+  +'.bilan section{page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}';
+function monthlyReportHtml(d,meta){
+  function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var mm=/^(\d{4})-(\d{2})$/.exec(d.month),title=NAMES[Number(mm[2])-1]+' '+mm[1];
+  var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
+  function pc(n,total){return total?n+' / '+total+' créneaux · '+Math.round(n/total*100)+' %':'—';}
+  var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
+    +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+'</div>';
+  if(d.empty){
+    h+='<p class="vide">Aucun rendez-vous daté de ce mois dans l’historique détaillé de ce profil'+(d.cms?' pour ce CMS':'')+'.'
+      +(meta.archivedYear?' L’année '+d.year+' a été archivée : le détail nominatif n’existe plus, seules les statistiques annuelles agrégées subsistent (Statistiques → sélecteur d’année). Ce bilan ne reprend jamais les archives.':'')+'</p>';
+  } else {
+    h+='<section><h2>Résultats du mois</h2><table><tr><th>Indicateur</th><th>Valeur</th><th>Unité</th></tr>'
+      +'<tr><td>Rendez-vous du mois (tous statuts)</td><td class="n">'+d.entries+'</td><td class="unit">fiches</td></tr>'
+      +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">fiches</td></tr>'
+      +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
+      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux échus</td></tr>'
+      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux échus</td></tr></table></section>';
+    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Fiches</th></tr>';
+    STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
+    h+='</table></section>';
+    h+='<section><h2>Démarches accompagnées</h2>';
+    if(!d.demarches.length)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
+    else{
+      h+='<table><tr><th>Démarche</th><th>RDV réalisés (fiches)</th></tr>';
+      d.demarches.forEach(function(x){h+='<tr><td>'+esc(x.nom)+'</td><td class="n">'+x.n+'</td></tr>';});
+      if(d.otherDemarches)h+='<tr><td>Autres démarches ('+d.otherDemarches+')</td><td class="n">'+d.otherDemarchesN+'</td></tr>';
+      h+='</table>';
+    }
+    h+='</section>';
+    h+='<section><h2>Répartition par CMS</h2><table><tr><th>CMS</th><th>RDV (fiches)</th><th>Réalisés (fiches)</th><th>Créneaux échus</th><th>Concrétisation</th><th>Lapin</th></tr>';
+    d.byCms.forEach(function(c){h+='<tr><td>'+esc(c.cms)+'</td><td class="n">'+c.entries+'</td><td class="n">'+c.realised+'</td><td class="n">'+c.slots+'</td><td class="n">'+(c.slots?Math.round(c.realisedSlots/c.slots*100)+' %':'—')+'</td><td class="n">'+(c.slots?Math.round(c.lapinSlots/c.slots*100)+' %':'—')+'</td></tr>';});
+    h+='</table></section>';
+  }
+  h+='<section><h2>Sources, unités et limites</h2><ul>'
+    +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (fiches de rendez-vous), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', créneaux bloqués exclus. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
+    +'<li>Les nombres comptent des <b>fiches</b> ; les taux comptent des <b>créneaux</b> (date, CMS, heure) échus à la date du '+esc(String(d.today).split('-').reverse().join('/'))+' : un créneau réattribué ne vaut qu’un rendez-vous. Un créneau compte comme réalisé (ou lapin) s’il porte au moins une fiche Réalisé (ou Lapin) ; les deux peuvent se cumuler.</li>'
+    +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’ont pas été pointés : ils font baisser la concrétisation.</li>':'')
+    +'<li>Aucun nom, téléphone, note ni message individuel ne figure dans ce bilan.</li></ul></section></div>';
+  return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */
+}
+function printMonthlyReport(html,title){
+  var w=window.open('','_blank');
+  if(!w){showToast('⚠️ Bloqué par le navigateur — autorisez les pop-ups pour imprimer','warn');return;}
+  w.document.open();
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title.replace(/[<>&]/g,'')+'</title><style>body{margin:0;padding:24px;}'+BILAN_CSS+'@media print{body{padding:0;}}</style></head><body>'+html+'</body></html>');
+  w.document.close();w.focus();setTimeout(function(){w.print();},300);
 }
 
 /* ============================== RENDER: STATS ============================== */
@@ -3027,6 +3111,12 @@ function renderStats(){
     pills.appendChild(btn);
   });
   headRow.appendChild(pills);
+  var bilanBtn=el('button',{class:'gx-press ui-stats-filter',type:'button',onClick:function(){
+    var months={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))months[h.date.slice(0,7)]=true;});
+    var list=Object.keys(months).sort().reverse(),cur=toLocalDateStr(new Date()).slice(0,7);
+    S._bilan={month:list.indexOf(cur)!==-1?cur:(list[0]||cur),cms:S.statsCMS||''};
+    S.modal='bilan';renderModal();}},'📄 Bilan mensuel');
+  headRow.appendChild(bilanBtn);
   wrap.appendChild(headRow);
 
   /* ── sélecteur d'année (années archivées + année en cours) ── */
@@ -3043,7 +3133,7 @@ function renderStats(){
     wrap.appendChild(yearRow);
   }
   if(S.statsYear!=='live'){
-    pills.style.display='none';
+    pills.style.display='none';bilanBtn.style.display='none';
     wrap.appendChild(el('p',{class:'ui-chart-description'},'Archive annuelle complète : les filtres de période et de CMS des données courantes ne s’appliquent pas à ces agrégats.'));
     renderArchivedYearStats(wrap,S.yearlyStats[S.statsYear]);
     pane.appendChild(wrap);
@@ -3110,7 +3200,6 @@ function renderStats(){
     var nonPointesN=rdv.past.filter(isAPointer).length;
     var concretSub='sur '+concretN+' créneau'+(concretN>1?'x':'')+(nonPointesN?' · dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'');
     var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · '+rdv.days.reduce(function(n,day){return n+day.total;},0)+' créneaux':'Aucune prochaine permanence';
-    var accompanied={};rdv.realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
     var dashboard=el('section',{class:'ui-stats-overview'});
     dashboard.appendChild(el('h3',{class:'ui-stats-group-title'},'Le suivi des rendez-vous'));
     /* Unités (25/10) : les volumes comptent des fiches, les taux des créneaux (décision du 23/10). */
@@ -3122,7 +3211,7 @@ function renderStats(){
     [
       [realiseN,"RDV réalisés",'Unité : fiches au statut Réalisé, datées au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);},'fiches'],
       [rdv.entries.length,"RDV sur la période",'Unité : fiches de rendez-vous datées, tous statuts, hors créneaux bloqués. Un créneau réattribué peut porter plusieurs fiches.',null,'fiches · tous statuts'],
-      [Object.keys(accompanied).length,"Usagers accompagnés",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes'],
+      [rdv.accompaniedN,"Usagers accompagnés",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes'],
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
       [concretStr,"Taux de concrétisation","Unité : créneaux. Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Unité : créneaux. Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')]
@@ -3474,8 +3563,7 @@ function renderStats(){
   /* Colonne droite: statut + type + CMS */
   var col2=el('div',{class:'ui-stats-stack'});
 
-  var statutMap={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
-  rdv.entries.forEach(function(h){if(h.statut&&statutMap[h.statut]!==undefined)statutMap[h.statut]++;});
+  var statutMap=Object.assign({},rdv.byStatut);
   var statutCard=card("Statuts des RDV de la période");
   statutCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches par statut ; un créneau réattribué peut en porter plusieurs.'));
   var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour"];
@@ -6320,6 +6408,32 @@ function renderModal(){
     });
     box.appendChild(slList);
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;margin-top:14px;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px;border-radius:12px;width:100%;",onClick:closeModal},'Fermer'));
+  }
+  else if(S.modal==='bilan'){
+    box.style.maxWidth='780px';box.style.maxHeight='92vh';box.style.overflowY='auto';
+    box.appendChild(header('📄 Bilan mensuel'));
+    var bc=S._bilan||(S._bilan={month:toLocalDateStr(new Date()).slice(0,7),cms:''});
+    var bMonths={},bCms={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))bMonths[h.date.slice(0,7)]=true;if(h.commune&&h.msgType!=='indispo')bCms[h.commune]=true;});
+    bMonths[bc.month]=true;
+    var bCtl=el('div',{style:"display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"});
+    var bSelM=el('select',{class:'gx-in ui-stats-select','aria-label':'Mois du bilan'});
+    var NAMES_M=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    Object.keys(bMonths).sort().reverse().forEach(function(m){bSelM.appendChild(el('option',{value:m,selected:m===bc.month},NAMES_M[Number(m.slice(5,7))-1]+' '+m.slice(0,4)));});
+    bSelM.addEventListener('change',function(){bc.month=this.value;renderModal();});
+    var bSelC=el('select',{class:'gx-in ui-stats-select','aria-label':'CMS du bilan'});
+    bSelC.appendChild(el('option',{value:''},'Tous les CMS'));
+    Object.keys(bCms).sort().forEach(function(c){bSelC.appendChild(el('option',{value:c,selected:c===bc.cms},c));});
+    bSelC.addEventListener('change',function(){bc.cms=this.value;renderModal();});
+    bCtl.appendChild(bSelM);bCtl.appendChild(bSelC);box.appendChild(bCtl);
+    var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date());
+    var bMeta={profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:toLocalDateStr(new Date()).split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
+    var bHtml=monthlyReportHtml(bData,bMeta);
+    box.appendChild(el('style',{},BILAN_CSS));
+    var bPrev=el('div',{style:"background:#fff;color:#1a1a2e;border:1px solid var(--c-border);border-radius:10px;padding:16px;"});bPrev.innerHTML=bHtml;box.appendChild(bPrev);
+    var bAct=el('div',{style:"display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;"});
+    bAct.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px 16px;border-radius:12px;",onClick:function(){printMonthlyReport(bHtml,'Bilan mensuel '+bc.month);}},'🖨️ Imprimer / PDF'));
+    bAct.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);font-weight:700;font-size:13px;padding:10px 16px;border-radius:12px;",onClick:closeModal},'Fermer'));
+    box.appendChild(bAct);
   }
   else if(S.modal==='import-ics'){
     box.appendChild(header('⬆️ Importer un fichier ICS'));

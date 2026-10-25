@@ -80,4 +80,35 @@ const sr=ctx.statsRdvModel([row('q1',todayStr,'realise','09:30'),row('q2',todayS
 assert.equal(sr.total+'/'+sr.realised+'/'+sr.lapins,'6/4/2');
 const both=ctx.statsRdvModel([row('b1',todayStr,'lapin','10:30'),row('b2',todayStr,'realise','10:30')],[],'all','A',today).slotRates;
 assert.equal(both.total+'/'+both.realised+'/'+both.lapins,'1/1/1');
+// Bilan mensuel : même population que les statistiques, recomptage indépendant, unités, anonymat, état vide.
+const bil=[];let bid=0;const add=(date,heure,statut,commune,demarche,msgType='confirmation')=>bil.push({...row('b'+(bid++),date,statut,heure,commune,msgType),demarche});
+add('2026-09-03','09:30','realise','A','Impôts');add('2026-09-03','10:30','lapin','A','Impôts');add('2026-09-03','11:30','realise','B','CAF');
+add('2026-09-03','10:30','realise','A','CAF');            // créneau 10:30 réattribué : lapin puis réalisé, un seul créneau
+add('2026-09-04','09:30','excuse','B','CAF');add('2026-09-04','09:30','realise','B','Logement');add('2026-09-04','14:30','annule','B','Logement');
+add('2026-09-04','16:30',null,'B','', 'indispo');add('2026-08-31','09:30','realise','A','Août');add('2026-10-05','09:30','confirme','A','Octobre');
+for(let i=0;i<12;i++)add('2026-09-10','1'+(i%7)+':30','realise','A','Démarche '+String(i).padStart(2,'0'));
+const bilBefore=JSON.stringify(bil),nowBil=new Date(2026,9,25,12);
+const r1=ctx.monthlyReportData(bil,'2026-09','',nowBil);
+assert.equal(JSON.stringify(ctx.monthlyReportData(bil,'2026-09','',nowBil)),JSON.stringify(r1));assert.equal(JSON.stringify(bil),bilBefore);   // A : idempotent, lecture seule
+// C : recomptage indépendant depuis la source brute
+const sep=bil.filter(h=>h.date.startsWith('2026-09')&&h.msgType!=='indispo');
+const slotsSet=new Set(sep.map(h=>h.date+'|'+h.commune+'|'+h.heure)),realSlots=new Set(sep.filter(h=>h.statut==='realise').map(h=>h.date+'|'+h.commune+'|'+h.heure)),lapSlots=new Set(sep.filter(h=>h.statut==='lapin').map(h=>h.date+'|'+h.commune+'|'+h.heure));
+assert.equal(r1.entries,sep.length);assert.equal(r1.realised,sep.filter(h=>h.statut==='realise').length);
+assert.equal(r1.slots,slotsSet.size);assert.equal(r1.realisedSlots,realSlots.size);assert.equal(r1.lapinSlots,lapSlots.size);
+assert.equal(r1.concretPct,Math.round(realSlots.size/slotsSet.size*100));assert.equal(r1.lapinPct,Math.round(lapSlots.size/slotsSet.size*100));
+assert.equal(r1.accompanied,new Set(sep.filter(h=>h.statut==='realise').map(h=>(h.nom+'|'+h.prenom).toLowerCase())).size);
+assert.equal(r1.today,'2026-09-30');       // mois échu : « aujourd'hui » = fin du mois
+// B : mêmes populations — somme des CMS = global, un CMS filtré = sa ligne, bilan = écran
+assert.equal(r1.byCms.reduce((n,c)=>n+c.entries,0),r1.entries);assert.equal(r1.byCms.reduce((n,c)=>n+c.realised,0),r1.realised);assert.equal(r1.byCms.reduce((n,c)=>n+c.slots,0),r1.slots);
+const rB=ctx.monthlyReportData(bil,'2026-09','B',nowBil),lineB=r1.byCms.find(c=>c.cms==='B');assert.equal(rB.entries,lineB.entries);assert.equal(rB.slots,lineB.slots);assert.equal(rB.byCms.length,1);
+const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'all','',new Date(2026,8,30,12));assert.equal(screen.entries.length,r1.entries);assert.equal(screen.realised.length,r1.realised);assert.equal(screen.slotRates.total,r1.slots);
+// E : top 10 démarches + « autres » ne tronquent rien
+assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
+// E : unités, anonymat, mois courant et vide
+const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
+assert.match(htmlB,/fiches/);assert.match(htmlB,/créneaux/);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/Aucun nom, téléphone, note ni message/);
+assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
+const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
+assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);
+assert.equal(ctx.monthlyReportData(bil,'2026-9','',nowBil),null);
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
