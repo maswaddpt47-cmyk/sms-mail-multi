@@ -432,10 +432,11 @@
 #pane-agenda .ui-ag-open-wrap{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:6px;}
 #pane-agenda .ui-ag-block-btn{min-height:40px;border:1.5px dashed var(--c-border-in);border-radius:10px;background:transparent;font:inherit;font-size:15px;cursor:pointer;}
 #pane-agenda .ui-ag-block-btn:hover,#pane-agenda .ui-ag-block-btn:focus-visible{border-style:solid;background:var(--c-hover);}
-#pane-agenda .ui-ag-blocked-slot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 10px;border:1.5px solid var(--c-border-in);border-radius:10px;background:var(--c-subtle-bg);color:var(--c-dim);font-size:12px;}
+/* bloqué : gris ardoise de la légende « Bloqué » des statistiques (var(--c-dim)), fond rayé pour ne pas se confondre avec le gris plein de « Pas de retour » (25/10) */
+#pane-agenda .ui-ag-blocked-slot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 10px;border:1.5px solid var(--c-dim);border-left-width:5px;border-radius:10px;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c-dim) 20%,var(--c-card)) 0 7px,color-mix(in srgb,var(--c-dim) 8%,var(--c-card)) 7px 14px);color:var(--c-text);font-size:12px;}
 #pane-agenda .ui-ag-blocked-slot>strong{grid-column:1/-1;font-size:12px;}
 #pane-agenda .ui-ag-blocked-info{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere;}
-#pane-agenda .ui-ag-blocked-info b{font-size:11px;}
+#pane-agenda .ui-ag-blocked-info b{font-size:11px;color:var(--c-dim);}
 #pane-agenda .ui-ag-unblock{border:1px solid var(--c-border-in);border-radius:8px;background:var(--c-card);color:var(--c-dim);font:inherit;font-size:11px;font-weight:700;padding:6px 9px;cursor:pointer;min-height:32px;}
 #pane-agenda .ui-ag-open-slot{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 10px;border:1.5px dashed var(--c-border-in);border-radius:10px;background:transparent;color:var(--c-muted);font:inherit;font-size:12px;cursor:pointer;text-align:left;}
 #pane-agenda .ui-ag-open-slot strong{font-size:12px;color:var(--c-dim);}
