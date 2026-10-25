@@ -180,10 +180,21 @@ Codex avant toute diffusion de chiffres) et données personnelles (`agora.md` §
 promesse « aucun nom, téléphone, note ni message » du bilan.
 **Non vérifié par l'auteur** : l'export complet non pseudonymisé et l'autre profil ; l'impression réelle sur le
 navigateur de l'utilisateur ; les définitions (concrétisation, lapin, créneau échu) sont celles voulues par l'utilisateur,
-non confrontées à un tiers. Seul un recomptage par l'auteur (écart 0 sur 09 et 10/2026) a été fait : il ne vaut pas audit.
+non confrontées à un tiers. L'auteur a fait un recomptage lui-même : il ne vaut pas audit et n'est pas joint ici.
 **Si personne ne répond, je fais quoi ?** — le bilan **ne part pas** à la hiérarchie ; il reste utilisable par
 l'utilisateur seul. Aucune autre fonction n'attend ce bloc.
 **Où regarder** : `index.html` : `monthlyReportData`, `monthlyReportHtml`, `printMonthlyReport`, bloc `S.modal==='bilan'`,
 `statsRdvModel`, `slotRates`, `getSlots`/`isLunchBreak`/`cmsAfternoonStart`, `computeYearArchive`.
-**Mode d'emploi pour Codex** : la consigne (fichier hors dépôt) remplace ce bloc, car elle lui interdit de lire les `.md`
-avant son relevé ; la session qui a ouvert ce bloc inscrit le rapport sous `### Réponse — Codex — JJ/MM/AAAA`.
+**Définitions voulues (à comparer au code, pas à valider)** : « rendez-vous enregistrés » = fiches du mois, tous statuts,
+hors `indispo` ; « usagers accompagnés » = personnes distinctes (nom+prénom) parmi les fiches `realise` ; « créneaux
+horaires » = (date, CMS, heure) distincts hors `indispo`, échus à la fin du mois (mois échu) ou au jour courant ;
+taux de concrétisation / de lapin = créneaux portant ≥1 fiche `realise` / `lapin`, sur les créneaux échus.
+**À examiner** : 1) recomptage indépendant (07 à 10/2026, avec et sans filtre CMS) depuis le fichier fourni
+`export-pseudonymise-2026-10-25.json`, tableau « Affiché / Recompté / Écart / Explication » ; 2) même population que
+l'écran Statistiques, somme des CMS = total ; 3) unités et dénominateurs nommés, aucun « top N » qui tronque ; 4) bords
+(fin de mois, mois en cours, fuseau Paris, fiches sans heure/commune, doublons, CMS écrit de deux façons, créneaux hors
+grille, 12:30 qui n'est pas une pause) ; 5) données personnelles ou HTML non échappé dans `monthlyReportHtml` et l'aperçu
+(`innerHTML`) ; 6) les fonctions modifient-elles leurs entrées ; 7) la pause déjeuner automatique, la grille par CMS et
+l'archivage automatique peuvent-ils changer un nombre ?
+**Réponse attendue** : selon le gabarit ci-dessous, un défaut par ligne avec `fichier:ligne` et scénario chiffré, puis
+« Ce que je n'ai pas pu vérifier ». Lecture seule : ne rien modifier.
