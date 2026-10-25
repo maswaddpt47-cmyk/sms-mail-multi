@@ -100,6 +100,8 @@ dans « Points à ne pas défaire ».
   archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
   09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
   l'export réel** (`chiffres-diffuses.md`) — non fait.
+  Bouton restylé le 25/10 (l'utilisateur ne le voyait pas : texte sans cadre sous les périodes) : cadre
+  accent, 40 px, pleine largeur sur mobile.
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
