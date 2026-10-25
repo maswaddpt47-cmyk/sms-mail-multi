@@ -58,59 +58,37 @@ dans « Points à ne pas défaire ».
   (`7/6`) sans disponibilité négative ; Annulé/Excusé/Lapin/Pas de retour
   libèrent la place. Couleurs : Réservé vert, En attente rose, Bloqué gris
   foncé, Disponible case vide (mêmes classes CSS que les repères).
-- **Places libérées le jour même** (23/10, demande utilisateur) : sur la journée
-  du jour, un créneau Lapin/Excusé/Annulé/Pas de retour n'est **pas** une place
-  disponible (non réattribuable) : il reste compté, coloré par son statut, et
-  le résumé le dit (« 2 lapins · 1 place disponible »). Critère = la date du
-  jour, pas l'heure du créneau. Réattribué → titulaire actif → repasse en
-  réservé. **Cases en ordre chronologique** (demande du 23/10, tous types mêlés,
-  pauses comprises ; seules les places disponibles, sans heure, finissent la
-  barre : `marks` dans `statsRdvModel`).
-  **Infobulle par case** (23/10) : heure · statut · nom prénom · démarche (« Place
-  disponible » / « Créneau bloqué » sinon), au survol et au toucher, via
-  `#stat-tooltip` (`markInfo`) ; pas d'accès clavier (cases `aria-hidden`).
-  Jours futurs inchangés (libération immédiate). `statsRdvModel` (`released`,
-  `releasedN`) ; test dans `scripts/check-stats-rdv.js`. **Validé en conditions
-  réelles par l'utilisateur le 23/10/2026** (Fumel, deux lapins).
-- **Dépassement des places** (23/10) : le texte sous la barre rappelle date et lieu
-  (« ven. 23 oct. · Fumel : 1 créneau au-delà de la capacité de 6 »).
-- **Lapins par permanence** (23/10, carte sous « Prochaines permanences ») :
-  journées passées (jour courant compris) de la période et du CMS filtrés, avec au
-  moins un lapin ; « 2/6 » = créneaux avec lapin / **créneaux** de la journée (date,
-  CMS, heure), **pas** les fiches : un créneau libéré puis réattribué porte plusieurs
-  fiches et ne vaut qu'un RDV (constat utilisateur 23/10 : « 2/8 » pour 6 créneaux,
-  vérifié sur la sauvegarde réelle). Base différente du taux de lapin (par fiche) ;
-  10 plus récentes, message si d'autres. `lapinDays` dans
-  `statsRdvModel`, testé. Corrigé après retour utilisateur ; à revérifier par lui.
-  **Sélecteur « CMS / commune » répété dans l'en-tête de la carte** (23/10, demande
-  utilisateur : le filtre du haut sort de l'écran) : même filtre `S.statsCMS` que
-  celui du haut (`buildCmsSelect`), défilement conservé au changement.
-- Les vues futures suivent le CMS, indépendamment du filtre historique ;
-  journées archivées exclues. Archives annuelles agrégées non reconstruites.
-- **Délai moyen RDV par CMS** (22/10) : sur « Tous les CMS », liste par CMS ;
-  un seul CMS : chiffre en grand. Jours calendaires `ts` → RDV ; archives
-  (`arc.avgRdv`) toujours globales.
-
-- **Animation des compteurs** (23/10, demande utilisateur) : les tuiles de « Le suivi des
-  rendez-vous » comptent de 0 à leur valeur (600 ms, `%` conservé, « — » fixe), comme
-  celles de « Messages et usagers » ; `countUp()` partagé, désactivé si le système
-  demande de réduire les mouvements. **Validé par l'utilisateur le 23/10/2026.**
-
-- **Unités affichées** (25/10, tâche autorisée) : phrase d'unités sous « Le suivi des
-  rendez-vous » (nombres = fiches ; taux et places = créneaux), unité en note sous
-  chaque tuile (« fiches », « personnes distinctes », « sur N créneaux »), aides `i`
-  « Unité : … », caption du tableau « Voir les données » = titre + description,
-  cartes Statuts/Démarches en « fiches ». « Traitées le jour même (estimation) » et
-  « Mesure horodatée » distinguent l'estimation de la préparation moyenne. Aucun
-  calcul modifié ; archives anciennes non recalculées.
-
-- **Date et lieu des prochaines permanences = lien vers l'Agenda** (25/10, tâche autorisée) :
-  bouton `ui-permanence-link` (clavier : Entrée ; `aria-label` « Ouvrir l'agenda du … à … ») →
-  `S.agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay`
-  (`date|CMS|profil actif`) → mode journée, « Quitter le focus » disponible. Consultation
-  seule ; aucune réservation, filtres statistiques et infobulles inchangés. Testé en démo
-  (souris/clavier et toucher). Une seule permanence/CMS dans la démo : le choix du CMS repose
-  sur la clé `date|CMS|profil`, non éprouvé avec deux CMS le même jour.
+- **Places libérées le jour même** (23/10, validé le 23/10) : le jour courant, un créneau
+  Lapin/Excusé/Annulé/Pas de retour n'est **pas** une place disponible (non réattribuable) : il reste
+  compté, coloré par son statut, et le résumé le dit (« 2 lapins · 1 place disponible »). Critère = la
+  date du jour, pas l'heure. Réattribué → titulaire actif → repasse en réservé. Jours futurs : libération
+  immédiate. **Cases en ordre chronologique**, tous types mêlés, pauses comprises ; les places
+  disponibles (sans heure) finissent la barre (`marks`/`markInfo` dans `statsRdvModel`). **Infobulle par
+  case** : heure · statut · nom prénom · démarche, au survol et au toucher (`#stat-tooltip`) ; pas d'accès
+  clavier. Texte de dépassement : date et lieu rappelés.
+- **Lapins par permanence** (carte sous « Prochaines permanences », validée) : journées passées de la
+  période/CMS avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches :
+  un créneau libéré puis réattribué porte plusieurs fiches ; constat « 2/8 » pour 6 créneaux, vérifié sur la
+  sauvegarde réelle). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété dans la carte
+  (`buildCmsSelect`, défilement conservé). Les vues futures suivent le CMS, pas le filtre de période.
+- **Délai moyen RDV par CMS** (22/10) : « Tous les CMS » → liste par CMS ; un CMS → chiffre en grand.
+  Jours calendaires `ts` → RDV ; archives (`arc.avgRdv`) toujours globales.
+- **Compteurs animés** (23/10, validé) : `countUp()` partagé (600 ms, `%` conservé, « — » fixe), coupé si
+  le système réduit les mouvements.
+- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des
+  rendez-vous », unité en note de chaque tuile, aides « Unité : … », caption des tableaux = titre +
+  description). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». Aucun calcul modifié.
+- **Date et lieu des prochaines permanences → Agenda** (25/10) : `ui-permanence-link` (clavier Entrée) →
+  `agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay` (`date|CMS|profil actif`),
+  mode journée avec « Quitter le focus ». Consultation seule. Non éprouvé avec deux CMS le même jour.
+- **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
+  mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
+  `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
+  `byStatut` partagés avec l'écran. Résultats (fiches/créneaux, unités nommées), statuts, démarches (top 10 +
+  « autres »), CMS, sources/limites. **Aucun nom, téléphone, note ni message** (testé) ; état vide ; année
+  archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
+  09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
+  l'export réel** (`chiffres-diffuses.md`) — non fait.
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; fiche conservée,
@@ -307,28 +285,3 @@ Consigne renforcée et propagation approuvée par l'utilisateur le 25/10/2026 :
 initiative dès l'analyse, recommandations argumentées et examen de la pertinence
 de l'existant. Règle 22 de MD-LIB copiée dans `CLAUDE.md` ; ce registre garde
 les pistes et les décisions, sans reproposer une piste écartée sans fait nouveau.
-
-
-### À réaliser par Claude — accord utilisateur du 25/10/2026
-
-L'utilisateur a accepté **les trois pistes** (« Fait la totale »), puis demandé
-explicitement de les confier à Claude via ce carnet pour économiser les quotas
-Codex. **Périmètre autorisé ; aucune des trois fonctions encore implémentée par
-Codex.** Reprendre après pull, conserver les évolutions concurrentes, un commit
-par modification logique, push sur `main` après vérifications sans redemander
-le même accord. Vérifier Pages avant d'annoncer la mise en ligne.
-
-1. **Bilan mensuel imprimable anonymisé.** Ajouter aux statistiques une action
-   produisant une page courte avec mois choisi, CMS/profil concernés, résultats,
-   démarches et répartition par CMS. Afficher unités, période, source et limites
-   des indicateurs ; réutiliser les calculs centraux, sans formule parallèle.
-   Aucun nom, téléphone, note ni message individuel dans le bilan. Prévoir un
-   état sans données et distinguer les archives agrégées des données détaillées.
-   Vérifier l'aperçu d'impression et la concordance des filtres/totaux. Avant
-   diffusion à la hiérarchie, appliquer l'audit des chiffres prévu par MD-LIB
-   (`chiffres-diffuses.md`) ; distinguer tests fictifs et recomptage réel effectué.
-
-Aucune nouvelle dépendance ni migration nécessaire a priori. Si un nouveau
-contrat de données devient nécessaire, appliquer l'AGORA du projet. Actualiser
-ce carnet à chaque livraison ; retirer les tâches achevées en conservant les
-invariants utiles. Ne pas rouvrir la liaison SMS ni les espacements arrêtés.
