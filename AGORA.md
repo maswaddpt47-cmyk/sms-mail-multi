@@ -167,3 +167,23 @@ libres de 16:30 disparaissent.
 créneau de 16h30 ») ; ne rien déduire pour les autres CMS que Fumel.
 **Où regarder** : `index.html` : `getSlots`, `cmsAfternoonStart`/`afternoonGridHours`, `statsRdvModel.assignedHalf`,
 formulaire CMS de Configuration, `loadProfileData` (pose unique de Fumel 14:00).
+
+## AG-004 — Bilan mensuel : audit Codex des chiffres avant diffusion — ouvert le 25/10/2026
+**Auteur** : session `01Dtnmsd` — lu sur `9a75ffa`.
+**Proposition** : ne diffuser le bilan mensuel (Statistiques → Bilan mensuel) à la hiérarchie qu'après un audit Codex des
+chiffres sur un export **pseudonymisé** (noms, téléphones et textes libres retirés ; mêmes chiffres que l'original,
+vérifié sur 07 à 10/2026). Codex reçoit une consigne écrite hors dépôt, sans nos conclusions ; son rapport est inscrit
+ici tel quel.
+**Critère déclencheur** : hors des six critères du `CLAUDE.md` — règle 33 de MD-LIB (`chiffres-diffuses.md` §1 : audit
+Codex avant toute diffusion de chiffres) et données personnelles (`agora.md` §12, règle 2 : Codex au lieu d'une session B).
+**Ce que ça engage** : un chiffre faux ou mal étiqueté montré à la hiérarchie (fiches ≠ créneaux ≠ personnes) ; la
+promesse « aucun nom, téléphone, note ni message » du bilan.
+**Non vérifié par l'auteur** : l'export complet non pseudonymisé et l'autre profil ; l'impression réelle sur le
+navigateur de l'utilisateur ; les définitions (concrétisation, lapin, créneau échu) sont celles voulues par l'utilisateur,
+non confrontées à un tiers. Seul un recomptage par l'auteur (écart 0 sur 09 et 10/2026) a été fait : il ne vaut pas audit.
+**Si personne ne répond, je fais quoi ?** — le bilan **ne part pas** à la hiérarchie ; il reste utilisable par
+l'utilisateur seul. Aucune autre fonction n'attend ce bloc.
+**Où regarder** : `index.html` : `monthlyReportData`, `monthlyReportHtml`, `printMonthlyReport`, bloc `S.modal==='bilan'`,
+`statsRdvModel`, `slotRates`, `getSlots`/`isLunchBreak`/`cmsAfternoonStart`, `computeYearArchive`.
+**Mode d'emploi pour Codex** : la consigne (fichier hors dépôt) remplace ce bloc, car elle lui interdit de lire les `.md`
+avant son relevé ; la session qui a ouvert ce bloc inscrit le rapport sous `### Réponse — Codex — JJ/MM/AAAA`.

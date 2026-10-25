@@ -97,7 +97,7 @@ dans « Points à ne pas défaire ».
   « autres »), CMS, sources/limites. **Aucun nom, téléphone, note ni message** (testé) ; état vide ; année
   archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
   09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
-  l'export réel** (`chiffres-diffuses.md`) — non fait ; consigne et export pseudonymisé remis à l'utilisateur le 25/10.
+  l'export réel** (`chiffres-diffuses.md`) — non fait ; AG-004 ouvert (Codex) ; consigne et export pseudonymisé remis le 25/10.
   Bouton restylé le 25/10 (l'utilisateur ne le voyait pas : texte sans cadre sous les périodes) : cadre
   accent, 40 px, pleine largeur sur mobile.
 
