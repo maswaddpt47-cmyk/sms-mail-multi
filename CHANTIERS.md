@@ -81,6 +81,13 @@ dans « Points à ne pas défaire ».
 - **Date et lieu des prochaines permanences → Agenda** (25/10) : `ui-permanence-link` (clavier Entrée) →
   `agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay` (`date|CMS|profil actif`),
   mode journée avec « Quitter le focus ». Consultation seule. Non éprouvé avec deux CMS le même jour.
+- **Badges rouge (dépassement) et orange (à pointer) de l'onglet Agenda cliquables** (25/10) : ouvrent
+  l'Agenda au jour du **premier** RDV concerné (`badgeGo`, `stopPropagation` : sans lui le clic remontait à
+  l'onglet et un second rendu effaçait la date). Le badge vert (RDV du jour) reste inerte.
+- **Place disponible cliquable dans « Prochaines permanences »** (25/10) : ouvre la fenêtre « Réserver un
+  créneau » (`agenda-availability`) sur ce jour et ce lieu, puis le formulaire `agenda-new` au choix de
+  l'heure — flux existant, aucune écriture avant l'enregistrement. Case focusable (Entrée/Espace) ;
+  la piste `role=img` est retirée de la barre quand il reste des places.
 - **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
   mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
   `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
