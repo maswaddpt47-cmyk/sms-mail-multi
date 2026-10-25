@@ -429,6 +429,14 @@
 #pane-agenda .ui-ag-open{font-size:9px;color:var(--c-muted);font-weight:500;}
 #pane-agenda .ui-ag-slot-released .ui-ag-open:before{content:"Créneau réouvert · ";}
 #pane-agenda .ui-ag-slot-blocked{background:var(--c-subtle-bg)!important;}
+#pane-agenda .ui-ag-open-wrap{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:6px;}
+#pane-agenda .ui-ag-block-btn{min-height:40px;border:1.5px dashed var(--c-border-in);border-radius:10px;background:transparent;font:inherit;font-size:15px;cursor:pointer;}
+#pane-agenda .ui-ag-block-btn:hover,#pane-agenda .ui-ag-block-btn:focus-visible{border-style:solid;background:var(--c-hover);}
+#pane-agenda .ui-ag-blocked-slot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 10px;border:1.5px solid var(--c-border-in);border-radius:10px;background:var(--c-subtle-bg);color:var(--c-dim);font-size:12px;}
+#pane-agenda .ui-ag-blocked-slot>strong{grid-column:1/-1;font-size:12px;}
+#pane-agenda .ui-ag-blocked-info{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere;}
+#pane-agenda .ui-ag-blocked-info b{font-size:11px;}
+#pane-agenda .ui-ag-unblock{border:1px solid var(--c-border-in);border-radius:8px;background:var(--c-card);color:var(--c-dim);font:inherit;font-size:11px;font-weight:700;padding:6px 9px;cursor:pointer;min-height:32px;}
 #pane-agenda .ui-ag-open-slot{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 10px;border:1.5px dashed var(--c-border-in);border-radius:10px;background:transparent;color:var(--c-muted);font:inherit;font-size:12px;cursor:pointer;text-align:left;}
 #pane-agenda .ui-ag-open-slot strong{font-size:12px;color:var(--c-dim);}
 #pane-agenda .ui-ag-open-slot-go{margin-left:auto;font-weight:800;}
@@ -4651,17 +4659,57 @@ function renderAgenda(){
     });
     /* créneaux libres cliquables (25/10, demande utilisateur ; ils avaient été retirés le 19/10) : uniquement
        sur mon agenda, jours non passés, ni journée archivée ni orpheline */
-    var openSlots=(!isPast&&day.profile===S.activeProfile&&!day.orphan&&!day.perm.archived)?slots.filter(function(s){return !s.taken;}):[];
+    var manageable=!isPast&&day.profile===S.activeProfile&&!day.orphan&&!day.perm.archived;
+    var openSlots=manageable?slots.filter(function(s){return !s.taken||s.taken.msgType==='indispo';}):[];
     var tileSlots=slots.filter(function(s){return (s.taken&&s.taken.msgType!=='indispo')||openSlots.indexOf(s)!==-1;});
+    var lastTile={morning:null,afternoon:null}; /* dernier élément posé par demi-journée : regroupe les blocages contigus de même motif */
     tileSlots.forEach(function(slot){
-      var slotList=halfdayLists[slot.heure<'13:00'?'morning':'afternoon'];
+      var halfKey=slot.heure<'13:00'?'morning':'afternoon';
+      var slotList=halfdayLists[halfKey];
+      if(slot.taken&&slot.taken.msgType==='indispo'){
+        /* créneau bloqué : affiché avec son motif ; les blocages contigus de même motif forment une seule tuile */
+        var motif=(slot.taken.nom&&slot.taken.nom!=='Indisponible')?slot.taken.nom:'';
+        var grp=lastTile[halfKey];
+        if(grp&&grp.motif===motif){grp.heures.push(slot.heure);}
+        else{
+          grp={motif:motif,heures:[slot.heure]};
+          grp.tile=el('div',{class:'ui-ag-blocked-slot','data-ag-open-slot':'1'});
+          slotList.appendChild(grp.tile);lastTile[halfKey]=grp;
+        }
+        clear(grp.tile);
+        var rangeLabel=grp.heures.length>1?grp.heures[0]+' – '+grp.heures[grp.heures.length-1]:grp.heures[0];
+        grp.tile.appendChild(el('strong',{},rangeLabel));
+        var blockedInfo=el('span',{class:'ui-ag-blocked-info'});
+        blockedInfo.appendChild(el('b',{},'🚫 Bloqué'));
+        blockedInfo.appendChild(el('span',{},grp.motif||'Sans motif'));
+        grp.tile.appendChild(blockedInfo);
+        grp.tile.appendChild(el('button',{type:'button',class:'ui-ag-unblock','aria-label':'Libérer '+(grp.heures.length>1?'les créneaux':'le créneau')+' bloqué'+(grp.heures.length>1?'s':'')+' de '+rangeLabel,
+          onClick:(function(g,d){return function(){
+            if(!confirm('Libérer '+(g.heures.length>1?'les '+g.heures.length+' créneaux bloqués':'ce créneau bloqué')+' ('+g.heures.join(', ')+') ?'))return;
+            g.heures.forEach(function(h){
+              var original=S.history.find(function(x){return x.msgType==='indispo'&&x.date===d.dateStr&&x.commune===d.perm.commune&&x.heure===h;});
+              if(original)releaseSlot(original);
+            });
+            renderAgenda();showToast('✓ Créneau'+(g.heures.length>1?'x':'')+' libéré'+(g.heures.length>1?'s':''));
+          };})(grp,day)},'🔓 Libérer'));
+        return;
+      }
+      lastTile[halfKey]=null;
       if(!slot.taken){
-        var openTile=el('button',{type:'button',class:'ui-ag-open-slot','data-ag-open-slot':'1','aria-label':'Créneau libre à '+slot.heure+' le '+dateLabel+' à '+day.perm.commune+' — préparer un message',
+        var openWrap=el('div',{class:'ui-ag-open-wrap','data-ag-open-slot':'1'});
+        var openTile=el('button',{type:'button',class:'ui-ag-open-slot','aria-label':'Créneau libre à '+slot.heure+' le '+dateLabel+' à '+day.perm.commune+' — préparer un message',
           onClick:(function(d,h){return function(){openMessagesOnSlot(d.dateStr,d.perm.commune,h);};})(day,slot.heure)});
         openTile.appendChild(el('strong',{},slot.heure));
         openTile.appendChild(el('span',{},'Libre'));
         openTile.appendChild(el('span',{class:'ui-ag-open-slot-go','aria-hidden':'true'},'＋'));
-        slotList.appendChild(openTile);
+        openWrap.appendChild(openTile);
+        /* bouton Bloquer : même enregistrement que le blocage depuis la fenêtre de disponibilités */
+        openWrap.appendChild(el('button',{type:'button',class:'ui-ag-block-btn',title:'Bloquer ce créneau (indisponible)','aria-label':'Bloquer le créneau de '+slot.heure+' le '+dateLabel,
+          onClick:(function(d,h){return function(){
+            var motif=prompt('Motif du blocage à '+h+' (facultatif) :','');if(motif===null)return;
+            blockSlot(d.perm.commune,d.dateStr,h,motif);renderAgenda();showToast('✓ Créneau '+h+' bloqué');
+          };})(day,slot.heure)},'🚫'));
+        slotList.appendChild(openWrap);
         return;
       }
       var who=slot.taken?[slot.taken.nom,slot.taken.prenom].filter(Boolean).join(' '):'';
