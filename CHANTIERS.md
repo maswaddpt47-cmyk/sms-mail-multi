@@ -283,3 +283,10 @@ Aucune pour l'instant.
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à
   copier — l'utilisateur fait CR et Coop dans la foulée de chaque accompagnement ;
   à ne reproposer que si un import (CSV/API) supprimait une saisie.
+
+## Pistes d'amélioration
+
+Consigne renforcée et propagation approuvée par l'utilisateur le 25/10/2026 :
+initiative dès l'analyse, recommandations argumentées et examen de la pertinence
+de l'existant. Règle 22 de MD-LIB copiée dans `CLAUDE.md` ; ce registre garde
+les pistes et les décisions, sans reproposer une piste écartée sans fait nouveau.
