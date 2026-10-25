@@ -290,3 +290,20 @@ Consigne renforcée et propagation approuvée par l'utilisateur le 25/10/2026 :
 initiative dès l'analyse, recommandations argumentées et examen de la pertinence
 de l'existant. Règle 22 de MD-LIB copiée dans `CLAUDE.md` ; ce registre garde
 les pistes et les décisions, sans reproposer une piste écartée sans fait nouveau.
+
+
+### Proposées le 25/10/2026 — en attente de décision
+
+1. **Rendre les unités statistiques explicites** : les volumes restent par fiche,
+   les taux sont par créneau (choix utilisateur du 23/10). Recommander des libellés
+   et aides qui expliquent cette différence, sans changer les calculs décidés.
+   Bénéfice : éviter de lire des nombres apparemment contradictoires ; charge faible.
+2. **Ouvrir une permanence depuis les statistiques** : les cases donnent une
+   infobulle mais la ligne ne conduit pas à l'Agenda. Recommander un lien date/lieu
+   ouvrant la bonne journée ; moins de navigation, aucune saisie supplémentaire.
+   Charge technique modérée, préserver les infobulles tactiles.
+3. **Bilan mensuel imprimable anonymisé** : exports CSV présents pour historique et
+   orientations, pas de bilan statistique dédié trouvé. Hypothèse à confirmer :
+   besoin de transmettre un bilan à la hiérarchie. Recommander une page courte,
+   période/CMS/unités/sources explicites ; charge modérée, audit des chiffres avant
+   diffusion, aucune donnée nominative. Ne pas le réaliser avant choix utilisateur.
