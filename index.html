@@ -3060,18 +3060,31 @@ function statsRdvModel(history,permanences,period,cms,now){
     if(p.exceptDate===today)slots.forEach(function(slot){
       if(slot.taken&&slot.freeAgain&&released.hasOwnProperty(slot.taken.statut)){released[slot.taken.statut]++;releasedN++;}
     });
-    /* Cases dans l'ordre chronologique des créneaux occupés (demande utilisateur 23/10), pauses
-       comprises : seules les places disponibles, sans heure, viennent à la fin. */
-    var marks=slots.map(function(slot){
-      if(!slot.taken)return null;
-      var t=slot.taken,info={heure:slot.heure,statut:t.statut,nom:t.nom,prenom:t.prenom,demarche:t.demarche,entry:t,msgType:t.msgType};
-      if(t.msgType==='indispo')return {heure:slot.heure,kind:'blocked',info:info};
-      if(!slot.freeAgain)return {heure:slot.heure,kind:t.statut==='en_attente'?'pending':'booked',info:info};
-      return p.exceptDate===today&&released.hasOwnProperty(t.statut)?{heure:slot.heure,kind:t.statut,info:info}:null;
-    }).filter(Boolean).sort(function(a,b){return a.heure.localeCompare(b.heure);});
-    var markInfo=marks.map(function(m){return m.info;});marks=marks.map(function(m){return m.kind;});
+    /* Une case = un créneau, dans l'ordre des heures (demandes du 23/10 puis du 26/10 : la barre correspond exactement
+       aux créneaux, le vendredi 30/10 de Fumel commence par une case vide quand 09:30 est libre). Cases libres : les
+       créneaux libres de la grille ; la pause déjeuner libérée n'est pas une place. La barre garde `total` cases :
+       on retire les cases libres en trop en fin de journée, ou on complète sans heure. */
+    var cells=[];
+    slots.forEach(function(slot){
+      var t=slot.taken,info;
+      if(t){
+        info={heure:slot.heure,statut:t.statut,nom:t.nom,prenom:t.prenom,demarche:t.demarche,entry:t,msgType:t.msgType};
+        if(t.msgType==='indispo'){cells.push({heure:slot.heure,kind:'blocked',info:info});return;}
+        if(!slot.freeAgain){cells.push({heure:slot.heure,kind:t.statut==='en_attente'?'pending':'booked',info:info});return;}
+        if(p.exceptDate===today&&released.hasOwnProperty(t.statut)){cells.push({heure:slot.heure,kind:t.statut,info:info});return;}
+      }
+      if(slot.heure==='12:30')return;
+      cells.push({heure:slot.heure,kind:'free',info:{heure:slot.heure}});
+    });
+    cells.sort(function(a,b){return a.heure.localeCompare(b.heure);});
+    while(cells.length>total){
+      var lastFree=-1;cells.forEach(function(c,i){if(c.kind==='free')lastFree=i;});
+      if(lastFree<0)break;cells.splice(lastFree,1);
+    }
+    while(cells.length<total)cells.push({heure:'',kind:'free',info:{heure:''}});
+    var marks=cells.map(function(c){return c.kind;}),markInfo=cells.map(function(c){return c.info;});
     /* heures des créneaux libres de la demi-journée affichée (mêmes que les tuiles « Libre » de l'Agenda) ; 26/10 */
-    var freeHours=slots.filter(function(slot){return !slot.taken||(slot.freeAgain&&p.exceptDate!==today);}).map(function(slot){return slot.heure;});
+    var freeHours=slots.filter(function(slot){return slot.heure!=='12:30'&&(!slot.taken||(slot.freeAgain&&p.exceptDate!==today));}).map(function(slot){return slot.heure;});
     if(closedDay){marks=[];markInfo=[];}while(closedDay&&marks.length<total){marks.push('blocked');markInfo.push({heure:'',statut:'',blocked:true});}
     days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,markInfo:markInfo,freeHours:freeHours,
       free:Math.max(0,total-occupied-blocked-releasedN),blocked:blocked,
@@ -3508,7 +3521,7 @@ function renderStats(){
   });fillCard.appendChild(permanenceLegend);
   /* Infobulle d'une case : heure, statut, usager et démarche (survol ; toucher sur mobile). */
   function permanenceMarkTip(kind,info){
-    if(!kind)return 'Place disponible';
+    if(!kind)return 'Place disponible'+(info&&info.heure?' · '+info.heure:'');
     if(!info||info.blocked)return 'Créneau bloqué';
     var parts=[info.heure];
     if(kind==='blocked')parts.push('Créneau bloqué');
@@ -3570,7 +3583,7 @@ function renderStats(){
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
     var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
     for(var i=0;i<day.total;i++){
-      var kind=day.marks[i],mark;
+      var kind=day.marks[i]==='free'?'':day.marks[i],mark;
       if(RELEASED_LABELS[kind])mark=releasedMark(kind);
       else mark=el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')});
       mark.dataset.tip=permanenceMarkTip(kind,day.markInfo[i]);
@@ -3580,11 +3593,11 @@ function renderStats(){
            l'heure se choisit ensuite puis le formulaire s'ouvre (25/10, demande utilisateur) */
         mark.style.cursor='pointer';mark.setAttribute('role','button');mark.setAttribute('tabindex','0');
         mark.setAttribute('aria-label','Réserver une place le '+dateText+' à '+day.commune);mark.removeAttribute('aria-hidden');
-        mark.dataset.tip='Place disponible — toucher pour préparer le message';
-        var openBooking=(function(d){return function(){
+        mark.dataset.tip='Place disponible'+(day.markInfo[i]&&day.markInfo[i].heure?' · '+day.markInfo[i].heure:'')+' — toucher pour préparer le message';
+        var openBooking=(function(d,idx){return function(){
           var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';
-          openMessagesOnSlot(d.date,d.commune,'');
-        };})(day);
+          openMessagesOnSlot(d.date,d.commune,(d.markInfo[idx]&&d.markInfo[idx].heure)||'');
+        };})(day,i);
         mark.addEventListener('click',openBooking);
         mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openBooking();}});
       }
