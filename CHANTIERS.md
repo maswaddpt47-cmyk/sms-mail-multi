@@ -74,8 +74,8 @@ dans « Points à ne pas défaire ».
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
   Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
-- **Relancé sans réponse après 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (horodatage ISO, champ additif posé à la copie
-  de la relance ; sans lui, pas d'alerte : relances antérieures non rétroactives) ; si `en_attente` ≥ 3 h après
+- **Relancé sans réponse après 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (horodatage ISO, additif, posé à la copie
+  de la relance ; sans lui, fin du jour `dateRelance`, d'où alerte rétroactive dès la veille) ; si `en_attente` ≥ 3 h après
   (`isSansReponse`) : tuile clignotante, « ⏰ Libérer ? » (confirmation → « Pas de retour »), badge, bandeau ; contrôle /60 s. **Délai réglable** (Configuration → Général, 1-72 h, défaut 3).
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
