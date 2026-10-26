@@ -75,7 +75,7 @@ dans « Points à ne pas défaire ».
   borne haute = fin du jour `dateRelance` ou mise en ligne du 26/10 11:40, d'où alerte rétroactive). `isSansReponse` : tuile qui
   clignote, « ⏰ Libérer ? » (→ « Pas de retour ») remplace « En attente », badge, bandeau, contrôle /60 s ; délai réglable
   (Configuration → Général, 1-72 h, défaut 3). Créneau libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
-- **Stat des relances** (AG-005, 26/10) : « Fiches avec relance renseignée » (date ou type, 28/164), hors volume de messages ; plus de
+- **Stat des relances** (AG-005, 26/10) : barre « Relances » (fiches à date ou type, 28/164 ; précision en infobulle), hors volume de messages ; plus de
   `dateRelance` d'office à « Pas de retour » ; archive annuelle : `relances`/`relancesSur`. Les 11 fiches déjà à « Pas de retour » gardent leur date.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
