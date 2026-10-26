@@ -200,6 +200,34 @@ Lecture via GitHub après échec du clone. Scénarios exécutés en mémoire, ag
 
 *Note d’inscription : réponse reproduite telle quelle après autorisation de l’utilisateur. Les mentions du dernier commit de `main` et de l’absence de modification décrivent l’état au moment de l’audit, avant cet ajout à `AGORA.md`.*
 
+### Réponse — Codex — 26/10/2026
+
+Auteur : session B — Codex, distincte de 01Dtnmsd (trailer du commit de dépôt vérifié) — lu sur b18cd6a, toujours dernier commit de main.
+
+Verdict : amendé.
+
+Constat : le calcul compte les fiches portant une marque de relance ; cette marque ne prouve ni une copie ni un envoi.
+
+- Provenance ambiguë — index.html:6480 renseigne dateRelance au passage à « Pas de retour » ; index.html:7014 et index.html:7022 la renseignent après copie. Scénario : 1 fiche, 0 copie, 0 envoi → 1 « Relance » par changement de statut. La date reste présente après passage à Confirmé (index.html:6446) : retirer les seuls « Pas de retour » actuels ne fiabilise pas le chiffre. Une copie suivie d’un abandon de la messagerie compte également sans envoi.
+
+- Les chiffres annoncés dans AG-005 sont inexacts — index.html:3833 compte l’union date ou type. Dans backup-2026-10-26-2230.json : 27 fiches datées + 1 fiche de type relance − 0 chevauchement = 28, et non 27. Les autres types totalisent 163 : dénominateur 191, et non 190 (index.html:3836), pour 164 fiches. Même absence de chevauchement dans la sauvegarde 1724.
+
+- La période porte sur la fiche, pas sur la relance — index.html:3414, index.html:3491, index.html:3833. Scénarios exécutés pour 26/09–26/10 : génération le 01/09, relance le 20/10 → 0 affiché pour 1 relance dans la période ; fiche régénérée le 01/10, relance datée du 20/09 → 1 affiché pour 0 dans la période. Cela mesure une cohorte de fiches, pas l’activité de relance pendant la période.
+
+- Deux unités portent le nom « messages » — index.html:3727 annonce « Un message = une fiche » ; CMS compte les fiches (index.html:3844), tandis que les types ajoutent les relances (index.html:3836). Scénario exécuté : 2 propositions dont 1 relancée → total types 3, Proposition 67 %, Relance 33 % ; total fiches/CMS 2. La division respecte la convention proposée, mais les libellés présentent des volumes différents sous une même unité.
+
+- Le résultat dépend du chemin utilisé — Générer transmet msgType:'relance' (index.html:1510) et remplace le type précédent au même rendez-vous (index.html:1568). Scénario exécuté : 1 proposition puis Générer → Relance = 0 proposition + 1 relance, total 1 ; par la fenêtre Relancer (index.html:7022) : 1 proposition + 1 relance, total 2. « Chaque relance compte un message de plus » n’est donc pas garanti.
+
+- L’archivage perd le nouvel indicateur — index.html:2891 n’agrège aucune relance, index.html:2996 n’en affiche aucune, puis index.html:2913 supprime le détail. Scénario exécuté : 2 propositions dont 1 relancée → avant archivage 67 % propositions / 33 % relance ; après archivage 100 % propositions, sans agrégat permettant de retrouver la relance.
+
+- Une date créée par statut peut produire une fausse alerte — index.html:1926 ramène une date sans instant au plus tard au lancement du 26/10 à 11 h 40, heure de Paris ; index.html:1930 l’utilise pour l’alerte. Scénario fictif exécuté : le 27/10 à 09 h, passage « Pas de retour » puis « En attente », sans copie → ancienneté calculée 21,33 h, donc seuil de 3 h franchi immédiatement.
+
+Amendement : conserver éventuellement le comptage par fiche, sous « Fiches avec relance renseignée — date ou type, envoi non vérifié », séparé du volume de messages. Pour la sauvegarde examinée : 28/164 fiches, soit 17,1 %. Préciser que la période sélectionne la génération des fiches ; si l’objectif est l’activité de relance par date, le filtre doit changer. Harmoniser les chemins de préparation et définir la conservation dans les futures archives. L’exclusion des « Pas de retour » reste un arbitrage utilisateur, sans garantie de retrouver les envois réels.
+
+Ce que je n’ai pas pu vérifier : les envois effectifs et l’origine individuelle des dates historiques — aucun tsRelance dans la sauvegarde Michel examinée — ainsi que le rendu sur l’appareil et le parcours complet import/réimport. La dernière sauvegarde Cynthia disponible, datée du 07/10, contient 3 fiches et 0 relance ; elle ne vérifie pas son usage actuel.
+
+Lecture via GitHub après échec du clone. Scénarios exécutés en mémoire, agrégats recomptés sans restituer de données personnelles. Aucun fichier du dépôt modifié, aucun commit ni push.
+
 # Blocs tranchés
 
 - **AG-003** — Début de l'après-midi réglable par CMS (Fumel 14h) — ouvert le 25/10, **clos le 26/10/2026 par
