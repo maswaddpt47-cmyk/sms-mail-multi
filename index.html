@@ -1913,6 +1913,21 @@ function isDepasse(h){
   var t0=new Date();t0.setHours(0,0,0,0);
   return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
 }
+/* Relancé depuis plus de RELANCE_REPONSE_H heures et toujours « En attente » : le créneau est à libérer (demande utilisateur 26/10).
+   `tsRelance` (horodatage ISO) est posé à l'enregistrement de la relance ; sans lui (relances antérieures), pas d'alerte. */
+var RELANCE_REPONSE_H=3;
+function isSansReponse(h){
+  if(!h||h.statut!=='en_attente'||!h.dateRelance||!h.tsRelance||h.msgType==='indispo')return false;
+  var t=Date.parse(h.tsRelance);
+  return !isNaN(t)&&Date.now()-t>=RELANCE_REPONSE_H*3600000;
+}
+function libererApresRelance(h){
+  var t=Date.parse(h.tsRelance),n=isNaN(t)?0:Math.floor((Date.now()-t)/3600000);
+  var qui=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'cet usager';
+  if(!confirm('Relancé il y a '+n+' h, sans réponse de '+qui+'.\nLibérer le créneau de '+(h.heure||'')+' (statut « Pas de retour ») ?'))return;
+  pointerStatut(h,'pas_de_retour');
+  showToast('✓ Créneau libéré');
+}
 /* bloque un créneau libre pour indisponibilité (pas un usager) — profil actif uniquement */
 function blockSlot(commune,dateStr,heure,motif){
   if(hasConflict(dateStr,heure,commune))return;
@@ -2151,7 +2166,7 @@ function renderTabs(){
   var today=new Date().toLocaleDateString('fr-FR');
   var todayN=S.history.filter(function(h){return h.ts===today;}).length;
   var orientN=S.orientations.filter(function(o){return !o.done;}).length;
-  var overdueN=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);}).length;
+  var overdueN=S.history.filter(function(h){return isInMyAgenda(h)&&(isDepasse(h)||isSansReponse(h));}).length;
   var _todayTab=toLocalDateStr(new Date());
   var agTodayN=S.history.filter(function(h){
     return h.date===_todayTab&&(h.statut==='confirme'||h.statut==='realise');
@@ -2181,7 +2196,7 @@ function renderTabs(){
       S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();
     };}
     if(d[0]==='agenda'&&overdueN>0){
-      var badgeAg=el('span',{onClick:badgeGo(function(){return S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});}),title:overdueN+' RDV en attente dépassent '+(S.relanceDelai||3)+' jours — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
+      var badgeAg=el('span',{onClick:badgeGo(function(){return S.history.filter(function(h){return isInMyAgenda(h)&&(isDepasse(h)||isSansReponse(h));});}),title:overdueN+' RDV à traiter (en attente au-delà de '+(S.relanceDelai||3)+' jours, ou relancés sans réponse depuis '+RELANCE_REPONSE_H+' h) — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
       btn.appendChild(badgeAg);
     }
     if(d[0]==='agenda'&&aPointerN>0){
@@ -4239,6 +4254,26 @@ function renderAgenda(){
   var scopeCollegue=S.agendaScope!=='mine'&&S.agendaScope!=='all';
   _rdvCount.textContent=scopeHist.filter(function(h){return h.date&&h.msgType!=='indispo';}).length+' RDV au total';
 
+  /* bannière relances sans réponse : créneau à libérer (26/10) */
+  (function(){
+    if(scopeCollegue)return;
+    var sans=S.history.filter(function(h){return isInMyAgenda(h)&&isSansReponse(h);});
+    if(!sans.length)return;
+    var banner=el('div',{class:'ui-ag-notice',style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
+    banner.appendChild(el('span',{style:"font-size:22px;"},"⏰"));
+    var txt=el('div',{style:"flex:1;"});
+    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.45 0.18 25);"},sans.length+' relance'+(sans.length>1?'s':'')+' sans réponse depuis plus de '+RELANCE_REPONSE_H+' h — créneau'+(sans.length>1?'x':'')+' à libérer'));
+    var noms=sans.slice(0,5).map(function(h){return[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')+(h.heure?' ('+h.heure+')':'');}).filter(Boolean);
+    if(noms.length)txt.appendChild(el('div',{style:"font-size:11px;color:oklch(0.55 0.14 25);margin-top:3px;"},noms.join(' · ')+(sans.length>5?' · …':'')));
+    banner.appendChild(txt);
+    var btnS=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:9px;border:1.5px solid oklch(0.72 0.18 25);background:oklch(0.92 0.08 25);color:oklch(0.42 0.18 25);white-space:nowrap;"},'Voir');
+    btnS.addEventListener('click',function(){
+      var first=sans.slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
+      if(first.length&&first[0].date)agScrollTo(first[0].date);
+    });
+    banner.appendChild(btnS);
+    followupBody.appendChild(banner);
+  })();
   /* bannière dépassements */
   (function(){
     if(scopeCollegue)return;
@@ -4909,7 +4944,7 @@ function renderAgenda(){
       } else {
         _ttLines.push('🟢 Créneau libre — '+slot.heure);
       }
-      var _isDepasse=slot.taken?isDepasse(slot.taken):false;
+      var _isDepasse=slot.taken?(isDepasse(slot.taken)||isSansReponse(slot.taken)):false;
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="--ui-ag-status-color:"+pillTxt+";--ui-ag-status-bg:"+pillBg+";";
       var pill=el('button',{class:'ag-slot ui-ag-slot'+(slot.freeAgain?' ui-ag-slot-released':'')+(isIndispo?' ui-ag-slot-blocked':'')+(_isDepasse?' ag-depasse':(slot.taken&&isAPointer(slot.taken))?' ag-apointer':''),style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0','data-apointer':(slot.taken&&isAPointer(slot.taken))?'1':'0',title:_ttLines.join('\n')});
@@ -4980,12 +5015,12 @@ function renderAgenda(){
       }
       if(_st!=='annule'&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
-        var _dejaRelance=slot.taken.dateRelance;
-        var _relBg=_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
-        var _relCol=_dejaRelance?'oklch(0.32 0.13 155)':pillTxt;
+        var _dejaRelance=slot.taken.dateRelance,_sansRep=isSansReponse(slot.taken);
+        var _relBg=_sansRep?'oklch(0.56 0.2 25)':_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
+        var _relCol=_sansRep?'#fff':_dejaRelance?'oklch(0.32 0.13 155)':pillTxt;
         var relBtn=el('span',{role:'button',class:'ui-ag-inline-action',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:"+_relBg+";color:"+_relCol+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:_dejaRelance?"Déjà relancé le "+_dejaRelance.split('-').reverse().join('/'):"Relancer par SMS ou mail"});
-        relBtn.textContent=_dejaRelance?('✓ Relancé '+_dejaRelance.slice(8,10)+'/'+_dejaRelance.slice(5,7)):'📨 Relancer';
-        relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
+        relBtn.textContent=_sansRep?'⏰ Libérer ?':_dejaRelance?('✓ Relancé '+_dejaRelance.slice(8,10)+'/'+_dejaRelance.slice(5,7)):'📨 Relancer';
+        relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();(isSansReponse(s.taken)?libererApresRelance:lancerRelance)(s.taken);};})(slot));
         pillActions.appendChild(relBtn);
       }
       if(_st==='lapin'){
@@ -6943,7 +6978,8 @@ function renderModal(){
           var targetP=rh._profile||S.activeProfile;
           var arr=readProfileHistory(targetP);
           var idx=findHistIdx(arr,rh);
-          if(idx!==-1){arr[idx].dateRelance=_today;rh.dateRelance=_today;writeProfileHistory(targetP,arr);}
+          var _tsRel=new Date().toISOString();
+          if(idx!==-1){arr[idx].dateRelance=_today;rh.dateRelance=_today;arr[idx].tsRelance=_tsRel;rh.tsRelance=_tsRel;writeProfileHistory(targetP,arr);}
         }
         S.modal=null;renderModal();renderAgenda();showToast('✓ Message copié — relance enregistrée');
       });
@@ -7179,6 +7215,16 @@ function activateProfile(id){
   localStorage.setItem('ess-'+id+'-lastLogin',new Date().toLocaleDateString('fr-FR'));
   enterApp();
 }
+/* une relance franchit les 3 h pendant que l'appli reste ouverte : badge et tuiles se mettent à jour sans rechargement */
+var _sansRepN=-1;
+setInterval(function(){
+  if(!S.activeProfile||!S.history)return;
+  var n=S.history.filter(function(h){return isInMyAgenda(h)&&isSansReponse(h);}).length;
+  if(_sansRepN<0){_sansRepN=n;return;}
+  if(n===_sansRepN)return;
+  _sansRepN=n;renderTabs();
+  if(S.activeTab==='agenda'&&!S.modal)renderAgenda();
+},60000);
 function init(){
   var active=localStorage.getItem('ess-active-profile');
   if(active&&PROFILES.some(function(p){return p.id===active;})){
