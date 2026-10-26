@@ -59,14 +59,11 @@ dans « Points à ne pas défaire ».
   de l'Agenda) ; chaque heure ouvre Messages sur ce créneau (`openMessagesOnSlot`).
   **Cases occupées cliquables** (26/10) : RDV → fenêtre de l'Agenda (`agenda-rdv`, modification), créneau bloqué ou
   pause → « Libérer ? » ; `S._lastModal` rafraîchit les stats (défilement conservé) à la fermeture de la fenêtre.
-- **Lapins par permanence** (carte de Statistiques, validée ; ex-sous « Prochaines permanences ») : journées passées de la période/CMS avec
-  ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches : un créneau réattribué en
-  porte plusieurs, cas « 2/8 » pour 6 créneaux). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété
-  (`buildCmsSelect`). Les vues futures suivent le CMS, pas le filtre de période.
+- **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
+  **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
-- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous »,
-  unité en note de chaque tuile, aides « Unité : … »). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
-  Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
+- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous », note
+  par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
   `agendaFocusDay`, consultation seule ; non éprouvé avec deux CMS le même jour. **Badges rouge/orange de l'Agenda
   cliquables** : jour du **premier** RDV concerné (`badgeGo`, `stopPropagation`) ; le badge vert reste inerte.
