@@ -144,6 +144,32 @@ l’historique est bien le point zéro. Le lecteur compatible reprend `dateDeman
 uniquement si le nouveau champ `dateReception` est absent. Une nouvelle valeur
 explicitement vide reste inconnue. Aucune première préparation n’est déduite de `ts`.
 
+## AG-005 — Stats : « Relance » compte les fiches relancées (`dateRelance`) — ouvert le 26/10/2026
+**Auteur** : session `01Dtnmsd` — lu sur `d859a90`.
+**Proposition** : dans Statistiques → « Répartition par type », « Relance » = nombre de fiches (période et CMS du filtre) avec
+`dateRelance` ou `msgType==='relance'`, une fois par fiche ; chaque relance compte un message de plus dans la répartition
+(les pourcentages se calculent sur messages + relances). Avant : seules les fiches `msgType==='relance'` (1 sur la sauvegarde
+du 26/10, pour 27 fiches avec `dateRelance`). L'utilisateur ne relance qu'**une fois** par RDV : pas d'historique des relances.
+**Critère déclencheur** : n° 2 (trois façons de compter envisagées, une seule écrite : fiches relancées / une fiche par
+relance envoyée, stockage changé / historique de dates, écarté par l'utilisateur) ; chiffre montré à l'écran, cité peut-être
+à la hiérarchie (règle 33 MD-LIB `chiffres-diffuses.md` → contradicteur Codex, `agora.md` §12).
+**Ce que ça engage** : un chiffre qui change d'ordre de grandeur (1 → 27) ; le total de la carte (190) ne se recoupe plus avec
+« Messages par CMS / commune » (164, compte des fiches). Aucun stockage modifié par ce changement.
+**Non vérifié par l'auteur** : **11 des 27 fiches ont le statut « Pas de retour »**, et l'app pose `dateRelance` d'office au
+passage à ce statut si elle est vide (`index.html`, sélecteur de statut de la fenêtre RDV : `patch.dateRelance=…`) — donc une
+partie des 27 n'a peut-être jamais reçu de relance réelle ; rien ne permet de le distinguer dans les données. Cohérence avec
+les autres écrans qui lisent `dateRelance`/`tsRelance` ; l'autre profil (cynthia) ; le rendu sur l'appareil.
+**Si personne ne répond, je fais quoi ?** — le changement est livré (demande de l'utilisateur, testé par lui le 26/10) ; la
+note sous la carte le dit. Si Codex confirme le défaut « Pas de retour », la décision de compter ou non ces fiches revient à
+l'utilisateur : je ne la tranche pas.
+**Où regarder** : `index.html` : bloc « Répartition par type » (`typeMap`, `typeList`), `isSansReponse`/`relanceTs`,
+sélecteur de statut de la fenêtre RDV (`patch.dateRelance`), « Messages par CMS / commune ».
+**À examiner** : 1) que représente `dateRelance` selon chaque chemin qui l'écrit (copie de la relance, passage à « Pas de
+retour ») ; 2) le chiffre affiché est-il celui d'une « relance envoyée » ? sinon, quel libellé ou quelle règle ; 3) dénominateur
+et totaux de la carte vs les autres cartes ; 4) cas bord : fiche relancée puis changée de statut, relance hors période.
+**Réponse attendue** : selon le gabarit ci-dessous, un défaut par ligne avec `fichier:ligne` et scénario chiffré, puis « Ce que
+je n'ai pas pu vérifier ». Lecture seule : ne rien modifier.
+
 # Blocs tranchés
 
 - **AG-003** — Début de l'après-midi réglable par CMS (Fumel 14h) — ouvert le 25/10, **clos le 26/10/2026 par
