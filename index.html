@@ -567,7 +567,7 @@
 .ui-stats-messages{grid-template-columns:minmax(0,1fr);}
 .ui-stats-priority .ui-chart-legend{min-height:68px;}
 .ui-stats-priority .ui-stats-section{margin-bottom:0;}
-.ui-orient-perm{grid-template-columns:minmax(0,1fr);margin:0 0 22px;}
+.ui-orient-perm{grid-template-columns:minmax(0,1fr);margin:26px 0 0;}.ui-orient-perm .ui-permanence-list{max-height:none;overflow:visible;padding-right:0;}
 .ui-permanence-list{max-height:325px;overflow-y:auto;padding-right:5px;scrollbar-gutter:stable;}
 .ui-permanence-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;padding:12px 0;border-bottom:1px solid var(--c-border);}
 .ui-permanence-label{display:flex;gap:5px 10px;flex-wrap:wrap;font-size:11px;color:var(--c-dim);}
@@ -6192,8 +6192,8 @@ function renderOrientations(){
   }
   head.appendChild(headActions);wrap.appendChild(head);
 
-  /* places libres : carte déplacée de Statistiques (26/10) ; CMS propre à cet onglet (S.orientCMS) */
-  (function(){
+  /* places libres : carte déplacée de Statistiques (26/10), placée après la file (27/10) ; CMS propre à cet onglet (S.orientCMS) */
+  function appendPerm(){
     var cmsAll=[];S.history.forEach(function(h){if(h.commune&&cmsAll.indexOf(h.commune)===-1)cmsAll.push(h.commune);});cmsAll.sort();
     var box=el('div',{class:'ui-stats-charts ui-stats-priority ui-orient-perm'});
     var mod=statsRdvModel(S.history,S.permanences||[],'all',S.orientCMS||'',new Date());
@@ -6206,7 +6206,7 @@ function renderOrientations(){
       cr.appendChild(sel);pcard.insertBefore(cr,pcard.children[1]||null);
     }
     box.appendChild(pcard);wrap.appendChild(box);
-  })();
+  }
 
   /* search */
   if(S.orientations.length>0){
@@ -6225,7 +6225,7 @@ function renderOrientations(){
     empty.appendChild(el('h3',{},'Votre prochaine orientation commence ici'));
     empty.appendChild(el('p',{},"Importez un export Excel du GDIN. Chaque bénéficiaire est attribué au conseiller concerné et n'apparaît que dans les orientations de ce conseiller."));
     wrap.appendChild(empty);
-    pane.appendChild(wrap);return;
+    appendPerm();pane.appendChild(wrap);return;
   }
 
   function normO(s){return(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
@@ -6260,7 +6260,7 @@ function renderOrientations(){
 
   if(visible.length===0){
     var noResult=el('div',{class:'ui-record-empty'});noResult.appendChild(el('h3',{},'Aucune demande dans cette vue'));noResult.appendChild(el('p',{},'Modifiez la recherche ou le filtre de traitement pour retrouver vos orientations.'));wrap.appendChild(noResult);
-    pane.appendChild(wrap);return;
+    appendPerm();pane.appendChild(wrap);return;
   }
 
   fWrap.appendChild(el('span',{class:'ui-record-result-count'},visible.length+' demande'+(visible.length>1?'s':'')+' affichée'+(visible.length>1?'s':'')));
@@ -6343,7 +6343,7 @@ function renderOrientations(){
     cards.appendChild(card);
   });
   wrap.appendChild(cards);
-  pane.appendChild(wrap);
+  appendPerm();pane.appendChild(wrap);
 }
 
 /* ============================== MODALS ============================== */
