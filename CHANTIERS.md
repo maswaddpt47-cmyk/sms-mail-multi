@@ -67,16 +67,16 @@ dans « Points à ne pas défaire ».
 - **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous »,
   unité en note de chaque tuile, aides « Unité : … »). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
   Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
-- **Date et lieu des prochaines permanences → Agenda** (25/10) : `ui-permanence-link` (clavier Entrée) →
-  `agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay` (`date|CMS|profil actif`),
-  mode journée avec « Quitter le focus ». Consultation seule. Non éprouvé avec deux CMS le même jour.
-- **Badges rouge (dépassement) et orange (à pointer) de l'onglet Agenda cliquables** (25/10) : ouvrent
-  l'Agenda au jour du **premier** RDV concerné (`badgeGo`, `stopPropagation` : sans lui le clic remontait à
-  l'onglet et un second rendu effaçait la date). Le badge vert (RDV du jour) reste inerte.
+- **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
+  `agendaFocusDay`, consultation seule ; non éprouvé avec deux CMS le même jour. **Badges rouge/orange de l'Agenda
+  cliquables** : jour du **premier** RDV concerné (`badgeGo`, `stopPropagation`) ; le badge vert reste inerte.
 - **Barres de « Prochaines permanences » (onglet Orientations depuis le 26/10) = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
   Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
+- **Relancé sans réponse après 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (horodatage ISO, champ additif posé à la copie
+  de la relance ; sans lui, pas d'alerte : relances antérieures non rétroactives) ; si `en_attente` ≥ 3 h après
+  (`isSansReponse`) : tuile clignotante, « ⏰ Libérer ? » (confirmation → « Pas de retour », créneau libéré), badge, bandeau ; contrôle /60 s.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
