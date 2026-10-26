@@ -5028,6 +5028,13 @@ function renderAgenda(){
         var _dejaRelance=slot.taken.dateRelance,_sansRep=isSansReponse(slot.taken);
         var _relBg=_sansRep?'oklch(0.56 0.2 25)':_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
         var _relCol=_sansRep?'#fff':_dejaRelance?'oklch(0.32 0.13 155)':pillTxt;
+        if(_sansRep){
+          /* la date de relance reste visible à côté de « Libérer ? » (demande utilisateur 26/10) ; toucher = relancer de nouveau */
+          var relDone=el('span',{role:'button',class:'ui-ag-inline-action',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:oklch(0.5 0.14 155 / .18);color:oklch(0.32 0.13 155);font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:"Relancé le "+_dejaRelance.split('-').reverse().join('/')+" — toucher pour relancer de nouveau"});
+          relDone.textContent='✓ Relancé '+_dejaRelance.slice(8,10)+'/'+_dejaRelance.slice(5,7);
+          relDone.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
+          pillActions.appendChild(relDone);
+        }
         var relBtn=el('span',{role:'button',class:'ui-ag-inline-action',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:"+_relBg+";color:"+_relCol+";font-size:8px;font-weight:700;border-radius:4px;padding:2px 4px;margin-top:2px;width:100%;box-sizing:border-box;",title:_dejaRelance?"Déjà relancé le "+_dejaRelance.split('-').reverse().join('/'):"Relancer par SMS ou mail"});
         relBtn.textContent=_sansRep?'⏰ Libérer ?':_dejaRelance?('✓ Relancé '+_dejaRelance.slice(8,10)+'/'+_dejaRelance.slice(5,7)):'📨 Relancer';
         relBtn.addEventListener('click',(function(s){return function(e){e.stopPropagation();(isSansReponse(s.taken)?libererApresRelance:lancerRelance)(s.taken);};})(slot));
