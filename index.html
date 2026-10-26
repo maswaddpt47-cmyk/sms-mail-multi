@@ -583,6 +583,10 @@
 .ui-stats-priority .ui-permanence-legend{min-height:0;margin-bottom:12px;}
 .ui-permanence-legend .ui-permanence-mark{display:inline-block;width:16px;height:10px;border-radius:3px;}
 .ui-permanence-row small{grid-column:1/-1;font-size:10px;color:var(--c-dim);}
+.ui-permanence-hours{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.ui-permanence-hours-label{font-size:10px;font-weight:700;color:var(--c-dim);}
+.ui-permanence-hour{min-height:32px;padding:4px 10px;border:1px solid var(--c-border);border-radius:8px;background:var(--c-card);color:var(--c-text);font:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.ui-permanence-hour:hover,.ui-permanence-hour:focus-visible{border-color:var(--ui-accent);color:var(--ui-accent);background:var(--ui-accent-soft);}
 .ui-stats-svg{position:relative;}
 .ui-stats-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .ui-stats-archive-note{font-size:11px;line-height:1.8;padding:13px 16px;border-left:3px solid var(--ui-accent);background:var(--ui-accent-soft);color:var(--c-dim);margin-bottom:24px;}
@@ -3066,8 +3070,10 @@ function statsRdvModel(history,permanences,period,cms,now){
       return p.exceptDate===today&&released.hasOwnProperty(t.statut)?{heure:slot.heure,kind:t.statut,info:info}:null;
     }).filter(Boolean).sort(function(a,b){return a.heure.localeCompare(b.heure);});
     var markInfo=marks.map(function(m){return m.info;});marks=marks.map(function(m){return m.kind;});
+    /* heures des créneaux libres de la demi-journée affichée (mêmes que les tuiles « Libre » de l'Agenda) ; 26/10 */
+    var freeHours=slots.filter(function(slot){return !slot.taken||(slot.freeAgain&&p.exceptDate!==today);}).map(function(slot){return slot.heure;});
     if(closedDay){marks=[];markInfo=[];}while(closedDay&&marks.length<total){marks.push('blocked');markInfo.push({heure:'',statut:'',blocked:true});}
-    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,markInfo:markInfo,
+    days.push({date:p.exceptDate,commune:p.commune,half:half,total:total,occupied:occupied,released:released,releasedN:releasedN,marks:marks,markInfo:markInfo,freeHours:freeHours,
       free:Math.max(0,total-occupied-blocked-releasedN),blocked:blocked,
       pending:active.filter(function(slot){return slot.taken.statut==='en_attente';}).length,
       completed:active.filter(function(slot){return slot.taken.statut==='realise';}).length,
@@ -3570,8 +3576,19 @@ function renderStats(){
       track.appendChild(mark);
     }
     row.appendChild(track);row.appendChild(el('small',{},summary));
+
     if(day.pending||day.completed||day.blocked)row.appendChild(el('small',{},[day.pending?'dont '+day.pending+' en attente':'',day.completed?'dont '+day.completed+' réalisé'+(day.completed>1?'s':''):'',day.blocked?day.blocked+' créneau'+(day.blocked>1?'x':'')+' bloqué'+(day.blocked>1?'s':''):''].filter(Boolean).join(' · ')));
     if(day.overbooked)row.appendChild(el('small',{},new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' · '+day.commune+' : '+day.overbooked+' créneau'+(day.overbooked>1?'x':'')+' au-delà de la capacité de '+day.total));
+    if(day.freeHours&&day.freeHours.length){
+      /* heures libres : chacune ouvre Messages sur ce créneau (jour, CMS et heure préremplis) */
+      var hoursRow=el('div',{class:'ui-permanence-hours',role:'group','aria-label':'Créneaux libres du '+dateText+' à '+day.commune});
+      hoursRow.appendChild(el('span',{class:'ui-permanence-hours-label'},'Libres :'));
+      day.freeHours.forEach(function(hr){
+        hoursRow.appendChild(el('button',{type:'button',class:'gx-press ui-permanence-hour','aria-label':'Préparer un message le '+dateText+' à '+hr+' à '+day.commune,
+          onClick:(function(d,h){return function(){openMessagesOnSlot(d.date,d.commune,h);};})(day,hr)},hr));
+      });
+      row.appendChild(hoursRow);
+    }
     daysWrap.appendChild(row);
   });
   if(!rdv.days.length)daysWrap.appendChild(el('p',{class:'ui-chart-description'},'Aucune prochaine permanence ouverte pour ce CMS.'));

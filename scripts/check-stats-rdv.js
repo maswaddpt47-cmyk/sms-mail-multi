@@ -184,4 +184,12 @@ const vr=[qr('v1','09:30','realise','Fumel','X'),qr('v2','09:30','lapin','FUMEL'
 const v=q(vr);assert.equal(v.slots+'|'+v.concretPct+'|'+v.lapinPct+'|'+v.byCms.length,'1|100|100|1');assert.equal(q(vr,'2026-10','fumel').entries,2);
 // Promesse de confidentialité : plus aucune formule absolue, rappel de relire les textes libres
 const ph=ctx.monthlyReportHtml(v,{profil:'P',date:'d'});assert.match(ph,/saisies librement/);assert.doesNotMatch(ph,/Aucun nom, téléphone/);
+// Heures libres d'une journée à venir (mêmes créneaux que les tuiles libres de l'Agenda).
+const fhDay=(hist,perm=lp0,when=new Date(2026,9,25,12))=>ctx.statsRdvModel(hist,[perm],'1m','A',when).days[0].freeHours.join(',');
+assert.equal(fhDay([row('f1','2026-10-30','confirme','09:30'),row('f2','2026-10-30','confirme','10:30'),row('f3','2026-10-30','en_attente','14:30')]),'11:30,12:30,13:30,15:30');
+assert.equal(fhDay([row('f4','2026-10-30','lapin','09:30')]),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');           // créneau libéré un jour futur : de nouveau libre
+const todayFree=ctx.statsRdvModel([row('f5','2026-10-25','lapin','09:30')],[{...lp0,exceptDate:'2026-10-25'}],'1m','A',new Date(2026,9,25,12)).days[0].freeHours.join(',');
+assert.equal(todayFree.includes('09:30'),false);                                                                      // libéré aujourd'hui : non réattribuable
+const fAll=['09:30','10:30','11:30','12:30','13:30','14:30','15:30'].map(h=>{const r=row('x'+h,'2026-10-30',null,h,'A','indispo');r.nom='Fermé';return r;});
+assert.equal(fhDay(fAll),'');                                                                                          // journée fermée : aucune heure libre
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
