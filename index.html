@@ -4895,7 +4895,8 @@ function renderAgenda(){
         } else if(slot.taken.body){
           _ago=timeAgo(slot.taken.ts);
         }
-        if(_ago&&_st!=='confirme')pillContent.appendChild(el('span',{class:'ui-ag-meta',style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
+        /* décompte depuis l'envoi : uniquement les RDV en attente (décision utilisateur 26/10), là où il sert à relancer */
+        if(_ago&&_st==='en_attente')pillContent.appendChild(el('span',{class:'ui-ag-meta',style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
       }
       if(_st!=='annule'&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
