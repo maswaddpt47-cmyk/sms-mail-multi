@@ -98,8 +98,9 @@ dans « Points à ne pas défaire ».
   **Audit Codex du 26/10 (AG-004, réponse inscrite)** : 20 sélections 07–10/2026 recomptées, **écart 0**. Corrigé le
   26/10 : fiches sans CMS (ligne « CMS non renseigné »), sans heure (hors créneaux/taux, signalées), sans statut
   (= en attente partout), sans démarche (ligne dédiée), jour courant imposé Europe/Paris (`parisDayStr`), variantes de
-  CMS regroupées (`cmsKey`). **Reste à trancher : textes libres de démarche** (promesse « aucun nom » reformulée, 29
-  fiches libres sur 162 dans la sauvegarde). **Diffusion à la hiérarchie : seulement après ta décision.**
+  CMS regroupées (`cmsKey`). **AG-004 tranché le 26/10 (Codex : amendé)** : démarches saisies librement laissées telles
+  quelles, mention « à relire avant toute diffusion » dans le bilan (choix utilisateur ; 29 fiches libres sur 162).
+  Diffusion à la hiérarchie possible, **relecture des textes libres par l'utilisateur avant envoi**.
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
