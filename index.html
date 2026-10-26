@@ -741,7 +741,7 @@
 #pane-agenda .ui-ag-board .ui-ag-name{font-size:11px!important;line-height:1.35;white-space:normal!important;overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:100%;text-align:left!important;}
 #pane-agenda .ui-ag-board .ui-ag-demarche{font-size:10px!important;line-height:1.4;max-width:100%;white-space:normal;overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 /* « il y a N j » (décompte depuis l'envoi) : masqué par la refonte du 19/10 sans décision de l'utilisateur, rétabli le 26/10 */
-#pane-agenda .ui-ag-board .ui-ag-meta{display:block;margin-top:2px;}
+#pane-agenda .ui-ag-board .ui-ag-time .ui-ag-meta{display:inline;margin:0 0 0 6px;padding:0;font-size:inherit!important;font-weight:600!important;color:var(--c-muted)!important;background:transparent!important;}
 #pane-agenda .ui-ag-board .ui-ag-slot-actions{display:flex;flex-direction:row;justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;max-width:none;font-size:9px;}
 #pane-agenda .ui-ag-board .ui-ag-status{font-size:8px;line-height:1.4;text-align:left;max-width:100%;}
 #pane-agenda .ui-ag-board .ui-ag-open{display:none;}
@@ -4834,7 +4834,8 @@ function renderAgenda(){
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="--ui-ag-status-color:"+pillTxt+";--ui-ag-status-bg:"+pillBg+";";
       var pill=el('button',{class:'ag-slot ui-ag-slot'+(slot.freeAgain?' ui-ag-slot-released':'')+(isIndispo?' ui-ag-slot-blocked':'')+(_isDepasse?' ag-depasse':(slot.taken&&isAPointer(slot.taken))?' ag-apointer':''),style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0','data-apointer':(slot.taken&&isAPointer(slot.taken))?'1':'0',title:_ttLines.join('\n')});
-      pill.appendChild(el('span',{class:'ui-ag-time'},slot.heure));
+      var timeEl=el('span',{class:'ui-ag-time'},slot.heure);
+      pill.appendChild(timeEl);
       var pillContent=el('span',{class:'ui-ag-slot-content'});
       var pillActions=el('span',{class:'ui-ag-slot-actions'});
       var _uiStatus=isIndispo?'Indisponible':slot.multiPropo?'Réservations multiples':((STATUT_STYLES[_st]&&STATUT_STYLES[_st].label)||'Réservé');
@@ -4896,7 +4897,7 @@ function renderAgenda(){
           _ago=timeAgo(slot.taken.ts);
         }
         /* décompte depuis l'envoi : uniquement les RDV en attente (décision utilisateur 26/10), là où il sert à relancer */
-        if(_ago&&_st==='en_attente')pillContent.appendChild(el('span',{class:'ui-ag-meta',style:"font-size:9px;font-weight:700;color:"+pillTxt+";background:rgba(0,0,0,0.07);border-radius:4px;padding:1px 4px;margin-top:1px;"},_ago));
+        if(_ago&&_st==='en_attente')timeEl.appendChild(el('span',{class:'ui-ag-meta'},'· '+_ago));
       }
       if(_st!=='annule'&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
