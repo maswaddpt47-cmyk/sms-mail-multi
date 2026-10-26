@@ -581,6 +581,7 @@
 .ui-permanence-mark.is-pending{background:var(--permanence-pending);border-color:var(--permanence-pending-border);}
 .ui-permanence-mark.is-blocked{background:var(--c-dim);border-color:var(--c-dim);}
 .ui-stats-priority .ui-permanence-legend{min-height:0;margin-bottom:12px;}
+.ui-permanence-week{margin:0 0 12px;font-size:13px;color:var(--c-text);}.ui-permanence-week strong{font-weight:800;}
 .ui-permanence-legend .ui-permanence-mark{display:inline-block;width:18px;height:14px;border-radius:4px;vertical-align:middle;}
 .ui-permanence-row small{grid-column:1/-1;font-size:10px;color:var(--c-dim);}
 .ui-permanence-hours{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
@@ -3506,6 +3507,15 @@ function renderStats(){
   fillCard.style.setProperty('--permanence-pending','oklch(0.68 0.2 350)');
   fillCard.style.setProperty('--permanence-pending-border','oklch(0.42 0.18 350)');
   fillCard.appendChild(el('p',{class:'ui-chart-description'},'6 créneaux par journée complète, 3 par demi-journée · à partir de ce jour, pour le CMS choisi, hors filtre de période passée.'));
+  /* places libres des 7 prochains jours, par CMS (piste 1 du 26/10, calcul = somme des `free` du modèle) */
+  (function(){
+    var t=new Date(rdv.today+'T12:00:00');t.setDate(t.getDate()+6);var end=toLocalDateStr(t),by={},n=0,seen=0;
+    rdv.days.forEach(function(d){if(d.date<rdv.today||d.date>end)return;seen++;n+=d.free;var k=d.commune||'—';by[k]=(by[k]||0)+d.free;});
+    if(!seen)return;
+    var names=Object.keys(by);
+    var detail=names.length>1?' · '+names.map(function(k){return k+' '+by[k];}).join(' · '):'';
+    fillCard.appendChild(el('p',{class:'ui-permanence-week'},[el('strong',{},n+' place'+(n>1?'s':'')+' disponible'+(n>1?'s':'')),' sur les 7 prochains jours'+detail]));
+  })();
   var permanenceLegend=el('div',{class:'ui-chart-legend ui-permanence-legend','aria-label':'Couleurs des créneaux'});
   var RELEASED_LABELS={lapin:['Lapin','lapin','lapins'],excuse:['Excusé','excusé','excusés'],annule:['Annulé','annulé','annulés'],pas_de_retour:['Pas de retour','sans retour','sans retour']};
   function releasedMark(statut){var st=STATUT_STYLES[statut];return el('span',{'aria-hidden':'true',class:'ui-permanence-mark is-released',style:'background:color-mix(in oklch,'+st.border+' 80%,#000);border-color:'+st.text+';'});}
