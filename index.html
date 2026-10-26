@@ -3826,13 +3826,19 @@ function renderStats(){
   statutCard.appendChild(stw);col2.appendChild(statutCard);
 
   var typeMap={proposition:0,confirmation:0,sans_appel:0,relance:0};
-  hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
+  hist.forEach(function(h){if(h.msgType&&h.msgType!=='relance'&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
+  /* Une relance n'ajoute pas de fiche à l'historique : elle pose `dateRelance` sur la fiche d'origine (constat 26/10 : 27 fiches
+     relancées pour 1 seule fiche de type « relance »). On compte donc les fiches relancées, une fois chacune (une 2e relance
+     écrase la date : elle ne se compte pas deux fois). Chaque relance vaut un message de plus dans cette répartition. */
+  typeMap.relance=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length;
   var typeCard=card("Répartition par type");
   var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"},{k:"relance",lbl:"Relance",col:"oklch(0.65 0.2 45)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   typeList.forEach(function(t){if(!typeMap[t.k])return;var pct=Math.round(typeMap[t.k]/typeTotal*100);tw.appendChild(barRow(t.lbl,pct,t.col,typeMap[t.k]+" ("+pct+"%)",null));});
-  typeCard.appendChild(tw);col2.appendChild(typeCard);
+  typeCard.appendChild(tw);
+  if(typeMap.relance)typeCard.appendChild(el('div',{style:"color:var(--c-muted);font-size:11px;margin-top:10px;line-height:1.5;"},"Relances : comptées d'après la date de relance de la fiche, chacune comme un message de plus."));
+  col2.appendChild(typeCard);
 
   var cmsMap={};
   hist.forEach(function(h){var cms=h.commune||"";if(cms)cmsMap[cms]=(cmsMap[cms]||0)+1;});
