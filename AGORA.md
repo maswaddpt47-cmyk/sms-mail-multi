@@ -144,28 +144,12 @@ l’historique est bien le point zéro. Le lecteur compatible reprend `dateDeman
 uniquement si le nouveau champ `dateReception` est absent. Une nouvelle valeur
 explicitement vide reste inconnue. Aucune première préparation n’est déduite de `ts`.
 
-## AG-003 — Début de l'après-midi réglable par CMS (Fumel 14h) — ouvert le 25/10/2026
-**Auteur** : session `01Dtnmsd` — lu sur `3f5e2f7`.
-**Proposition** : champ additif facultatif `debutApresMidi` (« HH:MM ») sur chaque CMS (`ess-cms`, partagé entre
-profils). `getSlots` génère alors l'après-midi par créneaux d'1 h à partir de cette heure (Fumel : 14:00, 15:00,
-16:00) ; sans le champ, grille inchangée (13:30…16:30). Réglage dans Configuration ; Fumel posé à 14:00 une fois.
-**Critère déclencheur** : n° 1 (nouveau champ persisté, contrat de `getSlots` entre modules) et n° 5 (contredit la
-note du 07/10 : grille 9h30–16h30 identique pour tous). Option écartée : règle codée en dur pour Fumel seul.
-**Ce que ça engage** : les journées déjà ouvertes d'un CMS réglé changent de grille à l'affichage (créneaux libres
-13:30/14:30/15:30/16:30 remplacés) ; les RDV existants gardent leur heure. `assignedHalf` (stats) doit suivre
-la grille du CMS. Vider le champ rétablit l'ancienne grille ; aucune donnée supprimée.
-**Non vérifié par l'auteur** : si d'autres CMS que Fumel ont des horaires stables (Saint-Pardoux et Villeneuve
-montrent 14:00/14:30/14:45, trop peu de données) ; l'effet sur une sauvegarde restaurée depuis une ancienne version.
-**Amendé le 25/10 par l'utilisateur** : le créneau de 16:30 est aussi retiré pour **tous** les CMS (après-midi = 3
-créneaux d'1 h, défaut 13:30/14:30/15:30). Un RDV existant à 16:30 reste affiché « hors grille » ; seuls les créneaux
-libres de 16:30 disparaissent.
-**Si personne ne répond, je fais quoi ?** — livrer (demande explicite, « oui pour les 3 points » puis « sors le
-créneau de 16h30 ») ; ne rien déduire pour les autres CMS que Fumel.
-**Où regarder** : `index.html` : `getSlots`, `cmsAfternoonStart`/`afternoonGridHours`, `statsRdvModel.assignedHalf`,
-formulaire CMS de Configuration, `loadProfileData` (pose unique de Fumel 14:00).
-
 # Blocs tranchés
 
+- **AG-003** — Début de l'après-midi réglable par CMS (Fumel 14h) — ouvert le 25/10, **clos le 26/10/2026 par
+  l'utilisateur, sans contradicteur** : décision à lui (demande du 14:00 pour Fumel, 16:30 retiré pour tous), livrée dans
+  Configuration CMS (champ `debutApresMidi`, facultatif ; le vider rétablit la grille par défaut). Bloc ouvert à tort :
+  la décision était déjà tranchée, il n'y avait rien à contredire. Hors total ci-dessous (aucun verdict).
 - **AG-004** — Bilan mensuel, audit Codex des chiffres avant diffusion — ouvert le 25/10, **tranché le 26/10/2026** —
   verdict **amendé** (Codex) : écart 0 sur 20 sélections, mais 6 défauts de données incomplètes (CMS, heure, statut,
   démarche, fuseau, variantes de CMS) **corrigés dans le code** (donc un amendement qui a changé le code) et une

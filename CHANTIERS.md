@@ -235,7 +235,7 @@ Aucune pour l'instant.
 - **Un champ de saisie ne déclenche jamais un rebuild complet du formulaire
   pendant la frappe** (« Autre heure », `nomIn`) : `onInput` =
   `regen()+updatePreviewOnly()`, reconstruction à `onBlur`.
-- **Grille des créneaux** (07/10, **révisée le 25/10/2026**, AG-003 ouvert) : matin 9h30, 10h30, 11h30, 12h30
+- **Grille des créneaux** (07/10, **révisée le 25/10/2026**, AG-003 clos le 26/10, tranché par l'utilisateur) : matin 9h30, 10h30, 11h30, 12h30
   (`DEBUT_GRILLE` dans `getSlots()` ; `debut:'09:00'` = ancien défaut) ; **après-midi = 3 créneaux d'1 h** à partir du
   `debutApresMidi` du CMS (défaut 13h30 ; **Fumel 14h00**, posé une fois au chargement, réglable dans Configuration →
   CMS). **Le 16h30 est retiré pour tous** (demande utilisateur). Les RDV hors grille restent affichés à leur heure.
