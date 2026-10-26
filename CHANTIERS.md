@@ -60,8 +60,7 @@ dans « Points à ne pas défaire ».
   un créneau libéré puis réattribué porte plusieurs fiches ; constat « 2/8 » pour 6 créneaux, vérifié sur la
   sauvegarde réelle). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété dans la carte
   (`buildCmsSelect`, défilement conservé). Les vues futures suivent le CMS, pas le filtre de période.
-- **Délai moyen RDV par CMS** (22/10) : « Tous les CMS » → liste par CMS ; un CMS → chiffre en grand.
-  Jours calendaires `ts` → RDV ; archives (`arc.avgRdv`) toujours globales.
+- **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
 - **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des
   rendez-vous », unité en note de chaque tuile, aides « Unité : … », caption des tableaux = titre +
   description). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». Aucun calcul modifié. Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
