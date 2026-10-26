@@ -3064,7 +3064,7 @@ function statsRdvModel(history,permanences,period,cms,now){
        comprises : seules les places disponibles, sans heure, viennent à la fin. */
     var marks=slots.map(function(slot){
       if(!slot.taken)return null;
-      var t=slot.taken,info={heure:slot.heure,statut:t.statut,nom:t.nom,prenom:t.prenom,demarche:t.demarche};
+      var t=slot.taken,info={heure:slot.heure,statut:t.statut,nom:t.nom,prenom:t.prenom,demarche:t.demarche,entry:t,msgType:t.msgType};
       if(t.msgType==='indispo')return {heure:slot.heure,kind:'blocked',info:info};
       if(!slot.freeAgain)return {heure:slot.heure,kind:t.statut==='en_attente'?'pending':'booked',info:info};
       return p.exceptDate===today&&released.hasOwnProperty(t.statut)?{heure:slot.heure,kind:t.statut,info:info}:null;
@@ -3518,6 +3518,21 @@ function renderStats(){
     if(info.demarche&&kind!=='blocked')parts.push(info.demarche);
     return parts.filter(Boolean).join(' · ');
   }
+  /* Ouvre la fenêtre de l'Agenda depuis une case de la barre : mêmes objets `slot`/`day` que la tuile (copie étiquetée du profil actif). */
+  function openStatsMark(day,info,kind){
+    var t=info.entry;
+    if(t.msgType==='indispo'){
+      if(!confirm('Libérer ce créneau ('+info.heure+') ?'))return;
+      var original=S.history.find(function(h){return h.msgType==='indispo'&&h.date===day.date&&h.commune===day.commune&&h.heure===info.heure;});
+      if(original){releaseSlot(original);renderStats();showToast('✓ Créneau libéré');}
+      return;
+    }
+    var freed=['lapin','excuse','annule','pas_de_retour'].indexOf(t.statut)!==-1;
+    S.modal='agenda-rdv';
+    S.agendaRdv={slot:{heure:info.heure,taken:Object.assign({},t,{_profile:S.activeProfile}),freeAgain:freed,multiPropo:false,allPropo:[],replaced:[]},
+      day:{dateStr:day.date,perm:{commune:day.commune},profile:S.activeProfile,date:new Date(day.date+'T12:00:00')}};
+    renderModal();
+  }
   function attachPermanenceTip(node){
     var lastTouch=0; /* les événements souris émulés après un toucher (mouseleave) ne doivent pas masquer l'infobulle */
     function fromTouch(){return Date.now()-lastTouch<1000;}
@@ -3553,7 +3568,7 @@ function renderStats(){
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
     var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
-    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));',role:day.free>0?null:'img','aria-label':day.free>0?null:summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
+    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
     for(var i=0;i<day.total;i++){
       var kind=day.marks[i],mark;
       if(RELEASED_LABELS[kind])mark=releasedMark(kind);
@@ -3572,6 +3587,20 @@ function renderStats(){
         };})(day);
         mark.addEventListener('click',openBooking);
         mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openBooking();}});
+      }
+      if(kind&&day.markInfo[i]&&day.markInfo[i].entry){
+        /* case occupée : ouvre la même fenêtre que la tuile de l'Agenda (RDV → modification ; créneau bloqué → libération),
+           26/10, demande utilisateur */
+        var inf=day.markInfo[i],isBlock=inf.msgType==='indispo';
+        mark.style.cursor='pointer';mark.setAttribute('role','button');mark.setAttribute('tabindex','0');mark.removeAttribute('aria-hidden');
+        mark.setAttribute('aria-label',(isBlock?'Créneau bloqué':'Rendez-vous')+' de '+inf.heure+' le '+dateText+' à '+day.commune+(isBlock?' — libérer':' — ouvrir pour modifier'));
+        mark.dataset.tip=permanenceMarkTip(kind,inf)+(isBlock?' — toucher pour libérer':' — toucher pour modifier');
+        var openMark=(function(d,info,k){return function(){
+          var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';
+          openStatsMark(d,info,k);
+        };})(day,inf,kind);
+        mark.addEventListener('click',openMark);
+        mark.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openMark();}});
       }
       track.appendChild(mark);
     }
@@ -6475,7 +6504,15 @@ function renderOrientImportDialog(overlay,box){
 
 function renderModal(){
   var root=document.getElementById('modal-root');clear(root);
-  if(!S.modal)return;
+  if(!S.modal){
+    /* fenêtre RDV ouverte depuis les statistiques : les barres reflètent les changements au retour (26/10) */
+    if(S._lastModal==='agenda-rdv'&&S.activeTab==='stats'&&typeof renderStats==='function'){
+      var statsPane=document.getElementById('pane-stats'),sc=(statsPane&&statsPane.closest('.gx-scroll'))||document.scrollingElement,top=sc?sc.scrollTop:0;
+      S._lastModal=null;renderStats();if(sc)sc.scrollTop=top;
+    }
+    S._lastModal=null;return;
+  }
+  S._lastModal=S.modal;
   var overlay=el('div',{class:'gx-modal',style:"position:fixed;inset:0;background:oklch(0.2 0.03 264 / .55);backdrop-filter:blur(5px);z-index:500;display:flex;align-items:center;justify-content:center;padding:18px;animation:overlayIn .2s ease;",onClick:closeModal});
   var box=el('div',{style:"background:var(--c-card);border-radius:22px;padding:24px;max-width:560px;width:100%;box-shadow:0 30px 80px oklch(0.2 0.03 264 / .4);animation:popIn .25s cubic-bezier(.2,.8,.3,1);max-height:88vh;display:flex;flex-direction:column;gap:14px;",onClick:function(e){e.stopPropagation();}});
 
