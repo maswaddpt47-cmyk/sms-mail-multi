@@ -145,8 +145,7 @@ dans « Points à ne pas défaire ».
   après les types prioritaires (seule exception intentionnelle à ses règles).
 
 ### Autres écrans
-- **Modèles** : recherche (nom/type/contenu, sans accents), par masquage des
-  cartes via `tplApplySearch()` — jamais de `renderTemplates()` à la frappe.
+- **Modèles** : recherche (nom/type/contenu, sans accents) par masquage des cartes (`tplApplySearch()`), jamais de `renderTemplates()` à la frappe.
 - **Votre message** : bloc replié au départ (`details/summary`), choix ouvert/fermé en mémoire UI.
 - **Configuration → Journées** (25/10) : sous-onglets « Ouvertes (N) » / « Archivées (M) » (`S.permView`) ; le
   bouton d'archivage RGPD reste dans « Ouvertes », « Restaurer » dans « Archivées ». **Règle d'archivage (25/10,
