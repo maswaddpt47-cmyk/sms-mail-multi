@@ -2999,7 +2999,7 @@ function renderArchivedYearStats(wrap,arc){
     var n=(arc.byType&&arc.byType[t[0]])||0;if(!n)return;
     typeCard.appendChild(barRow(t[1],Math.round(n/typeTotal*100),'oklch(0.56 0.15 264)',n+' ('+Math.round(n/typeTotal*100)+'%)'));
   });
-  if(typeof arc.relances==='number')typeCard.appendChild(relanceNote(arc.relances,arc.relancesSur||0));
+  if(typeof arc.relances==='number')typeCard.appendChild(relanceNote(arc.relances,arc.relancesSur||0,function(l,p,c,v){return barRow(l,p,c,v);}));
   wrap.appendChild(typeCard);
 
   var cmsList=Object.keys(arc.byCMS||{}).map(function(k){return{nom:k,n:arc.byCMS[k]};}).sort(function(a,b){return b.n-a.n;});
@@ -3397,11 +3397,11 @@ function buildPermanencesCard(rdv,rerender){
 }
 /* AG-005 (26/10) : « fiches avec relance renseignée » — une marque de relance (date ou type), pas la preuve d'un envoi ; la période et le CMS
    sélectionnent les fiches, pas la date de relance. Hors du volume de messages (autre unité). */
-function relanceNote(n,total){
+function relanceNote(n,total,bar){
   var box=el('div',{style:"margin-top:12px;padding-top:10px;border-top:1px solid var(--c-border);"});
   var pct=total?Math.round(n/total*100):0;
-  box.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-text);"},'Fiches avec relance renseignée : '+n+' / '+total+' ('+pct+'%)'));
-  box.appendChild(el('div',{style:"color:var(--c-muted);font-size:11px;margin-top:4px;line-height:1.5;"},"Date ou type « relance » sur la fiche ; l'envoi n'est pas vérifié. La période et le CMS choisissent les fiches, pas la date de la relance."));
+  box.appendChild(bar('Fiches avec relance renseignée',pct,'oklch(0.65 0.2 45)',n+' / '+total+' ('+pct+'%)'));
+  box.appendChild(el('div',{style:"color:var(--c-muted);font-size:11px;margin-top:8px;line-height:1.5;"},"Date ou type « relance » sur la fiche ; l'envoi n'est pas vérifié. La période et le CMS choisissent les fiches, pas la date de la relance."));
   return box;
 }
 function renderStats(){
@@ -3841,12 +3841,12 @@ function renderStats(){
   hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
   var relanceN=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length;
   var typeCard=card("Répartition par type");
-  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"},{k:"relance",lbl:"Relance",col:"oklch(0.65 0.2 45)"}];
+  var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   typeList.forEach(function(t){if(!typeMap[t.k])return;var pct=Math.round(typeMap[t.k]/typeTotal*100);tw.appendChild(barRow(t.lbl,pct,t.col,typeMap[t.k]+" ("+pct+"%)",null));});
   typeCard.appendChild(tw);
-  typeCard.appendChild(relanceNote(relanceN,hist.length));
+  typeCard.appendChild(relanceNote(relanceN,hist.length,function(l,p,c,v){return barRow(l,p,c,v,null);}));
   col2.appendChild(typeCard);
 
   var cmsMap={};
