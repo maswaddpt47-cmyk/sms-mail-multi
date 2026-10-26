@@ -4963,7 +4963,8 @@ function renderAgenda(){
       var pillContent=el('span',{class:'ui-ag-slot-content'});
       var pillActions=el('span',{class:'ui-ag-slot-actions'});
       var _uiStatus=isIndispo?'Indisponible':slot.multiPropo?'Réservations multiples':((STATUT_STYLES[_st]&&STATUT_STYLES[_st].label)||'Réservé');
-      pillActions.appendChild(el('span',{class:'ui-ag-status'},_uiStatus));
+      /* relance sans réponse : « Libérer ? » prend la place du libellé « En attente » (clignotement + couleur suffisent, 26/10) */
+      if(!(slot.taken&&isSansReponse(slot.taken)))pillActions.appendChild(el('span',{class:'ui-ag-status'},_uiStatus));
       if(slot.freeAgain)pillActions.appendChild(el('span',{class:'ui-ag-reopened'},'À nouveau libre'));
       pillActions.appendChild(el('span',{class:'ui-ag-open'},isIndispo?'Libérer →':'Ouvrir →'));
       if(slot.taken&&slot.multiPropo){
