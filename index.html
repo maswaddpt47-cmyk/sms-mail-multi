@@ -2989,7 +2989,7 @@ function renderArchivedYearStats(wrap,arc){
    Les fiches suivent l'unité existante de l'historique (addHistory remplace la
    même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
 function statsRdvModel(history,permanences,period,cms,now){
-  var today=toLocalDateStr(now),start=null;
+  var today=parisDayStr(now),start=null;
   var months={ '1m':1,'3m':3,'6m':6 };
   if(months[period]){
     var d=new Date(now.getFullYear(),now.getMonth()-months[period],1,12);
@@ -2997,7 +2997,7 @@ function statsRdvModel(history,permanences,period,cms,now){
     start=toLocalDateStr(d);
   }
   function inRange(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&(!start||(date>=start&&date<=today));}
-  var entries=history.filter(function(h){return h.msgType!=='indispo'&&inRange(h.date)&&(!cms||h.commune===cms);});
+  var entries=history.filter(function(h){return h.msgType!=='indispo'&&inRange(h.date)&&(!cms||cmsKey(h.commune)===cmsKey(cms));});
   var past=entries.filter(function(h){return h.date<=today;}),realised=past.filter(function(h){return h.statut==='realise';});
   var lapins=past.filter(function(h){return h.statut==='lapin';});
   var byMonth={},byDemarche={};
@@ -3005,12 +3005,14 @@ function statsRdvModel(history,permanences,period,cms,now){
   entries.forEach(function(h){var key=h.date.slice(0,7);if(!byMonth[key]){byMonth[key]={};keys.forEach(function(k){byMonth[key][k]=0;});}
     byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
   });
-  realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;});
+  var sansDemarche=0;
+  realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;else sansDemarche++;});
   /* usagers accompagnés (personnes distinctes parmi les fiches Réalisé) et fiches par statut : calculés
      ici pour que l'écran et le bilan mensuel partagent la même population (25/10) */
   var accompanied={};realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
   var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
-  entries.forEach(function(h){if(h.statut&&byStatut[h.statut]!==undefined)byStatut[h.statut]++;});
+  /* statut vide ou inconnu = « en attente », comme le graphe mensuel et `computeYearArchive` */
+  entries.forEach(function(h){byStatut[byStatut[h.statut]!==undefined?h.statut:'en_attente']++;});
   /* Trois places par demi-journée, six par journée complète. Les blocages de
      fermeture de l'autre moitié ne sont pas des places bloquées sur la moitié ouverte. */
   var seen={},days=[];
@@ -3029,7 +3031,7 @@ function statsRdvModel(history,permanences,period,cms,now){
     return '';
   }
   permanences.forEach(function(p){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived||cms&&p.commune!==cms)return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived||cms&&cmsKey(p.commune)!==cmsKey(cms))return;
     var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
     var allSlots=getSlots(p.commune,p.exceptDate,history,p),half=assignedHalf(p,allSlots),total=half?3:6;
     var lunchN=allSlots.filter(isLunchBreak).length; /* la pause déjeuner automatique n'est ni une place ni un blocage */
@@ -3075,29 +3077,37 @@ function statsRdvModel(history,permanences,period,cms,now){
      un créneau libéré puis réattribué porte plusieurs fiches et ne vaut qu'un rendez-vous
      (constat utilisateur 23/10 : « 2 lapins sur 8 » pour 6 créneaux). */
   var perDay={};
-  past.forEach(function(h){var k=h.date+'|'+(h.commune||'');var d=perDay[k]||(perDay[k]={date:h.date,commune:h.commune||'',slots:{},lapinSlots:{}});
+  past.forEach(function(h){if(!h.heure)return;var k=h.date+'|'+cmsKey(h.commune);var d=perDay[k]||(perDay[k]={date:h.date,commune:h.commune||'',slots:{},lapinSlots:{}});
     d.slots[h.heure||'']=true;if(h.statut==='lapin')d.lapinSlots[h.heure||'']=true;});
   var lapinDays=Object.keys(perDay).map(function(k){var d=perDay[k];return {date:d.date,commune:d.commune,lapins:Object.keys(d.lapinSlots).length,total:Object.keys(d.slots).length};})
     .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,sansDemarche:sansDemarche,free:free};
 }
 
 /* Taux par créneau (demande utilisateur 23/10, remplace le comptage par fiche du 27/09) : un
    créneau (date, CMS, heure) vaut un rendez-vous, même s'il porte plusieurs fiches (libéré puis
    réattribué). Il est « réalisé » s'il porte au moins une fiche Réalisé, « lapin » s'il porte au
    moins une fiche Lapin. Les deux peuvent se cumuler (lapin puis réattribué et réalisé). */
+/* Audit Codex du 26/10/2026 (AG-004) : jour courant imposé en Europe/Paris (et non le fuseau de l'appareil) ;
+   un même CMS écrit de deux façons (casse, accents, espaces) reste un seul CMS pour les comptes. */
+function parisDayStr(d){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}
+  catch(e){return toLocalDateStr(d);}
+}
+function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
 function slotRates(entries){
-  var slots={};
+  var slots={},sansHeure=0;
   entries.forEach(function(h){
-    var k=h.date+'|'+(h.commune||'')+'|'+(h.heure||'');
+    if(!h.heure){sansHeure++;return;}   /* sans heure : identité horaire inconnue, ni créneau ni taux */
+    var k=h.date+'|'+cmsKey(h.commune)+'|'+h.heure;
     var s=slots[k]||(slots[k]={realise:false,lapin:false});
     if(h.statut==='realise')s.realise=true;
     if(h.statut==='lapin')s.lapin=true;
   });
   var keys=Object.keys(slots);
-  return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length};
+  return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length,sansHeure:sansHeure};
 }
 
 /* Bilan mensuel imprimable (25/10/2026, tâche autorisée) : réutilise statsRdvModel et slotRates, aucune
@@ -3110,8 +3120,8 @@ function monthlyReportData(history,month,cms,now){
   var inMonth=history.filter(function(h){return h.date&&String(h.date).slice(0,7)===month;});
   function model(commune){return statsRdvModel(inMonth,[],'all',commune,end);}
   var total=model(cms||'');
-  var communes={};inMonth.forEach(function(h){if(h.msgType!=='indispo'&&h.commune&&(!cms||h.commune===cms))communes[h.commune]=true;});
-  var byCms=Object.keys(communes).sort().map(function(c){var r=model(c);return {cms:c,entries:r.entries.length,realised:r.realised.length,slots:r.slotRates.total,realisedSlots:r.slotRates.realised,lapinSlots:r.slotRates.lapins};});
+  var communes={};inMonth.forEach(function(h){if(h.msgType!=='indispo'&&h.commune&&(!cms||cmsKey(h.commune)===cmsKey(cms))&&!communes[cmsKey(h.commune)])communes[cmsKey(h.commune)]=h.commune.trim();});
+  var byCms=Object.keys(communes).map(function(k){return communes[k];}).sort().map(function(c){var r=model(c);return {cms:c,entries:r.entries.length,realised:r.realised.length,slots:r.slotRates.total,realisedSlots:r.slotRates.realised,lapinSlots:r.slotRates.lapins};});
   var dem=Object.keys(total.byDemarche).map(function(k){return {nom:k,n:total.byDemarche[k]};}).sort(function(a,b){return b.n-a.n||a.nom.localeCompare(b.nom);});
   var top=dem.slice(0,10),others=dem.slice(10);
   function pct(n,d){return d?Math.round(n/d*100):null;}
@@ -3121,6 +3131,9 @@ function monthlyReportData(history,month,cms,now){
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
     demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
     byCms:byCms,empty:!total.entries.length,
+    sansCms:total.entries.filter(function(h){return !h.commune;}).length,
+    sansCmsRealised:total.entries.filter(function(h){return !h.commune&&h.statut==='realise';}).length,
+    sansHeure:total.slotRates.sansHeure,sansDemarche:total.sansDemarche,
     nonPointes:typeof isAPointer==='function'?total.past.filter(isAPointer).length:null};
 }
 
@@ -3152,23 +3165,26 @@ function monthlyReportHtml(d,meta){
     STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
     h+='</table></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
-    if(!d.demarches.length)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
+    if(!d.demarches.length&&!d.sansDemarche)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
       h+='<table><tr><th>Démarche</th><th>RDV réalisés</th></tr>';
       d.demarches.forEach(function(x){h+='<tr><td>'+esc(x.nom)+'</td><td class="n">'+x.n+'</td></tr>';});
       if(d.otherDemarches)h+='<tr><td>Autres démarches ('+d.otherDemarches+')</td><td class="n">'+d.otherDemarchesN+'</td></tr>';
+      if(d.sansDemarche)h+='<tr><td>Démarche non renseignée</td><td class="n">'+d.sansDemarche+'</td></tr>';
       h+='</table>';
     }
     h+='</section>';
     h+='<section><h2>Répartition par CMS</h2><table><tr><th>CMS</th><th>RDV enregistrés</th><th>RDV réalisés</th><th>Créneaux horaires échus</th><th>Concrétisation</th><th>Lapin</th></tr>';
     d.byCms.forEach(function(c){h+='<tr><td>'+esc(c.cms)+'</td><td class="n">'+c.entries+'</td><td class="n">'+c.realised+'</td><td class="n">'+c.slots+'</td><td class="n">'+(c.slots?Math.round(c.realisedSlots/c.slots*100)+' %':'—')+'</td><td class="n">'+(c.slots?Math.round(c.lapinSlots/c.slots*100)+' %':'—')+'</td></tr>';});
+    if(d.sansCms&&!d.cms)h+='<tr><td>CMS non renseigné</td><td class="n">'+d.sansCms+'</td><td class="n">'+d.sansCmsRealised+'</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>';
     h+='</table></section>';
   }
   h+='<section><h2>Sources, unités et limites</h2><ul>'
     +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', créneaux bloqués exclus. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
     +'<li>Les nombres comptent des <b>rendez-vous enregistrés</b> (un rendez-vous annulé, excusé ou lapin puis remplacé laisse plusieurs enregistrements sur un même créneau) ; les taux comptent des <b>créneaux horaires</b> (date, CMS, heure) échus à la date du '+esc(String(d.today).split('-').reverse().join('/'))+' : un créneau réattribué ne vaut qu’un rendez-vous. Un créneau compte comme réalisé (ou lapin) s’il porte au moins un rendez-vous au statut Réalisé (ou Lapin) ; les deux peuvent se cumuler.</li>'
     +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’ont pas été pointés : ils font baisser la concrétisation.</li>':'')
-    +'<li>Aucun nom, téléphone, note ni message individuel ne figure dans ce bilan.</li></ul></section></div>';
+    +(d.sansHeure?'<li>'+d.sansHeure+' rendez-vous enregistré'+(d.sansHeure>1?'s':'')+' sans heure ne '+(d.sansHeure>1?'sont':'est')+' pas compté'+(d.sansHeure>1?'s':'')+' dans les créneaux ni dans les taux.</li>':'')
+    +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles : à relire avant toute diffusion.</li></ul></section></div>';
   return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */
 }
 function printMonthlyReport(html,title){

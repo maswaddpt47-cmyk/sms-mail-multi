@@ -106,7 +106,7 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/Aucun nom, téléphone, note ni message/);
+assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);
@@ -159,4 +159,29 @@ assert.equal(ctx.getSlots('Marmande','2026-11-10',[]).map(s=>s.heure).join(','),
 assert.match(ctx.getSlots('Marmande','2026-11-10',[row('o1','2026-11-10','confirme','12:30','Marmande')]).map(s=>s.heure).join(','),/11:30,12:30,13:30/);   // RDV déjà pris à 12:30 : conservé
 assert.match(ctx.getSlots('Marmande','2026-11-10',[],{...gp,exceptDate:'2026-11-10'}).map(s=>s.heure).join(','),/11:30,12:30,13:30/);                // journée ouverte : 12:30 présent
 delete ctx.getPermanence;
+// Audit Codex (AG-004) : données manquantes, fuseau Paris, variantes de CMS.
+const nowQ=new Date(2026,9,25,12);
+const q=(arr,month='2026-10',cms='')=>ctx.monthlyReportData(arr,month,cms,nowQ);
+const qr=(id,h,st,c,dem,extra={})=>({...row(id,'2026-10-05',st,h,c),demarche:dem,...extra});
+// CMS absent : ligne « CMS non renseigné », la somme des lignes retrouve le total
+const noC=q([qr('n1','09:30','realise','A','Impôts'),qr('n2','10:30','realise','','Impôts')]);
+assert.equal(noC.entries,2);assert.equal(noC.byCms.reduce((n,c)=>n+c.entries,0)+noC.sansCms,noC.entries);assert.equal(noC.sansCms+'|'+noC.sansCmsRealised,'1|1');
+assert.match(ctx.monthlyReportHtml(noC,{profil:'P',date:'d'}),/CMS non renseigné/);
+// Heure absente : ni créneau ni taux, signalée
+const noH=q([qr('h1','','realise','A','X'),qr('h2','','lapin','A','X')]);
+assert.equal(noH.slots+'|'+noH.sansHeure+'|'+noH.concretPct+'|'+noH.lapinPct,'0|2|null|null');assert.match(ctx.monthlyReportHtml(noH,{profil:'P',date:'d'}),/sans heure/);
+// Statut absent : classé « en attente » partout, la répartition retrouve le total
+const noS=q([qr('s1','09:30',null,'A','X'),qr('s2','10:30','realise','A','X')]);
+assert.equal(Object.values(noS.byStatut).reduce((a,b)=>a+b,0),noS.entries);assert.equal(noS.byStatut.en_attente,1);
+// Démarche absente : comptée et nommée, plus de « Aucun accompagnement » contradictoire
+const noD=q([qr('d1','09:30','realise','A','')]);
+assert.equal(noD.realised+'|'+noD.sansDemarche,'1|1');const hd=ctx.monthlyReportHtml(noD,{profil:'P',date:'d'});assert.match(hd,/Démarche non renseignée/);assert.doesNotMatch(hd,/Aucun accompagnement réalisé/);
+// Fuseau : le 01/10 à 00 h 30 Paris, le jour courant est le 01/10 (même si l'appareil est en UTC)
+const t0=new Date(Date.UTC(2026,8,30,22,30));assert.equal(ctx.parisDayStr(t0),'2026-10-01');
+const tz=ctx.statsRdvModel([{...row('z1','2026-10-01','realise','09:30','A')}],[],'all','',t0);assert.equal(tz.slotRates.total+'|'+tz.slotRates.realised,'1|1');
+// Variantes de CMS : « Fumel » et « FUMEL » sont un seul CMS (un créneau, 100 % / 100 %), filtre inclus
+const vr=[qr('v1','09:30','realise','Fumel','X'),qr('v2','09:30','lapin','FUMEL','X')];
+const v=q(vr);assert.equal(v.slots+'|'+v.concretPct+'|'+v.lapinPct+'|'+v.byCms.length,'1|100|100|1');assert.equal(q(vr,'2026-10','fumel').entries,2);
+// Promesse de confidentialité : plus aucune formule absolue, rappel de relire les textes libres
+const ph=ctx.monthlyReportHtml(v,{profil:'P',date:'d'});assert.match(ph,/saisies librement/);assert.doesNotMatch(ph,/Aucun nom, téléphone/);
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
