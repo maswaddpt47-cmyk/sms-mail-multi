@@ -1917,15 +1917,22 @@ function isDepasse(h){
    `tsRelance` (horodatage ISO) est posé à l'enregistrement de la relance ; sans lui (relances antérieures), pas d'alerte. */
 var RELANCE_REPONSE_H=3; /* défaut ; réglable dans Configuration (S.relanceReponseH, clé globale ess-relance-reponse-h) */
 function relanceReponseH(){return Math.min(72,Math.max(1,parseInt(S.relanceReponseH,10)||RELANCE_REPONSE_H));}
+/* Instant de la relance : `tsRelance` si connu ; sinon (relances d'avant le 26/10, date seule) la **fin** de la journée
+   `dateRelance` — borne basse du temps écoulé : on n'alerte jamais trop tôt, mais une relance de la veille ou plus ancienne alerte. */
+function relanceTs(h){
+  if(h.tsRelance){var t=Date.parse(h.tsRelance);if(!isNaN(t))return t;}
+  if(h.dateRelance){var d=new Date(h.dateRelance.slice(0,10)+'T23:59:59');if(!isNaN(d.getTime()))return d.getTime();}
+  return NaN;
+}
 function isSansReponse(h){
-  if(!h||h.statut!=='en_attente'||!h.dateRelance||!h.tsRelance||h.msgType==='indispo')return false;
-  var t=Date.parse(h.tsRelance);
+  if(!h||h.statut!=='en_attente'||!h.dateRelance||h.msgType==='indispo')return false;
+  var t=relanceTs(h);
   return !isNaN(t)&&Date.now()-t>=relanceReponseH()*3600000;
 }
 function libererApresRelance(h){
-  var t=Date.parse(h.tsRelance),n=isNaN(t)?0:Math.floor((Date.now()-t)/3600000);
+  var t=relanceTs(h),n=isNaN(t)?0:Math.floor((Date.now()-t)/3600000);
   var qui=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'cet usager';
-  if(!confirm('Relancé il y a '+n+' h, sans réponse de '+qui+'.\nLibérer le créneau de '+(h.heure||'')+' (statut « Pas de retour ») ?'))return;
+  if(!confirm('Relancé '+(h.tsRelance?'il y a '+n+' h':'le '+h.dateRelance.slice(8,10)+'/'+h.dateRelance.slice(5,7))+', sans réponse de '+qui+'.\nLibérer le créneau de '+(h.heure||'')+' (statut « Pas de retour ») ?'))return;
   pointerStatut(h,'pas_de_retour');
   showToast('✓ Créneau libéré');
 }
