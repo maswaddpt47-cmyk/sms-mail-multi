@@ -126,7 +126,8 @@ dans « Points à ne pas défaire ».
   retiré** ; la suppression passe par la fiche RDV.
 - Tuile entière colorée par statut (fond adouci clair, assombri sombre ;
   repli `color-mix()` sous `@supports`). Mode sombre : bordure `#6e8797`,
-  fond `#182a35`, rail de statut 4 px.
+  fond `#182a35`, rail de statut 4 px. **« il y a N j » (jours depuis l'envoi, `dateDemande`) sur toute tuile non confirmée** :
+  masqué par la refonte du 19/10 sans décision, rétabli le 26/10 (`.ui-ag-meta`).
 - **Clignotement** : badges du menu (dépassement, à pointer) **et** tuiles
   `.ag-depasse`/`.ag-apointer`. La règle `#pane-agenda .ui-ag-slot{animation:none}`
   avait écrasé le clignotement des tuiles ; la règle de spécificité égale
@@ -135,8 +136,7 @@ dans « Points à ne pas défaire ».
 - **Onglet resté ouvert plusieurs jours** : `renderAgenda()` réinitialise
   `agendaTimelineDate`/`agendaFocusDay` quand le jour change
   (`S._agendaLastKnownDay`, en mémoire). Validé 20/10.
-- Indice de défilement des onglets mobiles : dégradé 28 px, CSS pur,
-  `@media(max-width:760px)`.
+- Indice de défilement des onglets mobiles : dégradé 28 px, CSS pur, `max-width:760px`.
 - Fiche RDV : panneau (bas sur mobile), identité/téléphone/démarche, statut
   modifiable, suivi repliable ; Préparer et Modifier en actions principales.
   La modification conserve le propriétaire ; la duplication passe par les
