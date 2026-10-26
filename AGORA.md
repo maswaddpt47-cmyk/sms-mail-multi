@@ -198,3 +198,70 @@ grille, 12:30 qui n'est pas une pause) ; 5) données personnelles ou HTML non é
 l'archivage automatique peuvent-ils changer un nombre ?
 **Réponse attendue** : selon le gabarit ci-dessous, un défaut par ligne avec `fichier:ligne` et scénario chiffré, puis
 « Ce que je n'ai pas pu vérifier ». Lecture seule : ne rien modifier.
+
+### Réponse — Codex — 26/10/2026
+*(inscrite telle quelle par la session qui a ouvert le bloc, sans reformulation ni jugement ; les tableaux gardent leurs séparateurs d'origine)*
+
+```text
+Réponse — Codex — 26/10/2026
+
+Auteur : Codex, session distincte de l’auteur du bloc (Claude-Session: 01Dtnmsd…) — lu sur 66b9b62, branche main, récupérée via le connecteur GitHub après échec du clonage.
+
+Verdict : amendé.
+
+Constat : aucun écart de calcul sur l’export fourni, pour les 20 sélections mois/CMS examinées. Des défauts reproduits sur données fictives empêchent toutefois de garantir les chiffres et la confidentialité dans tous les cas admis par l’application.
+
+Recomptage indépendant en Python, comparé aux fonctions JavaScript sources et au HTML généré. Référence : 25/10/2026, fuseau Paris.
+
+Dans le tableau : F/R/U = fiches enregistrées/réalisées/personnes accompagnées ; C/R/L = créneaux échus/avec réalisé/avec lapin ; % = concrétisation/lapin.
+
+Mois — CMS	Affiché : F/R/U ; C/R/L ; %	Recompté	Écart	Explication
+
+07 — Tous	23/19/19 ; 23/19/3 ; 83/13	23/19/19 ; 23/19/3 ; 83/13	0	Conforme
+07 — Fumel	10/8/8 ; 10/8/2 ; 80/20	10/8/8 ; 10/8/2 ; 80/20	0	Conforme
+07 — Marmande	10/9/9 ; 10/9/0 ; 90/0	10/9/9 ; 10/9/0 ; 90/0	0	Conforme
+07 — Villeneuve	3/2/2 ; 3/2/1 ; 67/33	3/2/2 ; 3/2/1 ; 67/33	0	Conforme
+08 — Tous	42/25/24 ; 39/25/4 ; 64/10	42/25/24 ; 39/25/4 ; 64/10	0	Conforme
+08 — Fumel	24/13/12 ; 21/13/3 ; 62/14	24/13/12 ; 21/13/3 ; 62/14	0	Conforme
+08 — Marmande	11/7/7 ; 11/7/0 ; 64/0	11/7/7 ; 11/7/0 ; 64/0	0	Conforme
+08 — Saint-Pardoux	2/2/2 ; 2/2/0 ; 100/0	2/2/2 ; 2/2/0 ; 100/0	0	Conforme
+08 — Villeneuve	5/3/3 ; 5/3/1 ; 60/20	5/3/3 ; 5/3/1 ; 60/20	0	Conforme
+09 — Tous	23/17/17 ; 22/17/1 ; 77/5	23/17/17 ; 22/17/1 ; 77/5	0	Conforme
+09 — Fumel	7/6/6 ; 7/6/0 ; 86/0	7/6/6 ; 7/6/0 ; 86/0	0	Conforme
+09 — Marmande	14/9/9 ; 13/9/1 ; 69/8	14/9/9 ; 13/9/1 ; 69/8	0	Conforme
+09 — Saint-Pardoux	2/2/2 ; 2/2/0 ; 100/0	2/2/2 ; 2/2/0 ; 100/0	0	Conforme
+10 — Tous	62/31/29 ; 42/31/5 ; 74/12	62/31/29 ; 42/31/5 ; 74/12	0	Conforme
+10 — Fumel	31/16/14 ; 23/16/3 ; 70/13	31/16/14 ; 23/16/3 ; 70/13	0	Conforme
+10 — Marmande	31/15/15 ; 19/15/2 ; 79/11	31/15/15 ; 19/15/2 ; 79/11	0	Conforme
+07 et 10 — Saint-Pardoux ; 09 et 10 — Villeneuve	État vide	0 rendez-vous	0	Quatre sélections vides
+
+Les répartitions par statut et les comptes par démarche concordent également. La somme des CMS retrouve les totaux ; les pourcentages ne s’additionnent pas. En octobre, 11 fiches futures entrent dans les 62 fiches, mais pas dans les 42 créneaux échus.
+
+Défauts reproduits — un défaut par ligne :
+
+Référence	Constat et scénario chiffré	Amendement
+
+index.html:2495, index.html:3158, index.html:3171	Confidentialité : une seule fiche réalisée dont la démarche libre contient un nom ou un téléphone suffit à reproduire ce texte dans le bilan. L’échappement HTML protège des balises, pas de cette divulgation. La promesse « Aucun nom, téléphone… » est donc trop forte.	Réserver les libellés diffusés à une nomenclature contrôlée ; regrouper les textes libres sous un libellé neutre.
+index.html:3113	CMS absent : une fiche sans commune donne 1 rendez-vous au total, 0 dans la somme des CMS.	Ajouter une ligne « CMS non renseigné » et rendre ces fiches repérables.
+index.html:3094	Heure absente : deux fiches du même jour/CMS, sans heure, l’une réalisée et l’autre lapin, deviennent 1 créneau, avec 100 % réalisé et 100 % lapin, alors que leur identité horaire est inconnue.	Signaler les fiches non mesurables et leur exclusion des taux ; ne pas présenter une heure inconnue comme un créneau certain.
+index.html:3006, index.html:3013	Statut absent : une fiche sans statut donne 1 rendez-vous, 0 dans la répartition des statuts, tandis que le graphe mensuel la classe « En attente ». Le statut peut être vidé dans la fiche (index.html:6290).	Employer une catégorie explicite « Non renseigné » commune aux vues.
+index.html:3008, index.html:3155	Démarche absente : une fiche réalisée sans démarche affiche simultanément 1 réalisé et « Aucun accompagnement réalisé ce mois-ci ». L’import ICS crée des démarches vides (index.html:3965).	Afficher « Démarche non renseignée » et conserver son nombre de réalisations.
+index.html:1706, index.html:2992	Paris non imposé : au même instant, le 01/10 à 00 h 30 Paris, un rendez-vous réalisé du 01/10 donne 0 créneau en environnement UTC, contre 1 créneau et 100 % en Europe/Paris. Le calcul suit le fuseau de l’appareil.	Fixer explicitement le jour et les bornes mensuelles en Europe/Paris.
+index.html:3000, index.html:3094	Deux écritures d’un même CMS : « Fumel » et « FUMEL », même date/heure, avec réalisé puis lapin, donnent 2 créneaux et 50 %/50 %, au lieu de 1 créneau et 100 %/100 % si ces libellés désignent bien le même CMS.	Résoudre les variantes vers un identifiant de CMS, ou signaler l’ambiguïté avant diffusion.
+
+Ces défauts de données manquantes ou variantes ne produisent aucun écart sur l’export examiné.
+
+Autres contrôles :
+
+- Top 10 : les totaux restent complets grâce à « Autres » : août 22 + 3 = 25, octobre 27 + 4 = 31. En revanche, trois et quatre intitulés respectivement disparaissent de la liste (index.html:3116, index.html:3159).
+- HTML : les charges fictives contenant des balises sont échappées dans les libellés testés. Les champs individuels nom, prénom, téléphone, notes et corps du message ne sont pas repris directement. Le défaut de confidentialité ci-dessus concerne les textes libres diffusés.
+- Lecture seule : les calculs répétés et la génération du HTML ne modifient pas leurs entrées.
+- Cycle import/rechargement/réimport : trois cycles avec stockage simulé conservent les 190 entrées originales et leurs champs. Le premier rechargement ajoute 4 pauses indispo, puis le nombre se stabilise à 194. Les bilans restent identiques. L’archivage automatique masque des journées sans supprimer l’historique (index.html:1743, index.html:1947).
+- Grille et horaires : changer la grille du CMS ne change pas les bilans historiques ; un vrai rendez-vous à 12:30 ou hors grille reste compté. L’archivage annuel manuel purge, lui, le détail (index.html:2878) ; le bilan mensuel ne reprend pas les archives et le signale.
+
+Amendement : conserver le principe d’audit préalable, mais ne pas considérer AG-004 comme une autorisation générale de diffusion. Les chiffres de cet export concordent ; la garantie de confidentialité et les défauts ci-dessus restent à traiter.
+
+Ce que je n’ai pas pu vérifier : l’export original non pseudonymisé, la conservation des identités lors de la pseudonymisation, l’autre profil, le rendu et l’impression dans le navigateur de l’utilisateur, ainsi que les sauvegardes réseau réelles. « Affiché » désigne ici les valeurs produites par le code et son HTML, sans observation du navigateur.
+
+Aucun fichier du dépôt modifié, aucune réponse publiée dans AGORA.
+```
