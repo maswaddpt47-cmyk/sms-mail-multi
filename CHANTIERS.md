@@ -73,9 +73,9 @@ dans « Points à ne pas défaire ».
 - **Badges rouge (dépassement) et orange (à pointer) de l'onglet Agenda cliquables** (25/10) : ouvrent
   l'Agenda au jour du **premier** RDV concerné (`badgeGo`, `stopPropagation` : sans lui le clic remontait à
   l'onglet et un second rendu effaçait la date). Le badge vert (RDV du jour) reste inerte.
-- **Place disponible cliquable dans « Prochaines permanences »** (25/10) : ouvre **Messages (Générer)** avec `S.date`,
-  `S.commune` et l'adresse CMS ; `S.heure` vidée (l'heure se choisit dans la grille) ; retour en haut de page ; brouillon
-  d'usager conservé ; case focusable (Entrée/Espace).
+- **Barres de « Prochaines permanences » = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
+  (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
+  `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
