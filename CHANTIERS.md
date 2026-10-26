@@ -74,9 +74,12 @@ dans « Points à ne pas défaire ».
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
   Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
-- **Relancé sans réponse après 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (horodatage ISO, additif, posé à la copie
-  de la relance ; sans lui, borne haute : fin du jour `dateRelance` ou mise en ligne du 26/10 11:40, d'où alerte rétroactive) ; si `en_attente` ≥ 3 h après
-  (`isSansReponse`) : tuile clignotante, « ⏰ Libérer ? » (confirmation → « Pas de retour »), badge, bandeau ; contrôle /60 s. **Délai réglable** (Configuration → Général, 1-72 h, défaut 3).
+- **Relancé sans réponse ≥ 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (ISO, additif, posé à la copie de la relance ; sans lui,
+  borne haute = fin du jour `dateRelance` ou mise en ligne du 26/10 11:40, d'où alerte rétroactive). `isSansReponse` : tuile qui
+  clignote, « ⏰ Libérer ? » (→ « Pas de retour ») remplace « En attente », badge, bandeau, contrôle /60 s ; délai réglable
+  (Configuration → Général, 1-72 h, défaut 3). Créneau libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
+- **Stat « Répartition par type » : Relance = fiches relancées** (26/10) : une relance pose `dateRelance` sans créer de fiche
+  (27 relancées pour 1 de type `relance` en sauvegarde) ; une fois par fiche, note sous la carte.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
