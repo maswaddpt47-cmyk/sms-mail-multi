@@ -1917,11 +1917,13 @@ function isDepasse(h){
    `tsRelance` (horodatage ISO) est posé à l'enregistrement de la relance ; sans lui (relances antérieures), pas d'alerte. */
 var RELANCE_REPONSE_H=3; /* défaut ; réglable dans Configuration (S.relanceReponseH, clé globale ess-relance-reponse-h) */
 function relanceReponseH(){return Math.min(72,Math.max(1,parseInt(S.relanceReponseH,10)||RELANCE_REPONSE_H));}
-/* Instant de la relance : `tsRelance` si connu ; sinon (relances d'avant le 26/10, date seule) la **fin** de la journée
-   `dateRelance` — borne basse du temps écoulé : on n'alerte jamais trop tôt, mais une relance de la veille ou plus ancienne alerte. */
+/* Instant de la relance : `tsRelance` si connu ; sinon (date seule, relances d'avant la mise en ligne de l'heure) une
+   **borne haute** de cet instant : la fin du jour `dateRelance`, ou la mise en ligne de `tsRelance` si la relance date de ce
+   jour-là (elle a forcément été copiée avant, sinon l'heure aurait été enregistrée). On n'alerte donc jamais trop tôt. */
+var TS_RELANCE_EN_LIGNE=Date.parse('2026-10-26T10:40:00Z');
 function relanceTs(h){
   if(h.tsRelance){var t=Date.parse(h.tsRelance);if(!isNaN(t))return t;}
-  if(h.dateRelance){var d=new Date(h.dateRelance.slice(0,10)+'T23:59:59');if(!isNaN(d.getTime()))return d.getTime();}
+  if(h.dateRelance){var d=new Date(h.dateRelance.slice(0,10)+'T23:59:59');if(!isNaN(d.getTime()))return Math.min(d.getTime(),TS_RELANCE_EN_LIGNE);}
   return NaN;
 }
 function isSansReponse(h){
