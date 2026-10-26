@@ -3401,7 +3401,7 @@ function relanceNote(n,total,bar){
   var box=el('div',{style:"margin-top:12px;padding-top:10px;border-top:1px solid var(--c-border);"});
   var pct=total?Math.round(n/total*100):0;
   /* précision en infobulle (toucher ou survol) plutôt qu'en phrase permanente (demande utilisateur 26/10) */
-  var tip="Fiches avec relance renseignée (date ou type) sur "+total+" fiches · l'envoi n'est pas vérifié · la période et le CMS choisissent les fiches, pas la date de la relance";
+  var tip="Fiches relancées (date de relance ou type relance) sur "+total+" fiches · la période et le CMS choisissent les fiches, pas la date de la relance";
   box.appendChild(bar('Relances',pct,'oklch(0.65 0.2 45)',n+' / '+total+' ('+pct+'%)',tip));
   return box;
 }
