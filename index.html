@@ -1091,7 +1091,7 @@ var S={
   civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", dateDemande:new Date().toISOString().slice(0,10),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
-  statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
+  statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, relanceReponseH:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
   cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], yearlyStats:{}, mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, agShowArchived:false, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
@@ -1915,11 +1915,12 @@ function isDepasse(h){
 }
 /* Relancé depuis plus de RELANCE_REPONSE_H heures et toujours « En attente » : le créneau est à libérer (demande utilisateur 26/10).
    `tsRelance` (horodatage ISO) est posé à l'enregistrement de la relance ; sans lui (relances antérieures), pas d'alerte. */
-var RELANCE_REPONSE_H=3;
+var RELANCE_REPONSE_H=3; /* défaut ; réglable dans Configuration (S.relanceReponseH, clé globale ess-relance-reponse-h) */
+function relanceReponseH(){return Math.min(72,Math.max(1,parseInt(S.relanceReponseH,10)||RELANCE_REPONSE_H));}
 function isSansReponse(h){
   if(!h||h.statut!=='en_attente'||!h.dateRelance||!h.tsRelance||h.msgType==='indispo')return false;
   var t=Date.parse(h.tsRelance);
-  return !isNaN(t)&&Date.now()-t>=RELANCE_REPONSE_H*3600000;
+  return !isNaN(t)&&Date.now()-t>=relanceReponseH()*3600000;
 }
 function libererApresRelance(h){
   var t=Date.parse(h.tsRelance),n=isNaN(t)?0:Math.floor((Date.now()-t)/3600000);
@@ -2196,7 +2197,7 @@ function renderTabs(){
       S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();
     };}
     if(d[0]==='agenda'&&overdueN>0){
-      var badgeAg=el('span',{onClick:badgeGo(function(){return S.history.filter(function(h){return isInMyAgenda(h)&&(isDepasse(h)||isSansReponse(h));});}),title:overdueN+' RDV à traiter (en attente au-delà de '+(S.relanceDelai||3)+' jours, ou relancés sans réponse depuis '+RELANCE_REPONSE_H+' h) — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
+      var badgeAg=el('span',{onClick:badgeGo(function(){return S.history.filter(function(h){return isInMyAgenda(h)&&(isDepasse(h)||isSansReponse(h));});}),title:overdueN+' RDV à traiter (en attente au-delà de '+(S.relanceDelai||3)+' jours, ou relancés sans réponse depuis '+relanceReponseH()+' h) — toucher pour ouvrir le premier',style:"cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.2 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;animation:blink 1.4s ease-in-out infinite;"},String(overdueN));
       btn.appendChild(badgeAg);
     }
     if(d[0]==='agenda'&&aPointerN>0){
@@ -4262,7 +4263,7 @@ function renderAgenda(){
     var banner=el('div',{class:'ui-ag-notice',style:"display:flex;align-items:center;gap:12px;background:oklch(0.97 0.06 25);border:1.5px solid oklch(0.78 0.18 25);border-radius:14px;padding:12px 18px;margin-bottom:18px;box-shadow:0 2px 8px oklch(0.5 0.12 25 / .12);"});
     banner.appendChild(el('span',{style:"font-size:22px;"},"⏰"));
     var txt=el('div',{style:"flex:1;"});
-    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.45 0.18 25);"},sans.length+' relance'+(sans.length>1?'s':'')+' sans réponse depuis plus de '+RELANCE_REPONSE_H+' h — créneau'+(sans.length>1?'x':'')+' à libérer'));
+    txt.appendChild(el('div',{style:"font-size:13px;font-weight:800;color:oklch(0.45 0.18 25);"},sans.length+' relance'+(sans.length>1?'s':'')+' sans réponse depuis plus de '+relanceReponseH()+' h — créneau'+(sans.length>1?'x':'')+' à libérer'));
     var noms=sans.slice(0,5).map(function(h){return[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')+(h.heure?' ('+h.heure+')':'');}).filter(Boolean);
     if(noms.length)txt.appendChild(el('div',{style:"font-size:11px;color:oklch(0.55 0.14 25);margin-top:3px;"},noms.join(' · ')+(sans.length>5?' · …':'')));
     banner.appendChild(txt);
@@ -5577,6 +5578,14 @@ function renderConfig(){
       S.relanceDelai=v;lsSet('ess-relance-delai',v);e.target.value=v;renderTabs();showToast('Délai de relance mis à jour');
     });
     card3b.appendChild(delayIn);
+    card3b.appendChild(el('label',{style:"font-size:11px;font-weight:700;color:var(--c-muted);margin:14px 0 4px;display:block;"},"Alerte « Libérer ? » après une relance (heures)"));
+    card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-bottom:6px;line-height:1.5;"},"Une relance restée sans réponse (RDV toujours en attente) fait clignoter la tuile et propose de libérer le créneau passé ce délai."));
+    var repIn=el('input',{type:'number',min:1,max:72,style:INS3+"cursor:text;max-width:120px;",value:relanceReponseH()});
+    repIn.addEventListener('change',function(e){
+      var v=Math.min(72,Math.max(1,parseInt(e.target.value,10)||3));
+      S.relanceReponseH=v;lsSet('ess-relance-reponse-h',v);e.target.value=v;renderTabs();showToast('Délai de l’alerte mis à jour');
+    });
+    card3b.appendChild(repIn);
     card3b.appendChild(el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:10px;line-height:1.5;"},"Les modèles SMS/Mail de relance se modifient dans l'onglet Modèles."));
     records.appendChild(card3b);
 
@@ -7161,7 +7170,7 @@ function loadProfileData(){
   applyLunchBreaks();
   archiveOldDaysCore(true);
   S.calendarType=ls('ess-caltype','google');
-  S.relanceDelai=ls('ess-relance-delai',3);
+  S.relanceDelai=ls('ess-relance-delai',3);S.relanceReponseH=ls('ess-relance-reponse-h',3);
   S.agendaScope='mine';
   S.selectedCMS=last.selectedCMS||"";
   S.selectedDemarche=last.selectedDemarche||"";
