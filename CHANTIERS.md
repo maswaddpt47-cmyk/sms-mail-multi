@@ -54,12 +54,13 @@ dans « Points à ne pas défaire ».
   immédiate. **Cases en ordre chronologique**, tous types mêlés, pauses comprises ; les places
   disponibles (sans heure) finissent la barre (`marks`/`markInfo` dans `statsRdvModel`). **Infobulle par
   case** : heure · statut · nom prénom · démarche, au survol et au toucher (`#stat-tooltip`) ; pas d'accès
-  clavier. Texte de dépassement : date et lieu rappelés.
-- **Lapins par permanence** (carte sous « Prochaines permanences », validée) : journées passées de la
-  période/CMS avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches :
-  un créneau libéré puis réattribué porte plusieurs fiches ; constat « 2/8 » pour 6 créneaux, vérifié sur la
-  sauvegarde réelle). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété dans la carte
-  (`buildCmsSelect`, défilement conservé). Les vues futures suivent le CMS, pas le filtre de période.
+  clavier. Texte de dépassement : date et lieu rappelés. **Heures libres** (26/10, choix utilisateur : adapter cet écran plutôt
+  qu'ajouter une fonction) : « Libres : 11:30 13:30… » sous chaque journée (`freeHours`, mêmes créneaux que les tuiles libres
+  de l'Agenda) ; chaque heure ouvre Messages sur ce créneau (`openMessagesOnSlot`).
+- **Lapins par permanence** (carte sous « Prochaines permanences », validée) : journées passées de la période/CMS avec
+  ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches : un créneau réattribué en
+  porte plusieurs, cas « 2/8 » pour 6 créneaux). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété
+  (`buildCmsSelect`). Les vues futures suivent le CMS, pas le filtre de période.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
 - **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des
   rendez-vous », unité en note de chaque tuile, aides « Unité : … », caption des tableaux = titre +
