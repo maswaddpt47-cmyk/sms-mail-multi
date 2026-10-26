@@ -59,7 +59,7 @@ dans « Points à ne pas défaire ».
   de l'Agenda) ; chaque heure ouvre Messages sur ce créneau (`openMessagesOnSlot`).
   **Cases occupées cliquables** (26/10) : RDV → fenêtre de l'Agenda (`agenda-rdv`, modification), créneau bloqué ou
   pause → « Libérer ? » ; `S._lastModal` rafraîchit les stats (défilement conservé) à la fermeture de la fenêtre.
-- **Lapins par permanence** (carte sous « Prochaines permanences », validée) : journées passées de la période/CMS avec
+- **Lapins par permanence** (carte de Statistiques, validée ; ex-sous « Prochaines permanences ») : journées passées de la période/CMS avec
   ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches : un créneau réattribué en
   porte plusieurs, cas « 2/8 » pour 6 créneaux). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété
   (`buildCmsSelect`). Les vues futures suivent le CMS, pas le filtre de période.
@@ -73,7 +73,7 @@ dans « Points à ne pas défaire ».
 - **Badges rouge (dépassement) et orange (à pointer) de l'onglet Agenda cliquables** (25/10) : ouvrent
   l'Agenda au jour du **premier** RDV concerné (`badgeGo`, `stopPropagation` : sans lui le clic remontait à
   l'onglet et un second rendu effaçait la date). Le badge vert (RDV du jour) reste inerte.
-- **Barres de « Prochaines permanences » = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
+- **Barres de « Prochaines permanences » (onglet Orientations depuis le 26/10) = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
   Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
@@ -297,4 +297,4 @@ Aucune pour l'instant.
 
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
 26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** (badge Agenda, bandeau,
-page profil) ; déplacer « Prochaines permanences » vers Orientations : **proposé, en attente**.
+page profil) ; « Prochaines permanences » **déplacée vers Orientations** (26/10, accord utilisateur ; `buildPermanencesCard`, CMS propre `S.orientCMS`).
