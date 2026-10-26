@@ -4965,7 +4965,15 @@ function renderAgenda(){
       var _uiStatus=isIndispo?'Indisponible':slot.multiPropo?'Réservations multiples':((STATUT_STYLES[_st]&&STATUT_STYLES[_st].label)||'Réservé');
       /* relance sans réponse : « Libérer ? » prend la place du libellé « En attente » (clignotement + couleur suffisent, 26/10) */
       if(!(slot.taken&&isSansReponse(slot.taken)))pillActions.appendChild(el('span',{class:'ui-ag-status'},_uiStatus));
-      if(slot.freeAgain)pillActions.appendChild(el('span',{class:'ui-ag-reopened'},'À nouveau libre'));
+      /* créneau libéré déjà relancé : « ✓ Relancé jj/mm » prend la place de « À nouveau libre » sur la ligne du statut (gain d'une ligne, 26/10) */
+      var _relanceInline=false;
+      if(slot.freeAgain&&slot.taken&&slot.taken.dateRelance&&_st!=='annule'){
+        _relanceInline=true;
+        var _dr=slot.taken.dateRelance,relInl=el('span',{role:'button',class:'ui-ag-inline-action',style:"cursor:pointer;font-family:inherit;text-align:center;border:none;background:oklch(0.5 0.14 155 / .18);color:oklch(0.32 0.13 155);font-size:8px;font-weight:700;border-radius:4px;padding:3px 5px!important;box-sizing:border-box;white-space:nowrap;",title:"Créneau à nouveau libre · relancé le "+_dr.split('-').reverse().join('/')});
+        relInl.textContent='Relancé '+_dr.slice(8,10)+'/'+_dr.slice(5,7);
+        relInl.addEventListener('click',(function(s){return function(e){e.stopPropagation();lancerRelance(s.taken);};})(slot));
+        pillActions.appendChild(relInl);
+      } else if(slot.freeAgain)pillActions.appendChild(el('span',{class:'ui-ag-reopened'},'À nouveau libre'));
       pillActions.appendChild(el('span',{class:'ui-ag-open'},isIndispo?'Libérer →':'Ouvrir →'));
       if(slot.taken&&slot.multiPropo){
         pillContent.appendChild(el('div',{style:"font-size:8px;font-weight:700;color:"+pillTxt+";letter-spacing:0.03em;"},"Réservé ("+slot.allPropo.length+")"));
@@ -5024,7 +5032,7 @@ function renderAgenda(){
         /* décompte depuis l'envoi : uniquement les RDV en attente (décision utilisateur 26/10), là où il sert à relancer */
         if(_ago&&_st==='en_attente')timeEl.appendChild(el('span',{class:'ui-ag-meta'},'· '+_ago));
       }
-      if(_st!=='annule'&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
+      if(_st!=='annule'&&!_relanceInline&&(_isDepasse||(slot.taken&&slot.taken.dateRelance))){
         /* élément div (pas un <button> imbriqué — le pill est déjà un <button>, imbriquer casserait le routage des clics) */
         var _dejaRelance=slot.taken.dateRelance,_sansRep=isSansReponse(slot.taken);
         var _relBg=_sansRep?'oklch(0.56 0.2 25)':_dejaRelance?'oklch(0.5 0.14 155 / .18)':'rgba(0,0,0,0.08)';
