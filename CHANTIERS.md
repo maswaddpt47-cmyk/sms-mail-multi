@@ -76,6 +76,7 @@ dans « Points à ne pas défaire ».
 - **Barres de « Prochaines permanences » = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
+  Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
@@ -294,7 +295,6 @@ Aucune pour l'instant.
 
 ## Pistes d'amélioration
 
-Consigne renforcée et propagation approuvée par l'utilisateur le 25/10/2026 :
-initiative dès l'analyse, recommandations argumentées et examen de la pertinence
-de l'existant. Règle 22 de MD-LIB copiée dans `CLAUDE.md` ; ce registre garde
-les pistes et les décisions, sans reproposer une piste écartée sans fait nouveau.
+Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
+26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** (badge Agenda, bandeau,
+page profil) ; déplacer « Prochaines permanences » vers Orientations : **proposé, en attente**.
