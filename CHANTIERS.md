@@ -57,14 +57,16 @@ dans « Points à ne pas défaire ».
   clavier. Texte de dépassement : date et lieu rappelés. **Heures libres** (26/10, choix utilisateur : adapter cet écran plutôt
   qu'ajouter une fonction) : « Libres : 11:30 13:30… » sous chaque journée (`freeHours`, mêmes créneaux que les tuiles libres
   de l'Agenda) ; chaque heure ouvre Messages sur ce créneau (`openMessagesOnSlot`).
+  **Cases occupées cliquables** (26/10) : RDV → fenêtre de l'Agenda (`agenda-rdv`, modification), créneau bloqué ou
+  pause → « Libérer ? » ; `S._lastModal` rafraîchit les stats (défilement conservé) à la fermeture de la fenêtre.
 - **Lapins par permanence** (carte sous « Prochaines permanences », validée) : journées passées de la période/CMS avec
   ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / **créneaux** de la journée (pas les fiches : un créneau réattribué en
   porte plusieurs, cas « 2/8 » pour 6 créneaux). 10 plus récentes ; `lapinDays` testé ; sélecteur CMS répété
   (`buildCmsSelect`). Les vues futures suivent le CMS, pas le filtre de période.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
-- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des
-  rendez-vous », unité en note de chaque tuile, aides « Unité : … », caption des tableaux = titre +
-  description). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». Aucun calcul modifié. Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
+- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous »,
+  unité en note de chaque tuile, aides « Unité : … »). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
+  Compteurs animés : `countUp()` partagé, coupé si mouvement réduit.
 - **Date et lieu des prochaines permanences → Agenda** (25/10) : `ui-permanence-link` (clavier Entrée) →
   `agendaScope='mine'`, archives masquées, `agendaTimelineDate` + `agendaFocusDay` (`date|CMS|profil actif`),
   mode journée avec « Quitter le focus ». Consultation seule. Non éprouvé avec deux CMS le même jour.
