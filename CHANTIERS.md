@@ -127,7 +127,7 @@ dans « Points à ne pas défaire ».
 - Tuile entière colorée par statut (fond adouci clair, assombri sombre ;
   repli `color-mix()` sous `@supports`). Mode sombre : bordure `#6e8797`,
   fond `#182a35`, rail de statut 4 px. **« il y a N j » (jours depuis l'envoi, `dateDemande`) sur les tuiles « En attente » seulement, à côté de l'heure**
-  (choix utilisateur 26/10) : masqué par la refonte du 19/10 sans décision, rétabli le 26/10 (`.ui-ag-meta`).
+  (choix utilisateur 26/10) : masqué par la refonte du 19/10 sans décision, rétabli le 26/10 (`.ui-ag-meta`). Cartouche Relancer/Relancé de même hauteur que le statut.
 - **Clignotement** : badges du menu (dépassement, à pointer) **et** tuiles
   `.ag-depasse`/`.ag-apointer`. La règle `#pane-agenda .ui-ag-slot{animation:none}`
   avait écrasé le clignotement des tuiles ; la règle de spécificité égale
