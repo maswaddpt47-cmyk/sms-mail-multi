@@ -90,16 +90,16 @@ dans « Points à ne pas défaire ».
   l'ignore (`isLunchBreak`) : ni place ni blocage. Jours **jamais ouverts** : `getSlots` ne propose pas 12:30 (la pause
   est posée à l'ouverture ; RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : décision explicite,
   libérable en un clic, aucune donnée détruite.
-- **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale
-  mois + CMS, aperçu et « Imprimer / PDF » (fenêtre dédiée, comme l'agenda). `monthlyReportData` réutilise
-  `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois échu ou jour courant) ; `accompaniedN` et
-  `byStatut` partagés avec l'écran. Résultats (« rendez-vous enregistrés » / « créneaux horaires » ; le mot « fiches », trop interne, est banni du bilan depuis le 25/10 mais reste sur l'écran Statistiques), statuts, démarches (top 10 +
-  « autres »), CMS, sources/limites. **Aucun nom, téléphone, note ni message** (testé) ; état vide ; année
-  archivée signalée, archives jamais mélangées. Tests fictifs dans `check-stats-rdv.js` ; **recomptage réel
-  09 et 10/2026 : écart 0** (tableau hors dépôt). **Avant diffusion à la hiérarchie : audit Codex sur
-  l'export réel** (`chiffres-diffuses.md`) — non fait ; AG-004 ouvert (Codex) ; consigne et export pseudonymisé remis le 25/10.
-  Bouton restylé le 25/10 (l'utilisateur ne le voyait pas : texte sans cadre sous les périodes) : cadre
-  accent, 40 px, pleine largeur sur mobile.
+- **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS,
+  aperçu et « Imprimer / PDF ». `monthlyReportData` réutilise `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois
+  échu ou jour courant). Vocabulaire : « rendez-vous enregistrés » / « créneaux horaires » (« fiches » reste sur
+  l'écran Statistiques). Statuts, démarches (top 10 + « autres »), CMS, sources/limites ; état vide ; archives jamais
+  mélangées. Tests : `check-stats-rdv.js`. Bouton restylé (cadre accent, 52 px, pleine largeur sur mobile).
+  **Audit Codex du 26/10 (AG-004, réponse inscrite)** : 20 sélections 07–10/2026 recomptées, **écart 0**. Corrigé le
+  26/10 : fiches sans CMS (ligne « CMS non renseigné »), sans heure (hors créneaux/taux, signalées), sans statut
+  (= en attente partout), sans démarche (ligne dédiée), jour courant imposé Europe/Paris (`parisDayStr`), variantes de
+  CMS regroupées (`cmsKey`). **Reste à trancher : textes libres de démarche** (promesse « aucun nom » reformulée, 29
+  fiches libres sur 162 dans la sauvegarde). **Diffusion à la hiérarchie : seulement après ta décision.**
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge

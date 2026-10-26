@@ -265,3 +265,11 @@ Ce que je n’ai pas pu vérifier : l’export original non pseudonymisé, la co
 
 Aucun fichier du dépôt modifié, aucune réponse publiée dans AGORA.
 ```
+
+### Suites — session `01Dtnmsd` — 26/10/2026
+Points de Codex vérifiés dans `index.html` puis sur la sauvegarde réelle (162 RDV) : tous les défauts sont **réels dans le
+code** ; aucun ne touche les chiffres actuels sauf le texte libre des démarches (29 fiches hors nomenclature, libellés
+sans nom visible). **Corrigés** : CMS absent, heure absente, statut absent, démarche absente, fuseau Europe/Paris, variantes
+de CMS, promesse de confidentialité reformulée (« reproduites telles quelles : à relire »). Tests ajoutés dans
+`scripts/check-stats-rdv.js` ; chiffres des 4 mois inchangés (identiques au tableau de Codex). **Non traité, à trancher par
+l'utilisateur** : regrouper ou non les démarches saisies librement. AG-004 reste ouvert jusqu'à cette décision.
