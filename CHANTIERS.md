@@ -238,7 +238,8 @@ Aucune pour l'instant.
 - **Grille des créneaux** (07/10, **révisée le 25/10/2026**, AG-003 clos le 26/10, tranché par l'utilisateur) : matin 9h30, 10h30, 11h30, 12h30
   (`DEBUT_GRILLE` dans `getSlots()` ; `debut:'09:00'` = ancien défaut) ; **après-midi = 3 créneaux d'1 h** à partir du
   `debutApresMidi` du CMS (défaut 13h30 ; **Fumel 14h00**, posé une fois au chargement, réglable dans Configuration →
-  CMS). **Le 16h30 est retiré pour tous** (demande utilisateur). Les RDV hors grille restent affichés à leur heure.
+  CMS). **Le 16h30 est retiré pour tous**. RDV hors grille affichés ; **un créneau libre qu'il chevauche est masqué** (28/10, Saint-Pardoux
+  14:00/15:00/16:00 ; `slots.masquees`, la capacité de la barre Stats suit).
   Vider le champ rétablit 13h30 ; `assignedHalf` suit la grille du CMS (`afternoonGridHours`). **Grille, pause déjeuner d'office, sous-onglet Archivées et archivage automatique : validés par l'utilisateur le 25/10/2026.**
 - **Une journée s'ouvre sur la grille standard (09:30-16:30)**, jamais sur
   l'heure du RDV déclencheur (`ensureDayOpen`/`migratePermanences`, AG-001 du
