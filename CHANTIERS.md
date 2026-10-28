@@ -290,9 +290,8 @@ Aucune pour l'instant.
 - Aucune.
 
 **Écartées** (date — piste — raison)
-- 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à
-  copier — l'utilisateur fait CR et Coop dans la foulée de chaque accompagnement ;
-  à ne reproposer que si un import (CSV/API) supprimait une saisie.
+- 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
+  de chaque accompagnement ; à ne reproposer que si un import (CSV/API) supprimait une saisie.
 
 ## Pistes d'amélioration
 
