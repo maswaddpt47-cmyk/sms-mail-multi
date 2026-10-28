@@ -45,12 +45,23 @@ splitHistory.push(row('après-midi',splitDate,'confirme','14:00',pm));
 for(const t of ['12:30','13:30','14:30','15:30','16:30'])splitHistory.push(row('fermé matin-'+t,splitDate,null,t,am,'indispo'));
 for(const t of ['09:30','10:30','11:30','12:30'])splitHistory.push(row('fermé après-midi-'+t,splitDate,null,t,pm,'indispo'));
 const beforeSplit=JSON.stringify({splitHistory,splitPerms}),split=ctx.statsRdvModel(splitHistory,splitPerms,'1m','',today);
-assert.equal(split.days.length,2);assert.equal(split.days.reduce((n,d)=>n+d.total,0),6);
+assert.equal(split.days.length,2);assert.equal(split.days.reduce((n,d)=>n+d.total,0),5); // 14:00 hors grille masque 13:30 et 14:30 : l'après-midi n'a plus que 2 places (28/10)
 const morning=split.days.find(d=>d.commune===am),afternoon=split.days.find(d=>d.commune===pm);
 assert.equal(morning.half,'morning');assert.equal(morning.total,3);assert.equal(morning.occupied,3);assert.equal(morning.blocked,0);assert.equal(morning.free,0);assert.equal(morning.pending,1);assert.equal(morning.overbooked,0);
-assert.equal(afternoon.half,'afternoon');assert.equal(afternoon.total,3);assert.equal(afternoon.occupied,1);assert.equal(afternoon.blocked,0);assert.equal(afternoon.free,2);assert.equal(split.free,2);
-const filtered=ctx.statsRdvModel(splitHistory,splitPerms,'1m',pm,today);assert.equal(filtered.days.length,1);assert.equal(filtered.days[0].total,3);assert.equal(filtered.free,2);
+assert.equal(afternoon.half,'afternoon');assert.equal(afternoon.total,2);assert.equal(afternoon.occupied,1);assert.equal(afternoon.blocked,0);assert.equal(afternoon.free,1);assert.equal(split.free,1);assert.equal(afternoon.freeHours.join(','),'15:30');
+const filtered=ctx.statsRdvModel(splitHistory,splitPerms,'1m',pm,today);assert.equal(filtered.days.length,1);assert.equal(filtered.days[0].total,2);assert.equal(filtered.free,1);
 assert.equal(JSON.stringify({splitHistory,splitPerms}),beforeSplit);
+// Créneaux libres chevauchés par un RDV hors grille : masqués (28/10, Saint-Pardoux 04/11 : RDV à 14:00, 15:00, 16:00).
+const spC='Lieu fictif décalé',spPerm={...futurePerm,exceptDate:splitDate,commune:spC};
+const spHist=[row('d14',splitDate,'confirme','14:00',spC),row('d15',splitDate,'confirme','15:00',spC),row('d16',splitDate,'confirme','16:00',spC)];
+for(const t of ['09:30','10:30','11:30','12:30'])spHist.push(row('fermé matin sp-'+t,splitDate,null,t,spC,'indispo'));
+const spSlots=ctx.getSlots(spC,splitDate,spHist,spPerm);
+assert.equal(spSlots.filter(x=>!x.taken).length,0);assert.equal(spSlots.masquees.map(x=>x.heure).join(','),'13:30,14:30,15:30');
+const spDay=ctx.statsRdvModel(spHist,[spPerm],'1m','',today).days[0];
+assert.equal(spDay.occupied,3);assert.equal(spDay.free,0);assert.equal(spDay.marks.filter(m=>m==='free').length,0);assert.equal(spDay.freeHours.length,0);
+// Non-régression : RDV à l'heure pile ou libéré → rien n'est masqué.
+const onGrid=ctx.getSlots(spC,splitDate,[row('p1',splitDate,'confirme','14:30',spC)],spPerm);assert.equal(onGrid.masquees.length,0);assert.ok(onGrid.some(x=>x.heure==='13:30'&&!x.taken));
+const freed=ctx.getSlots(spC,splitDate,[row('p2',splitDate,'annule','14:00',spC)],spPerm);assert.equal(freed.masquees.length,0);
 // Le jour même, une place libérée n'est pas réattribuable ; les jours futurs la rendent libre.
 const todayStr='2026-10-22',tp={...perm,exceptDate:todayStr,archived:false};
 const sameDay=ctx.statsRdvModel([row('s1',todayStr,'lapin','09:30'),row('s2',todayStr,'lapin','10:30'),row('s3',todayStr,'confirme','11:30'),row('s4',todayStr,'annule','13:30'),row('s5',todayStr,'excuse','14:30'),row('s6',todayStr,'pas_de_retour','15:30')],[tp],'1m','A',today);
@@ -143,7 +154,7 @@ assert.equal(hours('FUMEL'),'09:30,10:30,11:30,12:30,14:00,15:00,16:00');       
 assert.equal(hours('Villeneuve-Sur-Lot'),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');      // valeur invalide : défaut
 assert.equal(hours('Inconnu'),'09:30,10:30,11:30,12:30,13:30,14:30,15:30');
 assert.match(hours('Marmande',[row('t1','2026-11-03','confirme','16:30','Marmande')]),/15:30,16:30$/);   // RDV existant à 16:30 : conservé, hors grille
-assert.match(hours('Fumel',[row('t2','2026-11-03','confirme','13:30','Fumel')]),/12:30,13:30,14:00/);     // RDV existant à 13:30 : conservé
+assert.match(hours('Fumel',[row('t2','2026-11-03','confirme','13:30','Fumel')]),/12:30,13:30,15:00/);     // RDV existant à 13:30 : conservé ; 14:00 libre masqué (chevauchement, 28/10)
 assert.deepEqual(Array.from(ctx.afternoonGridHours('Fumel')),['14:00','15:00','16:00']);
 // demi-journée ouverte détectée avec la grille du CMS (Fumel : 14:00/15:00/16:00)
 const fp={id:'f',commune:'Fumel',exceptDate:'2026-11-03',debut:'09:30',fin:'16:30'};
@@ -199,5 +210,5 @@ assert.equal(fum.marks.length,fum.total);assert.equal(fum.marks.filter(k=>k==='f
 const full=ctx.statsRdvModel(['09:30','10:30','11:30','13:30','14:30','15:30'].map((h,i)=>row('g'+i,'2026-10-30','confirme',h,'A')),[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
 assert.equal(full.marks.join(','),'booked,booked,booked,booked,booked,booked');                                        // journée pleine : aucune case libre
 const offGrid=ctx.statsRdvModel([row('o1','2026-10-30','confirme','14:00','A')],[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
-assert.equal(offGrid.marks.length,6);assert.equal(offGrid.marks.indexOf('booked'),4);                                  // RDV hors grille à 14:00 : placé entre 13:30 et 14:30, une case libre en trop retirée
+assert.equal(offGrid.marks.length,5);assert.equal(offGrid.total,5);assert.equal(offGrid.marks.indexOf('booked'),3);   // RDV hors grille à 14:00 : 13:30 et 14:30 masqués (chevauchement), capacité 5 (28/10)
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');

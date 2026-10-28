@@ -1874,7 +1874,19 @@ function getSlots(commune,dateStr,historyList,permOverride){
   /* créneaux hors pas standard (heure modifiée manuellement) */
   extraHeures.forEach(function(h){if(!seenHeures[h])buildSlot(h);});
   slots.sort(function(a,b){return a.heure.localeCompare(b.heure);});
-  return slots;
+  /* Un créneau libre chevauché par un RDV hors grille n'est pas proposé (27-28/10/2026, demande utilisateur : à Saint-Pardoux des RDV à
+     14:00, 15:00 et 16:00 laissaient « libres » 13:30, 14:30 et 15:30, soit un rythme d'une demi-heure alors que chaque RDV dure
+     DUREE_CRENEAU). Les créneaux masqués sont listés à part dans `slots.masquees` (la barre de Statistiques en tient compte) ; un RDV
+     déjà pris n'est jamais masqué. */
+  function mins(h){return parseInt(h,10)*60+parseInt(h.split(':')[1]||0,10);}
+  var occupes=slots.filter(function(x){return x.taken&&!x.freeAgain;}).map(function(x){return mins(x.heure);});
+  var visibles=[],masquees=[];
+  slots.forEach(function(x){
+    var libre=!x.taken||x.freeAgain,m=mins(x.heure);
+    if(libre&&occupes.some(function(o){return o!==m&&Math.abs(o-m)<DUREE_CRENEAU;}))masquees.push(x);else visibles.push(x);
+  });
+  visibles.masquees=masquees;
+  return visibles;
 }
 /* Pause déjeuner d'office (25/10/2026, demande utilisateur) : le créneau de 12:30 est bloqué « Pause déjeuner »
    sur chaque journée ouverte à venir, une seule fois (`pauseAuto` sur la permanence : une pause libérée à la main
@@ -3071,6 +3083,9 @@ function statsRdvModel(history,permanences,period,cms,now){
     var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
     var allSlots=getSlots(p.commune,p.exceptDate,history,p),half=assignedHalf(p,allSlots),total=half?3:6;
     var lunchN=allSlots.filter(isLunchBreak).length; /* la pause déjeuner automatique n'est ni une place ni un blocage */
+    var maskedN=(allSlots.masquees||[]).filter(function(slot){
+      return !isLunchBreak(slot)&&slot.heure!=='12:30'&&!(half==='afternoon'&&slot.heure<'13:00'||half==='morning'&&slot.heure>='13:00');
+    }).length; /* créneaux libres chevauchés par un RDV hors grille : pas des places (28/10) */
     var slots=allSlots.filter(function(slot){
       if(isLunchBreak(slot))return false;
       if(half==='afternoon'&&slot.heure<'13:00'||half==='morning'&&slot.heure>='13:00')return false;
@@ -3111,7 +3126,9 @@ function statsRdvModel(history,permanences,period,cms,now){
       var lastFree=-1;cells.forEach(function(c,i){if(c.kind==='free')lastFree=i;});
       if(lastFree<0)break;cells.splice(lastFree,1);
     }
-    while(cells.length<total)cells.push({heure:'',kind:'free',info:{heure:''}});
+    var padTo=Math.max(cells.length,total-maskedN);
+    while(cells.length<padTo)cells.push({heure:'',kind:'free',info:{heure:''}});
+    if(!closedDay&&cells.length<total)total=cells.length; /* capacité réelle quand des créneaux sont masqués */
     var marks=cells.map(function(c){return c.kind;}),markInfo=cells.map(function(c){return c.info;});
     /* heures des créneaux libres de la demi-journée affichée (mêmes que les tuiles « Libre » de l'Agenda) ; 26/10 */
     var freeHours=slots.filter(function(slot){return slot.heure!=='12:30'&&(!slot.taken||(slot.freeAgain&&p.exceptDate!==today));}).map(function(slot){return slot.heure;});
