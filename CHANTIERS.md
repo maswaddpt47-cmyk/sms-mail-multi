@@ -75,6 +75,9 @@ dans « Points à ne pas défaire ».
   borne haute = fin du jour `dateRelance` ou mise en ligne du 26/10 11:40, d'où alerte rétroactive). `isSansReponse` : tuile qui
   clignote, « ⏰ Libérer ? » (→ « Pas de retour ») remplace « En attente », badge, bandeau, contrôle /60 s ; délai réglable
   (Configuration → Général, 1-72 h, défaut 3). Créneau libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
+- **Signature par profil** (29/10) : « Michel Aswad » en dur dans les modèles est remplacé au remplissage (`fillTemplate`,
+  `PROFILES[].signature`) : Cynthia Pineau, Corentin Tual, Eva Capelle ; intitulé de poste inchangé. **Import Orientations** : CMS
+  rapproché par mots (`cmsNomDansTexte`) : « Centre Médico-Social de Villeneuve/Lot » → Villeneuve-Sur-Lot.
 - **Stat des relances** (AG-005, 26/10) : barre « Relances » (fiches à date ou type, 28/164 ; précision en infobulle), hors volume de messages ; plus de
   `dateRelance` d'office à « Pas de retour » ; archive annuelle : `relances`/`relancesSur`. Les 11 fiches déjà à « Pas de retour » gardent leur date.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
@@ -153,9 +156,8 @@ dans « Points à ne pas défaire ».
   choix utilisateur) : tout ce qui précède le 1er du mois en cours** (avant : > 60 jours), sauf journée avec RDV en
   attente ou à pointer. Aucune donnée supprimée. **Automatique au chargement du profil** (`archiveOldDaysCore(true)`, 25/10)
   + bouton ; une journée restaurée (`gardeOuverte`) n'est plus archivée d'office, le bouton reste manuel.
-- **Import des orientations** : dialogue refondu ; le CMS ne filtre que l'affichage, l'import confirme toutes les
-  lignes cochées ; Échap/croix/fond gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication et
-  `confirmOrientImport()` inchangés.
+- **Import des orientations** : dialogue refondu ; le CMS ne filtre que l'affichage, l'import confirme toutes les lignes cochées ;
+  Échap/croix/fond gardent le brouillon, Annuler l'abandonne. Parseur, stockage, déduplication inchangés.
 - **Refonte UI** validée le 19/10 (`7f0205e`). Démo fictive : `python scripts/build-ui-preview.py --output-dir
   <dossier>` puis `demo-agenda-compact.html` (profil Michel) ; `scripts/ui-demo-data.js` n'y est chargé que là.
 
@@ -169,13 +171,9 @@ dans « Points à ne pas défaire ».
   **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche
   reviennent seulement si l'un porte un RDV (rien de masqué ; aucun RDV de
   week-end dans la sauvegarde du 23/10).
-- **Infobulle de la heatmap au toucher** (23/10, signalé sur téléphone) : l'attribut
-  `title` ne s'affiche pas au toucher ; les cases utilisent `#stat-tooltip` via
-  `attachPermanenceTip` (`data-tip` : « mer. 21 oct. 2026 — N RDV »). Les événements
-  souris émulés après un toucher (`mouseleave`) sont ignorés 1 s, sinon l'infobulle
-  disparaissait aussitôt (constaté en émulation tactile). Vaut aussi pour les
-  cases de « Prochaines permanences ». **Heatmap (5 jours, infobulle, comptage par créneau) validée par
-  l'utilisateur le 25/10/2026.**
+- **Infobulle de la heatmap au toucher** (23/10) : `title` ne s'affiche pas au toucher ; les cases utilisent `#stat-tooltip` via
+  `attachPermanenceTip` (`data-tip`). Les `mouseleave` émulés après un toucher sont ignorés 1 s, sinon l'infobulle disparaissait
+  aussitôt. Vaut aussi pour les cases de « Prochaines permanences ». Heatmap validée par l'utilisateur le 25/10/2026.
 
 ## Chantiers bloqués ou arrêtés
 
