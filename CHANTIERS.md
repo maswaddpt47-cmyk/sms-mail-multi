@@ -76,7 +76,7 @@ dans « Points à ne pas défaire ».
   clignote, « ⏰ Libérer ? » (→ « Pas de retour ») remplace « En attente », badge, bandeau, contrôle /60 s ; délai réglable
   (Configuration → Général, 1-72 h, défaut 3). Créneau libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
 - **Signature par profil** (29/10) : « Michel Aswad » en dur dans les modèles est remplacé au remplissage (`fillTemplate`,
-  `PROFILES[].signature`) : Cynthia Pineau, Corentin Tual, Eva Capelle ; intitulé de poste inchangé. **Import Orientations** : CMS
+  `PROFILES[].signature`/`titre`) : Michel ASWAD, Cynthia PINEAU, Corentin TUAL, Eva CAPELLE ; « Conseillère » pour Cynthia et Eva. **Import Orientations** : CMS
   rapproché par mots (`cmsNomDansTexte`) : « Centre Médico-Social de Villeneuve/Lot » → Villeneuve-Sur-Lot.
 - **Stat des relances** (AG-005, 26/10) : barre « Relances » (fiches à date ou type, 28/164 ; précision en infobulle), hors volume de messages ; plus de
   `dateRelance` d'office à « Pas de retour » ; archive annuelle : `relances`/`relancesSur`. Les 11 fiches déjà à « Pas de retour » gardent leur date.
