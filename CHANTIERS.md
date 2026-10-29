@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **25/10/2026**, base `main`. Ménage du fichier fait les 23 et 25/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **29/10/2026**, base `main` (`eb30957`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -285,14 +285,14 @@ Aucune pour l'instant.
   qui tranche explicitement, pas une proposition de Claude contredisant la note.
   Courbe Lapin/Excusé/Pas de retour toujours rattachée au **mois du RDV**.
 
-- Aucune.
-
-**Écartées** (date — piste — raison)
-- 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
-  de chaque accompagnement ; à ne reproposer que si un import (CSV/API) supprimait une saisie.
-
 ## Pistes d'amélioration
 
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
 26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** (badge Agenda, bandeau,
 page profil) ; « Prochaines permanences » **déplacée vers Orientations** (26/10, accord utilisateur ; `buildPermanencesCard`, CMS propre `S.orientCMS`).
+
+**En attente** : aucune.
+
+**Écartées** (date — piste — raison)
+- 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
+  de chaque accompagnement ; à ne reproposer que si un import (CSV/API) supprimait une saisie.
