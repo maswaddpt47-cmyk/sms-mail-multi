@@ -1076,11 +1076,15 @@ var DUREE="1 an";
 
 /* ============================== PROFILS ============================== */
 var PROFILES=[
-  {id:'michel',nom:'Michel',color:'oklch(0.5 0.16 266)'},
-  {id:'cynthia',nom:'Cynthia',color:'oklch(0.5 0.16 310)'},
-  {id:'corentin',nom:'Corentin',color:'oklch(0.45 0.14 155)'},
-  {id:'eva',nom:'Eva',color:'oklch(0.52 0.16 55)'},
+  {id:'michel',nom:'Michel',signature:'Michel Aswad',color:'oklch(0.5 0.16 266)'},
+  {id:'cynthia',nom:'Cynthia',signature:'Cynthia Pineau',color:'oklch(0.5 0.16 310)'},
+  {id:'corentin',nom:'Corentin',signature:'Corentin Tual',color:'oklch(0.45 0.14 155)'},
+  {id:'eva',nom:'Eva',signature:'Eva Capelle',color:'oklch(0.52 0.16 55)'},
 ];
+/* Signature des messages = conseiller numérique du profil actif (29/10/2026, demande utilisateur). Les modèles (livrés, personnalisés
+   ou déjà enregistrés) portent « Michel Aswad » en dur : il est remplacé au moment de remplir le modèle, sans réécrire le stockage. */
+var SIGNATAIRE_MODELE='Michel Aswad';
+function signataireProfil(){var p=getProfile(S.activeProfile);return (p&&p.signature)||SIGNATAIRE_MODELE;}
 function getProfile(id){return PROFILES.find(function(p){return p.id===id;});}
 
 /* ============================== STATE ============================== */
@@ -1405,7 +1409,7 @@ function fillTemplate(tpl,v){
       ? new Date(v.dateDemande).toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
       : "[date de proposition]");
   for(var i=0;i<S.customVars.length;i++){var cv=S.customVars[i];if(cv.nom)r=r.replace(new RegExp("\\{"+cv.nom+"\\}","g"),cv.valeur);}
-  return r.replace(/Bonjour  /g,"Bonjour ").replace(/\n{3,}/g,"\n\n");
+  return r.split(SIGNATAIRE_MODELE).join(signataireProfil()).replace(/Bonjour  /g,"Bonjour ").replace(/\n{3,}/g,"\n\n");
 }
 
 function buildCalLink(){
@@ -6238,6 +6242,14 @@ function confirmOrientImport(){
   if(skipped>0)msg+=' — ⚠️ '+skipped+' ignorée(s) (conseiller non choisi)';
   showToast(msg);
 }
+/* Le nom d'un CMS se retrouve-t-il dans un texte écrit autrement ? « Villeneuve-Sur-Lot » dans « Centre Médico-Social de Villeneuve/Lot » :
+   mots du nom (sans « sur », « de », « d'»…) tous présents dans le texte (29/10/2026, import Excel d'orientations de Corentin). */
+function cmsNomDansTexte(nom,texte){
+  var vide={sur:1,de:1,du:1,des:1,la:1,le:1,les:1,d:1,l:1,et:1};
+  function mots(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(function(m){return m&&!vide[m];});}
+  var a=mots(nom),b=mots(texte);
+  return !!a.length&&a.every(function(m){return b.indexOf(m)!==-1;});
+}
 function renderOrientations(){
   var pane=document.getElementById('pane-orientations');if(!pane)return;clear(pane);
   var wrap=el('div',{class:'ui-record-workspace'});
@@ -6404,7 +6416,7 @@ function renderOrientations(){
       var cmsMatch=S.cmsList.find(function(c){
         var cn=normO(c.nom);
         return cmsKey&&(cn===cmsKey||cmsKey.indexOf(cn)!==-1||cn.indexOf(cmsKey)!==-1);
-      });
+      })||S.cmsList.find(function(c){return cmsNomDansTexte(c.nom,o.commune);});
       /* find secteur : chercher dans secteurs par nom (correspondance avec commune bénéf ou commune affichée) */
       var secteurKeys=[normO(o.commune),normO(o.communeBenef||'')];
       var sectMatch=S.secteurs.find(function(s){
