@@ -1076,15 +1076,17 @@ var DUREE="1 an";
 
 /* ============================== PROFILS ============================== */
 var PROFILES=[
-  {id:'michel',nom:'Michel',signature:'Michel Aswad',color:'oklch(0.5 0.16 266)'},
-  {id:'cynthia',nom:'Cynthia',signature:'Cynthia Pineau',color:'oklch(0.5 0.16 310)'},
-  {id:'corentin',nom:'Corentin',signature:'Corentin Tual',color:'oklch(0.45 0.14 155)'},
-  {id:'eva',nom:'Eva',signature:'Eva Capelle',color:'oklch(0.52 0.16 55)'},
+  {id:'michel',nom:'Michel',signature:'Michel ASWAD',titre:'Conseiller Numérique',color:'oklch(0.5 0.16 266)'},
+  {id:'cynthia',nom:'Cynthia',signature:'Cynthia PINEAU',titre:'Conseillère Numérique',color:'oklch(0.5 0.16 310)'},
+  {id:'corentin',nom:'Corentin',signature:'Corentin TUAL',titre:'Conseiller Numérique',color:'oklch(0.45 0.14 155)'},
+  {id:'eva',nom:'Eva',signature:'Eva CAPELLE',titre:'Conseillère Numérique',color:'oklch(0.52 0.16 55)'},
 ];
 /* Signature des messages = conseiller numérique du profil actif (29/10/2026, demande utilisateur). Les modèles (livrés, personnalisés
    ou déjà enregistrés) portent « Michel Aswad » en dur : il est remplacé au moment de remplir le modèle, sans réécrire le stockage. */
 var SIGNATAIRE_MODELE='Michel Aswad';
+var TITRE_MODELE='Conseiller Numérique';
 function signataireProfil(){var p=getProfile(S.activeProfile);return (p&&p.signature)||SIGNATAIRE_MODELE;}
+function titreProfil(){var p=getProfile(S.activeProfile);return (p&&p.titre)||TITRE_MODELE;}
 function getProfile(id){return PROFILES.find(function(p){return p.id===id;});}
 
 /* ============================== STATE ============================== */
@@ -1409,7 +1411,7 @@ function fillTemplate(tpl,v){
       ? new Date(v.dateDemande).toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
       : "[date de proposition]");
   for(var i=0;i<S.customVars.length;i++){var cv=S.customVars[i];if(cv.nom)r=r.replace(new RegExp("\\{"+cv.nom+"\\}","g"),cv.valeur);}
-  return r.split(SIGNATAIRE_MODELE).join(signataireProfil()).replace(/Bonjour  /g,"Bonjour ").replace(/\n{3,}/g,"\n\n");
+  return r.split(SIGNATAIRE_MODELE+'\n'+TITRE_MODELE).join(signataireProfil()+'\n'+titreProfil()).split(SIGNATAIRE_MODELE).join(signataireProfil()).replace(/Bonjour  /g,"Bonjour ").replace(/\n{3,}/g,"\n\n");
 }
 
 function buildCalLink(){
