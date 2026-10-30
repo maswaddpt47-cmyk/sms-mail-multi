@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`dbf9cf0`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`d5b690e`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -180,11 +180,10 @@ dans « Points à ne pas défaire ».
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-- **Audit Codex du 30/10 des calculs Statistiques/Bilan** (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`) : 29 sélections
-  recomptées, aucun chiffre du bilan faux. **Points 1 à 5 corrigés le 30/10** (délai RDV `delaiRdvJours` en jours civils, `cmsKey` partout, début de période
-  Paris, `usagerKey`, « jour même » = même date civile) ; **AG-006 : Codex a répondu « amendé » (30/10)**, amendement corrigé le 30/10 : regroupements CMS (`comptageParCms`), démarches et types
-  (`comptageDemarches`, `comptageTypes`) identiques à l'écran et dans les nouvelles archives ; **AG-006 tranché le 30/10**. Point 6 **tranché : base fixe 6/3**, libellé corrigé. **Point 7 corrigé le 30/10** (`statutAffiche` : statut vide/inconnu/`toString` = « en attente » partout, ligne « Démarche non renseignée » à l'écran,
-  démarche `constructor` lue comme telle). Archives déjà calculées non recalculées ; en archive un statut inconnu compte désormais « en attente ». Tests : `TZ=UTC` **et** `TZ=Europe/Paris`.
+- **Règles de collaboration proposées le 30/10/2026, en attente d'accord** (pas d'AGORA : c'est à l'utilisateur de décider) : (1) *un test ajouté se vérifie par mutation* — le casser
+  volontairement et constater qu'il échoue ; cinq commits ont laissé des assertions inertes absorbées par un commentaire de fin de ligne, relevé par Codex (AG-009) ; (2) *une heure donnée à
+  l'utilisateur se convertit par commande* (`TZ=Europe/Paris date`), pas de tête : +2 h au lieu de +1 h le 30/10 (précision de la règle 8bis) ; (3) *proposer à MD-LIB* la consigne « pull après
+  des modifications hors session » (déjà dans ce `CLAUDE.md`). À présenter en début de session ; sur accord, inscrire dans `CLAUDE.md` (et `collaboration.md` pour 1 et 2).
 
 ## Chantiers restants
 
@@ -201,6 +200,9 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
 
 ## Points à ne pas défaire
 
+- **Audit Codex du 30/10/2026 des calculs (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`)** : corrigé, AG-006 tranché. Délai RDV en jours civils (`delaiRdvJours`),
+  `cmsKey` pour tout filtre et regroupement CMS, début de période en date Paris, `usagerKey`, « jour même » = même date civile, `statutAffiche` (statut vide ou inconnu = en attente),
+  dictionnaires sans prototype (`comptageDemarches`, `comptageTypes`). Remplissage : base fixe 6/3 (décision). Archives déjà calculées non recalculées. Tests en `TZ=UTC` **et** `TZ=Europe/Paris`.
 - **Rappel de ménage de ce fichier** (23/10/2026) : `scripts/check-chantiers.sh`,
   hook `SessionStart` de `.claude/settings.json`. Signale >300 lignes, en-tête
   de plus de 7 jours, tâches ✅/barrées. Rappel seul, n'échoue jamais.

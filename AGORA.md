@@ -26,8 +26,8 @@ Règle complète (non requise pour répondre) : `MD-LIB/agora.md`.
 Les trois verdicts et la règle de preuve sont dans le gabarit ci-dessous.
 
 **Le cycle** : une session dépose un bloc et le pousse sur `main`, donne à
-l'utilisateur la phrase à coller ailleurs (« pull, lis AGORA.md, réponds à
-AG-00N, tu es la session B »), l'autre session répond, l'utilisateur tranche.
+l'utilisateur la phrase à coller ailleurs (« pull maswaddpt47-cmyk/sms-mail-multi,
+lis son AGORA.md, réponds à AG-00N, tu es la session B »), l'autre session répond, l'utilisateur tranche.
 **Aucune notification ne passe d'un compte à l'autre** : le relais par
 l'utilisateur est obligatoire, et c'est pour ça que l'AGORA ne bloque jamais.
 

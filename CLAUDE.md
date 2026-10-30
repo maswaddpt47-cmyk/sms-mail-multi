@@ -71,6 +71,9 @@ il dit « pull » après avoir modifié le dépôt lui-même ou avec un autre ou
 `git pull`, lire `git log` et le diff de ce qui est arrivé depuis la dernière
 base connue, puis mettre à jour `CHANTIERS.md` (en-tête compris) avant toute
 autre tâche. Ne pas supposer qu'une entrée datée est encore vraie.
+**Ne jamais demander l'autorisation de mettre `CHANTIERS.md` à jour** (consigne du
+30/10/2026 : « mets à jour automatiquement, arrête de me le demander ») : le faire à
+chaque livraison, en-tête et base de commit compris, et retirer ce qui est devenu faux.
 
 ## AGORA — faire contredire une décision par une autre session
 
@@ -86,18 +89,26 @@ Fichier : **`AGORA.md`** (racine) — gabarit et règles de réponse.
    `CHANTIERS.md`, commentaire de décision).
 6. **Coût irréversible côté usager** : suppression de données, migration,
    rupture de la PWA déjà installée.
+7. **Le changement touche un calcul ou un chiffre affiché** (indicateur, total,
+   taux, moyenne, filtre, définition, bilan imprimé), **quelle que soit sa
+   taille** (critère 7 d'`agora.md`, posé ici le 30/10/2026 à la demande de
+   l'utilisateur : « si des calculs sont impliqués, fais un bloc AGORA »).
+   Contradicteur : **Codex**. Le bloc est ouvert **avant** la correction ; les
+   définitions métier y sont séparées des défauts démontrés et tranchées par
+   l'utilisateur ; la réponse de Codex est inscrite telle quelle.
 
 Toute entrée « décision à trancher » de `CHANTIERS.md` est candidate : dire en
 l'écrivant pourquoi on ouvre un bloc ou non.
 
 **Ne va PAS à l'AGORA** : changement de rendu pur (couleur, libellé, CSS) ;
-correctif localisé appuyé sur une preuve ; tout ce qui se défait en un commit.
+correctif localisé appuyé sur une preuve ; tout ce qui se défait en un commit —
+**sauf s'il touche un calcul ou un chiffre affiché** (critère 7, toujours).
 
 **Fonctionnement** : écrire le bloc au moment du choix, pas après
 l'implémentation ; le commiter et le **pousser directement sur `main`**
 (`git pull --rebase origin main` avant — exception au workflow de branche :
 c'est du texte, ça ne casse aucun déploiement) ; annoncer en une ligne
-« ⚖️ AGORA : critère N — … » avec la phrase à coller dans l'autre session.
+« ⚖️ AGORA : critère N — … » avec la phrase à coller dans l'autre session, **qui nomme le dépôt** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-00N, tu es la session B ».
 **Ne jamais bloquer** : continuer le travail, aucune réponse n'est garantie.
 L'utilisateur tranche.
 
