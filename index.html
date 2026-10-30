@@ -3262,7 +3262,7 @@ function monthlyReportHtml(d,meta){
     +'<li>Les nombres comptent des <b>rendez-vous enregistrés</b> (un rendez-vous annulé, excusé ou lapin puis remplacé laisse plusieurs enregistrements sur un même créneau) ; les taux comptent des <b>créneaux horaires</b> (date, CMS, heure) échus à la date du '+esc(String(d.today).split('-').reverse().join('/'))+' : un créneau réattribué ne vaut qu’un rendez-vous. Un créneau compte comme réalisé (ou lapin) s’il porte au moins un rendez-vous au statut Réalisé (ou Lapin) ; les deux peuvent se cumuler.</li>'
     +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’ont pas été pointés : ils font baisser la concrétisation.</li>':'')
     +(d.sansHeure?'<li>'+d.sansHeure+' rendez-vous enregistré'+(d.sansHeure>1?'s':'')+' sans heure ne '+(d.sansHeure>1?'sont':'est')+' pas compté'+(d.sansHeure>1?'s':'')+' dans les créneaux ni dans les taux.</li>':'')
-    +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles : à relire avant toute diffusion.</li></ul></section></div>';
+    +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles.</li></ul></section></div>';
   return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */
 }
 function printMonthlyReport(html,title){
