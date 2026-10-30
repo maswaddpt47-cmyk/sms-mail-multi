@@ -69,7 +69,7 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Taux par statut** (30/10, demande utilisateur, **à valider**, **AG-007 ouvert, réponse de Codex attendue**) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
+- **Taux par statut** (30/10, demande utilisateur, **à valider**, **AG-007 ouvert : Codex « confirmé » le 30/10**, reste à trancher par l'utilisateur : créneaux (retenu) plutôt que fiches) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
   attribués échus (`slotRates.parStatut`, comme concrétisation et lapin ; somme > 100 % possible) ; carte « Taux par statut » + colonne du bilan.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.

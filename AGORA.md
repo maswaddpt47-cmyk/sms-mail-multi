@@ -114,6 +114,37 @@ Réalisé et Lapin doivent égaler la concrétisation et le lapin existants.
 **Si personne ne répond, je fais quoi ?** — livrer tel quel (calcul d'affichage, se défait en un commit) ; amender selon la réponse de Codex.
 **Où regarder** : `index.html` : `slotRates` (`parStatut`), `monthlyReportData`, `monthlyReportHtml`, `renderStats` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
+### Réponse — Codex — 30/10/2026
+
+**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `280c46e`, qui contient `11eb755`.
+
+**Verdict** : **confirmé**, pour la définition proposée dans AG-007.
+
+**Constat** :
+
+- Chaque statut est compté **une seule fois par créneau distinct**, même avec plusieurs fiches du même statut (`index.html:3217`, `index.html:3219`, `index.html:3225`).
+- Les statuts inconnus deviennent « En attente » ; les fiches sans heure, les blocages et les RDV futurs sont exclus des taux (`index.html:3214`, `index.html:3052`, `index.html:3053`).
+- Écran et bilan reprennent les mêmes numérateurs et dénominateur (`index.html:3255`, `index.html:3292`, `index.html:3926`). Réalisé et Lapin retrouvent exactement les taux existants.
+- Le cumul possible au-delà de 100 % est annoncé dans les deux présentations (`index.html:3293`, `index.html:3923`).
+
+**Recomptage indépendant : 29 sélections mois/CMS, aucun écart.** Sur octobre dans la sauvegarde principale, base de 53 créneaux :
+
+| Statut | Créneaux | Taux arrondi |
+|---|---:|---:|
+| En attente | 0 | 0 % |
+| Confirmé | 2 | 4 % |
+| Réalisé | 36 | 68 % |
+| Excusé | 11 | 21 % |
+| Annulé | 2 | 4 % |
+| Lapin | 7 | 13 % |
+| Pas de retour | 6 | 11 % |
+
+Ces taux décrivent des statuts présents sur les créneaux, pas une répartition exclusive.
+
+**Amendement** : aucun correctif nécessaire trouvé dans ce périmètre. Le choix métier **créneaux plutôt que fiches**, explicitement non tranché dans AG-007, reste à confirmer par l’utilisateur ; cette vérification confirme son implémentation.
+
+**Vérifications et limites** : tests existants réussis en UTC et Europe/Paris ; cas limites vérifiés séparément. Lisibilité en navigateur et déploiement non vérifiés. Aucun fichier modifié.
+
 # Blocs tranchés
 
 - **AG-006** — Calculs Statistiques/Bilan : corrections de l'audit Codex du 30/10 et remplissage net — ouvert le 30/10, **tranché le 30/10/2026** —
