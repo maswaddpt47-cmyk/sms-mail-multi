@@ -91,6 +91,10 @@ const sr=ctx.statsRdvModel([row('q1',todayStr,'realise','09:30'),row('q2',todayS
 assert.equal(sr.total+'/'+sr.realised+'/'+sr.lapins,'6/4/2');
 const both=ctx.statsRdvModel([row('b1',todayStr,'lapin','10:30'),row('b2',todayStr,'realise','10:30')],[],'all','A',today).slotRates;
 assert.equal(both.total+'/'+both.realised+'/'+both.lapins,'1/1/1');
+// Remplissage (30/10) : base de 6 places par journée (date + CMS) portant un RDV avec heure ; sans heure et indispo hors compte.
+assert.equal(sr.jours+'/'+sr.places,'1/6');
+const fill=ctx.statsRdvModel([row('f1',todayStr,'realise','09:30'),row('f2',todayStr,'realise','10:30','B'),row('f3','2026-03-02','lapin','09:30'),row('f4',todayStr,'realise',''),row('f5',todayStr,null,'11:30','A','indispo')],[],'all','',today).slotRates;
+assert.equal(fill.jours+'/'+fill.places+'/'+fill.total,'3/18/3');
 // Bilan mensuel : même population que les statistiques, recomptage indépendant, unités, anonymat, état vide.
 const bil=[];let bid=0;const add=(date,heure,statut,commune,demarche,msgType='confirmation')=>bil.push({...row('b'+(bid++),date,statut,heure,commune,msgType),demarche});
 add('2026-09-03','09:30','realise','A','Impôts');add('2026-09-03','10:30','lapin','A','Impôts');add('2026-09-03','11:30','realise','B','CAF');
@@ -105,6 +109,7 @@ assert.equal(JSON.stringify(ctx.monthlyReportData(bil,'2026-09','',nowBil)),JSON
 const sep=bil.filter(h=>h.date.startsWith('2026-09')&&h.msgType!=='indispo');
 const slotsSet=new Set(sep.map(h=>h.date+'|'+h.commune+'|'+h.heure)),realSlots=new Set(sep.filter(h=>h.statut==='realise').map(h=>h.date+'|'+h.commune+'|'+h.heure)),lapSlots=new Set(sep.filter(h=>h.statut==='lapin').map(h=>h.date+'|'+h.commune+'|'+h.heure));
 assert.equal(r1.entries,sep.length);assert.equal(r1.realised,sep.filter(h=>h.statut==='realise').length);
+const joursSet=new Set(sep.filter(h=>h.heure).map(h=>h.date+'|'+h.commune));assert.equal(r1.jours,joursSet.size);assert.equal(r1.places,joursSet.size*6);assert.equal(r1.fillPct,Math.round(slotsSet.size/(joursSet.size*6)*100));
 assert.equal(r1.slots,slotsSet.size);assert.equal(r1.realisedSlots,realSlots.size);assert.equal(r1.lapinSlots,lapSlots.size);
 assert.equal(r1.concretPct,Math.round(realSlots.size/slotsSet.size*100));assert.equal(r1.lapinPct,Math.round(lapSlots.size/slotsSet.size*100));
 assert.equal(r1.accompanied,new Set(sep.filter(h=>h.statut==='realise').map(h=>(h.nom+'|'+h.prenom).toLowerCase())).size);
@@ -117,7 +122,7 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
+assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);

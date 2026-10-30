@@ -3175,17 +3175,20 @@ function parisDayStr(d){
   catch(e){return toLocalDateStr(d);}
 }
 function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
+var PLACES_PAR_JOURNEE=6;
 function slotRates(entries){
-  var slots={},sansHeure=0;
+  var slots={},sansHeure=0,jours={};
   entries.forEach(function(h){
-    if(!h.heure){sansHeure++;return;}   /* sans heure : identité horaire inconnue, ni créneau ni taux */
+    if(!h.heure){sansHeure++;return;}
+    jours[h.date+'|'+cmsKey(h.commune)]=true;   /* journée de permanence = date + CMS portant au moins un RDV avec heure */   /* sans heure : identité horaire inconnue, ni créneau ni taux */
     var k=h.date+'|'+cmsKey(h.commune)+'|'+h.heure;
     var s=slots[k]||(slots[k]={realise:false,lapin:false});
     if(h.statut==='realise')s.realise=true;
     if(h.statut==='lapin')s.lapin=true;
   });
   var keys=Object.keys(slots);
-  return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length,sansHeure:sansHeure};
+  return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length,sansHeure:sansHeure,
+    jours:Object.keys(jours).length,places:Object.keys(jours).length*PLACES_PAR_JOURNEE};   /* remplissage (30/10) : base 6 créneaux par journée */
 }
 
 /* Bilan mensuel imprimable (25/10/2026, tâche autorisée) : réutilise statsRdvModel et slotRates, aucune
@@ -3206,6 +3209,7 @@ function monthlyReportData(history,month,cms,now){
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
+    jours:total.slotRates.jours,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
     demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
     byCms:byCms,empty:!total.entries.length,
@@ -3238,7 +3242,8 @@ function monthlyReportHtml(d,meta){
       +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
       +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
       +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus (hors créneaux libres et bloqués)</td></tr>'
-      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus (hors créneaux libres et bloqués)</td></tr></table></section>';
+      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus (hors créneaux libres et bloqués)</td></tr>'
+      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués sur 6 places par journée de permanence ('+d.jours+' journée'+(d.jours>1?'s':'')+' avec au moins un rendez-vous)</td></tr></table></section>';
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th></tr>';
     STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
     h+='</table></section>';
@@ -3556,6 +3561,8 @@ function renderStats(){
     var realiseN=rdv.realised.length,concretN=rdv.slotRates.total;
     var concretStr=concretN?Math.round(rdv.slotRates.realised/concretN*100)+'%':'—';
     var lapinStr=concretN?Math.round(rdv.slotRates.lapins/concretN*100)+'%':'—';
+    var fillN=rdv.slotRates.places,fillStr=fillN?Math.round(concretN/fillN*100)+'%':'—';
+    var fillSub=fillN?concretN+' créneau'+(concretN>1?'x':'')+' sur '+fillN+' places ('+rdv.slotRates.jours+' journée'+(rdv.slotRates.jours>1?'s':'')+' × '+PLACES_PAR_JOURNEE+')':'Aucune journée échue';
     var nonPointesN=rdv.past.filter(isAPointer).length;
     var concretSub='sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')+(nonPointesN?' · dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'');
     var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · '+rdv.days.reduce(function(n,day){return n+day.total;},0)+' créneaux':'Aucune prochaine permanence';
@@ -3573,7 +3580,8 @@ function renderStats(){
       [rdv.accompaniedN,"Usagers accompagnés",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes'],
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
       [concretStr,"Taux de concrétisation","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
-      [lapinStr,"Taux de lapin 🐇","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')]
+      [lapinStr,"Taux de lapin 🐇","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')],
+      [fillStr,'Taux de remplissage','Unité : créneaux attribués sur une base de 6 places par journée de permanence. Une journée de permanence = une date et un CMS avec au moins un rendez-vous enregistré et daté d\'une heure, échue à ce jour ; une journée ouverte sans aucun rendez-vous ne compte pas, et une demi-journée compte aussi pour 6. Tous statuts confondus (lapin, excusé, annulé inclus, comme pour les taux ci-dessus) ; le taux peut dépasser 100 % si une journée déborde.',null,fillSub]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){
