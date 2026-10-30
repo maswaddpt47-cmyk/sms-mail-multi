@@ -145,15 +145,6 @@ const sep=bil.filter(h=>h.date.startsWith('2026-09')&&h.msgType!=='indispo');
 const slotsSet=new Set(sep.map(h=>h.date+'|'+h.commune+'|'+h.heure)),realSlots=new Set(sep.filter(h=>h.statut==='realise').map(h=>h.date+'|'+h.commune+'|'+h.heure)),lapSlots=new Set(sep.filter(h=>h.statut==='lapin').map(h=>h.date+'|'+h.commune+'|'+h.heure));
 assert.equal(r1.entries,sep.length);assert.equal(r1.realised,sep.filter(h=>h.statut==='realise').length);
 const joursSet=new Set(sep.filter(h=>h.heure).map(h=>h.date+'|'+h.commune));assert.equal(r1.jours,joursSet.size);assert.equal(r1.places,joursSet.size*6);assert.equal(r1.fillPct,Math.round(slotsSet.size/(joursSet.size*6)*100));
-// AG-008 : issue exclusive par créneau (ordre Réalisé > Confirmé > En attente > Lapin > Pas de retour > Excusé > Annulé), somme = nombre de créneaux ; recomptage indépendant.
-const ORD=['realise','confirme','en_attente','lapin','pas_de_retour','excuse','annule'],KNOWN=new Set(ORD);
-const issuesAttendues=Object.fromEntries(ORD.map(st=>[st,0]));
-for(const k of slotsSet){const sts=new Set(sep.filter(h=>h.date+'|'+h.commune+'|'+h.heure===k).map(h=>KNOWN.has(h.statut)?h.statut:'en_attente'));issuesAttendues[ORD.find(st=>sts.has(st))]++;}
-assert.equal(JSON.stringify(r1.issues),JSON.stringify(issuesAttendues));
-assert.equal(Object.values(r1.issues).reduce((a,b)=>a+b,0),r1.slots);assert.equal(r1.issues.realise,r1.realisedSlots);assert(r1.issues.lapin<=r1.lapinSlots);
-const pst=ctx.statsRdvModel([row('s1',todayStr,'realise','09:30'),row('s2',todayStr,'lapin','09:30'),row('s3',todayStr,'toString','10:30'),row('s4',todayStr,'excuse','11:30'),row('s5',todayStr,'annule','11:30'),row('s6',todayStr,'excuse','14:30'),row('s7',todayStr,'pas_de_retour','14:30'),row('s8',todayStr,'lapin','15:30'),row('s9',todayStr,'confirme','15:30')],[],'all','A',today).slotRates;
-assert.equal(JSON.stringify(pst.issues),JSON.stringify({realise:1,confirme:1,en_attente:1,lapin:0,pas_de_retour:1,excuse:1,annule:0}));   // 09:30 réalisé+lapin → Réalisé ; 15:30 lapin+confirmé → Confirmé ; 14:30 → Pas de retour ; 11:30 → Excusé
-assert.equal(pst.total,5);
 assert.equal(r1.slots,slotsSet.size);assert.equal(r1.realisedSlots,realSlots.size);assert.equal(r1.lapinSlots,lapSlots.size);
 assert.equal(r1.concretPct,Math.round(realSlots.size/slotsSet.size*100));assert.equal(r1.lapinPct,Math.round(lapSlots.size/slotsSet.size*100));
 assert.equal(r1.accompanied,new Set(sep.filter(h=>h.statut==='realise').map(h=>(h.nom+'|'+h.prenom).toLowerCase())).size);
@@ -166,11 +157,15 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/Taux de remplissage net/);assert.match(htmlB,/Issue du créneau/);
-// AG-009 (complément) : statut présent en rendez-vous mais sans créneau pour issue = commentaire explicite ; rien si tous ont un créneau.
-const attendu=['realise','confirme','en_attente','excuse','annule','lapin','pas_de_retour'].filter(st=>r1.byStatut[st]>0&&!r1.issues[st]);
-assert.equal(/Statut présent mais sans créneau pour issue/.test(htmlB),attendu.length>0);
-for(const st of attendu){const lib={realise:'Réalisé',confirme:'Confirmé',en_attente:'En attente',excuse:'Excusé',annule:'Annulé',lapin:'Lapin',pas_de_retour:'Pas de retour'}[st];assert(htmlB.includes(lib+' ('),'commentaire '+st);}
+assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/Taux de remplissage net/);assert.match(htmlB,/Part des rendez-vous/);
+// AG-010 : répartition par statut sur la base des rendez-vous (60 % + 20 % + … = 100 %), recomptage indépendant ; plus d'issue exclusive.
+for(const [st,lib] of [['realise','Réalisé'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']]){
+  const n=sep.filter(h=>(h.statut||'en_attente')===st).length;
+  if(r1.byStatut[st]!==n)throw new Error('byStatut '+st);
+  assert(htmlB.includes('<td>'+lib+'</td><td class="n">'+n+'</td><td class="n">'+(n+' / '+sep.length+' · '+Math.round(n/sep.length*100)+' %')+'</td>'),'ligne '+lib);
+}
+assert.match(htmlB,new RegExp('<b>Total</b></td><td class="n"><b>'+sep.length+'</b></td><td class="n"><b>'+sep.length+' / '+sep.length+' · 100 %'));
+assert.equal(r1.issues,undefined);assert.doesNotMatch(htmlB,/Issue du créneau|issue la plus avancée/);
 // AG-009 : phrase de lecture 65 → 53 → 54 (recomptage indépendant), libellés distincts, infobulles seulement dans l'aperçu.
 const sansHeureSep=sep.filter(h=>!h.heure).length,supplAtt=sep.length-sansHeureSep-slotsSet.size;
 assert.equal(r1.supplementaires,supplAtt);assert.equal(r1.ecart,r1.places-slotsSet.size);
@@ -179,16 +174,14 @@ assert.match(htmlB,/Réservations du mois/);assert.doesNotMatch(htmlB,/bilan-inf
 const htmlTip=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false,infobulles:true});
 assert.match(htmlTip,/class="bilan-info"[^>]*data-tip="/);assert.equal((htmlTip.match(/class="bilan-info"/g)||[]).length,8);
 // cas limites de la phrase : dépassement de capacité, aucune réattribution, réservation sans heure.
-const base={month:'2026-10',year:2026,cms:'',today:'2026-10-30',partiel:false,entries:5,realised:3,accompanied:3,slots:5,realisedSlots:3,lapinSlots:0,places:3,ecart:-2,supplementaires:0,sansHeure:0,jours:1,joursDemi:1,fillPct:167,occupes:5,fillNetPct:167,issues:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},byStatut:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},demarches:[],otherDemarches:0,otherDemarchesN:0,byCms:[],sansCms:0,sansCmsRealised:0,sansDemarche:0,nonPointes:0,empty:false};
+const base={month:'2026-10',year:2026,cms:'',today:'2026-10-30',partiel:false,entries:5,realised:3,accompanied:3,slots:5,realisedSlots:3,lapinSlots:0,places:3,ecart:-2,supplementaires:0,sansHeure:0,jours:1,joursDemi:1,fillPct:167,occupes:5,fillNetPct:167,byStatut:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},demarches:[],otherDemarches:0,otherDemarchesN:0,byCms:[],sansCms:0,sansCmsRealised:0,sansDemarche:0,nonPointes:0,empty:false};
 const dep=ctx.monthlyReportHtml(base,{profil:'P',date:'30/10/2026'});assert.match(dep,/dépassement net de 2 créneaux par rapport à la capacité théorique/);assert.match(dep,/aucune réservation supplémentaire sur un créneau partagé/);
 const sh=ctx.monthlyReportHtml({...base,sansHeure:1,entries:6,supplementaires:0,ecart:0,places:5,slots:5},{profil:'P',date:'30/10/2026'});assert.match(sh,/\(dont 1 sans heure, hors créneaux\)/);assert.match(sh,/aucun écart entre la capacité théorique et les créneaux attribués/);
-const sans0=ctx.monthlyReportHtml({...base,byStatut:{...base.byStatut,lapin:6},issues:{...base.issues,lapin:0}},{profil:'P',date:'30/10/2026'});assert.match(sans0,/Lapin \(6 rendez-vous enregistrés, 0 créneau\)/);
-const avec0=ctx.monthlyReportHtml({...base,byStatut:{...base.byStatut,lapin:6},issues:{...base.issues,lapin:2}},{profil:'P',date:'30/10/2026'});assert.doesNotMatch(avec0,/Statut présent mais sans créneau pour issue/);
 
 assert.doesNotMatch(htmlB,/<td>Confirmé<\/td>/);assert.doesNotMatch(htmlB,/<td>En attente<\/td>/);assert.match(htmlB,/<td>Pas de retour<\/td>/);   // transitoires à zéro masqués, les autres toujours affichés
 const htmlOct=ctx.monthlyReportHtml(ctx.monthlyReportData(bil,'2026-10','',nowBil),{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
 assert.match(htmlOct,/<td>Confirmé<\/td>/);   // ligne affichée dès qu'elle n'est pas vide
-assert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.match(html,/Issue des créneaux \(chaque créneau compte une fois\)/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
+assert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.doesNotMatch(html,/Issue des créneaux/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 // Mois en cours (30/10) : un RDV du 28/10 est exclu au 25/10 (volumes et statuts), rapport marqué partiel ; mois échu non partiel.
 const avecFutur=bil.concat([row('z1','2026-10-28','confirme','09:30','A')]);
