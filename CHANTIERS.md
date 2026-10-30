@@ -69,8 +69,10 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Taux par statut** (30/10, demande utilisateur, **à valider l'affichage**, **AG-007 tranché le 30/10 (Codex « confirmé », unité = créneaux, décision de l'utilisateur)**) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
-  attribués échus (`slotRates.parStatut`, comme concrétisation et lapin ; somme > 100 % possible) ; carte « Taux par statut » + colonne du bilan.
+- **Issue des créneaux** (30/10, remplace les taux par statut cumulés d'AG-007 : 38+11+2+7+6 = 64 créneaux et 121 % pour 53, relevé par l'utilisateur ; **à valider**,
+  **AG-008 ouvert, réponse de Codex attendue**) : chaque créneau attribué échu compté **une fois**, dans son issue la plus avancée (Réalisé > Confirmé > En attente >
+  Lapin > Pas de retour > Excusé > Annulé ; ordre proposé, à confirmer) ; somme = 100 %, ligne Total au bilan, carte à l'écran (`slotRates.issues`). Concrétisation = ligne
+  Réalisé ; le taux de lapin reste cumulé (peut dépasser la ligne Lapin).
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
