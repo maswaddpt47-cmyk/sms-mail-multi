@@ -105,6 +105,9 @@ assert.equal(ctx.statsRdvModel([],[],'1m','',new Date(Date.UTC(2026,8,30,22,30))
 // Pt 4 : clé usager avec séparateur ; homonymes = un seul usager (limite connue).
 assert.notEqual(ctx.usagerKey({nom:'AB',prenom:'C'}),ctx.usagerKey({nom:'A',prenom:'BC'}));
 assert.equal(ctx.usagerKey({nom:' Dupont ',prenom:'Ana'}),ctx.usagerKey({nom:'DUPONT',prenom:'ana'}));assert.equal(ctx.usagerKey({}),'');
+// Remplissage net : un créneau dont toutes les fiches sont libérées ne compte pas ; une fiche active le fait compter.
+const net=ctx.statsRdvModel([row('n1',todayStr,'realise','09:30'),row('n2',todayStr,'lapin','10:30'),row('n3',todayStr,'annule','11:30'),row('n4',todayStr,'excuse','11:30'),row('n5',todayStr,'confirme','11:30'),row('n6',todayStr,null,'14:30'),row('n7',todayStr,'toString','15:30')],[],'all','A',today).slotRates;
+assert.equal(net.total+'/'+net.occupes+'/'+net.places,'5/4/6');   // 5 créneaux ; 10:30 libéré ; 11:30 porte une fiche confirmée ; statut vide ou inconnu = non libéré
 // Demi-journée (30/10, Saint-Pardoux) : permanence d'après-midi seule = 3 places ; sans permanence enregistrée = 6, signalé.
 const pDemi={id:'pd',commune:'A',exceptDate:'2026-10-20',debut:'13:30',fin:'16:30'};
 const rowsDemi=[row('d1','2026-10-20','realise','13:30'),row('d2','2026-10-20','realise','14:30'),row('d3','2026-10-20','lapin','15:30')];
@@ -112,6 +115,7 @@ const dm=ctx.statsRdvModel(rowsDemi,[pDemi],'all','A',today).slotRates;
 assert.equal(dm.places+'/'+dm.joursDemi+'/'+dm.sansPerm+'/'+dm.total,'3/1/0/3');
 const dm0=ctx.statsRdvModel(rowsDemi,[],'all','A',today).slotRates;assert.equal(dm0.places+'/'+dm0.joursDemi+'/'+dm0.sansPerm,'6/0/1');
 const dmB=ctx.monthlyReportData(rowsDemi,'2026-10','A',new Date(2026,9,25,12),[pDemi]);assert.equal(dmB.places+'/'+dmB.joursDemi+'/'+dmB.fillPct,'3/1/100');
+assert.equal(dmB.occupes+'/'+dmB.fillNetPct,'2/67');   // le lapin de 15:30 libère son créneau : 2 non libérés sur 3 places
 // Bilan mensuel : même population que les statistiques, recomptage indépendant, unités, anonymat, état vide.
 const bil=[];let bid=0;const add=(date,heure,statut,commune,demarche,msgType='confirmation')=>bil.push({...row('b'+(bid++),date,statut,heure,commune,msgType),demarche});
 add('2026-09-03','09:30','realise','A','Impôts');add('2026-09-03','10:30','lapin','A','Impôts');add('2026-09-03','11:30','realise','B','CAF');
@@ -139,7 +143,7 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
+assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/Taux de remplissage net/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 // Mois en cours (30/10) : un RDV du 28/10 est exclu au 25/10 (volumes et statuts), rapport marqué partiel ; mois échu non partiel.
 const avecFutur=bil.concat([row('z1','2026-10-28','confirme','09:30','A')]);
