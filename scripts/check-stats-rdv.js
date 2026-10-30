@@ -105,6 +105,11 @@ assert.equal(ctx.statsRdvModel([],[],'1m','',new Date(Date.UTC(2026,8,30,22,30))
 // Pt 4 : clé usager avec séparateur ; homonymes = un seul usager (limite connue).
 assert.notEqual(ctx.usagerKey({nom:'AB',prenom:'C'}),ctx.usagerKey({nom:'A',prenom:'BC'}));
 assert.equal(ctx.usagerKey({nom:' Dupont ',prenom:'Ana'}),ctx.usagerKey({nom:'DUPONT',prenom:'ana'}));assert.equal(ctx.usagerKey({}),'');
+// Pt 7 : statut vide, inconnu ou propriété héritée = « en attente » ; démarche nommée « constructor » comptée, absente signalée.
+assert.equal(ctx.statutAffiche({statut:'toString'}),'en_attente');assert.equal(ctx.statutAffiche({statut:''}),'en_attente');assert.equal(ctx.statutAffiche({}),'en_attente');assert.equal(ctx.statutAffiche({statut:'lapin'}),'lapin');
+const p7=ctx.statsRdvModel([row('p1',todayStr,'toString','09:30'),row('p2',todayStr,'inconnu','10:30'),row('p3',todayStr,null,'11:30'),{...row('p4',todayStr,'realise','14:30'),demarche:'constructor'},{...row('p5',todayStr,'realise','15:30'),demarche:''},{...row('p6',todayStr,'realise','16:30'),demarche:'__proto__'}],[],'all','A',today);
+assert.equal(p7.byStatut.en_attente,3);assert.equal(p7.byStatut.realise,3);assert.equal(Object.values(p7.byStatut).reduce((a,b)=>a+b,0),p7.entries.length);   // somme des sept statuts = fiches
+assert.equal(p7.byDemarche.constructor,1);assert.equal(p7.byDemarche['__proto__'],1);assert.equal(p7.sansDemarche,1);
 // Remplissage net : un créneau dont toutes les fiches sont libérées ne compte pas ; une fiche active le fait compter.
 const net=ctx.statsRdvModel([row('n1',todayStr,'realise','09:30'),row('n2',todayStr,'lapin','10:30'),row('n3',todayStr,'annule','11:30'),row('n4',todayStr,'excuse','11:30'),row('n5',todayStr,'confirme','11:30'),row('n6',todayStr,null,'14:30'),row('n7',todayStr,'toString','15:30')],[],'all','A',today).slotRates;
 assert.equal(net.total+'/'+net.occupes+'/'+net.places,'5/4/6');   // 5 créneaux ; 10:30 libéré ; 11:30 porte une fiche confirmée ; statut vide ou inconnu = non libéré

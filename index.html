@@ -2874,7 +2874,7 @@ function computeYearArchive(year){
   arc.usagersN=Object.keys(usagers).length;
   var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
   arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});
-  hist.forEach(function(h){var k=h.statut||'en_attente';if(arc.statuts[k]===undefined)arc.statuts[k]=0;arc.statuts[k]++;});
+  hist.forEach(function(h){arc.statuts[statutAffiche(h)]++;});
   arc.realiseN=arc.statuts.realise||0;
   arc.lapinN=arc.statuts.lapin||0;
   /* taux par créneau (23/10/2026) ; realiseN/lapinN restent des nombres de fiches */
@@ -3055,7 +3055,7 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   var entries=history.filter(function(h){return h.msgType!=='indispo'&&inRange(h.date)&&(!cms||cmsKey(h.commune)===cmsKey(cms));});
   var past=entries.filter(function(h){return h.date<=today;}),realised=past.filter(function(h){return h.statut==='realise';});
   var lapins=past.filter(function(h){return h.statut==='lapin';});
-  var byMonth={},byDemarche={};
+  var byMonth={},byDemarche=Object.create(null);   /* sans prototype : une démarche nommée « constructor » ou « __proto__ » reste une démarche */
   var keys=['realise','confirme','en_attente','annule','excuse','lapin','pas_de_retour'];
   entries.forEach(function(h){var key=h.date.slice(0,7);if(!byMonth[key]){byMonth[key]={};keys.forEach(function(k){byMonth[key][k]=0;});}
     byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
@@ -3067,7 +3067,7 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   var accompanied={};realised.forEach(function(h){var key=usagerKey(h);if(key)accompanied[key]=true;});
   var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
   /* statut vide ou inconnu = « en attente », comme le graphe mensuel et `computeYearArchive` */
-  entries.forEach(function(h){byStatut[byStatut[h.statut]!==undefined?h.statut:'en_attente']++;});
+  entries.forEach(function(h){byStatut[statutAffiche(h)]++;});
   /* Trois places par demi-journée, six par journée complète. Les blocages de
      fermeture de l'autre moitié ne sont pas des places bloquées sur la moitié ouverte. */
   var seen={},days=[];
@@ -3172,6 +3172,9 @@ function delaiRdvJours(ts,date){
   return Math.round((t1-t0)/86400000);
 }
 var STATUTS_LIBERES={lapin:1,excuse:1,annule:1,pas_de_retour:1};
+/* Audit Codex du 30/10, pt 7 : liste fermée des statuts ; vide, inconnu ou propriété héritée (`toString`) = « en attente », partout. */
+var STATUTS_CONNUS=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'];
+function statutAffiche(h){return STATUTS_CONNUS.indexOf(h&&h.statut)!==-1?h.statut:'en_attente';}
 var PLACES_PAR_JOURNEE=6;
 /* Places d'une journée de permanence passée (30/10, demande utilisateur : Saint-Pardoux n'a que 3 créneaux) : même règle que les
    « Places disponibles » (`assignedHalfOf`) : 3 pour une demi-journée, 6 sinon. Sans permanence enregistrée : 6, signalé (`connue`). */
@@ -3791,7 +3794,7 @@ function renderStats(){
   var legacyPrep=legacyPreparationEstimate(prepCohort);
   /* avg days between ts and date (appointment) — aussi par CMS : chaque permanence a son propre
      rythme, une moyenne tous CMS confondus n'est pas pertinente (demande utilisateur 22/10) */
-  var diffs=[],diffsByCms={};hist.forEach(function(h){
+  var diffs=[],diffsByCms=Object.create(null);hist.forEach(function(h){
     var d=delaiRdvJours(h.ts,h.date);
     if(d!==null){
       diffs.push(d);
@@ -3868,10 +3871,11 @@ function renderStats(){
   /* Démarches */
   var demMap=rdv.byDemarche;
   var demList=Object.keys(demMap).map(function(k){return{nom:k,n:demMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,10);
+  if(rdv.sansDemarche)demList.push({nom:'Démarche non renseignée',n:rdv.sansDemarche});   /* comme le bilan mensuel (audit 30/10, pt 7) */
   var demCard=card("Démarches accompagnées (top 10)");
   demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches au statut Réalisé sur la période sélectionnée.'));
   if(demList.length){
-    var maxD=demList[0].n;
+    var maxD=demList.reduce(function(m,d){return Math.max(m,d.n);},0);
     var dw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
     demList.forEach(function(d,i){var colors=["oklch(0.56 0.15 266)","oklch(0.52 0.14 266)","oklch(0.48 0.13 266)"];dw.appendChild(barRow(d.nom,Math.round(d.n/maxD*100),colors[Math.min(i,2)],String(d.n),String(i+1)));});
     demCard.appendChild(dw);
@@ -3895,7 +3899,7 @@ function renderStats(){
     var statutRow=barRow(STATUT_STYLES[k].label,pct,STATUT_STYLES[k].border,statutMap[k]+" ("+pct+"%)",null);
     statutRow.style.cursor='pointer';
     statutRow.addEventListener('click',(function(key){return function(){
-      openStatList(STATUT_STYLES[key].label,rdv.entries.filter(function(h){return h.statut===key;}));
+      openStatList(STATUT_STYLES[key].label,rdv.entries.filter(function(h){return statutAffiche(h)===key;}));
     };})(k));
     stw.appendChild(statutRow);
   });
