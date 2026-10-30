@@ -64,7 +64,7 @@ dans « Points à ne pas défaire ».
 - **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
   **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
-- **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous », note
+- **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
   `agendaFocusDay`, consultation seule ; validé le 30/10. **Badges rouge/orange de l'Agenda
