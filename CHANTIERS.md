@@ -64,7 +64,7 @@ dans « Points à ne pas défaire ».
 - **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
   **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
-- **Taux de remplissage** (30/10, demande utilisateur ; bilan mensuel testé OK le 30/10) : créneaux attribués échus / places, journée = date + CMS avec
+- **Taux de remplissage** (30/10, demande utilisateur ; **validé par l'utilisateur le 30/10**, demi-journée Saint-Pardoux comprise) : créneaux attribués échus / places, journée = date + CMS avec
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). Limites : journée sans RDV non comptée, tous statuts
   comptés, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
