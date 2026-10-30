@@ -72,7 +72,7 @@ dans « Points à ne pas défaire ».
 - **Issue des créneaux** (30/10, remplace les taux par statut cumulés d'AG-007 : 38+11+2+7+6 = 64 créneaux et 121 % pour 53, relevé par l'utilisateur ; **à valider**,
   **AG-008 tranché le 30/10 : Codex « amendé » (arrondis), corrigé ; ordre de priorité conservé par l'utilisateur**) : chaque créneau attribué échu compté **une fois**, dans son issue la plus avancée (Réalisé > Confirmé > En attente >
   Lapin > Pas de retour > Excusé > Annulé ; ordre confirmé) ; somme = 100 %, ligne Total au bilan, carte à l'écran (`slotRates.issues`). Concrétisation = ligne
-  Réalisé ; le taux de lapin reste cumulé (peut dépasser la ligne Lapin) ; pourcentages arrondis : total possible de 99 ou 101 %, annoncé, jamais redistribué.
+  Réalisé ; le taux de lapin reste cumulé (peut dépasser la ligne Lapin) ; pourcentages arrondis : total possible de 99 ou 101 %, annoncé, jamais redistribué. Lignes « Confirmé » et « En attente » masquées quand elles sont à 0 (fiches et créneaux) : `statutTransitoireVide`, affichage seul, demande utilisateur du 30/10.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
