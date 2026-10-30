@@ -100,6 +100,21 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-010 — Répartition par statut sur la base des rendez-vous (remplace l'issue exclusive d'AG-008) — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `f283ddb`.
+**Proposition** : dans le bilan, la colonne « Issue du créneau » est remplacée par « Part des rendez-vous » : pour chaque statut, rendez-vous enregistrés du statut ÷ rendez-vous
+enregistrés du mois (60 % réalisés, 20 % lapins… pour 100 rendez-vous), ligne Total à 100 %. À l'écran, la carte « Issue des créneaux » est retirée : la carte « Statuts des RDV
+de la période » donne déjà cette répartition en fiches. Le commentaire « statut présent sans créneau » et le classement exclusif par créneau disparaissent (plus de sens).
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (changement d'un indicateur affiché ; contradicteur Codex) ; n° 5 en partie : AG-008 tranchait l'issue exclusive par créneau.
+**Définition métier — tranchée par l'utilisateur le 30/10 (option B)** : exemple de l'utilisateur : 100 rendez-vous → 60 réalisés, 20 lapins, 10 annulés, 5 excusés, 5 pas de retour =
+60 %, 20 %, 10 %, 5 %, 5 %, « pour être proche de la réalité ». **Concrétisation, lapin et remplissage restent par créneau** (décision du 23/10 conservée) ; deux bases coexistent donc
+et sont annoncées dans les libellés (« rendez-vous enregistrés » / « créneaux attribués »).
+**Ce que ça engage** : rien de stocké ; la concrétisation (créneaux) et la part de réalisés (rendez-vous) diffèrent (ex. 72 % et 58 %), à expliquer sous le tableau.
+**Non vérifié par l'auteur** : lisibilité de deux bases voisines ; effet sur les vraies sauvegardes (tests sur données fictives). AG-009 (phrase de lecture) reste ouvert : sa mention de
+l'issue exclusive devient sans objet.
+**Si personne ne répond, je fais quoi ?** — livrer tel quel (calcul d'affichage, se défait en un commit) ; amender selon Codex.
+**Où regarder** : `index.html` : `monthlyReportHtml` (colonne, ligne Total, note), `slotRates` (suppression de `issues`), `renderStats` (carte retirée) ; tests `scripts/check-stats-rdv.js`.
+
 ## AG-009 — Bilan mensuel : phrase de lecture 65 → 53 → 54 et infobulles — ouvert le 30/10/2026
 **Auteur** : session `0199YP2K` — lu sur `b90e9a4`.
 **Proposition** : au-dessus du tableau du bilan, une phrase qui relie les trois nombres que l'utilisateur lit comme « le même sujet » (65, 53, 54) : réservations
