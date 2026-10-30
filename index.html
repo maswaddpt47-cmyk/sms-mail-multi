@@ -3046,7 +3046,7 @@ function renderArchivedYearStats(wrap,arc){
 /* Statistiques de RDV : lecture seule du profil actif, au jour du rendez-vous.
    Les fiches suivent l'unité existante de l'historique (addHistory remplace la
    même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
-function statsRdvModel(history,permanences,period,cms,now){
+function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   var today=parisDayStr(now),start=null;
   var months={ '1m':1,'3m':3,'6m':6 };
   if(months[period]){
@@ -3074,24 +3074,10 @@ function statsRdvModel(history,permanences,period,cms,now){
   /* Trois places par demi-journée, six par journée complète. Les blocages de
      fermeture de l'autre moitié ne sont pas des places bloquées sur la moitié ouverte. */
   var seen={},days=[];
-  function assignedHalf(p,slots){
-    function isBlocked(slot){return slot.taken&&slot.taken.msgType==='indispo';}
-    function closed(hours,morning){
-      return hours.every(function(hour){return slots.some(function(slot){return slot.heure===hour&&isBlocked(slot);});})&&
-        !slots.some(function(slot){return (slot.heure<'13:00')===morning&&slot.taken&&!slot.freeAgain&&!isBlocked(slot);});
-    }
-    var morningClosed=closed(['09:30','10:30','11:30','12:30'],true);
-    var afternoonClosed=closed(afternoonGridHours(p.commune),false);
-    if(/^\d{2}:\d{2}$/.test(p.debut||'')&&p.debut>='13:00')return 'afternoon';
-    if(/^\d{2}:\d{2}$/.test(p.fin||'')&&p.fin<'13:00')return 'morning';
-    if(morningClosed&&!afternoonClosed)return 'afternoon';
-    if(afternoonClosed&&!morningClosed)return 'morning';
-    return '';
-  }
   permanences.forEach(function(p){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived||cms&&cmsKey(p.commune)!==cmsKey(cms))return;
     var key=p.exceptDate+'|'+p.commune;if(seen[key])return;seen[key]=true;
-    var allSlots=getSlots(p.commune,p.exceptDate,history,p),half=assignedHalf(p,allSlots),total=half?3:6;
+    var allSlots=getSlots(p.commune,p.exceptDate,history,p),half=assignedHalfOf(p,allSlots),total=half?3:6;
     var lunchN=allSlots.filter(isLunchBreak).length; /* la pause déjeuner automatique n'est ni une place ni un blocage */
     var maskedN=(allSlots.masquees||[]).filter(function(slot){
       return !isLunchBreak(slot)&&slot.heure!=='12:30'&&!(half==='afternoon'&&slot.heure<'13:00'||half==='morning'&&slot.heure>='13:00');
@@ -3161,7 +3147,7 @@ function statsRdvModel(history,permanences,period,cms,now){
     .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,sansDemarche:sansDemarche,free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past,capaPerms||permanences,history),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,sansDemarche:sansDemarche,free:free};
 }
 
 /* Taux par créneau (demande utilisateur 23/10, remplace le comptage par fiche du 27/09) : un
@@ -3176,31 +3162,58 @@ function parisDayStr(d){
 }
 function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
 var PLACES_PAR_JOURNEE=6;
-function slotRates(entries){
+/* Places d'une journée de permanence passée (30/10, demande utilisateur : Saint-Pardoux n'a que 3 créneaux) : même règle que les
+   « Places disponibles » (`assignedHalfOf`) : 3 pour une demi-journée, 6 sinon. Sans permanence enregistrée : 6, signalé (`connue`). */
+function assignedHalfOf(p,slots){
+  function isBlocked(slot){return slot.taken&&slot.taken.msgType==='indispo';}
+  function closed(hours,morning){
+    return hours.every(function(hour){return slots.some(function(slot){return slot.heure===hour&&isBlocked(slot);});})&&
+      !slots.some(function(slot){return (slot.heure<'13:00')===morning&&slot.taken&&!slot.freeAgain&&!isBlocked(slot);});
+  }
+  var morningClosed=closed(['09:30','10:30','11:30','12:30'],true);
+  var afternoonClosed=closed(afternoonGridHours(p.commune),false);
+  if(/^\d{2}:\d{2}$/.test(p.debut||'')&&p.debut>='13:00')return 'afternoon';
+  if(/^\d{2}:\d{2}$/.test(p.fin||'')&&p.fin<'13:00')return 'morning';
+  if(morningClosed&&!afternoonClosed)return 'afternoon';
+  if(afternoonClosed&&!morningClosed)return 'morning';
+  return '';
+}
+function placesJournee(commune,dateStr,history,perms){
+  var p=(perms||[]).find(function(x){return x.exceptDate===dateStr&&cmsKey(x.commune)===cmsKey(commune);});
+  if(!p)return {places:PLACES_PAR_JOURNEE,demi:false,connue:false};
+  var half=assignedHalfOf(p,getSlots(p.commune,dateStr,history||[],p));
+  return {places:half?PLACES_PAR_JOURNEE/2:PLACES_PAR_JOURNEE,demi:!!half,connue:true};
+}
+function slotRates(entries,perms,history){
   var slots={},sansHeure=0,jours={};
   entries.forEach(function(h){
-    if(!h.heure){sansHeure++;return;}
-    jours[h.date+'|'+cmsKey(h.commune)]=true;   /* journée de permanence = date + CMS portant au moins un RDV avec heure */   /* sans heure : identité horaire inconnue, ni créneau ni taux */
+    if(!h.heure){sansHeure++;return;}   /* sans heure : identité horaire inconnue, ni créneau ni taux */
+    var jk=h.date+'|'+cmsKey(h.commune);
+    if(!jours[jk])jours[jk]={date:h.date,commune:h.commune};   /* journée de permanence = date + CMS portant au moins un RDV avec heure */
     var k=h.date+'|'+cmsKey(h.commune)+'|'+h.heure;
     var s=slots[k]||(slots[k]={realise:false,lapin:false});
     if(h.statut==='realise')s.realise=true;
     if(h.statut==='lapin')s.lapin=true;
   });
-  var keys=Object.keys(slots);
+  var keys=Object.keys(slots),jks=Object.keys(jours),places=0,demi=0,sansPerm=0;
+  jks.forEach(function(k){
+    var c=perms?placesJournee(jours[k].commune,jours[k].date,history||entries,perms):{places:PLACES_PAR_JOURNEE,demi:false,connue:true};
+    places+=c.places;if(c.demi)demi++;if(!c.connue)sansPerm++;
+  });
   return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length,sansHeure:sansHeure,
-    jours:Object.keys(jours).length,places:Object.keys(jours).length*PLACES_PAR_JOURNEE};   /* remplissage (30/10) : base 6 créneaux par journée */
+    jours:jks.length,places:places,joursDemi:demi,sansPerm:sansPerm};   /* remplissage (30/10) : 6 places par journée, 3 par demi-journée */
 }
 
 /* Bilan mensuel imprimable (25/10/2026, tâche autorisée) : réutilise statsRdvModel et slotRates, aucune
    formule parallèle. Le mois est passé en « Tout » sur les seules fiches du mois, « aujourd'hui » étant
    la fin du mois (mois échu) ou le jour courant. Aucun nom, téléphone, note ni message : uniquement
    des comptes, des démarches et des CMS. */
-function monthlyReportData(history,month,cms,now){
+function monthlyReportData(history,month,cms,now,perms){
   var mm=/^(\d{4})-(\d{2})$/.exec(month||'');if(!mm)return null;
   var nowD=now||new Date(),last=new Date(Number(mm[1]),Number(mm[2]),0,12),end=last<nowD?last:nowD;
   var endStr=parisDayStr(end),partiel=endStr<parisDayStr(last);   /* mois en cours (30/10) : rien après aujourd'hui, volumes et taux sur la même population */
   var inMonth=history.filter(function(h){return h.date&&String(h.date).slice(0,7)===month&&h.date<=endStr;});
-  function model(commune){return statsRdvModel(inMonth,[],'all',commune,end);}
+  function model(commune){return statsRdvModel(inMonth,[],'all',commune,end,perms||[]);}
   var total=model(cms||'');
   var communes={};inMonth.forEach(function(h){if(h.msgType!=='indispo'&&h.commune&&(!cms||cmsKey(h.commune)===cmsKey(cms))&&!communes[cmsKey(h.commune)])communes[cmsKey(h.commune)]=h.commune.trim();});
   var byCms=Object.keys(communes).map(function(k){return communes[k];}).sort().map(function(c){var r=model(c);return {cms:c,entries:r.entries.length,realised:r.realised.length,slots:r.slotRates.total,realisedSlots:r.slotRates.realised,lapinSlots:r.slotRates.lapins};});
@@ -3210,7 +3223,7 @@ function monthlyReportData(history,month,cms,now){
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
-    jours:total.slotRates.jours,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
+    jours:total.slotRates.jours,joursDemi:total.slotRates.joursDemi,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
     demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
     byCms:byCms,empty:!total.entries.length,
@@ -3244,7 +3257,7 @@ function monthlyReportHtml(d,meta){
       +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
       +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
       +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
-      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+' × 6)</td></tr></table></section>';
+      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+(d.joursDemi?', dont '+d.joursDemi+' demi-journée'+(d.joursDemi>1?'s':'')+' à 3 places':'')+')</td></tr></table></section>';
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th></tr>';
     STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
     h+='</table></section>';
@@ -3563,7 +3576,7 @@ function renderStats(){
     var concretStr=concretN?Math.round(rdv.slotRates.realised/concretN*100)+'%':'—';
     var lapinStr=concretN?Math.round(rdv.slotRates.lapins/concretN*100)+'%':'—';
     var fillN=rdv.slotRates.places,fillStr=fillN?Math.round(concretN/fillN*100)+'%':'—';
-    var fillSub=fillN?concretN+' créneau'+(concretN>1?'x':'')+' sur '+fillN+' places ('+rdv.slotRates.jours+' journée'+(rdv.slotRates.jours>1?'s':'')+' × '+PLACES_PAR_JOURNEE+')':'Aucune journée échue';
+    var fillSub=fillN?concretN+' créneau'+(concretN>1?'x':'')+' sur '+fillN+' places ('+rdv.slotRates.jours+' journée'+(rdv.slotRates.jours>1?'s':'')+(rdv.slotRates.joursDemi?', dont '+rdv.slotRates.joursDemi+' demi-journée'+(rdv.slotRates.joursDemi>1?'s':'')+' à 3 places':'')+')':'Aucune journée échue';
     var nonPointesN=rdv.past.filter(isAPointer).length;
     var concretSub='sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')+(nonPointesN?' · dont '+nonPointesN+' RDV non pointé'+(nonPointesN>1?'s':''):'');
     var freeSub=rdv.days.length?rdv.days.length+' permanence'+(rdv.days.length>1?'s':'')+' à venir · '+rdv.days.reduce(function(n,day){return n+day.total;},0)+' créneaux':'Aucune prochaine permanence';
@@ -3582,7 +3595,7 @@ function renderStats(){
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
       [concretStr,"Taux de concrétisation","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')],
-      [fillStr,'Taux de remplissage','Unité : créneaux attribués sur une base de 6 places par journée de permanence. Une journée de permanence = une date et un CMS avec au moins un rendez-vous enregistré et daté d\'une heure, échue à ce jour ; une journée ouverte sans aucun rendez-vous ne compte pas, et une demi-journée compte aussi pour 6. Tous statuts confondus (lapin, excusé, annulé inclus, comme pour les taux ci-dessus) ; le taux peut dépasser 100 % si une journée déborde.',null,fillSub]
+      [fillStr,'Taux de remplissage','Unité : créneaux attribués sur une base de 6 places par journée de permanence, 3 pour une demi-journée (même règle que les places disponibles ; une journée sans permanence enregistrée compte 6). Une journée de permanence = une date et un CMS avec au moins un rendez-vous enregistré et daté d\'une heure, échue à ce jour ; une journée ouverte sans aucun rendez-vous ne compte pas, Tous statuts confondus (lapin, excusé, annulé inclus, comme pour les taux ci-dessus) ; le taux peut dépasser 100 % si une journée déborde.',null,fillSub]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){
@@ -6881,7 +6894,7 @@ function renderModal(){
     Object.keys(bCms).sort().forEach(function(c){bSelC.appendChild(el('option',{value:c,selected:c===bc.cms},c));});
     bSelC.addEventListener('change',function(){bc.cms=this.value;renderModal();});
     bCtl.appendChild(bSelM);bCtl.appendChild(bSelC);box.appendChild(bCtl);
-    var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date());
+    var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date(),S.permanences||[]);
     var bMeta={profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:toLocalDateStr(new Date()).split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
     var bHtml=monthlyReportHtml(bData,bMeta);
     box.appendChild(el('style',{},BILAN_CSS));
