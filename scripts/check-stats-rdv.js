@@ -95,6 +95,16 @@ assert.equal(both.total+'/'+both.realised+'/'+both.lapins,'1/1/1');
 assert.equal(sr.jours+'/'+sr.places,'1/6');
 const fill=ctx.statsRdvModel([row('f1',todayStr,'realise','09:30'),row('f2',todayStr,'realise','10:30','B'),row('f3','2026-03-02','lapin','09:30'),row('f4',todayStr,'realise',''),row('f5',todayStr,null,'11:30','A','indispo')],[],'all','',today).slotRates;
 assert.equal(fill.jours+'/'+fill.places+'/'+fill.total,'3/18/3');
+// Audit Codex du 30/10 (AG-006) — identiques en UTC et Europe/Paris.
+// Pt 1 : délai message → RDV en jours civils, zéro inclus, antérieur ou invalide exclus.
+assert.equal(ctx.delaiRdvJours('25/10/2026 10:00','2026-10-25'),0);assert.equal(ctx.delaiRdvJours('25/10/2026','2026-11-04'),10);
+assert.equal(ctx.delaiRdvJours('25/10/2026','2026-10-24'),null);assert.equal(ctx.delaiRdvJours('31/02/2026','2026-03-05'),null);assert.equal(ctx.delaiRdvJours('','2026-03-05'),null);
+assert.equal(ctx.delaiRdvJours('28/03/2026','2026-03-30'),2);   // passage à l'heure d'été
+// Pt 3 : début de période d'après la date civile Paris (30/09 22:30 UTC = 01/10 00:30 Paris), quel que soit le fuseau de l'appareil.
+assert.equal(ctx.statsRdvModel([],[],'1m','',new Date(Date.UTC(2026,8,30,22,30))).start,'2026-09-01');
+// Pt 4 : clé usager avec séparateur ; homonymes = un seul usager (limite connue).
+assert.notEqual(ctx.usagerKey({nom:'AB',prenom:'C'}),ctx.usagerKey({nom:'A',prenom:'BC'}));
+assert.equal(ctx.usagerKey({nom:' Dupont ',prenom:'Ana'}),ctx.usagerKey({nom:'DUPONT',prenom:'ana'}));assert.equal(ctx.usagerKey({}),'');
 // Demi-journée (30/10, Saint-Pardoux) : permanence d'après-midi seule = 3 places ; sans permanence enregistrée = 6, signalé.
 const pDemi={id:'pd',commune:'A',exceptDate:'2026-10-20',debut:'13:30',fin:'16:30'};
 const rowsDemi=[row('d1','2026-10-20','realise','13:30'),row('d2','2026-10-20','realise','14:30'),row('d3','2026-10-20','lapin','15:30')];

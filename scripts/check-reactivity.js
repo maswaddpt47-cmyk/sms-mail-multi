@@ -8,6 +8,7 @@ const from=html.indexOf(begin),to=html.indexOf(end,from);
 assert(from>=0&&to>from,'Bloc PREPARATION METRICS absent ou incomplet.');
 const context=vm.createContext({Date,Intl});
 vm.runInContext(html.slice(from,to),context);
+vm.runInContext(html.match(/function cmsKey\(c\)\{[^\n]*\}/)[0],context);   // utilisé par preparationCohort (audit 30/10, pt 2)
 assert.equal(typeof context.businessDaysBetween,'function');
 assert.equal(typeof context.preparationStats,'function');
 
@@ -64,3 +65,13 @@ check([{msgType:'confirmation',dateReception:'',dateDemande:'2026-10-16',premier
 assert.equal(context.receptionDateFor({dateDemande:'2026-10-16'}),'2026-10-16');
 assert.equal(context.receptionDateFor({dateReception:'2026-10-15',dateDemande:'2026-10-16'}),'2026-10-15');
 console.log('Réactivité : '+intervals.length+' intervalles vérifiés ; moyenne, provenance Paris, couverture, idempotence et lecture seule conformes.');
+
+// Audit 30/10, pt 5 : « le jour même » = même date civile, pas zéro jour ouvré (vendredi → dimanche = 0 jour ouvré, 2 jours civils).
+const lp=context.legacyPreparationEstimate([
+  {date:'2026-11-02',heure:'09:30',ts:'25/10/2026 10:00',dateReception:'2026-10-23'},   // vendredi → dimanche : 0 jour ouvré, pas le même jour
+  {date:'2026-11-02',heure:'09:30',ts:'26/10/2026 10:00',dateReception:'2026-10-26'}]); // même jour
+assert.equal(lp.count,2);assert.equal(lp.sameDay,1);
+// Audit 30/10, pt 2 : filtre CMS insensible à la casse et aux accents.
+const coh=context.preparationCohort([{commune:'Fumel',ts:'01/10/2026',msgType:'confirmation'},{commune:'FUMEL ',ts:'01/10/2026',msgType:'confirmation'},{commune:'Agen',ts:'01/10/2026',msgType:'confirmation'}],null,null,'fumel');
+assert.equal(coh.length,2);
+console.log('Audit 30/10 : jour même, filtre CMS conformes.');

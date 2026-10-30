@@ -2824,24 +2824,24 @@ function preparationStats(history){
    relances repérables sont exclues, les autres régénérations ne laissent aucune trace — d'où
    la médiane, peu sensible à ces valeurs aberrantes. Calcul d'affichage, rien n'est stocké. */
 function legacyPreparationEstimate(history){
-  var delays=[];
+  var delays=[],sameDay=0;
   history.forEach(function(h){
     if(h.msgType==='indispo'||h.msgType==='relance'||h.dateRelance)return;
     if(preparationParisDay(h.premierePreparationAt))return;
     var m=String(h.ts||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);if(!m)return;
-    var delay=businessDaysBetween(receptionDateFor(h),m[3]+'-'+m[2]+'-'+m[1]);
-    if(delay!==null)delays.push(delay);
+    var day=m[3]+'-'+m[2]+'-'+m[1],delay=businessDaysBetween(receptionDateFor(h),day);
+    if(delay!==null){delays.push(delay);if(receptionDateFor(h)===day)sameDay++;}   /* « le jour même » = même date civile (audit 30/10, pt 5), pas zéro jour ouvré */
   });
   if(!delays.length)return {median:null,count:0,sameDay:0};
   delays.sort(function(a,b){return a-b;});
   var mid=Math.floor(delays.length/2);
   return {median:delays.length%2?delays[mid]:(delays[mid-1]+delays[mid])/2,count:delays.length,
-    sameDay:delays.filter(function(d){return d===0;}).length};
+    sameDay:sameDay};
 }
 /* ts ne sert qu'à situer les exclusions anciennes, jamais à calculer leur délai. */
 function preparationCohort(history,start,end,cms){
   return history.filter(function(h){
-    if(h.msgType==='indispo'||cms&&h.commune!==cms)return false;if(!start)return true;
+    if(h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return false;if(!start)return true;
     var day=preparationParisDay(h.premierePreparationAt);
     if(!day){var raw=h.ts||'',m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);day=m?m[3]+'-'+m[2]+'-'+m[1]:raw.slice(0,10);}
     return preparationDayUTC(day)!==null&&day>=start&&day<=end;
@@ -2870,7 +2870,7 @@ function computeYearArchive(year){
   arc.total=hist.length;
   arc.smsN=hist.filter(function(h){return h.channel==='sms';}).length;
   arc.mailN=hist.filter(function(h){return h.channel==='mail';}).length;
-  var usagers={};hist.forEach(function(h){var k=(h.nom||'')+(h.prenom||'');if(k)usagers[k]=1;});
+  var usagers={};hist.forEach(function(h){var k=usagerKey(h);if(k)usagers[k]=1;});
   arc.usagersN=Object.keys(usagers).length;
   var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
   arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});
@@ -2884,11 +2884,7 @@ function computeYearArchive(year){
   arc.preparationMetrics=Object.assign({basis:'reception-first-preparation-mon-fri-v1'},preparationStats(hist));
   arc.avgReact=null; /* ancien champ conservé pour compatibilité, nouvelle unité séparée */
   var rdvDiffs=[];hist.forEach(function(h){
-    if(!h.ts||!h.date)return;
-    var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var tsDate=m?new Date(parseInt(m[3],10),parseInt(m[2],10)-1,parseInt(m[1],10)):null;
-    var appt=new Date(h.date);
-    if(tsDate&&!isNaN(appt.getTime())&&appt>tsDate)rdvDiffs.push(Math.round((appt-tsDate)/86400000));
+    var d=delaiRdvJours(h.ts,h.date);if(d!==null)rdvDiffs.push(d);
   });
   arc.avgRdv=rdvDiffs.length?Math.round(rdvDiffs.reduce(function(s,d){return s+d;},0)/rdvDiffs.length):null;
   var monthMap={};
@@ -3050,8 +3046,9 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   var today=parisDayStr(now),start=null;
   var months={ '1m':1,'3m':3,'6m':6 };
   if(months[period]){
-    var d=new Date(now.getFullYear(),now.getMonth()-months[period],1,12);
-    d.setDate(Math.min(now.getDate(),new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));
+    var pd=/^(\d{4})-(\d{2})-(\d{2})$/.exec(today);   /* même date civile Europe/Paris que la borne de fin (audit 30/10, pt 3) */
+    var d=new Date(+pd[1],+pd[2]-1-months[period],1,12);
+    d.setDate(Math.min(+pd[3],new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));
     start=toLocalDateStr(d);
   }
   function inRange(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&(!start||(date>=start&&date<=today));}
@@ -3067,7 +3064,7 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;else sansDemarche++;});
   /* usagers accompagnés (personnes distinctes parmi les fiches Réalisé) et fiches par statut : calculés
      ici pour que l'écran et le bilan mensuel partagent la même population (25/10) */
-  var accompanied={};realised.forEach(function(h){var key=((h.nom||'').trim()+'|'+(h.prenom||'').trim()).toLowerCase();if(key!=='|')accompanied[key]=true;});
+  var accompanied={};realised.forEach(function(h){var key=usagerKey(h);if(key)accompanied[key]=true;});
   var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
   /* statut vide ou inconnu = « en attente », comme le graphe mensuel et `computeYearArchive` */
   entries.forEach(function(h){byStatut[byStatut[h.statut]!==undefined?h.statut:'en_attente']++;});
@@ -3161,6 +3158,19 @@ function parisDayStr(d){
   catch(e){return toLocalDateStr(d);}
 }
 function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
+/* Audit Codex du 30/10 (AG-006). Clé d'un usager : nom|prénom séparés, espaces retirés, minuscules. Nom et prénom ne
+   forment pas un identifiant de personne : deux homonymes restent un seul usager. */
+function usagerKey(h){var n=String(h.nom||'').trim().toLowerCase(),p=String(h.prenom||'').trim().toLowerCase();return n||p?n+'|'+p:'';}
+/* Jours calendaires du message (ts « JJ/MM/AAAA… ») au RDV (« AAAA-MM-JJ ») : deux dates civiles converties de la même façon,
+   sans fuseau d'appareil. Zéro inclus (RDV le jour du message), RDV antérieur ou date invalide : null. */
+function delaiRdvJours(ts,date){
+  var m=String(ts||'').match(/(\d{2})\/(\d{2})\/(\d{4})/),a=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(date||''));
+  if(!m||!a)return null;
+  function civil(y,mo,d){var t=Date.UTC(y,mo-1,d),c=new Date(t);return c.getUTCFullYear()===y&&c.getUTCMonth()===mo-1&&c.getUTCDate()===d?t:null;}
+  var t0=civil(+m[3],+m[2],+m[1]),t1=civil(+a[1],+a[2],+a[3]);
+  if(t0===null||t1===null||t1<t0)return null;
+  return Math.round((t1-t0)/86400000);
+}
 var PLACES_PAR_JOURNEE=6;
 /* Places d'une journée de permanence passée (30/10, demande utilisateur : Saint-Pardoux n'a que 3 créneaux) : même règle que les
    « Places disponibles » (`assignedHalfOf`) : 3 pour une demi-journée, 6 sinon. Sans permanence enregistrée : 6, signalé (`connue`). */
@@ -3547,7 +3557,7 @@ function renderStats(){
   }
 
   var rdv=statsRdvModel(S.history,S.permanences||[],S.statsPeriod,S.statsCMS,now);
-  var hist=S.history.filter(function(h){return h.msgType!=='indispo'&&inPeriod(h)&&(!S.statsCMS||h.commune===S.statsCMS);});
+  var hist=S.history.filter(function(h){return h.msgType!=='indispo'&&inPeriod(h)&&(!S.statsCMS||cmsKey(h.commune)===cmsKey(S.statsCMS));});
 
   function groupByUsager(entries){
     var groups={};
@@ -3767,24 +3777,21 @@ function renderStats(){
   var total=hist.length;
   var smsN=hist.filter(function(h){return h.channel==="sms";}).length;
   var mailN=hist.filter(function(h){return h.channel==="mail";}).length;
-  var usagers={};hist.forEach(function(h){var k=(h.nom||"")+(h.prenom||"");if(k)usagers[k]=1;});
+  var usagers={};hist.forEach(function(h){var k=usagerKey(h);if(k)usagers[k]=1;});
   var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
   var prepMetrics=preparationStats(prepCohort);
   var legacyPrep=legacyPreparationEstimate(prepCohort);
   /* avg days between ts and date (appointment) — aussi par CMS : chaque permanence a son propre
      rythme, une moyenne tous CMS confondus n'est pas pertinente (demande utilisateur 22/10) */
   var diffs=[],diffsByCms={};hist.forEach(function(h){
-    if(!h.ts||!h.date)return;
-    var m=h.ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var tsDate=m?new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1])):null;
-    var appt=new Date(h.date);
-    if(tsDate&&!isNaN(appt.getTime())&&appt>tsDate){
-      var d=Math.round((appt-tsDate)/86400000);diffs.push(d);
-      var c=h.commune||'Sans CMS';(diffsByCms[c]=diffsByCms[c]||[]).push(d);
+    var d=delaiRdvJours(h.ts,h.date);
+    if(d!==null){
+      diffs.push(d);
+      var c=h.commune||'Sans CMS',ck=cmsKey(c);(diffsByCms[ck]=diffsByCms[ck]||{cms:c,a:[]}).a.push(d);   /* variantes de casse regroupées */
     }
   });
   var avgRdv=diffs.length?Math.round(diffs.reduce(function(s,d){return s+d;},0)/diffs.length):null;
-  var rdvByCms=Object.keys(diffsByCms).sort().map(function(c){var a=diffsByCms[c];return {cms:c,avg:Math.round(a.reduce(function(s,d){return s+d;},0)/a.length),n:a.length};});
+  var rdvByCms=Object.keys(diffsByCms).sort().map(function(k){var a=diffsByCms[k].a;return {cms:diffsByCms[k].cms,avg:Math.round(a.reduce(function(s,d){return s+d;},0)/a.length),n:a.length};});
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Messages et usagers'));
   wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Un message = une fiche d’historique, comptée au jour de sa génération.'));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
@@ -3919,13 +3926,13 @@ function renderStats(){
   /* ── Heatmap annuelle style GitHub ── */
   (function(){
     var MONTHS_H=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
-    var histAll=S.history.filter(function(h){return !S.statsCMS||h.commune===S.statsCMS;});
+    var histAll=S.history.filter(function(h){return !S.statsCMS||cmsKey(h.commune)===cmsKey(S.statsCMS);});
     /* créneaux de RDV par jour (date, CMS, heure) : ni les créneaux bloqués, ni les fiches multiples
        d'un même créneau (constat utilisateur 23/10 : « 16 RDV le 30/09 » pour 5 vrais RDV) */
     var countByDate={},seenSlot={};
     histAll.forEach(function(h){
       if(!h.date||h.msgType==='indispo')return;
-      var k=h.date+'|'+(h.commune||'')+'|'+(h.heure||'');if(seenSlot[k])return;seenSlot[k]=true;
+      var k=h.date+'|'+cmsKey(h.commune)+'|'+(h.heure||'');if(seenSlot[k])return;seenSlot[k]=true;
       countByDate[h.date]=(countByDate[h.date]||0)+1;
     });
     var todayH=new Date();todayH.setHours(0,0,0,0);
