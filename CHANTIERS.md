@@ -73,6 +73,9 @@ dans « Points à ne pas défaire ».
   **AG-008 tranché le 30/10 : Codex « amendé » (arrondis), corrigé ; ordre de priorité conservé par l'utilisateur**) : chaque créneau attribué échu compté **une fois**, dans son issue la plus avancée (Réalisé > Confirmé > En attente >
   Lapin > Pas de retour > Excusé > Annulé ; ordre confirmé) ; somme = 100 %, ligne Total au bilan, carte à l'écran (`slotRates.issues`). Concrétisation = ligne
   Réalisé ; le taux de lapin reste cumulé (peut dépasser la ligne Lapin) ; pourcentages arrondis : total possible de 99 ou 101 %, annoncé, jamais redistribué. Lignes « Confirmé » et « En attente » masquées quand elles sont à 0 (fiches et créneaux) : `statutTransitoireVide`, affichage seul, demande utilisateur du 30/10.
+- **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
+  en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
+  décalé, compteurs freinés ; rien en mouvement réduit ni à l'impression. **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
@@ -127,10 +130,8 @@ dans « Points à ne pas défaire ».
   filtre nom/statut est actif (`data-ag-open-slot`). Chaque créneau libre porte un bouton 🚫 (motif demandé,
   `blockSlot`) ; les créneaux **bloqués** s'affichent en gris ardoise rayé (couleur « Bloqué » des stats) avec leur motif (« Sans motif » sinon), regroupés quand
   contigus de même motif, avec « 🔓 Libérer » (`releaseSlot`). Le bouton « Bilan mensuel » est agrandi (52 px).
-- **Swipe de jour** (23/10, validé par l'utilisateur) sur `#ag-timeline-board`,
-  vue compacte seulement : seuil 60 px horizontal / 40 px vertical, via
-  `timelineMove()`. **Le geste de suppression par swipe sur une tuile est
-  retiré** ; la suppression passe par la fiche RDV.
+- **Swipe de jour** (23/10, validé) sur `#ag-timeline-board`, vue compacte seulement : seuil 60 px horizontal / 40 px vertical, via `timelineMove()`.
+  **Le geste de suppression par swipe sur une tuile est retiré** ; la suppression passe par la fiche RDV.
 - Tuile entière colorée par statut (fond adouci clair, assombri sombre ;
   repli `color-mix()` sous `@supports`). Mode sombre : bordure `#6e8797`,
   fond `#182a35`, rail de statut 4 px. **« il y a N j » (jours depuis l'envoi, `dateDemande`) sur les tuiles « En attente » seulement, à côté de l'heure**
@@ -169,9 +170,8 @@ dans « Points à ne pas défaire ».
   l'Agenda). L'archive annuelle (`arc.heatmap`, jour de semaine × heure) n'est pas touchée.
 - Mise en page (23/10, « ramassée ») : CSS grid qui remplit la carte, cases carrées ≤ 22 px, 10 px/semaine minimum (défilement sur écran étroit),
   mois sans chevauchement. **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche reviennent seulement si l'un porte un RDV.
-- **Infobulle de la heatmap au toucher** (23/10) : `title` ne s'affiche pas au toucher ; les cases utilisent `#stat-tooltip` via
-  `attachPermanenceTip` (`data-tip`). Les `mouseleave` émulés après un toucher sont ignorés 1 s, sinon l'infobulle disparaissait
-  aussitôt. Vaut aussi pour les cases de « Prochaines permanences ». Heatmap validée par l'utilisateur le 25/10/2026.
+- **Infobulle de la heatmap au toucher** (23/10, validée le 25/10) : cases sur `#stat-tooltip` via `attachPermanenceTip` (`data-tip`), `title` ne s'affichant pas au toucher ;
+  les `mouseleave` émulés après un toucher sont ignorés 1 s. Vaut aussi pour « Prochaines permanences ».
 
 ## Chantiers bloqués ou arrêtés
 
