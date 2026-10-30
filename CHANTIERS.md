@@ -97,7 +97,8 @@ dans « Points à ne pas défaire ».
   `getSlots` ne propose pas 12:30 (RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : libérable en un clic.
 - **Bilan mensuel imprimable** (25/10 ; « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS, « Imprimer / PDF ».
   `monthlyReportData` réutilise `statsRdvModel`/`slotRates` ; vocabulaire « rendez-vous enregistrés » / « créneaux horaires » ;
-  archives jamais mélangées. Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
+  archives jamais mélangées. **Mois en cours (30/10, demande utilisateur, à valider)** : rien après aujourd'hui (volumes, statuts et taux sur la même
+  population), mention « chiffres arrêtés au JJ/MM » (`partiel`). Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
   écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
   Démarches libres (29 sur 162) reproduites telles quelles ; **mention « à relire » retirée du bilan le 30/10 sur demande de l'utilisateur**
   (il a relu les textes libres ; `8d7d94d`, testé et validé par lui).
