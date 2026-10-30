@@ -3198,7 +3198,8 @@ function slotRates(entries){
 function monthlyReportData(history,month,cms,now){
   var mm=/^(\d{4})-(\d{2})$/.exec(month||'');if(!mm)return null;
   var nowD=now||new Date(),last=new Date(Number(mm[1]),Number(mm[2]),0,12),end=last<nowD?last:nowD;
-  var inMonth=history.filter(function(h){return h.date&&String(h.date).slice(0,7)===month;});
+  var endStr=parisDayStr(end),partiel=endStr<parisDayStr(last);   /* mois en cours (30/10) : rien après aujourd'hui, volumes et taux sur la même population */
+  var inMonth=history.filter(function(h){return h.date&&String(h.date).slice(0,7)===month&&h.date<=endStr;});
   function model(commune){return statsRdvModel(inMonth,[],'all',commune,end);}
   var total=model(cms||'');
   var communes={};inMonth.forEach(function(h){if(h.msgType!=='indispo'&&h.commune&&(!cms||cmsKey(h.commune)===cmsKey(cms))&&!communes[cmsKey(h.commune)])communes[cmsKey(h.commune)]=h.commune.trim();});
@@ -3206,7 +3207,7 @@ function monthlyReportData(history,month,cms,now){
   var dem=Object.keys(total.byDemarche).map(function(k){return {nom:k,n:total.byDemarche[k]};}).sort(function(a,b){return b.n-a.n||a.nom.localeCompare(b.nom);});
   var top=dem.slice(0,10),others=dem.slice(10);
   function pct(n,d){return d?Math.round(n/d*100):null;}
-  return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,
+  return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
     jours:total.slotRates.jours,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
@@ -3232,7 +3233,7 @@ function monthlyReportHtml(d,meta){
   var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
   function pc(n,total){return total?n+' / '+total+' · '+Math.round(n/total*100)+' %':'—';}
   var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
-    +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+'</div>';
+    +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+(d.partiel?' · <b>Mois en cours : chiffres arrêtés au '+esc(String(d.today).split('-').reverse().join('/'))+', rendez-vous à venir non comptés</b>':'')+'</div>';
   if(d.empty){
     h+='<p class="vide">Aucun rendez-vous daté de ce mois dans l’historique détaillé de ce profil'+(d.cms?' pour ce CMS':'')+'.'
       +(meta.archivedYear?' L’année '+d.year+' a été archivée : le détail nominatif n’existe plus, seules les statistiques annuelles agrégées subsistent (Statistiques → sélecteur d’année). Ce bilan ne reprend jamais les archives.':'')+'</p>';

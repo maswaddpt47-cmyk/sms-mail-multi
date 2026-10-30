@@ -124,6 +124,11 @@ assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
 assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
+// Mois en cours (30/10) : un RDV du 28/10 est exclu au 25/10 (volumes et statuts), rapport marqué partiel ; mois échu non partiel.
+const avecFutur=bil.concat([row('z1','2026-10-28','confirme','09:30','A')]);
+const oct=ctx.monthlyReportData(bil,'2026-10','',nowBil),octF=ctx.monthlyReportData(avecFutur,'2026-10','',nowBil);
+assert.equal(octF.entries,oct.entries);assert.equal(octF.byStatut.confirme,oct.byStatut.confirme);assert.equal(oct.partiel,true);assert.equal(r1.partiel,false);
+assert.equal(ctx.monthlyReportData(avecFutur,'2026-10','',new Date(2026,10,2,12)).entries,oct.entries+1);   // mois échu : le RDV du 28/10 compte
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);
 assert.equal(ctx.monthlyReportData(bil,'2026-9','',nowBil),null);
