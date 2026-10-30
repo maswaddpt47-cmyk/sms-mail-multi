@@ -536,7 +536,21 @@
 .ui-stats-rank{display:inline-block;min-width:20px;font-size:10px;font-weight:800;color:var(--c-muted);}
 .ui-stats-bar-value{grid-column:2;grid-row:1;align-self:start;font-size:10px;line-height:1.65;font-weight:800;font-variant-numeric:tabular-nums;color:var(--c-text);text-align:right;max-width:140px;}
 .ui-stats-bar-track{grid-column:1/-1;grid-row:2;background:var(--c-hover);height:7px;border-radius:2px;overflow:hidden;min-width:0;}
-.ui-stats-bar-fill{height:100%;border-radius:2px;min-width:0;}
+.ui-stats-bar-fill{height:100%;border-radius:2px;min-width:0;width:var(--w,0%);transition:width .8s cubic-bezier(.215,.61,.355,1);}
+/* Animation des graphes (30/10, demande de l'utilisateur : à la façon des bilans de NEWGEN) : 800 ms, décélération « cubicOut », dessin à l'arrivée à l'écran
+   et à chaque retour. `.ui-anim-pre` = état avant dessin (posé par `animerGraphesStats`) ; ni en mouvement réduit (règle globale) ni à l'impression. */
+.ui-anim-pre .ui-stats-bar-fill{width:0;transition:none;}
+.ui-bar-grow{transform-box:fill-box;transform-origin:50% 100%;transition:transform .8s cubic-bezier(.215,.61,.355,1);}
+.ui-anim-pre .ui-bar-grow{transform:scaleY(0);transition:none;}
+.ui-chart-scroll .ui-chart-value{transition:opacity .4s ease .5s;}
+.ui-anim-pre .ui-chart-value{opacity:0;transition:none;}
+.ui-heat-cell{transition:transform .15s,opacity .6s cubic-bezier(.215,.61,.355,1) var(--d,0s);}
+.ui-anim-pre .ui-heat-cell{opacity:0;transition:none;}
+@keyframes kpiSlideUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.ui-stats-metric-band .ui-stats-metric{animation:kpiSlideUp .38s cubic-bezier(.22,.68,0,1.2) both;}
+.ui-stats-metric-band .ui-stats-metric:nth-child(2){animation-delay:.07s;}.ui-stats-metric-band .ui-stats-metric:nth-child(3){animation-delay:.14s;}.ui-stats-metric-band .ui-stats-metric:nth-child(4){animation-delay:.21s;}
+.ui-stats-metric-band .ui-stats-metric:nth-child(5){animation-delay:.28s;}.ui-stats-metric-band .ui-stats-metric:nth-child(6){animation-delay:.35s;}.ui-stats-metric-band .ui-stats-metric:nth-child(n+7){animation-delay:.42s;}
+@media print{.ui-anim-pre .ui-stats-bar-fill{width:var(--w,0%);}.ui-anim-pre .ui-bar-grow{transform:none;}.ui-anim-pre .ui-chart-value,.ui-anim-pre .ui-heat-cell{opacity:1;}.ui-stats-metric-band .ui-stats-metric{animation:none;}}
 .ui-stats-section svg text{font-family:inherit;fill:var(--c-muted);font-size:10px;}
 .ui-stats-charts{--chart-sms:#15876d;--chart-mail:#5269d0;--chart-lapin:#ce5710;--chart-excuse:#a87907;--chart-retour:#718096;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:22px;}
 .ui-monthly-chart{margin:0;border-radius:14px;padding:20px;overflow:hidden;}
@@ -2949,7 +2963,7 @@ function renderArchivedYearStats(wrap,arc){
     var row=el('div',{class:'ui-stats-bar-row'});
     row.appendChild(el('span',{class:'ui-stats-bar-label'},label));
     var outer=el('div',{class:'ui-stats-bar-track'});
-    var inner=el('div',{class:'ui-stats-bar-fill',style:"background:"+col+";width:"+pct+"%;"});
+    var inner=el('div',{class:'ui-stats-bar-fill',style:"background:"+col+";--w:"+pct+"%;"});
     outer.appendChild(inner);row.appendChild(outer);
     row.appendChild(el('span',{class:'ui-stats-bar-value'},valStr));
     return row;
@@ -3488,6 +3502,24 @@ function relanceNote(n,total,bar){
   box.appendChild(bar('Relances',pct,'oklch(0.65 0.2 45)',n+' / '+total+' ('+pct+'%)',tip));
   return box;
 }
+/* Entrée en mouvement des graphes de Statistiques (30/10, à la façon de NEWGEN `quandVisible`) : chaque carte est dessinée quand elle apparaît à l'écran (au moins 20 %
+   visible) et rejoue son animation à chaque retour après être sortie ; sans animation si l'utilisateur a demandé de réduire les mouvements (et à l'impression, en CSS). */
+function animerGraphesStats(root){
+  var reduit=false;try{reduit=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){}
+  var cartes=root.querySelectorAll('.ui-stats-section');
+  if(reduit||!window.IntersectionObserver||!cartes.length)return;
+  cartes.forEach(function(c){c.classList.add('ui-anim-pre');});
+  var io=new IntersectionObserver(function(entrees){
+    entrees.forEach(function(e){
+      var c=e.target;
+      if(e.isIntersecting&&(e.intersectionRatio>=.2||e.intersectionRect.height>=window.innerHeight*.4)){
+        requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.remove('ui-anim-pre');});});
+      }else if(!e.isIntersecting)c.classList.add('ui-anim-pre');   /* complètement sortie : rejouera au retour */
+    });
+  },{threshold:[0,.2]});
+  cartes.forEach(function(c){io.observe(c);});
+  (renderStats._chartObservers=renderStats._chartObservers||[]).push(io);
+}
 function renderStats(){
   (renderStats._chartObservers||[]).forEach(function(o){o.disconnect();});
   renderStats._chartObservers=[];
@@ -3499,8 +3531,8 @@ function renderStats(){
   function countUp(valEl,target,suffix){
     suffix=suffix||'';
     if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){valEl.textContent=String(target)+suffix;return;}
-    var start=Date.now(),dur=600;
-    (function tick(){var p=Math.min(1,(Date.now()-start)/dur);valEl.textContent=String(Math.round(p*target))+suffix;if(p<1)requestAnimationFrame(tick);})();
+    var start=Date.now(),dur=800;
+    (function tick(){var p=Math.min(1,(Date.now()-start)/dur),e=1-Math.pow(1-p,3);valEl.textContent=String(Math.round(e*target))+suffix;if(p<1)requestAnimationFrame(tick);})();
   }
 
   if(!S.statsPeriod)S.statsPeriod='all';
@@ -3552,6 +3584,7 @@ function renderStats(){
     wrap.appendChild(el('p',{class:'ui-chart-description'},'Archive annuelle complète : les filtres de période et de CMS des données courantes ne s’appliquent pas à ces agrégats.'));
     renderArchivedYearStats(wrap,S.yearlyStats[S.statsYear]);
     pane.appendChild(wrap);
+    animerGraphesStats(wrap);
     return;
   }
 
@@ -3665,7 +3698,6 @@ function renderStats(){
     c.appendChild(el('h3',{class:'ui-stats-section-title'},title));
     return c;
   }
-  var animBars=[];
   function barRow(label,pct,col,valStr,rankStr,tipOverride){
     var row=el('div',{class:'ui-stats-bar-row'});
     row.addEventListener('mouseenter',function(){this.style.background='var(--c-hover)';this.style.transform='scale(1.015)';});
@@ -3675,8 +3707,7 @@ function renderStats(){
     barLabel.appendChild(document.createTextNode(label));
     row.appendChild(barLabel);
     var outer=el('div',{class:'ui-stats-bar-track'});
-    var inner=el('div',{class:'ui-stats-bar-fill',style:"background:"+col+";width:0%;"});
-    animBars.push({el:inner,pct:pct});
+    var inner=el('div',{class:'ui-stats-bar-fill',style:"background:"+col+";--w:"+pct+"%;"});
     outer.appendChild(inner);row.appendChild(outer);
     row.appendChild(el('span',{class:'ui-stats-bar-value'},valStr));
     /* tooltip */
@@ -3759,7 +3790,7 @@ function renderStats(){
         var bw=stacked?Math.min(32,step*.5):Math.min(22,(step-24)/series.length-4),start=stacked?left+i*step+(step-bw)/2:left+i*step+(step-series.length*(bw+4)+4)/2,accumulated=0;
         series.forEach(function(item,j){
           var n=map[m][item.key]||0,h=n/ceiling*plotH,x=stacked?start:start+j*(bw+4),y=top+plotH-h-(stacked?accumulated/ceiling*plotH:0);accumulated+=n;
-          var bar=svgEl('rect',{x:x,y:y,width:bw,height:h,rx:3,fill:item.color});
+          var bar=svgEl('rect',{x:x,y:y,width:bw,height:h,rx:3,fill:item.color,'class':'ui-bar-grow'});
           var nativeTitle=svgEl('title');nativeTitle.textContent=item.label+' : '+n;bar.appendChild(nativeTitle);group.appendChild(bar);
           if(n&&!stacked){var value=svgEl('text',{x:x+bw/2,y:y-7,'text-anchor':'middle',class:'ui-chart-value'});value.textContent=n;group.appendChild(value);}
         });
@@ -4026,7 +4057,7 @@ function renderStats(){
     for(var w2=0;w2<totalWeeks;w2++){
       for(var d2=0;d2<rowsN;d2++){
         var day=days[w2*7+d2];
-        var cell=el('div',{style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";transition:transform .15s;cursor:default;"});
+        var cell=el('div',{class:'ui-heat-cell',style:"grid-column:"+(w2+2)+";grid-row:"+(d2+1)+";aspect-ratio:1/1;border-radius:3px;background:"+heatColor(day.n)+";--d:"+Math.min(.45,w2*.012).toFixed(3)+"s;cursor:default;"});
         cell.addEventListener('mouseenter',function(){this.style.transform='scale(1.25)';});
         cell.addEventListener('mouseleave',function(){this.style.transform='';});
         /* infobulle commune (#stat-tooltip) : l'attribut title ne s'affiche pas au toucher (23/10) */
@@ -4051,20 +4082,7 @@ function renderStats(){
 
   pane.appendChild(wrap);
 
-  /* Déclencher les animations width — double rAF pour garantir un frame peint à width:0% avant la transition */
-  var _bars=animBars.slice();animBars=[];
-  var reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  if(reducedMotion){
-    _bars.forEach(function(b){b.el.style.width=b.pct+'%';});
-  } else {
-    /* setTimeout(0) ≠ rAF : garantit un rendu du frame width:0% avant la transition */
-    setTimeout(function(){
-      _bars.forEach(function(b,i){
-        b.el.style.transition='width .7s cubic-bezier(.22,1,.36,1) '+i*50+'ms';
-        b.el.style.width=b.pct+'%';
-      });
-    },20);
-  }
+  animerGraphesStats(wrap);
 }
 
 function loadDemoData(){
