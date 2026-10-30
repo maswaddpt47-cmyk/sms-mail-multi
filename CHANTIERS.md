@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`d96063b`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`48c32d1`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -36,7 +36,7 @@ dans « Points à ne pas défaire ».
 - **Réactivité estimée** : tuile pour les fiches sans `premierePreparationAt`, réception → `ts` en jours
   ouvrés, **médiane** (`ts` est réécrit à chaque régénération) ; relances exclues ; « N % — Traitées le jour
   même » + médiane en note. Calcul d'affichage, rien de stocké.
-- **Infobulle de la tuile « Préparation moy. (lun.–ven.) »** (30/10, demande utilisateur, à valider sur iPad) : définition en mots simples (jours ouvrés, réception exclue, préparation incluse, seules les fiches horodatées).
+- **Infobulle de la tuile « Préparation moy. (lun.–ven.) »** (30/10, demande utilisateur, **testée et validée par l'utilisateur le 30/10**, ce qui valide aussi la durée des infobulles au toucher) : définition en mots simples (jours ouvrés, réception exclue, préparation incluse, seules les fiches horodatées).
 - Tests : `node scripts/check-reactivity.js`, `node scripts/check-stats-rdv.js`.
 ### Statistiques
 - En tête : RDV réalisés, RDV de la période, usagers accompagnés, places à
@@ -73,7 +73,7 @@ dans « Points à ne pas défaire ».
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
 - **Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés** (30/10, consigne de l'utilisateur ; **à valider**, **AG-011 tranché le 30/10, Codex « confirmé »** ; AG-009 et AG-010 rangés) : le bilan ne donne plus que
   rendez-vous du mois et réalisés, personnes accompagnées, répartition par statut (n / total · %, ligne Total, note sur les arrondis, Confirmé/En attente masqués à 0), démarches, rendez-vous par CMS.
-  **Retirés du bilan** : taux de concrétisation, lapin, remplissage brut/net, phrase de lecture, créneaux par CMS. 4 infobulles ⓘ à l'aperçu (jamais imprimées) ; **au toucher, une infobulle reste 6 à 15 s** (selon la longueur), au-dessus du doigt, masquée par un toucher ailleurs (`attachPermanenceTip`, aussi pour la heatmap et les permanences ; à valider sur iPad). Concrétisation, lapin et remplissage
+  **Retirés du bilan** : taux de concrétisation, lapin, remplissage brut/net, phrase de lecture, créneaux par CMS. 4 infobulles ⓘ à l'aperçu (jamais imprimées) ; **au toucher, une infobulle reste 6 à 15 s** (selon la longueur), au-dessus du doigt, masquée par un toucher ailleurs (`attachPermanenceTip`, aussi pour la heatmap et les permanences ; validé le 30/10 avec l'infobulle de la préparation). Concrétisation, lapin et remplissage
   **restent dans Statistiques** (créneaux, décision du 23/10) ; données et archives inchangées. Test : les statuts totalisent les rendez-vous du mois.
 - **Unités affichées** (25/10) : dans Statistiques, nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠
   « Mesure horodatée ». Compteurs : `compterNombre` (voir « Animation »). Le **bilan** ne compte que des rendez-vous enregistrés.
