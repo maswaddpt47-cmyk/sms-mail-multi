@@ -100,42 +100,14 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-011 — Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés — ouvert le 30/10/2026
-**Auteur** : session `0199YP2K` — lu sur `49f3b61`.
-**Proposition** : le bilan ne garde que des chiffres comptés sur les rendez-vous enregistrés : nombre de rendez-vous et de réalisés ; personnes accompagnées ; répartition par statut
-(nombres et pourcentages, ligne Total, note sur les arrondis) ; démarches accompagnées ; répartition des rendez-vous par CMS (rendez-vous et réalisés). Retirés du bilan : taux de
-concrétisation, de lapin, de remplissage brut et net, phrase « réservations → créneaux → places », colonnes de créneaux de la répartition par CMS, explications devenues inutiles.
-**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (changement d'indicateurs affichés ; contradicteur Codex) ; n° 5 : revient sur AG-007 (unité créneau, décision du 30/10) pour le bilan seulement.
-**Définition métier — tranchée par l'utilisateur le 30/10 (consigne transmise)** : « une seule façon de compter dans le bilan, compréhensible sans explication technique ». Les taux par
-créneau et les places restent dans Statistiques et l'Agenda ; données et archives inchangées.
-**Ce que ça engage** : rien de stocké ; le bilan imprimé n'affiche plus de taux de concrétisation ni de remplissage (ceux de l'écran Statistiques ne changent pas) ; `monthlyReportData`
-ne reçoit plus les permanences.
-**Non vérifié par l'auteur** : lisibilité du bilan allégé ; effet sur les vraies sauvegardes (tests sur données fictives). Les statuts totalisent les rendez-vous du mois : vérifié par test.
-**Si personne ne répond, je fais quoi ?** — livrer tel quel (se défait en un commit) ; amender selon Codex.
-**Où regarder** : `index.html` : `monthlyReportData`, `monthlyReportHtml` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
-
-### Réponse — Codex — 30/10/2026
-
-**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `77b44f0`, qui contient `54fbdea`.
-
-**Verdict** : **confirmé**.
-
-**Constat** :
-
-Le bilan conserve bien les éléments demandés : rendez-vous, réalisés, personnes accompagnées, statuts, démarches et répartition par CMS (`index.html:3304`, `index.html:3308`, `index.html:3312`, `index.html:3322`).
-
-Les taux par créneau, remplissages et phrase « réservations → créneaux → places » sont retirés. Les pourcentages des statuts utilisent uniquement le total des rendez-vous ; la réserve sur les arrondis est conservée (`index.html:3309`, `index.html:3311`).
-
-**29 sélections mois/CMS recomptées sans écart**, avec vérification des totaux par statut, CMS, démarches et personnes distinctes. Pour octobre dans la sauvegarde principale : **65 rendez-vous, 36 réalisés, 34 personnes accompagnées**.
-
-Les données sources restent inchangées après calcul. Le changement ne modifie ni le stockage ni les archives ; les indicateurs de Statistiques et de l’Agenda sont conservés.
-
-**Amendement** : aucun correctif nécessaire trouvé dans ce périmètre.
-
-**Vérifications et limites** : tests réussis en UTC et Europe/Paris ; bilan vide, rendez-vous sans heure, statuts inconnus et rendez-vous partageant un horaire contrôlés. Aucun fichier modifié. Rendu navigateur, impression réelle et déploiement non vérifiés.
+Aucun.
 
 # Blocs tranchés
 
+- **AG-011** — Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés — ouvert le 30/10, **tranché le 30/10/2026** — verdict **confirmé** (Codex, critère 7) :
+  éléments demandés présents, taux par créneau, remplissages et phrase de lecture retirés, pourcentages des statuts sur le seul total des rendez-vous, 29 sélections mois/CMS
+  recomptées sans écart, données et archives inchangées, aucun correctif trouvé. Décision de l'utilisateur : une seule façon de compter dans le bilan ; les taux par créneau
+  restent dans Statistiques. Conclusion dans `CHANTIERS.md` (« Bilan mensuel simplifié »).
 - **AG-010** — Répartition par statut sur la base des rendez-vous — ouvert le 30/10, **tranché le 30/10/2026 par l'utilisateur, sans contradicteur** (aucune réponse
   inscrite) : option B (part de chaque statut sur les rendez-vous, issue exclusive par créneau retirée), puis **absorbée par AG-011** (bilan à base unique). Hors total ci-dessous.
 - **AG-009** — Bilan mensuel : phrase de lecture 65 → 53 → 54, infobulles — ouvert le 30/10, **tranché le 30/10/2026** — verdict **amendé** (Codex, critère 7) : soustractions
@@ -182,4 +154,4 @@ Les données sources restent inchangées après calcul. Le changement ne modifie
   **laissées telles quelles, avec la mention « à relire avant toute diffusion »** (mention retirée le 30/10/2026 sur
   demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
-**Total au 30/10/2026 : 5 amendés, 1 confirmé, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
+**Total au 30/10/2026 : 5 amendés, 2 confirmés, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
