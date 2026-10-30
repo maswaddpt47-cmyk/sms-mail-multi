@@ -64,6 +64,9 @@ dans « Points à ne pas défaire ».
 - **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
   **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
+- **Taux de remplissage** (30/10, demande utilisateur, **à valider**) : créneaux attribués échus / (6 × journées), journée = date + CMS avec
+  ≥1 RDV daté d'une heure (`slotRates.jours/places`, `PLACES_PAR_JOURNEE`) ; tuile Stats + ligne du bilan. Limites : journée sans RDV
+  non comptée, demi-journée = 6, tous statuts comptés, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
