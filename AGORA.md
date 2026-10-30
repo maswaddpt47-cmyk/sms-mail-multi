@@ -100,7 +100,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-009 — Bilan mensuel : phrase de lecture 65 → 53 → 54 et infobulles — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `b90e9a4`.
+**Proposition** : au-dessus du tableau du bilan, une phrase qui relie les trois nombres que l'utilisateur lit comme « le même sujet » (65, 53, 54) : réservations
+enregistrées, créneaux attribués, places offertes ; des libellés distincts (« Réservations du mois », « Créneaux attribués », « Places offertes ») et des infobulles ⓘ
+qui définissent chaque indicateur (survol et toucher, absentes à l'impression).
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (deux nombres dérivés affichés : réservations ayant repris un créneau, places jamais attribuées ; contradicteur Codex).
+**Définitions métier — tranchées par l'utilisateur le 30/10 (choix « phrase de lecture et libellés », 1 sur 2)** : réservations reprises = réservations avec heure − créneaux
+attribués ; places jamais attribuées = places offertes − créneaux attribués (« dépassement » si négatif) ; les réservations sans heure sont signalées à part, hors créneaux.
+**Ce que ça engage** : rien de stocké ; deux nombres dérivés de ceux déjà audités (65 = fiches du mois, 53 = créneaux, 54 = places).
+**Non vérifié par l'auteur** : lisibilité de la phrase pour un lecteur extérieur ; rendu des infobulles sur iPad (tests sur données fictives).
+**Si personne ne répond, je fais quoi ?** — livrer tel quel (se défait en un commit) ; amender selon Codex.
+**Où regarder** : `index.html` : `monthlyReportData` (`repris`, `libres`), `monthlyReportHtml` (phrase, libellés, `data-tip`) ; tests `scripts/check-stats-rdv.js`.
 
 # Blocs tranchés
 
