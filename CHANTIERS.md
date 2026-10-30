@@ -97,7 +97,7 @@ dans « Points à ne pas défaire ».
   archives jamais mélangées. Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
   écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
   Démarches libres (29 sur 162) reproduites telles quelles ; **mention « à relire » retirée du bilan le 30/10 sur demande de l'utilisateur**
-  (il a relu les textes libres).
+  (il a relu les textes libres ; `8d7d94d`, testé et validé par lui).
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
