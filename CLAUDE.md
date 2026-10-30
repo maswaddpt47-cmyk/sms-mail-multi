@@ -66,6 +66,12 @@ trancher, points à ne pas défaire. Le mettre à jour à chaque avancée
 significative, pas en fin de session. Une tâche terminée en sort ; ce qui ne
 doit pas être défait remonte dans sa dernière section.
 
+**Modifications faites hors session** (consigne de l'utilisateur, 30/10/2026) : quand
+il dit « pull » après avoir modifié le dépôt lui-même ou avec un autre outil,
+`git pull`, lire `git log` et le diff de ce qui est arrivé depuis la dernière
+base connue, puis mettre à jour `CHANTIERS.md` (en-tête compris) avant toute
+autre tâche. Ne pas supposer qu'une entrée datée est encore vraie.
+
 ## AGORA — faire contredire une décision par une autre session
 
 Fichier : **`AGORA.md`** (racine) — gabarit et règles de réponse.
