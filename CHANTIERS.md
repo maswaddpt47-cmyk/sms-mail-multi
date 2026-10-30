@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`48c32d1`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`dbf9cf0`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -66,12 +66,12 @@ dans « Points à ne pas défaire ».
 - **Délai moyen RDV par CMS** (22/10) : par CMS (chiffre seul si un CMS), jours civils `ts` → RDV ; archives globales.
 - **Taux de remplissage** (30/10, demande utilisateur ; **validé par l'utilisateur le 30/10**, demi-journée Saint-Pardoux comprise) : créneaux attribués échus / places, journée = date + CMS avec
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
-  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile de Statistiques seulement (retiré du bilan par AG-011). Limites : journée sans RDV non comptée, tous statuts
+  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, **validé le 30/10**) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile de Statistiques seulement (retiré du bilan par AG-011). Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
+- **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **validée le 30/10**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
-- **Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés** (30/10, consigne de l'utilisateur ; **à valider**, **AG-011 tranché le 30/10, Codex « confirmé »** ; AG-009 et AG-010 rangés) : le bilan ne donne plus que
+- **Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés** (30/10, consigne de l'utilisateur ; **validé le 30/10**, **AG-011 tranché le 30/10, Codex « confirmé »** ; AG-009 et AG-010 rangés) : le bilan ne donne plus que
   rendez-vous du mois et réalisés, personnes accompagnées, répartition par statut (n / total · %, ligne Total, note sur les arrondis, Confirmé/En attente masqués à 0), démarches, rendez-vous par CMS.
   **Retirés du bilan** : taux de concrétisation, lapin, remplissage brut/net, phrase de lecture, créneaux par CMS. 4 infobulles ⓘ à l'aperçu (jamais imprimées) ; **au toucher, une infobulle reste 6 à 15 s** (selon la longueur), au-dessus du doigt, masquée par un toucher ailleurs (`attachPermanenceTip`, aussi pour la heatmap et les permanences ; validé le 30/10 avec l'infobulle de la préparation). Concrétisation, lapin et remplissage
   **restent dans Statistiques** (créneaux, décision du 23/10) ; données et archives inchangées. Test : les statuts totalisent les rendez-vous du mois.
