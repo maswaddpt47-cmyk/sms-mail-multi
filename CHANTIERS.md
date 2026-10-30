@@ -75,9 +75,10 @@ dans « Points à ne pas défaire ».
 - **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
-- **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 ouvert, Codex attendu**) : « 65 réservations enregistrées sur 53 créneaux
-  attribués (12 ont repris un créneau libéré), pour 54 places offertes (1 jamais attribuée) » (`repris`, `libres`) ; 8 infobulles ⓘ à l'aperçu (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ;
-  les « i » des tuiles marchent au toucher ; commentaire sous le tableau quand un statut a des RDV mais 0 créneau pour issue (« 6 Pas de retour, 0 % », remarque du 30/10).
+- **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 : Codex « amendé », corrigé ; à trancher par l'utilisateur**) : « 65 réservations enregistrées
+  pour 53 créneaux attribués (12 réservations supplémentaires sur des créneaux partagés) ; 54 places offertes (écart de 1 entre capacité théorique et créneaux attribués ; les dépassements d'une journée
+  peuvent compenser des places non attribuées d'une autre) » (`supplementaires`, `ecart` : soustractions globales, **jamais « reprises » ni « places non attribuées »**) ; 8 infobulles ⓘ à l'aperçu
+  (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ; « i » des tuiles au toucher ; commentaire d'un statut avec RDV mais 0 créneau pour issue (« 6 Pas de retour, 0 % »).
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
   Compteurs : `compterNombre` (voir « Animation »).
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
@@ -166,9 +167,8 @@ dans « Points à ne pas défaire ».
   <dossier>` puis `demo-agenda-compact.html` (profil Michel) ; `scripts/ui-demo-data.js` n'y est chargé que là.
 
 ### Heatmap « Activité annuelle » (23/10)
-- Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités** (avant : « 16 RDV le 30/09 »
-  pour 5 vrais RDV + 11 bloqués, constaté sur la sauvegarde réelle). Excusé/Annulé comptent encore (comme dans
-  l'Agenda). L'archive annuelle (`arc.heatmap`, jour de semaine × heure) n'est pas touchée.
+- Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités** (avant : « 16 RDV le 30/09 » pour 5 vrais RDV + 11 bloqués). Excusé/Annulé comptent
+  encore (comme l'Agenda). L'archive annuelle (`arc.heatmap`) n'est pas touchée. Le CMS se regroupe par `cmsKey` (30/10).
 - Mise en page (23/10, « ramassée ») : CSS grid qui remplit la carte, cases carrées ≤ 22 px, 10 px/semaine minimum (défilement sur écran étroit),
   mois sans chevauchement. **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche reviennent seulement si l'un porte un RDV.
 - **Infobulle de la heatmap au toucher** (23/10, validée le 25/10) : cases sur `#stat-tooltip` via `attachPermanenceTip` (`data-tip`), `title` ne s'affichant pas au toucher ;

@@ -120,6 +120,11 @@ le tableau : ces rendez-vous sont sur des créneaux dont l'issue la plus avancé
 **Non vérifié** : le cas où un statut a plus de rendez-vous que de créneaux sans que le second soit nul (ex. 12 Excusé, 7 créneaux) n'est pas commenté (ces écarts peuvent
 venir de plusieurs rendez-vous Excusé sur un même créneau).
 
+### Complément de l'auteur — 30/10/2026 (suite à la réponse de Codex)
+**Corrections appliquées** : libellés « réservations supplémentaires sur des créneaux partagés » et « écart entre la capacité théorique et les créneaux attribués » (les champs
+`repris` et `libres` deviennent `supplementaires` et `ecart`, formules inchangées) ; les deux contre-exemples de Codex sont dans `scripts/check-stats-rdv.js` ; les assertions
+absorbées par un commentaire (`scripts/check-stats-rdv.js`, ligne 190, depuis le commit `e12ec46`) sont rétablies, le test ne les exécutait plus malgré le vert.
+
 ### Réponse — Codex — 30/10/2026
 
 **Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `782d1b1`, qui contient `7907782`.
