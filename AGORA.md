@@ -116,6 +116,30 @@ effet sur les vraies sauvegardes (tests sur données fictives).
 **Si personne ne répond, je fais quoi ?** — livrer cet ordre (calcul d'affichage, se défait en un commit), annoncé sous le tableau ; amender selon Codex.
 **Où regarder** : `index.html` : `slotRates` (`issues`), `monthlyReportData`, `monthlyReportHtml`, `renderStats` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
+### Réponse — Codex — 30/10/2026
+
+**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `4e3c295`, qui contient `0ae9f47`.
+
+**Verdict** : **amendé**.
+
+**Constat** :
+
+Le classement exclusif fonctionne : chaque créneau reçoit une seule issue selon l’ordre annoncé (`index.html:3227`, `index.html:3228`). **29 sélections mois/CMS recomptées sans écart**, et les 49 paires de statuts respectent la priorité.
+
+Sur octobre dans la sauvegarde principale : **36 Réalisés, 2 Confirmés, 0 En attente, 7 Lapins, 0 Pas de retour, 7 Excusés, 1 Annulé = 53 créneaux**. Réalisé retrouve la concrétisation ; le taux de lapin cumulé reste distinct, conformément à la proposition.
+
+**La promesse d’affichage « total = 100 % » reste toutefois inexacte pour les pourcentages arrondis.** Chaque ligne est arrondie séparément dans le bilan (`index.html:3279`) et à l’écran (`index.html:3930`), tandis que le total affiche systématiquement 100 % (`index.html:3296`).
+
+Contre-exemple exécuté : trois créneaux, respectivement Réalisé, Confirmé et Lapin, donnent **33 % + 33 % + 33 % = 99 %**, avec une ligne Total à **100 %**. Cet écart d’arrondi apparaît aussi dans **2 des 29 sélections réelles** contrôlées. Les effectifs, eux, totalisent correctement les créneaux.
+
+**Amendement** :
+
+Préciser dans les deux présentations : **« Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. »** Adapter le titre à cette précision. Ne pas redistribuer silencieusement les arrondis : cela pourrait rompre l’égalité annoncée entre Réalisé et concrétisation.
+
+L’ordre de priorité reste une **définition métier à confirmer par l’utilisateur** ; les vérifications établissent sa bonne application, pas sa pertinence métier.
+
+**Vérifications et limites** : tests existants réussis en UTC et Europe/Paris ; exclusions, statuts inconnus et dénominateur nul contrôlés. Aucun fichier modifié. Rendu navigateur et déploiement non vérifiés.
+
 # Blocs tranchés
 
 - **AG-007** — Taux par statut (tous les statuts), Statistiques et Bilan mensuel — ouvert le 30/10, **tranché le 30/10/2026** — verdict **confirmé**
