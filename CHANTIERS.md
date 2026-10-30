@@ -189,8 +189,8 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
 - **Audit Codex du 30/10 des calculs Statistiques/Bilan** (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`) : 29 sélections
   recomptées, aucun chiffre du bilan faux. **Points 1 à 5 corrigés le 30/10** (délai RDV `delaiRdvJours` en jours civils, `cmsKey` partout, début de période
   Paris, `usagerKey`, « jour même » = même date civile) ; **AG-006 ouvert** (critère 7, contradicteur Codex : coller « pull maswaddpt47-cmyk/sms-mail-multi, lis son
-  `AGORA.md`, réponds à AG-006, tu es la session B »). Point 6 **tranché : base fixe 6/3**, libellé corrigé. **Non traités** : 7 (statut inconnu/démarche absente à
-  l'écran, `toString` comme statut). Archives déjà calculées non recalculées. Tests : `TZ=UTC` **et** `TZ=Europe/Paris`.
+  `AGORA.md`, réponds à AG-006, tu es la session B »). Point 6 **tranché : base fixe 6/3**, libellé corrigé. **Point 7 corrigé le 30/10** (`statutAffiche` : statut vide/inconnu/`toString` = « en attente » partout, ligne « Démarche non renseignée » à l'écran,
+  démarche `constructor` lue comme telle). Archives déjà calculées non recalculées ; en archive un statut inconnu compte désormais « en attente ». Tests : `TZ=UTC` **et** `TZ=Europe/Paris`.
 
 ## Chantiers restants
 
