@@ -68,18 +68,15 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Répartition par statut sur la base des rendez-vous** (30/10, option B de l'utilisateur ; exemple : 100 RDV → 60 réalisés = 60 %, 20 lapins = 20 %… ; **à valider**, **AG-010 ouvert, Codex attendu**) :
-  bilan = colonne « Part des rendez-vous » (n / total · %) et ligne Total à 100 % ; la carte « Issue des créneaux » est retirée de Statistiques (la carte « Statuts des RDV » donne déjà cette part).
-  **Remplace l'issue exclusive par créneau (AG-008 tranché, supprimée du code).** Concrétisation, lapin et remplissage restent **par créneau** (décision du 23/10) : les deux bases coexistent, annoncées sous le tableau.
 - **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
-- **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 : Codex « amendé », corrigé ; à trancher par l'utilisateur**) : « 65 réservations enregistrées
-  pour 53 créneaux attribués (12 réservations supplémentaires sur des créneaux partagés) ; 54 places offertes (écart de 1 entre capacité théorique et créneaux attribués ; les dépassements d'une journée
-  peuvent compenser des places non attribuées d'une autre) » (`supplementaires`, `ecart` : soustractions globales, **jamais « reprises » ni « places non attribuées »**) ; 8 infobulles ⓘ à l'aperçu
-  (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ; « i » des tuiles au toucher ; commentaire « statut sans créneau » retiré avec l'issue exclusive.
-- **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
-  Compteurs : `compterNombre` (voir « Animation »).
+- **Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés** (30/10, consigne de l'utilisateur ; **à valider**, **AG-011 ouvert, Codex attendu** ; AG-009 et AG-010 rangés) : le bilan ne donne plus que
+  rendez-vous du mois et réalisés, personnes accompagnées, répartition par statut (n / total · %, ligne Total, note sur les arrondis, Confirmé/En attente masqués à 0), démarches, rendez-vous par CMS.
+  **Retirés du bilan** : taux de concrétisation, lapin, remplissage brut/net, phrase de lecture, créneaux par CMS. 4 infobulles ⓘ à l'aperçu (jamais imprimées). Concrétisation, lapin et remplissage
+  **restent dans Statistiques** (créneaux, décision du 23/10) ; données et archives inchangées. Test : les statuts totalisent les rendez-vous du mois.
+- **Unités affichées** (25/10) : dans Statistiques, nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠
+  « Mesure horodatée ». Compteurs : `compterNombre` (voir « Animation »). Le **bilan** ne compte que des rendez-vous enregistrés.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
   `agendaFocusDay`, consultation seule ; validé le 30/10. **Badges rouge/orange de l'Agenda
   cliquables** : jour du **premier** RDV concerné (`badgeGo`, `stopPropagation`) ; le badge vert reste inerte.
@@ -104,13 +101,10 @@ dans « Points à ne pas défaire ».
   déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks`), une seule fois (`pauseAuto` : une pause libérée
   ne revient pas) ; ni passé, ni archivée, ni 12:30 déjà pris. `statsRdvModel` l'ignore (`isLunchBreak`). Jours jamais ouverts :
   `getSlots` ne propose pas 12:30 (RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : libérable en un clic.
-- **Bilan mensuel imprimable** (25/10 ; « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS, « Imprimer / PDF ».
-  `monthlyReportData` réutilise `statsRdvModel`/`slotRates` ; vocabulaire « rendez-vous enregistrés » / « créneaux horaires » ;
-  archives jamais mélangées. **Mois en cours (30/10, demande utilisateur, testé OK)** : rien après aujourd'hui (volumes, statuts et taux sur la même
-  population), mention « chiffres arrêtés au JJ/MM » (`partiel`). Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
-  écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
-  Démarches libres (29 sur 162) reproduites telles quelles ; **mention « à relire » retirée du bilan le 30/10 sur demande de l'utilisateur**
-  (il a relu les textes libres ; `8d7d94d`, testé et validé par lui).
+- **Bilan mensuel imprimable** (25/10 ; « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS, « Imprimer / PDF ». `monthlyReportData` réutilise `statsRdvModel` ; vocabulaire « rendez-vous
+  enregistrés » ; archives jamais mélangées. **Mois en cours (30/10, testé OK)** : rien après aujourd'hui, mention « chiffres arrêtés au JJ/MM » (`partiel`). **Audit Codex 26/10 (AG-004, amendé)** :
+  20 sélections recomptées, écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`). Démarches libres reproduites telles
+  quelles ; mention « à relire » retirée le 30/10 (l'utilisateur a relu les textes libres). Tests : `check-stats-rdv.js`.
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
