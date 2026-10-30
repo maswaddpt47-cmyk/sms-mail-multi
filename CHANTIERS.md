@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`280c46e`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`e4426b1`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -13,7 +13,6 @@ dans « Points à ne pas défaire ».
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
 - **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
-- **À pointer par l'utilisateur** (constat 30/10, capture du bilan d'octobre) : 2 RDV « Confirmé » échus ; ils expliquent 38 créneaux non libérés (remplissage net) contre 36 réalisés. Passés en « Réalisé », la concrétisation monte de 68 % à ~72 %, le remplissage net ne bouge pas.
 - **Validé par l'utilisateur le 30/10 (« tout est ok »)** : rappel d'export, signatures par profil et import Orientations
   « Villeneuve/Lot », alerte « Libérer ? », bilan mensuel, lien date/lieu → Agenda, barres « Prochaines permanences »,
   stat des Relances. **Relecture des démarches libres du bilan (AG-004) : déclarée faite par l'utilisateur le 30/10, non vérifiée par
@@ -66,7 +65,7 @@ dans « Points à ne pas défaire ».
 - **Délai moyen RDV par CMS** (22/10) : par CMS (chiffre seul si un CMS), jours civils `ts` → RDV ; archives globales.
 - **Taux de remplissage** (30/10, demande utilisateur ; **validé par l'utilisateur le 30/10**, demi-journée Saint-Pardoux comprise) : créneaux attribués échus / places, journée = date + CMS avec
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
-  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
+  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile de Statistiques seulement (retiré du bilan par AG-011). Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
 - **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
