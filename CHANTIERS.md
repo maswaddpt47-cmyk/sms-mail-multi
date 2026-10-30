@@ -64,9 +64,10 @@ dans « Points à ne pas défaire ».
 - **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
   **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
-- **Taux de remplissage** (30/10, demande utilisateur, **à valider**) : créneaux attribués échus / (6 × journées), journée = date + CMS avec
-  ≥1 RDV daté d'une heure (`slotRates.jours/places`, `PLACES_PAR_JOURNEE`) ; tuile Stats + ligne du bilan. Limites : journée sans RDV
-  non comptée, demi-journée = 6, tous statuts comptés, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
+- **Taux de remplissage** (30/10, demande utilisateur ; bilan mensuel testé OK le 30/10) : créneaux attribués échus / places, journée = date + CMS avec
+  ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
+  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). Limites : journée sans RDV non comptée, tous statuts
+  comptés, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
@@ -97,7 +98,7 @@ dans « Points à ne pas défaire ».
   `getSlots` ne propose pas 12:30 (RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : libérable en un clic.
 - **Bilan mensuel imprimable** (25/10 ; « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS, « Imprimer / PDF ».
   `monthlyReportData` réutilise `statsRdvModel`/`slotRates` ; vocabulaire « rendez-vous enregistrés » / « créneaux horaires » ;
-  archives jamais mélangées. **Mois en cours (30/10, demande utilisateur, à valider)** : rien après aujourd'hui (volumes, statuts et taux sur la même
+  archives jamais mélangées. **Mois en cours (30/10, demande utilisateur, testé OK)** : rien après aujourd'hui (volumes, statuts et taux sur la même
   population), mention « chiffres arrêtés au JJ/MM » (`partiel`). Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
   écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
   Démarches libres (29 sur 162) reproduites telles quelles ; **mention « à relire » retirée du bilan le 30/10 sur demande de l'utilisateur**
