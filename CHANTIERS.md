@@ -98,9 +98,8 @@ dans « Points à ne pas défaire ».
   `dateRelance` d'office à « Pas de retour » ; archive annuelle : `relances`/`relancesSur`. Les 11 fiches déjà à « Pas de retour » gardent leur date.
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** (aujourd'hui, sinon la prochaine, sinon la dernière passée) ;
   vue semaine (PC) : la semaine en cours reste affichée si elle contient un RDV. Toast sur mobile quand le jour change.
-- **Jour sélectionné marqué dans le bandeau de dates** (25/10) : `[aria-pressed="true"]` était écrasée par
-  `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, 1,3,1) ; sélecteur renforcé (1,4,0). Même piège que le
-  clignotement des tuiles : tout nouveau style de bouton de cette barre doit battre cette règle.
+- **Jour sélectionné marqué dans le bandeau de dates** (25/10) : `[aria-pressed="true"]` écrasée par `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, 1,3,1) ;
+  sélecteur renforcé (1,4,0). Même piège que le clignotement des tuiles : tout nouveau style de bouton de cette barre doit battre cette règle.
 - **Pause déjeuner d'office** (25/10, demande utilisateur ; remplace « 12h30 compris » du 07/10) : entrée `indispo` « Pause
   déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks`), une seule fois (`pauseAuto` : une pause libérée
   ne revient pas) ; ni passé, ni archivée, ni 12:30 déjà pris. `statsRdvModel` l'ignore (`isLunchBreak`). Jours jamais ouverts :
