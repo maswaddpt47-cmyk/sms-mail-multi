@@ -113,6 +113,13 @@ attribués ; places jamais attribuées = places offertes − créneaux attribué
 **Si personne ne répond, je fais quoi ?** — livrer tel quel (se défait en un commit) ; amender selon Codex.
 **Où regarder** : `index.html` : `monthlyReportData` (`repris`, `libres`), `monthlyReportHtml` (phrase, libellés, `data-tip`) ; tests `scripts/check-stats-rdv.js`.
 
+### Complément de l'auteur — 30/10/2026 (remarque de l'utilisateur : « on peut avoir 6 pas de retour et 0 % »)
+**Définition** : quand un statut a des rendez-vous enregistrés mais **aucun créneau pour issue la plus avancée** (ex. 6 « Pas de retour », 0 / 53), le bilan l'écrit sous
+le tableau : ces rendez-vous sont sur des créneaux dont l'issue la plus avancée est une autre (créneau repris par un autre usager). Aucun nouveau calcul : le constat
+« rendez-vous > 0 et créneaux = 0 » reprend les deux colonnes déjà affichées ; rien n'est affiché quand tous les statuts ont un créneau.
+**Non vérifié** : le cas où un statut a plus de rendez-vous que de créneaux sans que le second soit nul (ex. 12 Excusé, 7 créneaux) n'est pas commenté (ces écarts peuvent
+venir de plusieurs rendez-vous Excusé sur un même créneau).
+
 # Blocs tranchés
 
 - **AG-008** — Issue exclusive des créneaux, somme des statuts à 100 % — ouvert le 30/10, **tranché le 30/10/2026** — verdict **amendé** (Codex, critère 7) : classement
