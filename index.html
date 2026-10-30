@@ -3215,18 +3215,20 @@ function slotRates(entries,perms,history){
     var jk=h.date+'|'+cmsKey(h.commune);
     if(!jours[jk])jours[jk]={date:h.date,commune:h.commune};   /* journée de permanence = date + CMS portant au moins un RDV avec heure */
     var k=h.date+'|'+cmsKey(h.commune)+'|'+h.heure;
-    var s=slots[k]||(slots[k]={realise:false,lapin:false,actif:false});
+    var s=slots[k]||(slots[k]={realise:false,lapin:false,actif:false,st:{}});
+    s.st[statutAffiche(h)]=true;   /* AG-007 : statuts portés par le créneau, un créneau peut en porter plusieurs */
     if(!Object.prototype.hasOwnProperty.call(STATUTS_LIBERES,h.statut))s.actif=true;   /* créneau non libéré : au moins une fiche ni Lapin, Excusé, Annulé ni Pas de retour */
     if(h.statut==='realise')s.realise=true;
     if(h.statut==='lapin')s.lapin=true;
   });
-  var keys=Object.keys(slots),jks=Object.keys(jours),places=0,demi=0,sansPerm=0;
+  var keys=Object.keys(slots),jks=Object.keys(jours),places=0,demi=0,sansPerm=0,parStatut={};
+  STATUTS_CONNUS.forEach(function(st){parStatut[st]=keys.filter(function(k){return slots[k].st[st];}).length;});
   jks.forEach(function(k){
     var c=perms?placesJournee(jours[k].commune,jours[k].date,history||entries,perms):{places:PLACES_PAR_JOURNEE,demi:false,connue:true};
     places+=c.places;if(c.demi)demi++;if(!c.connue)sansPerm++;
   });
   return {total:keys.length,realised:keys.filter(function(k){return slots[k].realise;}).length,lapins:keys.filter(function(k){return slots[k].lapin;}).length,sansHeure:sansHeure,
-    occupes:keys.filter(function(k){return slots[k].actif;}).length,
+    occupes:keys.filter(function(k){return slots[k].actif;}).length,parStatut:parStatut,
     jours:jks.length,places:places,joursDemi:demi,sansPerm:sansPerm};   /* remplissage (30/10) : 6 places par journée, 3 par demi-journée */
 }
 
@@ -3250,7 +3252,7 @@ function monthlyReportData(history,month,cms,now,perms){
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
     jours:total.slotRates.jours,joursDemi:total.slotRates.joursDemi,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
-    occupes:total.slotRates.occupes,fillNetPct:pct(total.slotRates.occupes,total.slotRates.places),
+    parStatut:total.slotRates.parStatut,occupes:total.slotRates.occupes,fillNetPct:pct(total.slotRates.occupes,total.slotRates.places),
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
     demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
     byCms:byCms,empty:!total.entries.length,
@@ -3286,9 +3288,9 @@ function monthlyReportHtml(d,meta){
       +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
       +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+(d.joursDemi?', dont '+d.joursDemi+' demi-journée'+(d.joursDemi>1?'s':'')+' à 3 places':'')+')</td></tr>'
       +'<tr><td>Taux de remplissage net</td><td class="n">'+(d.places?d.occupes+' / '+d.places+' places · '+d.fillNetPct+' %':'—')+'</td><td class="unit">créneaux non libérés / places</td></tr></table></section>';
-    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th></tr>';
-    STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
-    h+='</table></section>';
+    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Taux (créneaux attribués échus)</th></tr>';
+    STAT.forEach(function(k){h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.parStatut[k[0]],d.slots)+'</td></tr>';});
+    h+='</table><p>Un créneau peut porter plusieurs statuts (libéré puis réattribué) : la somme des taux peut dépasser 100 %.</p></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
     if(!d.demarches.length&&!d.sansDemarche)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
@@ -3915,6 +3917,16 @@ function renderStats(){
   });
   if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
   statutCard.appendChild(stw);col2.appendChild(statutCard);
+
+  /* AG-007 (30/10) : taux par statut, mêmes créneaux attribués échus que la concrétisation et le lapin (Réalisé et Lapin les retrouvent) */
+  var tauxCard=card("Taux par statut (créneaux)");
+  tauxCard.appendChild(el('p',{class:'ui-chart-description'},'Unité : créneaux attribués échus. Un créneau peut porter plusieurs statuts (libéré puis réattribué) : la somme peut dépasser 100 %.'));
+  var tauxW=el('div',{style:"display:flex;flex-direction:column;gap:7px;"}),tauxN=rdv.slotRates.total;
+  statutKeys.forEach(function(k){
+    var n=rdv.slotRates.parStatut[k],pctT=tauxN?Math.round(n/tauxN*100):0;
+    tauxW.appendChild(barRow(STATUT_STYLES[k].label,pctT,STATUT_STYLES[k].border,tauxN?n+" / "+tauxN+" ("+pctT+"%)":"—",null));
+  });
+  tauxCard.appendChild(tauxW);col2.appendChild(tauxCard);
 
   var typeMap=comptageTypes(hist,['proposition','confirmation','sans_appel','relance']);
   var relanceN=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length;
