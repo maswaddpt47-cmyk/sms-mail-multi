@@ -3168,6 +3168,9 @@ function delaiRdvJours(ts,date){
   if(t0===null||t1===null||t1<t0)return null;
   return Math.round((t1-t0)/86400000);
 }
+/* 30/10, demande utilisateur : « Confirmé » et « En attente » sont des statuts transitoires, vides sur un mois clos ; une ligne à zéro (fiches et créneaux) n'est pas affichée.
+   Affichage seul : aucun total ni taux ne change. Les autres statuts s'affichent toujours, même à zéro. */
+function statutTransitoireVide(statut,byStatut,issues){return (statut==='confirme'||statut==='en_attente')&&!byStatut[statut]&&!issues[statut];}
 var STATUTS_LIBERES={lapin:1,excuse:1,annule:1,pas_de_retour:1};
 /* Amendement de Codex sur AG-006 (30/10) : mêmes regroupements à l'écran et dans les nouvelles archives. CMS : `cmsKey` (variantes de casse, accents
    et espaces regroupées, libellé = première forme rencontrée) ; démarches : dictionnaire sans prototype ; types : clés propres seulement. */
@@ -3292,7 +3295,7 @@ function monthlyReportHtml(d,meta){
       +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+(d.joursDemi?', dont '+d.joursDemi+' demi-journée'+(d.joursDemi>1?'s':'')+' à 3 places':'')+')</td></tr>'
       +'<tr><td>Taux de remplissage net</td><td class="n">'+(d.places?d.occupes+' / '+d.places+' places · '+d.fillNetPct+' %':'—')+'</td><td class="unit">créneaux non libérés / places</td></tr></table></section>';
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Issue du créneau (créneaux attribués échus)</th></tr>';
-    STAT.forEach(function(k){h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.issues[k[0]],d.slots)+'</td></tr>';});
+    STAT.forEach(function(k){if(statutTransitoireVide(k[0],d.byStatut,d.issues))return;h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.issues[k[0]],d.slots)+'</td></tr>';});
     h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+(d.slots?d.slots+' / '+d.slots+' · 100 %':'—')+'</b></td></tr></table>'
       +'<p>Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. Il est classé dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
@@ -3927,6 +3930,7 @@ function renderStats(){
   tauxCard.appendChild(el('p',{class:'ui-chart-description'},'Unité : créneaux attribués échus, chacun compté une fois dans son issue la plus avancée (Réalisé, Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé). Les pourcentages arrondis peuvent ne pas totaliser exactement 100 %.'));
   var tauxW=el('div',{style:"display:flex;flex-direction:column;gap:7px;"}),tauxN=rdv.slotRates.total;
   statutKeys.forEach(function(k){
+    if(statutTransitoireVide(k,rdv.byStatut,rdv.slotRates.issues))return;
     var n=rdv.slotRates.issues[k],pctT=tauxN?Math.round(n/tauxN*100):0;
     tauxW.appendChild(barRow(STATUT_STYLES[k].label,pctT,STATUT_STYLES[k].border,tauxN?n+" / "+tauxN+" ("+pctT+"%)":"—",null));
   });

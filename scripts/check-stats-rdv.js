@@ -166,7 +166,10 @@ const screen=ctx.statsRdvModel(bil.filter(h=>h.date.startsWith('2026-09')),[],'a
 assert.equal(r1.demarches.length,10);assert.equal(r1.demarches.reduce((n,d)=>n+d.n,0)+r1.otherDemarchesN,sep.filter(h=>h.statut==='realise'&&h.demarche).length);
 // E : unités, anonymat, mois courant et vide
 const htmlB=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/Taux de remplissage net/);assert.match(htmlB,/Issue du créneau/);assert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.match(html,/Issue des créneaux \(chaque créneau compte une fois\)/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
+assert.match(htmlB,/Taux de remplissage/);assert.match(htmlB,/Taux de remplissage net/);assert.match(htmlB,/Issue du créneau/);
+assert.doesNotMatch(htmlB,/<td>Confirmé<\/td>/);assert.doesNotMatch(htmlB,/<td>En attente<\/td>/);assert.match(htmlB,/<td>Pas de retour<\/td>/);   // transitoires à zéro masqués, les autres toujours affichés
+const htmlOct=ctx.monthlyReportHtml(ctx.monthlyReportData(bil,'2026-10','',nowBil),{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
+assert.match(htmlOct,/<td>Confirmé<\/td>/);   // ligne affichée dès qu'elle n'est pas videassert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.match(html,/Issue des créneaux \(chaque créneau compte une fois\)/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 // Mois en cours (30/10) : un RDV du 28/10 est exclu au 25/10 (volumes et statuts), rapport marqué partiel ; mois échu non partiel.
 const avecFutur=bil.concat([row('z1','2026-10-28','confirme','09:30','A')]);
