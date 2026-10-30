@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`d5b690e`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`ab4b6b2`). Pull du 30/10 à 21:54 (Paris) : rien venu de l’extérieur depuis `d5b690e`, seulement deux commits de documentation (`CLAUDE.md`, `AGORA.md`, `CHANTIERS.md`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
