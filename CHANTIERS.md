@@ -13,8 +13,9 @@ dans « Points à ne pas défaire ».
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
 - **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
-- **À valider par l'utilisateur sur ses données réelles** : bilan mensuel (audit Codex avant diffusion),
-  lien date/lieu → Agenda avec deux CMS le même jour.
+- **Validé par l'utilisateur le 30/10 (« tout est ok »)** : rappel d'export, signatures par profil et import Orientations
+  « Villeneuve/Lot », alerte « Libérer ? », bilan mensuel, lien date/lieu → Agenda, barres « Prochaines permanences »,
+  stat des Relances. Reste : **relire les démarches saisies librement avant toute diffusion du bilan** (AG-004).
 
 ## Contrats à conserver
 
@@ -65,7 +66,7 @@ dans « Points à ne pas défaire ».
 - **Unités affichées** (25/10) : nombres = fiches ; taux et places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
-  `agendaFocusDay`, consultation seule ; non éprouvé avec deux CMS le même jour. **Badges rouge/orange de l'Agenda
+  `agendaFocusDay`, consultation seule ; validé le 30/10. **Badges rouge/orange de l'Agenda
   cliquables** : jour du **premier** RDV concerné (`badgeGo`, `stopPropagation`) ; le badge vert reste inerte.
 - **Barres de « Prochaines permanences » (onglet Orientations depuis le 26/10) = créneaux dans l'ordre des heures** (26/10) : chaque case est un créneau réel
   (`cells` dans `statsRdvModel`, 12:30 exclu), la libre reste à sa place ; clic sur une libre → Messages (Générer) avec
@@ -263,7 +264,7 @@ Aucune pour l'instant.
 - **Commune de « Ouvrir une journée » = liste déroulante**, pas un champ texte
   (une faute de frappe créerait une journée invisible).
 - **Rappel d'export « N messages non sauvegardés »** (30/10, `e28931f`) : toutes les 5 fiches, seulement sans jeton GitHub
-  ou si `gh-last-backup` > 24 h ; `since-export` retombe à 0 après export JSON **ou** sauvegarde GitHub. Non éprouvé en navigateur.
+  ou si `gh-last-backup` > 24 h ; `since-export` retombe à 0 après export JSON **ou** sauvegarde GitHub. Validé le 30/10.
 - **Rétention des sauvegardes GitHub : 30 jours** (`GH_BACKUP_RETENTION_JOURS`) ;
   `ghCleanOldBackups()` garde toujours la plus récente.
 - **Changer d'onglet re-rend son contenu** (`stats`/`agenda`/`orientations`/
