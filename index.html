@@ -30,7 +30,7 @@
      la règle ci-dessus (classes seules) et écrasait silencieusement l'animation sur les tuiles */
   #pane-agenda .ui-ag-slot.ag-depasse,#pane-agenda .ui-ag-slot.ag-apointer{animation:blink 1.4s ease-in-out infinite;}
   @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
-  #stat-tooltip{position:fixed;z-index:300;pointer-events:none;padding:7px 11px;border-radius:10px;font-size:12px;font-weight:600;color:#fff;background:oklch(0.22 0.02 264 / .95);box-shadow:0 4px 18px oklch(0.1 0.02 264 / .35);white-space:nowrap;display:none;max-width:240px;white-space:normal;line-height:1.4;}
+  #stat-tooltip{position:fixed;z-index:600;pointer-events:none;padding:7px 11px;border-radius:10px;font-size:12px;font-weight:600;color:#fff;background:oklch(0.22 0.02 264 / .95);box-shadow:0 4px 18px oklch(0.1 0.02 264 / .35);white-space:nowrap;display:none;max-width:240px;white-space:normal;line-height:1.4;}
   .gx-scroll::-webkit-scrollbar{width:9px;height:9px;}
   .gx-scroll::-webkit-scrollbar-thumb{background:oklch(0.86 0.01 256);border-radius:9px;border:2px solid transparent;background-clip:padding-box;}
   .gx-scroll::-webkit-scrollbar-thumb:hover{background:oklch(0.78 0.015 256);background-clip:padding-box;}
@@ -3271,6 +3271,7 @@ function monthlyReportData(history,month,cms,now,perms){
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
+    repris:total.entries.length-total.slotRates.sansHeure-total.slotRates.total,libres:total.slotRates.places-total.slotRates.total,
     jours:total.slotRates.jours,joursDemi:total.slotRates.joursDemi,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
     issues:total.slotRates.issues,occupes:total.slotRates.occupes,fillNetPct:pct(total.slotRates.occupes,total.slotRates.places),
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
@@ -3287,28 +3288,51 @@ var BILAN_CSS='.bilan{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;font-
   +'.bilan .sub{font-size:12px;color:#555;margin-bottom:14px;}.bilan table{width:100%;border-collapse:collapse;font-size:12px;}'
   +'.bilan td,.bilan th{border:1px solid #bbb;padding:5px 8px;text-align:left;vertical-align:top;}.bilan th{background:#f0f0f0;}'
   +'.bilan td.n{text-align:right;}.bilan .tw{overflow-x:auto;}.bilan ul{margin:6px 0 0;padding-left:18px;font-size:12px;}.bilan .vide{padding:12px;border:1px dashed #999;}'
-  +'.bilan section{page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}';
+  +'.bilan section{page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}.bilan .lecture{margin:0 0 8px;padding:8px 10px;background:#f6f8fb;border-left:3px solid #4a6fa5;font-size:12px;}'
+  +'.bilan .bilan-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border:1px solid #999;border-radius:50%;color:#666;font-size:9px;font-weight:700;cursor:help;vertical-align:middle;}'
+  +'@media print{.bilan .bilan-info{display:none;}}';
 function monthlyReportHtml(d,meta){
   function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   var mm=/^(\d{4})-(\d{2})$/.exec(d.month),title=NAMES[Number(mm[2])-1]+' '+mm[1];
   var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
   function pc(n,total){return total?n+' / '+total+' · '+Math.round(n/total*100)+' %':'—';}
+  /* Infobulles (30/10, AG-009) : seulement dans l'aperçu à l'écran (`meta.infobulles`), jamais dans le document imprimé. */
+  var INFOS={
+    reservations:'Chaque rendez-vous enregistré compte, tous statuts. Un rendez-vous annulé, excusé ou lapin puis remplacé par un autre usager laisse plusieurs réservations sur le même créneau.',
+    realises:'Réservations au statut Réalisé.',
+    usagers:'Personnes distinctes (nom et prénom) parmi les réservations Réalisé. Deux homonymes comptent pour un.',
+    concretisation:'Créneaux attribués échus ayant au moins un rendez-vous Réalisé, sur l’ensemble des créneaux attribués échus. Un créneau est une date, un CMS et une heure.',
+    lapin:'Créneaux attribués échus ayant eu au moins un lapin. Compte aussi un lapin suivi d’une réattribution du créneau.',
+    remplissage:'Créneaux attribués sur les places offertes : 6 places par journée de permanence, 3 pour une demi-journée. Une journée sans aucun rendez-vous n’est pas comptée.',
+    net:'Comme le remplissage, mais sans les créneaux libérés (tous leurs rendez-vous sont Lapin, Excusé, Annulé ou Pas de retour).',
+    issue:'Chaque créneau est compté une seule fois, dans son issue la plus avancée : Réalisé, Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé.'
+  };
+  function info(cle){return meta.infobulles&&INFOS[cle]?'<span class="bilan-info" tabindex="0" role="note" aria-label="'+esc(INFOS[cle])+'" data-tip="'+esc(INFOS[cle])+'">i</span>':'';}
+  function plur(n,un,plusieurs){return n+' '+(Math.abs(n)>1?plusieurs:un);}
+  function lecture(){
+    if(!d.places)return '';
+    var t=plur(d.entries,'réservation enregistrée','réservations enregistrées');
+    if(d.sansHeure)t+=' (dont '+d.sansHeure+' sans heure, hors créneaux)';
+    t+=' sur '+plur(d.slots,'créneau attribué','créneaux attribués')+' ('+(d.repris>0?plur(d.repris,'réservation a','réservations ont')+' repris un créneau déjà libéré':'aucune réservation n’a repris un créneau libéré')+'), pour '+plur(d.places,'place offerte','places offertes')+' sur '+plur(d.jours,'journée','journées');
+    t+=' ('+(d.libres>0?plur(d.libres,'place jamais attribuée','places jamais attribuées'):d.libres===0?'aucune place jamais attribuée':'dépassement de '+plur(-d.libres,'créneau','créneaux')+' au-delà des places')+').';
+    return '<p class="lecture"><b>Lecture.</b> '+esc(t)+'</p>';
+  }
   var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
     +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+(d.partiel?' · <b>Mois en cours : chiffres arrêtés au '+esc(String(d.today).split('-').reverse().join('/'))+', rendez-vous à venir non comptés</b>':'')+'</div>';
   if(d.empty){
     h+='<p class="vide">Aucun rendez-vous daté de ce mois dans l’historique détaillé de ce profil'+(d.cms?' pour ce CMS':'')+'.'
       +(meta.archivedYear?' L’année '+d.year+' a été archivée : le détail nominatif n’existe plus, seules les statistiques annuelles agrégées subsistent (Statistiques → sélecteur d’année). Ce bilan ne reprend jamais les archives.':'')+'</p>';
   } else {
-    h+='<section><h2>Résultats du mois</h2><table><tr><th>Indicateur</th><th>Valeur</th><th>Unité</th></tr>'
-      +'<tr><td>Rendez-vous du mois (tous statuts)</td><td class="n">'+d.entries+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
-      +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
-      +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
-      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
-      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
-      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+(d.joursDemi?', dont '+d.joursDemi+' demi-journée'+(d.joursDemi>1?'s':'')+' à 3 places':'')+')</td></tr>'
-      +'<tr><td>Taux de remplissage net</td><td class="n">'+(d.places?d.occupes+' / '+d.places+' places · '+d.fillNetPct+' %':'—')+'</td><td class="unit">créneaux non libérés / places</td></tr></table></section>';
-    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Issue du créneau (créneaux attribués échus)</th></tr>';
+    h+='<section><h2>Résultats du mois</h2>'+lecture()+'<table><tr><th>Indicateur</th><th>Valeur</th><th>Unité</th></tr>'
+      +'<tr><td>Réservations du mois (tous statuts)'+info('reservations')+'</td><td class="n">'+d.entries+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
+      +'<tr><td>dont réalisés'+info('realises')+'</td><td class="n">'+d.realised+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
+      +'<tr><td>Usagers accompagnés'+info('usagers')+'</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
+      +'<tr><td>Taux de concrétisation'+info('concretisation')+'</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
+      +'<tr><td>Taux de lapin'+info('lapin')+'</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
+      +'<tr><td>Taux de remplissage'+info('remplissage')+'</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places offertes ('+d.jours+' journée'+(d.jours>1?'s':'')+(d.joursDemi?', dont '+d.joursDemi+' demi-journée'+(d.joursDemi>1?'s':'')+' à 3 places':'')+')</td></tr>'
+      +'<tr><td>Taux de remplissage net'+info('net')+'</td><td class="n">'+(d.places?d.occupes+' / '+d.places+' places · '+d.fillNetPct+' %':'—')+'</td><td class="unit">créneaux non libérés / places</td></tr></table></section>';
+    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Issue du créneau (créneaux attribués échus)'+info('issue')+'</th></tr>';
     STAT.forEach(function(k){if(statutTransitoireVide(k[0],d.byStatut,d.issues))return;h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.issues[k[0]],d.slots)+'</td></tr>';});
     h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+(d.slots?d.slots+' / '+d.slots+' · 100 %':'—')+'</b></td></tr></table>'
       +'<p>Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. Il est classé dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p></section>';
@@ -3699,7 +3723,7 @@ function renderStats(){
       var lblRow=el('div',{class:'ui-stats-metric-label-row'});
       lblRow.appendChild(el('div',{class:'ui-stats-metric-label'},kpi[1]));
       if(kpi[2]){
-        lblRow.appendChild(el('span',{title:kpi[2],class:'ui-stats-info',tabindex:'0','aria-label':kpi[2]},'i'));
+        var infoTile=el('span',{class:'ui-stats-info',tabindex:'0',role:'note','aria-label':kpi[2]},'i');infoTile.dataset.tip=kpi[2];attachPermanenceTip(infoTile);lblRow.appendChild(infoTile);   /* infobulle personnalisée : `title` ne s'affiche pas au toucher */
       }
       tile.appendChild(lblRow);
       if(kpi[4])tile.appendChild(el('div',{class:'ui-stats-metric-note'},kpi[4]));
@@ -6975,12 +6999,12 @@ function renderModal(){
     bSelC.addEventListener('change',function(){bc.cms=this.value;renderModal();});
     bCtl.appendChild(bSelM);bCtl.appendChild(bSelC);box.appendChild(bCtl);
     var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date(),S.permanences||[]);
-    var bMeta={profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:toLocalDateStr(new Date()).split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
+    var bMeta={infobulles:true,profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:toLocalDateStr(new Date()).split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
     var bHtml=monthlyReportHtml(bData,bMeta);
     box.appendChild(el('style',{},BILAN_CSS));
-    var bPrev=el('div',{style:"background:#fff;color:#1a1a2e;border:1px solid var(--c-border);border-radius:10px;padding:16px;"});bPrev.innerHTML=bHtml;box.appendChild(bPrev);
+    var bPrev=el('div',{style:"background:#fff;color:#1a1a2e;border:1px solid var(--c-border);border-radius:10px;padding:16px;"});bPrev.innerHTML=bHtml;bPrev.querySelectorAll('.bilan-info').forEach(attachPermanenceTip);box.appendChild(bPrev);
     var bAct=el('div',{style:"display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;"});
-    bAct.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px 16px;border-radius:12px;",onClick:function(){printMonthlyReport(bHtml,'Bilan mensuel '+bc.month);}},'🖨️ Imprimer / PDF'));
+    bAct.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13px;padding:10px 16px;border-radius:12px;",onClick:function(){printMonthlyReport(monthlyReportHtml(bData,Object.assign({},bMeta,{infobulles:false})),'Bilan mensuel '+bc.month);   /* document imprimé sans infobulles */}},'🖨️ Imprimer / PDF'));
     bAct.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);font-weight:700;font-size:13px;padding:10px 16px;border-radius:12px;",onClick:closeModal},'Fermer'));
     box.appendChild(bAct);
   }
