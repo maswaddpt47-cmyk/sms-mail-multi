@@ -3884,7 +3884,12 @@ function renderStats(){
   });
   var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
   reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
-  reactC.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
+  /* infobulle (30/10, demande utilisateur) : ce que mesure la tuile, en mots simples ; `title` ne s'affiche pas au toucher */
+  var prepLbl=el('div',{class:'ui-stats-metric-label-row'});
+  prepLbl.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
+  var prepInfoTxt='Délai moyen entre la réception de la demande et la première préparation du message, en jours ouvrés (lundi–vendredi) : le jour de réception ne compte pas, le jour de préparation compte. Même jour = 0 ; vendredi puis lundi = 1. Week-ends exclus, jours fériés comptés. Seules les fiches dont la première préparation est enregistrée sont mesurées.';
+  var prepInfo=el('span',{class:'ui-stats-info',tabindex:'0',role:'note','aria-label':prepInfoTxt},'i');prepInfo.dataset.tip=prepInfoTxt;attachPermanenceTip(prepInfo);prepLbl.appendChild(prepInfo);
+  reactC.appendChild(prepLbl);
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
   kpiRow.appendChild(reactC);
