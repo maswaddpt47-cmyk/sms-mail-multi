@@ -66,8 +66,8 @@ dans « Points à ne pas défaire ».
 - **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
 - **Taux de remplissage** (30/10, demande utilisateur ; **validé par l'utilisateur le 30/10**, demi-journée Saint-Pardoux comprise) : créneaux attribués échus / places, journée = date + CMS avec
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
-  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). Limites : journée sans RDV non comptée, tous statuts
-  comptés, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
+  disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
+  comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
@@ -186,11 +186,11 @@ dans « Points à ne pas défaire ».
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-- **Audit Codex du 30/10 des calculs Statistiques/Bilan** (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`, lu le 30/10) :
-  29 sélections mois/CMS recomptées, **aucun chiffre du bilan faux**. 7 défauts latents reproduits sur contre-exemples fictifs, **non corrigés** : délai RDV
-  selon le fuseau, filtres CMS non uniformes (messages/préparation/heatmap), début de période en fuseau local, « usagers » des messages (clé sans séparateur),
-  « jour même » = 0 jour ouvré, statut inconnu/démarche absente, `toString` comme statut. **À trancher (utilisateur)** : capacité du remplissage = base fixe
-  6/3 (actuelle) ou grille réelle (20/08 Saint-Pardoux : 5 places en Agenda, 6 ici) ; le libellé « même règle que les places disponibles » est à corriger quoi qu'il en soit. Pas d'AGORA : l'utilisateur tranche.
+- **Audit Codex du 30/10 des calculs Statistiques/Bilan** (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`) : 29 sélections
+  recomptées, aucun chiffre du bilan faux. **Points 1 à 5 corrigés le 30/10** (délai RDV `delaiRdvJours` en jours civils, `cmsKey` partout, début de période
+  Paris, `usagerKey`, « jour même » = même date civile) ; **AG-006 ouvert** (critère 7, contradicteur Codex : coller « pull maswaddpt47-cmyk/sms-mail-multi, lis son
+  `AGORA.md`, réponds à AG-006, tu es la session B »). Point 6 **tranché : base fixe 6/3**, libellé corrigé. **Non traités** : 7 (statut inconnu/démarche absente à
+  l'écran, `toString` comme statut). Archives déjà calculées non recalculées. Tests : `TZ=UTC` **et** `TZ=Europe/Paris`.
 
 ## Chantiers restants
 
