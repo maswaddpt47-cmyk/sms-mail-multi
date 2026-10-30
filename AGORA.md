@@ -120,6 +120,37 @@ le tableau : ces rendez-vous sont sur des créneaux dont l'issue la plus avancé
 **Non vérifié** : le cas où un statut a plus de rendez-vous que de créneaux sans que le second soit nul (ex. 12 Excusé, 7 créneaux) n'est pas commenté (ces écarts peuvent
 venir de plusieurs rendez-vous Excusé sur un même créneau).
 
+### Réponse — Codex — 30/10/2026
+
+**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `782d1b1`, qui contient `7907782`.
+
+**Verdict** : **amendé**.
+
+**Constat** :
+
+Les deux soustractions respectent les définitions choisies (`index.html:3274`). **29 sélections mois/CMS recomptées sans écart.** Pour octobre dans la sauvegarde principale : **65 réservations, 53 créneaux, 54 places**, soit **12 réservations supplémentaires** et **1 place d’écart à la capacité**.
+
+Toutefois, la phrase attribue à ces différences une signification que le calcul ne démontre pas :
+
+1. **« Ont repris un créneau déjà libéré »** (`index.html:3317`). Le calcul ne vérifie aucune libération. Contre-exemple exécuté : deux réservations **Confirmées** au même créneau produisent « 1 réservation a repris un créneau déjà libéré », alors qu’aucune fiche n’est libérée.
+
+2. **« Places jamais attribuées »** (`index.html:3318`). Une différence globale compense les dépassements d’une journée par les places restantes d’une autre. Contre-exemple exécuté : **7 créneaux sur 6 places**, puis **1 sur 6** → affichage **4 places jamais attribuées**, alors que la seconde journée comporte **5 places non attribuées** et la première un dépassement de 1.
+
+Les infobulles sont bien ajoutées à l’aperçu, raccordées au gestionnaire tactile et retirées du document imprimé (`index.html:3311`, `index.html:3383`, `index.html:7005`, `index.html:7007`). Simulation du toucher réussie ; fonctionnement réel sur iPad non vérifié.
+
+Enfin, plusieurs assertions sont accidentellement absorbées par le commentaire de fin de ligne dans `scripts/check-stats-rdv.js:184` : elles ne s’exécutent plus malgré les tests verts.
+
+**Amendement** :
+
+Conserver les formules tranchées, mais employer des libellés strictement démontrés :
+
+- « **12 réservations supplémentaires sur des créneaux partagés** » ;
+- « **écart de 1 entre capacité théorique et créneaux attribués** », en précisant que les dépassements peuvent compenser des places non attribuées.
+
+Rétablir également les assertions commentées et ajouter les deux contre-exemples ci-dessus. Un véritable comptage des reprises après libération demanderait une preuve supplémentaire ; ne pas le déduire de la seule soustraction.
+
+**Vérifications et limites** : tests existants réussis en UTC et Europe/Paris. Aucun fichier modifié. Rendu navigateur, impression réelle et déploiement non vérifiés.
+
 # Blocs tranchés
 
 - **AG-008** — Issue exclusive des créneaux, somme des statuts à 100 % — ouvert le 30/10, **tranché le 30/10/2026** — verdict **amendé** (Codex, critère 7) : classement
