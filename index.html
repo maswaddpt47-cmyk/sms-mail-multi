@@ -3294,7 +3294,7 @@ function monthlyReportHtml(d,meta){
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Issue du créneau (créneaux attribués échus)</th></tr>';
     STAT.forEach(function(k){h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.issues[k[0]],d.slots)+'</td></tr>';});
     h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+(d.slots?d.slots+' / '+d.slots+' · 100 %':'—')+'</b></td></tr></table>'
-      +'<p>Chaque créneau est compté une seule fois, dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p></section>';
+      +'<p>Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. Il est classé dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
     if(!d.demarches.length&&!d.sansDemarche)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
@@ -3923,8 +3923,8 @@ function renderStats(){
   statutCard.appendChild(stw);col2.appendChild(statutCard);
 
   /* AG-008 (30/10) : issue exclusive de chaque créneau attribué échu, la somme fait 100 % ; Réalisé égale la concrétisation */
-  var tauxCard=card("Issue des créneaux (total = 100 %)");
-  tauxCard.appendChild(el('p',{class:'ui-chart-description'},'Unité : créneaux attribués échus, chacun compté une fois dans son issue la plus avancée (Réalisé, Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé).'));
+  var tauxCard=card("Issue des créneaux (chaque créneau compte une fois)");
+  tauxCard.appendChild(el('p',{class:'ui-chart-description'},'Unité : créneaux attribués échus, chacun compté une fois dans son issue la plus avancée (Réalisé, Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé). Les pourcentages arrondis peuvent ne pas totaliser exactement 100 %.'));
   var tauxW=el('div',{style:"display:flex;flex-direction:column;gap:7px;"}),tauxN=rdv.slotRates.total;
   statutKeys.forEach(function(k){
     var n=rdv.slotRates.issues[k],pctT=tauxN?Math.round(n/tauxN*100):0;
