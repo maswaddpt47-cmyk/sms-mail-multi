@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`e28931f`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`bddda87`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -142,11 +142,11 @@ dans « Points à ne pas défaire ».
   `agendaTimelineDate`/`agendaFocusDay` quand le jour change
   (`S._agendaLastKnownDay`, en mémoire). Validé 20/10.
 - Indice de défilement des onglets mobiles : dégradé 28 px, CSS pur, `max-width:760px`.
-- Fiche RDV : panneau (bas sur mobile), identité/téléphone/démarche, statut
-  modifiable, suivi repliable ; Préparer et Modifier en actions principales.
-  La modification conserve le propriétaire ; la duplication passe par les
-  disponibilités. Import ICS : les RDV de type `rdv` sont retenus par `getSlots`
-  après les types prioritaires (seule exception intentionnelle à ses règles).
+- Fiche RDV : panneau (bas sur mobile), identité/téléphone/démarche, statut modifiable, suivi repliable ; Préparer et
+  Modifier en actions principales. La modification conserve le propriétaire ; la duplication passe par les disponibilités.
+  **CMS modifiable** (30/10, `bddda87`, **validé par l'utilisateur** : « ça fonctionne ») : liste `S.secteurs`, `commune` +
+  `selectedCMS` (vide si aucune adresse ne correspond), journée de destination ouverte (`ensureDayOpenFor`), contrôle
+  « créneau déjà pris » sur le nouveau CMS. Import ICS : RDV `rdv` retenus par `getSlots` après les types prioritaires.
 
 ### Autres écrans
 - **Modèles** : recherche (nom/type/contenu, sans accents) par masquage des cartes (`tplApplySearch()`), jamais de `renderTemplates()` à la frappe.
