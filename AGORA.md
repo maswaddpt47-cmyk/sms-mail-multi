@@ -100,79 +100,28 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-010 — Répartition par statut sur la base des rendez-vous (remplace l'issue exclusive d'AG-008) — ouvert le 30/10/2026
-**Auteur** : session `0199YP2K` — lu sur `f283ddb`.
-**Proposition** : dans le bilan, la colonne « Issue du créneau » est remplacée par « Part des rendez-vous » : pour chaque statut, rendez-vous enregistrés du statut ÷ rendez-vous
-enregistrés du mois (60 % réalisés, 20 % lapins… pour 100 rendez-vous), ligne Total à 100 %. À l'écran, la carte « Issue des créneaux » est retirée : la carte « Statuts des RDV
-de la période » donne déjà cette répartition en fiches. Le commentaire « statut présent sans créneau » et le classement exclusif par créneau disparaissent (plus de sens).
-**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (changement d'un indicateur affiché ; contradicteur Codex) ; n° 5 en partie : AG-008 tranchait l'issue exclusive par créneau.
-**Définition métier — tranchée par l'utilisateur le 30/10 (option B)** : exemple de l'utilisateur : 100 rendez-vous → 60 réalisés, 20 lapins, 10 annulés, 5 excusés, 5 pas de retour =
-60 %, 20 %, 10 %, 5 %, 5 %, « pour être proche de la réalité ». **Concrétisation, lapin et remplissage restent par créneau** (décision du 23/10 conservée) ; deux bases coexistent donc
-et sont annoncées dans les libellés (« rendez-vous enregistrés » / « créneaux attribués »).
-**Ce que ça engage** : rien de stocké ; la concrétisation (créneaux) et la part de réalisés (rendez-vous) diffèrent (ex. 72 % et 58 %), à expliquer sous le tableau.
-**Non vérifié par l'auteur** : lisibilité de deux bases voisines ; effet sur les vraies sauvegardes (tests sur données fictives). AG-009 (phrase de lecture) reste ouvert : sa mention de
-l'issue exclusive devient sans objet.
-**Si personne ne répond, je fais quoi ?** — livrer tel quel (calcul d'affichage, se défait en un commit) ; amender selon Codex.
-**Où regarder** : `index.html` : `monthlyReportHtml` (colonne, ligne Total, note), `slotRates` (suppression de `issues`), `renderStats` (carte retirée) ; tests `scripts/check-stats-rdv.js`.
-
-## AG-009 — Bilan mensuel : phrase de lecture 65 → 53 → 54 et infobulles — ouvert le 30/10/2026
-**Auteur** : session `0199YP2K` — lu sur `b90e9a4`.
-**Proposition** : au-dessus du tableau du bilan, une phrase qui relie les trois nombres que l'utilisateur lit comme « le même sujet » (65, 53, 54) : réservations
-enregistrées, créneaux attribués, places offertes ; des libellés distincts (« Réservations du mois », « Créneaux attribués », « Places offertes ») et des infobulles ⓘ
-qui définissent chaque indicateur (survol et toucher, absentes à l'impression).
-**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (deux nombres dérivés affichés : réservations ayant repris un créneau, places jamais attribuées ; contradicteur Codex).
-**Définitions métier — tranchées par l'utilisateur le 30/10 (choix « phrase de lecture et libellés », 1 sur 2)** : réservations reprises = réservations avec heure − créneaux
-attribués ; places jamais attribuées = places offertes − créneaux attribués (« dépassement » si négatif) ; les réservations sans heure sont signalées à part, hors créneaux.
-**Ce que ça engage** : rien de stocké ; deux nombres dérivés de ceux déjà audités (65 = fiches du mois, 53 = créneaux, 54 = places).
-**Non vérifié par l'auteur** : lisibilité de la phrase pour un lecteur extérieur ; rendu des infobulles sur iPad (tests sur données fictives).
+## AG-011 — Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `49f3b61`.
+**Proposition** : le bilan ne garde que des chiffres comptés sur les rendez-vous enregistrés : nombre de rendez-vous et de réalisés ; personnes accompagnées ; répartition par statut
+(nombres et pourcentages, ligne Total, note sur les arrondis) ; démarches accompagnées ; répartition des rendez-vous par CMS (rendez-vous et réalisés). Retirés du bilan : taux de
+concrétisation, de lapin, de remplissage brut et net, phrase « réservations → créneaux → places », colonnes de créneaux de la répartition par CMS, explications devenues inutiles.
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (changement d'indicateurs affichés ; contradicteur Codex) ; n° 5 : revient sur AG-007 (unité créneau, décision du 30/10) pour le bilan seulement.
+**Définition métier — tranchée par l'utilisateur le 30/10 (consigne transmise)** : « une seule façon de compter dans le bilan, compréhensible sans explication technique ». Les taux par
+créneau et les places restent dans Statistiques et l'Agenda ; données et archives inchangées.
+**Ce que ça engage** : rien de stocké ; le bilan imprimé n'affiche plus de taux de concrétisation ni de remplissage (ceux de l'écran Statistiques ne changent pas) ; `monthlyReportData`
+ne reçoit plus les permanences.
+**Non vérifié par l'auteur** : lisibilité du bilan allégé ; effet sur les vraies sauvegardes (tests sur données fictives). Les statuts totalisent les rendez-vous du mois : vérifié par test.
 **Si personne ne répond, je fais quoi ?** — livrer tel quel (se défait en un commit) ; amender selon Codex.
-**Où regarder** : `index.html` : `monthlyReportData` (`repris`, `libres`), `monthlyReportHtml` (phrase, libellés, `data-tip`) ; tests `scripts/check-stats-rdv.js`.
-
-### Complément de l'auteur — 30/10/2026 (remarque de l'utilisateur : « on peut avoir 6 pas de retour et 0 % »)
-**Définition** : quand un statut a des rendez-vous enregistrés mais **aucun créneau pour issue la plus avancée** (ex. 6 « Pas de retour », 0 / 53), le bilan l'écrit sous
-le tableau : ces rendez-vous sont sur des créneaux dont l'issue la plus avancée est une autre (créneau repris par un autre usager). Aucun nouveau calcul : le constat
-« rendez-vous > 0 et créneaux = 0 » reprend les deux colonnes déjà affichées ; rien n'est affiché quand tous les statuts ont un créneau.
-**Non vérifié** : le cas où un statut a plus de rendez-vous que de créneaux sans que le second soit nul (ex. 12 Excusé, 7 créneaux) n'est pas commenté (ces écarts peuvent
-venir de plusieurs rendez-vous Excusé sur un même créneau).
-
-### Complément de l'auteur — 30/10/2026 (suite à la réponse de Codex)
-**Corrections appliquées** : libellés « réservations supplémentaires sur des créneaux partagés » et « écart entre la capacité théorique et les créneaux attribués » (les champs
-`repris` et `libres` deviennent `supplementaires` et `ecart`, formules inchangées) ; les deux contre-exemples de Codex sont dans `scripts/check-stats-rdv.js` ; les assertions
-absorbées par un commentaire (`scripts/check-stats-rdv.js`, ligne 190, depuis le commit `e12ec46`) sont rétablies, le test ne les exécutait plus malgré le vert.
-
-### Réponse — Codex — 30/10/2026
-
-**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `782d1b1`, qui contient `7907782`.
-
-**Verdict** : **amendé**.
-
-**Constat** :
-
-Les deux soustractions respectent les définitions choisies (`index.html:3274`). **29 sélections mois/CMS recomptées sans écart.** Pour octobre dans la sauvegarde principale : **65 réservations, 53 créneaux, 54 places**, soit **12 réservations supplémentaires** et **1 place d’écart à la capacité**.
-
-Toutefois, la phrase attribue à ces différences une signification que le calcul ne démontre pas :
-
-1. **« Ont repris un créneau déjà libéré »** (`index.html:3317`). Le calcul ne vérifie aucune libération. Contre-exemple exécuté : deux réservations **Confirmées** au même créneau produisent « 1 réservation a repris un créneau déjà libéré », alors qu’aucune fiche n’est libérée.
-
-2. **« Places jamais attribuées »** (`index.html:3318`). Une différence globale compense les dépassements d’une journée par les places restantes d’une autre. Contre-exemple exécuté : **7 créneaux sur 6 places**, puis **1 sur 6** → affichage **4 places jamais attribuées**, alors que la seconde journée comporte **5 places non attribuées** et la première un dépassement de 1.
-
-Les infobulles sont bien ajoutées à l’aperçu, raccordées au gestionnaire tactile et retirées du document imprimé (`index.html:3311`, `index.html:3383`, `index.html:7005`, `index.html:7007`). Simulation du toucher réussie ; fonctionnement réel sur iPad non vérifié.
-
-Enfin, plusieurs assertions sont accidentellement absorbées par le commentaire de fin de ligne dans `scripts/check-stats-rdv.js:184` : elles ne s’exécutent plus malgré les tests verts.
-
-**Amendement** :
-
-Conserver les formules tranchées, mais employer des libellés strictement démontrés :
-
-- « **12 réservations supplémentaires sur des créneaux partagés** » ;
-- « **écart de 1 entre capacité théorique et créneaux attribués** », en précisant que les dépassements peuvent compenser des places non attribuées.
-
-Rétablir également les assertions commentées et ajouter les deux contre-exemples ci-dessus. Un véritable comptage des reprises après libération demanderait une preuve supplémentaire ; ne pas le déduire de la seule soustraction.
-
-**Vérifications et limites** : tests existants réussis en UTC et Europe/Paris. Aucun fichier modifié. Rendu navigateur, impression réelle et déploiement non vérifiés.
+**Où regarder** : `index.html` : `monthlyReportData`, `monthlyReportHtml` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
 # Blocs tranchés
 
+- **AG-010** — Répartition par statut sur la base des rendez-vous — ouvert le 30/10, **tranché le 30/10/2026 par l'utilisateur, sans contradicteur** (aucune réponse
+  inscrite) : option B (part de chaque statut sur les rendez-vous, issue exclusive par créneau retirée), puis **absorbée par AG-011** (bilan à base unique). Hors total ci-dessous.
+- **AG-009** — Bilan mensuel : phrase de lecture 65 → 53 → 54, infobulles — ouvert le 30/10, **tranché le 30/10/2026** — verdict **amendé** (Codex, critère 7) : soustractions
+  justes (29 sélections sans écart) mais libellés « ont repris un créneau déjà libéré » et « places jamais attribuées » non démontrés (contre-exemples exécutés), et assertions de
+  test absorbées par un commentaire ; **corrigé** (libellés neutres, assertions rétablies). La phrase de lecture et ses indicateurs sont **retirés par AG-011** (décision de l'utilisateur,
+  base unique) ; les infobulles ⓘ subsistent sur les chiffres restants.
 - **AG-008** — Issue exclusive des créneaux, somme des statuts à 100 % — ouvert le 30/10, **tranché le 30/10/2026** — verdict **amendé** (Codex, critère 7) : classement
   exclusif confirmé sur 29 sélections mois/CMS sans écart, mais promesse « total = 100 % » inexacte pour les pourcentages arrondis (33 + 33 + 33 = 99 %, 2 cas réels) ;
   **corrigé dans l'affichage** (titre et notes : « les pourcentages arrondis peuvent ne pas totaliser exactement 100 % », arrondis non redistribués). Décision de
@@ -213,4 +162,4 @@ Rétablir également les assertions commentées et ajouter les deux contre-exemp
   **laissées telles quelles, avec la mention « à relire avant toute diffusion »** (mention retirée le 30/10/2026 sur
   demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
-**Total au 30/10/2026 : 4 amendés, 1 confirmé, 0 contredit** (AG-001, AG-002 et AG-003 sans verdict, hors total).
+**Total au 30/10/2026 : 5 amendés, 1 confirmé, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
