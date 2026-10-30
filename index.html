@@ -1227,6 +1227,7 @@ function githubPush(silent,onSuccess,pid){
       }
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
       localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
+      localStorage.setItem(pkFor(pid,'since-export'),'0');
       if(pid===S.activeProfile){S._ghNewerBackup=null;renderHeader();}
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
@@ -1590,7 +1591,10 @@ function addHistory(item,prepared){
   /* Rappel export tous les 5 messages */
   var since=parseInt(localStorage.getItem(pk('since-export'))||'0',10)+1;
   localStorage.setItem(pk('since-export'),since);
-  if(since>0&&since%5===0)setTimeout(function(){showToast('💾 '+since+' messages non sauvegardés — pensez à exporter !','warn');},600);
+  /* rappel seulement si la sauvegarde GitHub ne couvre pas : pas de jeton, ou dernière réussite > 24 h */
+  var lastGh=Date.parse(localStorage.getItem(pk('gh-last-backup'))||'')||0;
+  var ghCouvre=ghToken()&&(Date.now()-lastGh<86400000);
+  if(since>0&&since%5===0&&!ghCouvre)setTimeout(function(){showToast('💾 '+since+' messages non sauvegardés — pensez à exporter !','warn');},600);
 }
 
 function doCopy(text){
