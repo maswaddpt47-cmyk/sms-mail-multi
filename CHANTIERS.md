@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`0ae921c`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`280c46e`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -13,6 +13,7 @@ dans « Points à ne pas défaire ».
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
 - **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
+- **À pointer par l'utilisateur** (constat 30/10, capture du bilan d'octobre) : 2 RDV « Confirmé » échus ; ils expliquent 38 créneaux non libérés (remplissage net) contre 36 réalisés. Passés en « Réalisé », la concrétisation monte de 68 % à ~72 %, le remplissage net ne bouge pas.
 - **Validé par l'utilisateur le 30/10 (« tout est ok »)** : rappel d'export, signatures par profil et import Orientations
   « Villeneuve/Lot », alerte « Libérer ? », bilan mensuel, lien date/lieu → Agenda, barres « Prochaines permanences »,
   stat des Relances. **Relecture des démarches libres du bilan (AG-004) : déclarée faite par l'utilisateur le 30/10, non vérifiée par
@@ -68,7 +69,7 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Taux par statut** (30/10, demande utilisateur, **à valider**, AG-007 ouvert) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
+- **Taux par statut** (30/10, demande utilisateur, **à valider**, **AG-007 ouvert, réponse de Codex attendue**) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
   attribués échus (`slotRates.parStatut`, comme concrétisation et lapin ; somme > 100 % possible) ; carte « Taux par statut » + colonne du bilan.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
@@ -164,12 +165,8 @@ dans « Points à ne pas défaire ».
 - Compte des **créneaux de RDV** par jour (date, CMS, heure), **hors indisponibilités** (avant : « 16 RDV le 30/09 »
   pour 5 vrais RDV + 11 bloqués, constaté sur la sauvegarde réelle). Excusé/Annulé comptent encore (comme dans
   l'Agenda). L'archive annuelle (`arc.heatmap`, jour de semaine × heure) n'est pas touchée.
-- Mise en page (23/10, « ramassée ») : grille en CSS grid qui remplit la carte, cases
-  carrées plafonnées à 22 px, 10 px/semaine minimum (défilement sur écran étroit),
-  mois étiquetés sans chevauchement (mois du dimanche de la semaine).
-  **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche
-  reviennent seulement si l'un porte un RDV (rien de masqué ; aucun RDV de
-  week-end dans la sauvegarde du 23/10).
+- Mise en page (23/10, « ramassée ») : CSS grid qui remplit la carte, cases carrées ≤ 22 px, 10 px/semaine minimum (défilement sur écran étroit),
+  mois sans chevauchement. **Semaine de 5 jours (L–V)** à la demande de l'utilisateur ; samedi/dimanche reviennent seulement si l'un porte un RDV.
 - **Infobulle de la heatmap au toucher** (23/10) : `title` ne s'affiche pas au toucher ; les cases utilisent `#stat-tooltip` via
   `attachPermanenceTip` (`data-tip`). Les `mouseleave` émulés après un toucher sont ignorés 1 s, sinon l'infobulle disparaissait
   aussitôt. Vaut aussi pour les cases de « Prochaines permanences ». Heatmap validée par l'utilisateur le 25/10/2026.
