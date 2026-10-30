@@ -77,7 +77,7 @@ dans « Points à ne pas défaire ».
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
 - **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 ouvert, Codex attendu**) : « 65 réservations enregistrées sur 53 créneaux
   attribués (12 ont repris un créneau libéré), pour 54 places offertes (1 jamais attribuée) » (`repris`, `libres`) ; 8 infobulles ⓘ à l'aperçu (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ;
-  les « i » des tuiles de Statistiques marchent aussi au toucher.
+  les « i » des tuiles marchent au toucher ; commentaire sous le tableau quand un statut a des RDV mais 0 créneau pour issue (« 6 Pas de retour, 0 % », remarque du 30/10).
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
   Compteurs : `compterNombre` (voir « Animation »).
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
