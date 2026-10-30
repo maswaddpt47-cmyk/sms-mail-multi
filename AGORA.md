@@ -123,6 +123,13 @@ noter les points 6 et 7 comme non traités ; tout amendement de Codex se traite 
 `legacyPreparationEstimate`, `computeYearArchive`, `renderStats` (délais, usagers, heatmap), `monthlyReportData`.
 Tests : `scripts/check-stats-rdv.js`, `scripts/check-reactivity.js`, en `TZ=UTC` et `TZ=Europe/Paris`.
 
+### Complément de l'auteur — 30/10/2026 (demande de l'utilisateur : traiter aussi le point 7 de l'audit)
+**Définitions** : un statut vide ou inconnu vaut « En attente » **partout** (barre, liste ouverte au clic, archive annuelle, bilan), par une liste fermée
+(`statutAffiche`) qui n'accepte plus une propriété héritée comme `toString` ; une fiche Réalisé sans démarche apparaît à l'écran sur une ligne
+« Démarche non renseignée » (comme au bilan) ; un nom de démarche tel que `constructor` n'est plus lu comme une propriété héritée.
+**Ce que ça engage** : dans l'archive annuelle, un statut inconnu est compté « en attente » au lieu d'une clé à son nom (comportement que le commentaire
+du code annonçait déjà). **Non vérifié** : aucune fiche à statut inconnu dans les sauvegardes lues par l'audit ; tests sur données fictives seulement.
+
 # Blocs tranchés
 
 - **AG-001** — Statut Annulé et motif facultatif — ouvert le 22/10, **tranché le 30/10/2026 par l'utilisateur, sans
