@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`e4426b1`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`d96063b`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -36,6 +36,7 @@ dans « Points à ne pas défaire ».
 - **Réactivité estimée** : tuile pour les fiches sans `premierePreparationAt`, réception → `ts` en jours
   ouvrés, **médiane** (`ts` est réécrit à chaque régénération) ; relances exclues ; « N % — Traitées le jour
   même » + médiane en note. Calcul d'affichage, rien de stocké.
+- **Infobulle de la tuile « Préparation moy. (lun.–ven.) »** (30/10, demande utilisateur, à valider sur iPad) : définition en mots simples (jours ouvrés, réception exclue, préparation incluse, seules les fiches horodatées).
 - Tests : `node scripts/check-reactivity.js`, `node scripts/check-stats-rdv.js`.
 ### Statistiques
 - En tête : RDV réalisés, RDV de la période, usagers accompagnés, places à
