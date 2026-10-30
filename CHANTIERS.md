@@ -68,6 +68,8 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
+- **Taux par statut** (30/10, demande utilisateur, **à valider**, AG-007 ouvert) : par statut, créneaux attribués échus portant ≥1 fiche de ce statut / créneaux
+  attribués échus (`slotRates.parStatut`, comme concrétisation et lapin ; somme > 100 % possible) ; carte « Taux par statut » + colonne du bilan.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
   par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
@@ -86,9 +88,8 @@ dans « Points à ne pas défaire ».
   rapproché par mots (`cmsNomDansTexte`) : « Centre Médico-Social de Villeneuve/Lot » → Villeneuve-Sur-Lot.
 - **Stat des relances** (AG-005, 26/10) : barre « Relances » (fiches à date ou type, 28/164 ; précision en infobulle), hors volume de messages ; plus de
   `dateRelance` d'office à « Pas de retour » ; archive annuelle : `relances`/`relancesSur`. Les 11 fiches déjà à « Pas de retour » gardent leur date.
-- **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
-  sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
-  elle contient un RDV. Toast sur mobile quand le jour change.
+- **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** (aujourd'hui, sinon la prochaine, sinon la dernière passée) ;
+  vue semaine (PC) : la semaine en cours reste affichée si elle contient un RDV. Toast sur mobile quand le jour change.
 - **Jour sélectionné marqué dans le bandeau de dates** (25/10) : `[aria-pressed="true"]` était écrasée par
   `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, 1,3,1) ; sélecteur renforcé (1,4,0). Même piège que le
   clignotement des tuiles : tout nouveau style de bouton de cette barre doit battre cette règle.
