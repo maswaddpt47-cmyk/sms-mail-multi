@@ -172,22 +172,23 @@ const attendu=['realise','confirme','en_attente','excuse','annule','lapin','pas_
 assert.equal(/Statut présent mais sans créneau pour issue/.test(htmlB),attendu.length>0);
 for(const st of attendu){const lib={realise:'Réalisé',confirme:'Confirmé',en_attente:'En attente',excuse:'Excusé',annule:'Annulé',lapin:'Lapin',pas_de_retour:'Pas de retour'}[st];assert(htmlB.includes(lib+' ('),'commentaire '+st);}
 // AG-009 : phrase de lecture 65 → 53 → 54 (recomptage indépendant), libellés distincts, infobulles seulement dans l'aperçu.
-const sansHeureSep=sep.filter(h=>!h.heure).length,reprisAtt=sep.length-sansHeureSep-slotsSet.size;
-assert.equal(r1.repris,reprisAtt);assert.equal(r1.libres,r1.places-slotsSet.size);
-assert.match(htmlB,/<p class="lecture"><b>Lecture\.<\/b> /);assert.match(htmlB,new RegExp(sep.length+' réservations enregistrées'));assert.match(htmlB,new RegExp(slotsSet.size+' créneaux attribués'));assert.match(htmlB,new RegExp(r1.places+' places offertes'));
+const sansHeureSep=sep.filter(h=>!h.heure).length,supplAtt=sep.length-sansHeureSep-slotsSet.size;
+assert.equal(r1.supplementaires,supplAtt);assert.equal(r1.ecart,r1.places-slotsSet.size);
+assert.match(htmlB,/<p class="lecture"><b>Lecture\.<\/b> /);assert.match(htmlB,new RegExp(sep.length+' réservations enregistrées'));assert.match(htmlB,new RegExp(slotsSet.size+' créneaux attribués'));assert.doesNotMatch(htmlB,/déjà libéré|jamais attribuée/);assert.match(htmlB,new RegExp(r1.places+' places offertes'));
 assert.match(htmlB,/Réservations du mois/);assert.doesNotMatch(htmlB,/bilan-info/);   // pas d'infobulle dans le document imprimé
 const htmlTip=ctx.monthlyReportHtml(r1,{profil:'Profil fictif',date:'25/10/2026',archivedYear:false,infobulles:true});
 assert.match(htmlTip,/class="bilan-info"[^>]*data-tip="/);assert.equal((htmlTip.match(/class="bilan-info"/g)||[]).length,8);
 // cas limites de la phrase : dépassement de capacité, aucune réattribution, réservation sans heure.
-const base={month:'2026-10',year:2026,cms:'',today:'2026-10-30',partiel:false,entries:5,realised:3,accompanied:3,slots:5,realisedSlots:3,lapinSlots:0,places:3,libres:-2,repris:0,sansHeure:0,jours:1,joursDemi:1,fillPct:167,occupes:5,fillNetPct:167,issues:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},byStatut:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},demarches:[],otherDemarches:0,otherDemarchesN:0,byCms:[],sansCms:0,sansCmsRealised:0,sansDemarche:0,nonPointes:0,empty:false};
-const dep=ctx.monthlyReportHtml(base,{profil:'P',date:'30/10/2026'});assert.match(dep,/dépassement de 2 créneaux au-delà des places/);assert.match(dep,/aucune réservation n’a repris un créneau libéré/);
-const sh=ctx.monthlyReportHtml({...base,sansHeure:1,entries:6,repris:0,libres:0,places:5,slots:5},{profil:'P',date:'30/10/2026'});assert.match(sh,/\(dont 1 sans heure, hors créneaux\)/);assert.match(sh,/aucune place jamais attribuée/);
+const base={month:'2026-10',year:2026,cms:'',today:'2026-10-30',partiel:false,entries:5,realised:3,accompanied:3,slots:5,realisedSlots:3,lapinSlots:0,places:3,ecart:-2,supplementaires:0,sansHeure:0,jours:1,joursDemi:1,fillPct:167,occupes:5,fillNetPct:167,issues:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},byStatut:{realise:3,confirme:0,en_attente:0,lapin:0,pas_de_retour:0,excuse:2,annule:0},demarches:[],otherDemarches:0,otherDemarchesN:0,byCms:[],sansCms:0,sansCmsRealised:0,sansDemarche:0,nonPointes:0,empty:false};
+const dep=ctx.monthlyReportHtml(base,{profil:'P',date:'30/10/2026'});assert.match(dep,/dépassement net de 2 créneaux par rapport à la capacité théorique/);assert.match(dep,/aucune réservation supplémentaire sur un créneau partagé/);
+const sh=ctx.monthlyReportHtml({...base,sansHeure:1,entries:6,supplementaires:0,ecart:0,places:5,slots:5},{profil:'P',date:'30/10/2026'});assert.match(sh,/\(dont 1 sans heure, hors créneaux\)/);assert.match(sh,/aucun écart entre la capacité théorique et les créneaux attribués/);
 const sans0=ctx.monthlyReportHtml({...base,byStatut:{...base.byStatut,lapin:6},issues:{...base.issues,lapin:0}},{profil:'P',date:'30/10/2026'});assert.match(sans0,/Lapin \(6 rendez-vous enregistrés, 0 créneau\)/);
 const avec0=ctx.monthlyReportHtml({...base,byStatut:{...base.byStatut,lapin:6},issues:{...base.issues,lapin:2}},{profil:'P',date:'30/10/2026'});assert.doesNotMatch(avec0,/Statut présent mais sans créneau pour issue/);
 
 assert.doesNotMatch(htmlB,/<td>Confirmé<\/td>/);assert.doesNotMatch(htmlB,/<td>En attente<\/td>/);assert.match(htmlB,/<td>Pas de retour<\/td>/);   // transitoires à zéro masqués, les autres toujours affichés
 const htmlOct=ctx.monthlyReportHtml(ctx.monthlyReportData(bil,'2026-10','',nowBil),{profil:'Profil fictif',date:'25/10/2026',archivedYear:false});
-assert.match(htmlOct,/<td>Confirmé<\/td>/);   // ligne affichée dès qu'elle n'est pas videassert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.match(html,/Issue des créneaux \(chaque créneau compte une fois\)/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
+assert.match(htmlOct,/<td>Confirmé<\/td>/);   // ligne affichée dès qu'elle n'est pas vide
+assert.match(htmlB,/pourcentages arrondis peuvent ne pas totaliser exactement 100 %/);assert.match(html,/Issue des créneaux \(chaque créneau compte une fois\)/);assert.match(htmlB,/100 %/);assert.match(htmlB,/rendez-vous enregistrés/);assert.match(htmlB,/créneaux horaires/);assert.doesNotMatch(htmlB,/fiche/i);assert.doesNotMatch(htmlB,/FICTIF|Exemple|0[1-9]( ?\d{2}){4}/);assert.match(htmlB,/ne reprend ni nom, ni téléphone/);
 assert.equal(ctx.monthlyReportData(bil,'2026-10','',nowBil).today,'2026-10-25');      // mois en cours : jusqu'au jour courant
 // Mois en cours (30/10) : un RDV du 28/10 est exclu au 25/10 (volumes et statuts), rapport marqué partiel ; mois échu non partiel.
 const avecFutur=bil.concat([row('z1','2026-10-28','confirme','09:30','A')]);
@@ -286,4 +287,12 @@ const full=ctx.statsRdvModel(['09:30','10:30','11:30','13:30','14:30','15:30'].m
 assert.equal(full.marks.join(','),'booked,booked,booked,booked,booked,booked');                                        // journée pleine : aucune case libre
 const offGrid=ctx.statsRdvModel([row('o1','2026-10-30','confirme','14:00','A')],[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
 assert.equal(offGrid.marks.length,5);assert.equal(offGrid.total,5);assert.equal(offGrid.marks.indexOf('booked'),3);   // RDV hors grille à 14:00 : 13:30 et 14:30 masqués (chevauchement), capacité 5 (28/10)
+// Contre-exemples de Codex (AG-009) : aucune « libération » ni « place non attribuée » n'est affirmée là où le calcul ne le démontre pas.
+const mk=(id,date,heure,statut)=>row(id,date,statut,heure);
+const partage=ctx.monthlyReportHtml(ctx.monthlyReportData([mk('c1','2026-09-03','09:30','confirme'),mk('c2','2026-09-03','09:30','confirme')],'2026-09','',nowBil,[]),{profil:'P',date:'30/10/2026'});
+const lect=h=>(h.match(/<p class="lecture">[\s\S]*?<\/p>/)||[''])[0];
+assert.match(lect(partage),/1 réservation supplémentaire sur des créneaux partagés/);assert.doesNotMatch(lect(partage),/libéré/);   // deux Confirmé sur un même créneau : rien n'est libéré
+const sept=['09:30','10:30','11:30','12:30','13:30','14:30','15:30'].map((h,i)=>mk('j'+i,'2026-09-03',h,'realise')).concat([mk('j9','2026-09-04','09:30','realise')]);
+const compense=ctx.monthlyReportHtml(ctx.monthlyReportData(sept,'2026-09','',nowBil,[]),{profil:'P',date:'30/10/2026'});
+assert.match(lect(compense),/écart de 4 places entre la capacité théorique et les créneaux attribués/);assert.match(lect(compense),/peuvent compenser des places non attribuées d’une autre/);assert.doesNotMatch(lect(compense),/jamais attribuée/);   // 7 créneaux sur 6 puis 1 sur 6 : écart global 4, pas « 4 places non attribuées »
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');

@@ -3271,7 +3271,7 @@ function monthlyReportData(history,month,cms,now,perms){
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
     slots:total.slotRates.total,realisedSlots:total.slotRates.realised,lapinSlots:total.slotRates.lapins,
-    repris:total.entries.length-total.slotRates.sansHeure-total.slotRates.total,libres:total.slotRates.places-total.slotRates.total,
+    supplementaires:total.entries.length-total.slotRates.sansHeure-total.slotRates.total,ecart:total.slotRates.places-total.slotRates.total,
     jours:total.slotRates.jours,joursDemi:total.slotRates.joursDemi,places:total.slotRates.places,fillPct:pct(total.slotRates.total,total.slotRates.places),
     issues:total.slotRates.issues,occupes:total.slotRates.occupes,fillNetPct:pct(total.slotRates.occupes,total.slotRates.places),
     concretPct:pct(total.slotRates.realised,total.slotRates.total),lapinPct:pct(total.slotRates.lapins,total.slotRates.total),
@@ -3312,10 +3312,11 @@ function monthlyReportHtml(d,meta){
   function plur(n,un,plusieurs){return n+' '+(Math.abs(n)>1?plusieurs:un);}
   function lecture(){
     if(!d.places)return '';
+    /* Libellés strictement démontrés (réponse de Codex à AG-009) : les deux écarts sont des soustractions globales, pas des reprises après libération ni des places non attribuées jour par jour. */
     var t=plur(d.entries,'réservation enregistrée','réservations enregistrées');
     if(d.sansHeure)t+=' (dont '+d.sansHeure+' sans heure, hors créneaux)';
-    t+=' sur '+plur(d.slots,'créneau attribué','créneaux attribués')+' ('+(d.repris>0?plur(d.repris,'réservation a','réservations ont')+' repris un créneau déjà libéré':'aucune réservation n’a repris un créneau libéré')+'), pour '+plur(d.places,'place offerte','places offertes')+' sur '+plur(d.jours,'journée','journées');
-    t+=' ('+(d.libres>0?plur(d.libres,'place jamais attribuée','places jamais attribuées'):d.libres===0?'aucune place jamais attribuée':'dépassement de '+plur(-d.libres,'créneau','créneaux')+' au-delà des places')+').';
+    t+=' pour '+plur(d.slots,'créneau attribué','créneaux attribués')+' ('+(d.supplementaires>0?plur(d.supplementaires,'réservation supplémentaire','réservations supplémentaires')+' sur des créneaux partagés':'aucune réservation supplémentaire sur un créneau partagé')+') ; '+plur(d.places,'place offerte','places offertes')+' sur '+plur(d.jours,'journée','journées');
+    t+=' ('+(d.ecart>0?'écart de '+plur(d.ecart,'place','places')+' entre la capacité théorique et les créneaux attribués':d.ecart===0?'aucun écart entre la capacité théorique et les créneaux attribués':'dépassement net de '+plur(-d.ecart,'créneau','créneaux')+' par rapport à la capacité théorique')+' ; les dépassements d’une journée peuvent compenser des places non attribuées d’une autre).';
     return '<p class="lecture"><b>Lecture.</b> '+esc(t)+'</p>';
   }
   /* Statuts présents en rendez-vous mais sans créneau pour issue (ex. 6 « Pas de retour », 0 %) : dit pourquoi, au lieu de laisser croire à une erreur (30/10, AG-009). */
