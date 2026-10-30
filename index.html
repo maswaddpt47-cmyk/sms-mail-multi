@@ -546,11 +546,11 @@
 .ui-anim-pre .ui-chart-value{opacity:0;transition:none;}
 .ui-heat-cell{transition:transform .15s,opacity .6s cubic-bezier(.215,.61,.355,1) var(--d,0s);}
 .ui-anim-pre .ui-heat-cell{opacity:0;transition:none;}
-@keyframes kpiSlideUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
-.ui-stats-metric-band .ui-stats-metric{animation:kpiSlideUp .38s cubic-bezier(.22,.68,0,1.2) both;}
-.ui-stats-metric-band .ui-stats-metric:nth-child(2){animation-delay:.07s;}.ui-stats-metric-band .ui-stats-metric:nth-child(3){animation-delay:.14s;}.ui-stats-metric-band .ui-stats-metric:nth-child(4){animation-delay:.21s;}
-.ui-stats-metric-band .ui-stats-metric:nth-child(5){animation-delay:.28s;}.ui-stats-metric-band .ui-stats-metric:nth-child(6){animation-delay:.35s;}.ui-stats-metric-band .ui-stats-metric:nth-child(n+7){animation-delay:.42s;}
-@media print{.ui-anim-pre .ui-stats-bar-fill{width:var(--w,0%);}.ui-anim-pre .ui-bar-grow{transform:none;}.ui-anim-pre .ui-chart-value,.ui-anim-pre .ui-heat-cell{opacity:1;}.ui-stats-metric-band .ui-stats-metric{animation:none;}}
+.ui-stats-metric-band .ui-stats-metric{transition:opacity .38s ease,transform .38s cubic-bezier(.22,.68,0,1.2);}
+.ui-anim-pre .ui-stats-metric{opacity:0;transform:translateY(16px);transition:none;}
+.ui-stats-metric-band .ui-stats-metric:nth-child(2){transition-delay:.07s;}.ui-stats-metric-band .ui-stats-metric:nth-child(3){transition-delay:.14s;}.ui-stats-metric-band .ui-stats-metric:nth-child(4){transition-delay:.21s;}
+.ui-stats-metric-band .ui-stats-metric:nth-child(5){transition-delay:.28s;}.ui-stats-metric-band .ui-stats-metric:nth-child(6){transition-delay:.35s;}.ui-stats-metric-band .ui-stats-metric:nth-child(n+7){transition-delay:.42s;}
+@media print{.ui-anim-pre .ui-stats-bar-fill{width:var(--w,0%);}.ui-anim-pre .ui-bar-grow{transform:none;}.ui-anim-pre .ui-chart-value,.ui-anim-pre .ui-heat-cell,.ui-anim-pre .ui-stats-metric{opacity:1;transform:none;}}
 .ui-stats-section svg text{font-family:inherit;fill:var(--c-muted);font-size:10px;}
 .ui-stats-charts{--chart-sms:#15876d;--chart-mail:#5269d0;--chart-lapin:#ce5710;--chart-excuse:#a87907;--chart-retour:#718096;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:22px;}
 .ui-monthly-chart{margin:0;border-radius:14px;padding:20px;overflow:hidden;}
@@ -3502,22 +3502,50 @@ function relanceNote(n,total,bar){
   box.appendChild(bar('Relances',pct,'oklch(0.65 0.2 45)',n+' / '+total+' ('+pct+'%)',tip));
   return box;
 }
-/* Entrée en mouvement des graphes de Statistiques (30/10, à la façon de NEWGEN `quandVisible`) : chaque carte est dessinée quand elle apparaît à l'écran (au moins 20 %
-   visible) et rejoue son animation à chaque retour après être sortie ; sans animation si l'utilisateur a demandé de réduire les mouvements (et à l'impression, en CSS). */
+/* Entrée en mouvement de Statistiques (30/10, à la façon de NEWGEN `quandVisible`) : chaque carte et chaque bandeau de chiffres se dessine quand il apparaît à l'écran
+   (au moins 20 % visible) et rejoue son animation à chaque retour après être sorti : barres, graphiques, tuiles, et compteurs (« count up » des chiffres, 800 ms, décélération).
+   Sans animation si l'utilisateur a demandé de réduire les mouvements ; à l'impression, tout est posé à sa valeur finale (CSS + `beforeprint`). */
+var STATS_NOMBRES='.ui-stats-number,.ui-stats-status-number,.ui-stats-bar-value';
+var STATS_CIBLES='.ui-stats-section,.ui-stats-metric-band';
+function nombresEnTexte(texte,facteur){
+  return texte.replace(/\d+(?:,\d+)?/g,function(m){
+    var dec=m.indexOf(',')>=0?m.split(',')[1].length:0,v=parseFloat(m.replace(',','.'))*facteur;
+    return dec?v.toFixed(dec).replace('.',','):String(Math.round(v));
+  });
+}
+function compterNombre(n,final){
+  if(n._raf)cancelAnimationFrame(n._raf);
+  var debut=Date.now();
+  (function tick(){var p=Math.min(1,(Date.now()-debut)/800),e=1-Math.pow(1-p,3);n.textContent=p<1?nombresEnTexte(final,e):final;if(p<1)n._raf=requestAnimationFrame(tick);})();
+}
 function animerGraphesStats(root){
   var reduit=false;try{reduit=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){}
-  var cartes=root.querySelectorAll('.ui-stats-section');
-  if(reduit||!window.IntersectionObserver||!cartes.length)return;
-  cartes.forEach(function(c){c.classList.add('ui-anim-pre');});
+  var cibles=root.querySelectorAll(STATS_CIBLES);
+  if(reduit||!window.IntersectionObserver||!cibles.length)return;
+  if(!animerGraphesStats._print){animerGraphesStats._print=true;window.addEventListener('beforeprint',function(){
+    document.querySelectorAll('#pane-stats .ui-anim-pre').forEach(function(c){c.classList.remove('ui-anim-pre');});
+    document.querySelectorAll('#pane-stats '+STATS_NOMBRES.split(',').join(',#pane-stats ')).forEach(function(n){if(n.dataset.final!==undefined){if(n._raf)cancelAnimationFrame(n._raf);n.textContent=n.dataset.final;}});
+  });}
+  function nombresDe(c){return Array.prototype.filter.call(c.querySelectorAll(STATS_NOMBRES),function(n){return n.closest(STATS_CIBLES)===c;});}
+  cibles.forEach(function(c){
+    c.classList.add('ui-anim-pre');
+    nombresDe(c).forEach(function(n){if(n.dataset.final===undefined)n.dataset.final=n.textContent;n.textContent=nombresEnTexte(n.dataset.final,0);});
+  });
   var io=new IntersectionObserver(function(entrees){
     entrees.forEach(function(e){
       var c=e.target;
       if(e.isIntersecting&&(e.intersectionRatio>=.2||e.intersectionRect.height>=window.innerHeight*.4)){
-        requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.remove('ui-anim-pre');});});
-      }else if(!e.isIntersecting)c.classList.add('ui-anim-pre');   /* complètement sortie : rejouera au retour */
+        requestAnimationFrame(function(){requestAnimationFrame(function(){
+          c.classList.remove('ui-anim-pre');
+          nombresDe(c).forEach(function(n){compterNombre(n,n.dataset.final);});
+        });});
+      }else if(!e.isIntersecting){   /* complètement sorti : rejouera au retour */
+        c.classList.add('ui-anim-pre');
+        nombresDe(c).forEach(function(n){if(n._raf)cancelAnimationFrame(n._raf);n.textContent=nombresEnTexte(n.dataset.final,0);});
+      }
     });
   },{threshold:[0,.2]});
-  cartes.forEach(function(c){io.observe(c);});
+  cibles.forEach(function(c){io.observe(c);});
   (renderStats._chartObservers=renderStats._chartObservers||[]).push(io);
 }
 function renderStats(){
@@ -3525,15 +3553,6 @@ function renderStats(){
   renderStats._chartObservers=[];
   var pane=document.getElementById('pane-stats');if(!pane)return;clear(pane);
   var wrap=el('div',{class:'ui-stats-page'});
-
-  /* Compteur animé partagé par « Le suivi des rendez-vous » et « Messages et usagers » (23/10) ;
-     sans animation si l'utilisateur a demandé à réduire les mouvements. */
-  function countUp(valEl,target,suffix){
-    suffix=suffix||'';
-    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){valEl.textContent=String(target)+suffix;return;}
-    var start=Date.now(),dur=800;
-    (function tick(){var p=Math.min(1,(Date.now()-start)/dur),e=1-Math.pow(1-p,3);valEl.textContent=String(Math.round(e*target))+suffix;if(p<1)requestAnimationFrame(tick);})();
-  }
 
   if(!S.statsPeriod)S.statsPeriod='all';
 
@@ -3677,8 +3696,6 @@ function renderStats(){
       }
       var numEl=el('div',{class:'ui-stats-number'},String(kpi[0]));
       tile.appendChild(numEl);
-      var numMatch=/^(\d+)(%?)$/.exec(String(kpi[0]));
-      if(numMatch)countUp(numEl,parseInt(numMatch[1],10),numMatch[2]); /* « — » reste fixe */
       var lblRow=el('div',{class:'ui-stats-metric-label-row'});
       lblRow.appendChild(el('div',{class:'ui-stats-metric-label'},kpi[1]));
       if(kpi[2]){
@@ -3858,11 +3875,10 @@ function renderStats(){
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
   [{icon:"📨",val:total,lbl:"Total",col:"oklch(0.5 0.16 266)",isNum:true},{icon:"💬",val:smsN,lbl:"SMS",col:"oklch(0.48 0.14 155)",isNum:true},{icon:"✉️",val:mailN,lbl:"Mails",col:"oklch(0.48 0.13 264)",isNum:true},{icon:"👤",val:Object.keys(usagers).length,lbl:"Usagers",col:"oklch(0.52 0.14 38)",isNum:true}].forEach(function(k){
     var c=el('div',{class:'ui-stats-metric'});
-    var valEl=el('div',{class:'ui-stats-number'},'0');
+    var valEl=el('div',{class:'ui-stats-number'},String(k.val));
     c.appendChild(valEl);
     c.appendChild(el('div',{class:'ui-stats-metric-label'},k.lbl));
     kpiRow.appendChild(c);
-    countUp(valEl,k.val);
   });
   var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
   reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
