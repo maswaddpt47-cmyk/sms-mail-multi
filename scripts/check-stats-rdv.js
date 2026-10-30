@@ -110,6 +110,15 @@ assert.equal(ctx.statutAffiche({statut:'toString'}),'en_attente');assert.equal(c
 const p7=ctx.statsRdvModel([row('p1',todayStr,'toString','09:30'),row('p2',todayStr,'inconnu','10:30'),row('p3',todayStr,null,'11:30'),{...row('p4',todayStr,'realise','14:30'),demarche:'constructor'},{...row('p5',todayStr,'realise','15:30'),demarche:''},{...row('p6',todayStr,'realise','16:30'),demarche:'__proto__'}],[],'all','A',today);
 assert.equal(p7.byStatut.en_attente,3);assert.equal(p7.byStatut.realise,3);assert.equal(Object.values(p7.byStatut).reduce((a,b)=>a+b,0),p7.entries.length);   // somme des sept statuts = fiches
 assert.equal(p7.byDemarche.constructor,1);assert.equal(p7.byDemarche['__proto__'],1);assert.equal(p7.sansDemarche,1);
+// Amendement Codex sur AG-006 : mêmes regroupements à l'écran et dans les nouvelles archives (CMS par cmsKey, démarches sans prototype, types en clés propres).
+const parCms=ctx.comptageParCms([{commune:'Fumel'},{commune:'FUMEL '},{commune:''},{commune:'Agen'},{commune:'fumel'},{commune:'constructor'}]);
+assert.equal(JSON.stringify(parCms),JSON.stringify([{nom:'Fumel',n:3},{nom:'Agen',n:1},{nom:'constructor',n:1}]));
+const dems=ctx.comptageDemarches([{demarche:'constructor'},{demarche:'__proto__'},{demarche:'constructor'},{demarche:''}]);
+assert.equal(dems.constructor,2);assert.equal(dems['__proto__'],1);assert.deepEqual(Object.keys(dems).sort(),['__proto__','constructor']);
+assert.equal(JSON.parse(JSON.stringify(dems)).constructor,2);   // l'archive survit à la sérialisation
+const types=ctx.comptageTypes([{msgType:'toString'},{msgType:'proposition'},{msgType:'relance'},{msgType:'proposition'}],['proposition','confirmation','sans_appel']);
+assert.equal(JSON.stringify(types),JSON.stringify({proposition:2,confirmation:0,sans_appel:0}));
+assert.equal(ctx.comptageTypes([{msgType:'relance'}],['proposition','relance']).relance,1);
 // Remplissage net : un créneau dont toutes les fiches sont libérées ne compte pas ; une fiche active le fait compter.
 const net=ctx.statsRdvModel([row('n1',todayStr,'realise','09:30'),row('n2',todayStr,'lapin','10:30'),row('n3',todayStr,'annule','11:30'),row('n4',todayStr,'excuse','11:30'),row('n5',todayStr,'confirme','11:30'),row('n6',todayStr,null,'14:30'),row('n7',todayStr,'toString','15:30')],[],'all','A',today).slotRates;
 assert.equal(net.total+'/'+net.occupes+'/'+net.places,'5/4/6');   // 5 créneaux ; 10:30 libéré ; 11:30 porte une fiche confirmée ; statut vide ou inconnu = non libéré

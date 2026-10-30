@@ -2904,14 +2904,11 @@ function computeYearArchive(year){
     trendMap[key][h.statut]++;
   });
   arc.trendByMonth=trendMap;
-  var demMap={};hist.forEach(function(h){if(h.demarche)demMap[h.demarche]=(demMap[h.demarche]||0)+1;});
-  arc.byDemarche=demMap;
-  var typeMap={proposition:0,confirmation:0,sans_appel:0};
-  hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
-  arc.byType=typeMap;
+  arc.byDemarche=comptageDemarches(hist);
+  arc.byType=comptageTypes(hist,['proposition','confirmation','sans_appel']);
   arc.relances=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length; /* additif (AG-005) : absent des archives créées avant */
   arc.relancesSur=hist.length;
-  var cmsMap={};hist.forEach(function(h){var c=h.commune||'';if(c)cmsMap[c]=(cmsMap[c]||0)+1;});
+  var cmsMap=Object.create(null);comptageParCms(hist).forEach(function(c){cmsMap[c.nom]=c.n;});
   arc.byCMS=cmsMap;
   var heatMap={};
   hist.filter(function(h){return h.date&&h.heure;}).forEach(function(h){
@@ -3172,6 +3169,19 @@ function delaiRdvJours(ts,date){
   return Math.round((t1-t0)/86400000);
 }
 var STATUTS_LIBERES={lapin:1,excuse:1,annule:1,pas_de_retour:1};
+/* Amendement de Codex sur AG-006 (30/10) : mêmes regroupements à l'écran et dans les nouvelles archives. CMS : `cmsKey` (variantes de casse, accents
+   et espaces regroupées, libellé = première forme rencontrée) ; démarches : dictionnaire sans prototype ; types : clés propres seulement. */
+function comptageParCms(entries){
+  var m=Object.create(null),ordre=[];
+  entries.forEach(function(h){var c=String(h.commune||'').trim();if(!c)return;var k=cmsKey(c);if(!m[k]){m[k]={nom:c,n:0};ordre.push(k);}m[k].n++;});
+  return ordre.map(function(k){return m[k];});
+}
+function comptageDemarches(entries){var m=Object.create(null);entries.forEach(function(h){if(h.demarche)m[h.demarche]=(m[h.demarche]||0)+1;});return m;}
+function comptageTypes(entries,types){
+  var m={};types.forEach(function(t){m[t]=0;});
+  entries.forEach(function(h){if(Object.prototype.hasOwnProperty.call(m,h.msgType))m[h.msgType]++;});
+  return m;
+}
 /* Audit Codex du 30/10, pt 7 : liste fermée des statuts ; vide, inconnu ou propriété héritée (`toString`) = « en attente », partout. */
 var STATUTS_CONNUS=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'];
 function statutAffiche(h){return STATUTS_CONNUS.indexOf(h&&h.statut)!==-1?h.statut:'en_attente';}
@@ -3906,8 +3916,7 @@ function renderStats(){
   if(!anyStatut)stw.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},"Aucun statut renseigné"));
   statutCard.appendChild(stw);col2.appendChild(statutCard);
 
-  var typeMap={proposition:0,confirmation:0,sans_appel:0,relance:0};
-  hist.forEach(function(h){if(h.msgType&&typeMap[h.msgType]!==undefined)typeMap[h.msgType]++;});
+  var typeMap=comptageTypes(hist,['proposition','confirmation','sans_appel','relance']);
   var relanceN=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length;
   var typeCard=card("Répartition par type");
   var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
@@ -3918,9 +3927,7 @@ function renderStats(){
   typeCard.appendChild(relanceNote(relanceN,hist.length,function(l,p,c,v,t){return barRow(l,p,c,v,null,t);}));
   col2.appendChild(typeCard);
 
-  var cmsMap={};
-  hist.forEach(function(h){var cms=h.commune||"";if(cms)cmsMap[cms]=(cmsMap[cms]||0)+1;});
-  var cmsList2=Object.keys(cmsMap).map(function(k){return{nom:k,n:cmsMap[k]};}).sort(function(a,b){return b.n-a.n;});
+  var cmsList2=comptageParCms(hist).sort(function(a,b){return b.n-a.n;});
   var cmsCard=card("Messages par CMS / commune");
   if(cmsList2.length){
     var maxC=cmsList2[0].n;
