@@ -68,17 +68,16 @@ dans « Points à ne pas défaire ».
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
   comptés pour le remplissage brut, peut dépasser 100 %. Pas d'AGORA : calcul d'affichage, rien de stocké.
-- **Issue des créneaux** (30/10, remplace les taux par statut cumulés d'AG-007 : 38+11+2+7+6 = 64 créneaux et 121 % pour 53, relevé par l'utilisateur ; **à valider**,
-  **AG-008 tranché le 30/10 : Codex « amendé » (arrondis), corrigé ; ordre de priorité conservé par l'utilisateur**) : chaque créneau attribué échu compté **une fois**, dans son issue la plus avancée (Réalisé > Confirmé > En attente >
-  Lapin > Pas de retour > Excusé > Annulé ; ordre confirmé) ; somme = 100 %, ligne Total au bilan, carte à l'écran (`slotRates.issues`). Concrétisation = ligne
-  Réalisé ; le taux de lapin reste cumulé (peut dépasser la ligne Lapin) ; pourcentages arrondis : total possible de 99 ou 101 %, annoncé, jamais redistribué. Lignes « Confirmé » et « En attente » masquées quand elles sont à 0 (fiches et créneaux) : `statutTransitoireVide`, affichage seul, demande utilisateur du 30/10.
+- **Répartition par statut sur la base des rendez-vous** (30/10, option B de l'utilisateur ; exemple : 100 RDV → 60 réalisés = 60 %, 20 lapins = 20 %… ; **à valider**, **AG-010 ouvert, Codex attendu**) :
+  bilan = colonne « Part des rendez-vous » (n / total · %) et ligne Total à 100 % ; la carte « Issue des créneaux » est retirée de Statistiques (la carte « Statuts des RDV » donne déjà cette part).
+  **Remplace l'issue exclusive par créneau (AG-008 tranché, supprimée du code).** Concrétisation, lapin et remplissage restent **par créneau** (décision du 23/10) : les deux bases coexistent, annoncées sous le tableau.
 - **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
 - **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 : Codex « amendé », corrigé ; à trancher par l'utilisateur**) : « 65 réservations enregistrées
   pour 53 créneaux attribués (12 réservations supplémentaires sur des créneaux partagés) ; 54 places offertes (écart de 1 entre capacité théorique et créneaux attribués ; les dépassements d'une journée
   peuvent compenser des places non attribuées d'une autre) » (`supplementaires`, `ecart` : soustractions globales, **jamais « reprises » ni « places non attribuées »**) ; 8 infobulles ⓘ à l'aperçu
-  (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ; « i » des tuiles au toucher ; commentaire d'un statut avec RDV mais 0 créneau pour issue (« 6 Pas de retour, 0 % »).
+  (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ; « i » des tuiles au toucher ; commentaire « statut sans créneau » retiré avec l'issue exclusive.
 - **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
   Compteurs : `compterNombre` (voir « Animation »).
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
