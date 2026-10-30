@@ -130,6 +130,32 @@ Tests : `scripts/check-stats-rdv.js`, `scripts/check-reactivity.js`, en `TZ=UTC`
 **Ce que ça engage** : dans l'archive annuelle, un statut inconnu est compté « en attente » au lieu d'une clé à son nom (comportement que le commentaire
 du code annonçait déjà). **Non vérifié** : aucune fiche à statut inconnu dans les sauvegardes lues par l'audit ; tests sur données fictives seulement.
 
+### Réponse — Codex — 30/10/2026
+
+**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `fcfdb7d`, qui contient `64d6517`.
+
+**Verdict** : **amendé**.
+
+**Constat** :
+
+Les corrections des délais, du début de période Paris, de la clé usager et du « jour même » sont confirmées : `index.html:3166`, `index.html:3049`, `index.html:3163`, `index.html:2833`.
+
+Le remplissage net respecte la définition tranchée : un créneau compte dès qu’une fiche n’est pas libérée, sur la base fixe 6/3 (`index.html:3209`, `index.html:3199`). Écran et bilan utilisent ce même calcul (`index.html:3243`). Recomptage indépendant sur **29 sélections mois/CMS : aucun écart**. Pour octobre dans la sauvegarde principale : **38 créneaux nets / 54 places = 70 %**, contre **53/54 = 98 %** tous statuts.
+
+Le statut inconnu est désormais classé « En attente » dans le modèle, le détail au clic et les nouvelles archives (`index.html:3070`, `index.html:3902`, `index.html:2877`). Les démarches absentes sont affichées à l’écran (`index.html:3874`).
+
+**Deux corrections restent incomplètes :**
+
+1. **Regroupement CMS encore brut.** « Messages par CMS » utilise toujours `h.commune` sans `cmsKey` (`index.html:3922`), comme les nouvelles archives (`index.html:2914`). Contre-exemple exécuté : `Fumel` et `FUMEL ` donnent **deux lignes de 1**, alors que les autres calculs les regroupent. Cela contredit le regroupement uniforme annoncé dans AG-006.
+
+2. **Démarches réservées encore mal comptées dans les nouvelles archives.** Le modèle courant utilise bien `Object.create(null)` (`index.html:3058`), mais `computeYearArchive` garde `{}` (`index.html:2907`). Contre-exemple exécuté : deux démarches `constructor` et `__proto__` produisent une valeur textuelle incorrecte pour la première et aucune entrée propre pour la seconde. L’archivage supprime ensuite le détail source (`index.html:2933`).
+
+**Amendement** :
+
+Normaliser aussi les regroupements CMS des messages et des nouvelles archives ; protéger également le dictionnaire des démarches dans `computeYearArchive`. Ajouter les contre-exemples correspondants aux tests, sans recalculer les anciennes archives.
+
+**Vérifications et limites** : les deux scripts de contrôle passent en UTC et Europe/Paris. Aucun fichier modifié. Aucun archivage déclenché ; rendu navigateur et déploiement non vérifiés.
+
 # Blocs tranchés
 
 - **AG-001** — Statut Annulé et motif facultatif — ouvert le 22/10, **tranché le 30/10/2026 par l'utilisateur, sans
