@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`bddda87`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`0ae921c`). Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -73,9 +73,9 @@ dans « Points à ne pas défaire ».
   `S.date`, `S.commune`, adresse CMS et **l'heure de la case** ; brouillon conservé ; focusable. « Libres » sans 12:30.
   Ligne « N places … sur les 7 prochains jours » (détail par CMS) en tête de carte (26/10).
 - **Relancé sans réponse ≥ 3 h → alerte « Libérer ? »** (26/10) : `tsRelance` (ISO, additif, posé à la copie de la relance ; sans lui,
-  borne haute = fin du jour `dateRelance` ou mise en ligne du 26/10 11:40, d'où alerte rétroactive). `isSansReponse` : tuile qui
-  clignote, « ⏰ Libérer ? » (→ « Pas de retour ») remplace « En attente », badge, bandeau, contrôle /60 s ; délai réglable
-  (Configuration → Général, 1-72 h, défaut 3). Créneau libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
+  borne haute = fin du jour `dateRelance` ou mise en ligne du 26/10 11:40). `isSansReponse` : tuile qui clignote, « ⏰ Libérer ? »
+  (→ « Pas de retour »), badge, bandeau, contrôle /60 s ; délai réglable (Configuration → Général, 1-72 h, défaut 3). Créneau
+  libéré déjà relancé : « Relancé jj/mm » remplace « À nouveau libre ».
 - **Signature par profil** (29/10) : « Michel Aswad » en dur dans les modèles est remplacé au remplissage (`fillTemplate`,
   `PROFILES[].signature`/`titre`) : Michel ASWAD, Cynthia PINEAU, Corentin TUAL, Eva CAPELLE ; « Conseillère » pour Cynthia et Eva. **Import Orientations** : CMS
   rapproché par mots (`cmsNomDansTexte`) : « Centre Médico-Social de Villeneuve/Lot » → Villeneuve-Sur-Lot.
@@ -84,28 +84,19 @@ dans « Points à ne pas défaire ».
 - **Bouton « Aujourd'hui » de l'Agenda** (25/10) : ouvre une journée **avec RDV** — aujourd'hui s'il en a,
   sinon la prochaine, à défaut la dernière passée ; en vue semaine (PC) la semaine en cours reste affichée si
   elle contient un RDV. Toast sur mobile quand le jour change.
-- **Jour sélectionné marqué dans le bandeau de dates** (25/10) : la règle `[aria-pressed="true"]` existait
-  mais était écrasée par `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, spécificité 1,3,1) ; le
-  sélecteur renforcé (1,4,0) donne fond teinté, bordure 2 px et gras, en clair comme en sombre. Même piège que
-  le clignotement des tuiles : tout nouveau style de bouton dans cette barre doit battre cette règle.
-- **Pause déjeuner d'office** (25/10, demande utilisateur ; remplace « 12h30 compris » du 07/10) : une entrée
-  `indispo` « Pause déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks` au chargement
-  du profil et à l'ouverture d'une journée), une seule fois : `pauseAuto` sur la permanence, donc une pause libérée
-  ne revient pas. Ni passé, ni archivée, ni demi-journée sans 12:30, ni si 12:30 est déjà pris. `statsRdvModel`
-  l'ignore (`isLunchBreak`) : ni place ni blocage. Jours **jamais ouverts** : `getSlots` ne propose pas 12:30 (la pause
-  est posée à l'ouverture ; RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : décision explicite,
-  libérable en un clic, aucune donnée détruite.
-- **Bilan mensuel imprimable** (25/10 ; bouton « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS,
-  aperçu et « Imprimer / PDF ». `monthlyReportData` réutilise `statsRdvModel`/`slotRates` (« aujourd'hui » = fin du mois
-  échu ou jour courant). Vocabulaire : « rendez-vous enregistrés » / « créneaux horaires » (« fiches » reste sur
-  l'écran Statistiques). Statuts, démarches (top 10 + « autres »), CMS, sources/limites ; état vide ; archives jamais
-  mélangées. Tests : `check-stats-rdv.js`. Bouton restylé (cadre accent, 52 px, pleine largeur sur mobile).
-  **Audit Codex du 26/10 (AG-004, réponse inscrite)** : 20 sélections 07–10/2026 recomptées, **écart 0**. Corrigé le
-  26/10 : fiches sans CMS (ligne « CMS non renseigné »), sans heure (hors créneaux/taux, signalées), sans statut
-  (= en attente partout), sans démarche (ligne dédiée), jour courant imposé Europe/Paris (`parisDayStr`), variantes de
-  CMS regroupées (`cmsKey`). **AG-004 tranché le 26/10 (Codex : amendé)** : démarches saisies librement laissées telles
-  quelles, mention « à relire avant toute diffusion » dans le bilan (choix utilisateur ; 29 fiches libres sur 162).
-  Diffusion à la hiérarchie possible, **relecture des textes libres par l'utilisateur avant envoi**.
+- **Jour sélectionné marqué dans le bandeau de dates** (25/10) : `[aria-pressed="true"]` était écrasée par
+  `#pane-agenda .ui-ag-toolbar :is(button…):not(…)` (`!important`, 1,3,1) ; sélecteur renforcé (1,4,0). Même piège que le
+  clignotement des tuiles : tout nouveau style de bouton de cette barre doit battre cette règle.
+- **Pause déjeuner d'office** (25/10, demande utilisateur ; remplace « 12h30 compris » du 07/10) : entrée `indispo` « Pause
+  déjeuner » à 12:30 sur chaque journée ouverte **à venir** (`applyLunchBreaks`), une seule fois (`pauseAuto` : une pause libérée
+  ne revient pas) ; ni passé, ni archivée, ni 12:30 déjà pris. `statsRdvModel` l'ignore (`isLunchBreak`). Jours jamais ouverts :
+  `getSlots` ne propose pas 12:30 (RDV déjà pris et « Autre heure » restent possibles). Pas d'AGORA : libérable en un clic.
+- **Bilan mensuel imprimable** (25/10 ; « 📄 Bilan mensuel » en tête de Statistiques) : modale mois + CMS, « Imprimer / PDF ».
+  `monthlyReportData` réutilise `statsRdvModel`/`slotRates` ; vocabulaire « rendez-vous enregistrés » / « créneaux horaires » ;
+  archives jamais mélangées. Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
+  écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
+  Démarches libres laissées telles quelles + mention « à relire avant toute diffusion » (29 sur 162) : **l'utilisateur relit les
+  textes libres avant tout envoi à la hiérarchie**.
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
