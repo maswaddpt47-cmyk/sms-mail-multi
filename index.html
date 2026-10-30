@@ -3318,6 +3318,11 @@ function monthlyReportHtml(d,meta){
     t+=' ('+(d.libres>0?plur(d.libres,'place jamais attribuée','places jamais attribuées'):d.libres===0?'aucune place jamais attribuée':'dépassement de '+plur(-d.libres,'créneau','créneaux')+' au-delà des places')+').';
     return '<p class="lecture"><b>Lecture.</b> '+esc(t)+'</p>';
   }
+  /* Statuts présents en rendez-vous mais sans créneau pour issue (ex. 6 « Pas de retour », 0 %) : dit pourquoi, au lieu de laisser croire à une erreur (30/10, AG-009). */
+  function commentairesIssue(){
+    var l=STAT.filter(function(k){return d.byStatut[k[0]]>0&&!d.issues[k[0]];}).map(function(k){return k[1]+' ('+plur(d.byStatut[k[0]],'rendez-vous enregistré','rendez-vous enregistrés')+', 0 créneau)';});
+    return l.length?'<p>Statut présent mais sans créneau pour issue : '+l.join(', ')+'. Ces rendez-vous sont sur des créneaux dont l’issue la plus avancée est une autre (par exemple un créneau repris ensuite par un autre usager) : le taux de leur propre issue est donc de 0 %.</p>':'';
+  }
   var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
     +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+(d.partiel?' · <b>Mois en cours : chiffres arrêtés au '+esc(String(d.today).split('-').reverse().join('/'))+', rendez-vous à venir non comptés</b>':'')+'</div>';
   if(d.empty){
@@ -3335,7 +3340,7 @@ function monthlyReportHtml(d,meta){
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th><th>Issue du créneau (créneaux attribués échus)'+info('issue')+'</th></tr>';
     STAT.forEach(function(k){if(statutTransitoireVide(k[0],d.byStatut,d.issues))return;h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.issues[k[0]],d.slots)+'</td></tr>';});
     h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+(d.slots?d.slots+' / '+d.slots+' · 100 %':'—')+'</b></td></tr></table>'
-      +'<p>Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. Il est classé dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p></section>';
+      +'<p>Chaque créneau compte une fois ; les pourcentages arrondis peuvent ne pas totaliser exactement 100 %. Il est classé dans son issue la plus avancée : Réalisé, puis Confirmé, En attente, Lapin, Pas de retour, Excusé, Annulé. Un créneau réattribué porte plusieurs rendez-vous : d’où davantage de rendez-vous enregistrés que de créneaux. Le taux de lapin ci-dessus compte aussi un lapin suivi d’une réattribution.</p>'+commentairesIssue()+'</section>';
     h+='<section><h2>Démarches accompagnées</h2>';
     if(!d.demarches.length&&!d.sansDemarche)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
