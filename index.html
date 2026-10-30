@@ -3230,7 +3230,7 @@ function monthlyReportHtml(d,meta){
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   var mm=/^(\d{4})-(\d{2})$/.exec(d.month),title=NAMES[Number(mm[2])-1]+' '+mm[1];
   var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
-  function pc(n,total){return total?n+' / '+total+' créneaux horaires attribués · '+Math.round(n/total*100)+' %':'—';}
+  function pc(n,total){return total?n+' / '+total+' · '+Math.round(n/total*100)+' %':'—';}
   var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
     +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+'</div>';
   if(d.empty){
@@ -3241,9 +3241,9 @@ function monthlyReportHtml(d,meta){
       +'<tr><td>Rendez-vous du mois (tous statuts)</td><td class="n">'+d.entries+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
       +'<tr><td>dont réalisés</td><td class="n">'+d.realised+'</td><td class="unit">rendez-vous enregistrés</td></tr>'
       +'<tr><td>Usagers accompagnés</td><td class="n">'+d.accompanied+'</td><td class="unit">personnes distinctes (RDV réalisés)</td></tr>'
-      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus (hors créneaux libres et bloqués)</td></tr>'
-      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus (hors créneaux libres et bloqués)</td></tr>'
-      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués sur 6 places par journée de permanence ('+d.jours+' journée'+(d.jours>1?'s':'')+' avec au moins un rendez-vous)</td></tr></table></section>';
+      +'<tr><td>Taux de concrétisation</td><td class="n">'+pc(d.realisedSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
+      +'<tr><td>Taux de lapin</td><td class="n">'+pc(d.lapinSlots,d.slots)+'</td><td class="unit">créneaux horaires attribués échus</td></tr>'
+      +'<tr><td>Taux de remplissage</td><td class="n">'+(d.places?d.slots+' / '+d.places+' places · '+d.fillPct+' %':'—')+'</td><td class="unit">créneaux attribués / places ('+d.jours+' journée'+(d.jours>1?'s':'')+' × 6)</td></tr></table></section>';
     h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous enregistrés</th></tr>';
     STAT.forEach(function(k){if(d.byStatut[k[0]])h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td></tr>';});
     h+='</table></section>';
