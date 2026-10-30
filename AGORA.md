@@ -100,53 +100,14 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-007 — Taux par statut (tous les statuts) en Statistiques et au Bilan mensuel — ouvert le 30/10/2026
-**Auteur** : session `0199YP2K` — lu sur `78cf777`.
-**Proposition** : afficher, pour chacun des sept statuts, le taux de créneaux concernés = créneaux attribués échus portant au moins une fiche de ce statut ÷
-créneaux attribués échus ; une carte « Taux par statut » à l'écran et une colonne « Taux (créneaux) » dans la répartition par statut du bilan.
-**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (nouvel indicateur affiché ; contradicteur Codex), demandé par l'utilisateur.
-**Définition métier — proposée par l'auteur, non tranchée** : l'utilisateur a demandé « les taux de tous les statuts » sans préciser l'unité ni la base ; j'ai repris
-celles de la concrétisation et du lapin (créneaux, échus, un créneau peut compter dans plusieurs statuts, donc **la somme dépasse 100 %** si un créneau a été
-libéré puis réattribué). Statut vide ou inconnu = En attente (`statutAffiche`). Alternative écartée : part des fiches (déjà affichée par la barre des statuts).
-**Ce que ça engage** : rien de stocké ; deux unités voisines à l'écran (fiches pour les volumes, créneaux pour ces taux), annoncées sous les libellés. Les taux
-Réalisé et Lapin doivent égaler la concrétisation et le lapin existants.
-**Non vérifié par l'auteur** : lisibilité d'une somme > 100 % pour un lecteur du bilan ; effet sur les vraies sauvegardes (tests sur données fictives).
-**Si personne ne répond, je fais quoi ?** — livrer tel quel (calcul d'affichage, se défait en un commit) ; amender selon la réponse de Codex.
-**Où regarder** : `index.html` : `slotRates` (`parStatut`), `monthlyReportData`, `monthlyReportHtml`, `renderStats` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
-
-### Réponse — Codex — 30/10/2026
-
-**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `280c46e`, qui contient `11eb755`.
-
-**Verdict** : **confirmé**, pour la définition proposée dans AG-007.
-
-**Constat** :
-
-- Chaque statut est compté **une seule fois par créneau distinct**, même avec plusieurs fiches du même statut (`index.html:3217`, `index.html:3219`, `index.html:3225`).
-- Les statuts inconnus deviennent « En attente » ; les fiches sans heure, les blocages et les RDV futurs sont exclus des taux (`index.html:3214`, `index.html:3052`, `index.html:3053`).
-- Écran et bilan reprennent les mêmes numérateurs et dénominateur (`index.html:3255`, `index.html:3292`, `index.html:3926`). Réalisé et Lapin retrouvent exactement les taux existants.
-- Le cumul possible au-delà de 100 % est annoncé dans les deux présentations (`index.html:3293`, `index.html:3923`).
-
-**Recomptage indépendant : 29 sélections mois/CMS, aucun écart.** Sur octobre dans la sauvegarde principale, base de 53 créneaux :
-
-| Statut | Créneaux | Taux arrondi |
-|---|---:|---:|
-| En attente | 0 | 0 % |
-| Confirmé | 2 | 4 % |
-| Réalisé | 36 | 68 % |
-| Excusé | 11 | 21 % |
-| Annulé | 2 | 4 % |
-| Lapin | 7 | 13 % |
-| Pas de retour | 6 | 11 % |
-
-Ces taux décrivent des statuts présents sur les créneaux, pas une répartition exclusive.
-
-**Amendement** : aucun correctif nécessaire trouvé dans ce périmètre. Le choix métier **créneaux plutôt que fiches**, explicitement non tranché dans AG-007, reste à confirmer par l’utilisateur ; cette vérification confirme son implémentation.
-
-**Vérifications et limites** : tests existants réussis en UTC et Europe/Paris ; cas limites vérifiés séparément. Lisibilité en navigateur et déploiement non vérifiés. Aucun fichier modifié.
+Aucun.
 
 # Blocs tranchés
 
+- **AG-007** — Taux par statut (tous les statuts), Statistiques et Bilan mensuel — ouvert le 30/10, **tranché le 30/10/2026** — verdict **confirmé**
+  (Codex, critère 7) : recomptage indépendant sur 29 sélections mois/CMS sans écart, aucun correctif trouvé (Réalisé et Lapin égalent les taux existants,
+  fiches sans heure, blocages et RDV futurs exclus). Décision de l'utilisateur : l'unité est le **créneau** (plutôt que la fiche) ; un créneau peut porter
+  plusieurs statuts, la somme dépasse donc 100 % et c'est annoncé. Conclusion dans `CHANTIERS.md` (« Taux par statut »).
 - **AG-006** — Calculs Statistiques/Bilan : corrections de l'audit Codex du 30/10 et remplissage net — ouvert le 30/10, **tranché le 30/10/2026** —
   verdict **amendé** (Codex, critère 7) : points 1 à 5 et 7 de l'audit confirmés, remplissage net conforme à la définition tranchée par l'utilisateur
   (base fixe 6/3), recomptage indépendant sur 29 sélections sans écart ; **deux corrections incomplètes relevées et corrigées dans le code** (regroupement
@@ -178,4 +139,4 @@ Ces taux décrivent des statuts présents sur les créneaux, pas une répartitio
   **laissées telles quelles, avec la mention « à relire avant toute diffusion »** (mention retirée le 30/10/2026 sur
   demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
-**Total au 30/10/2026 : 3 amendés, 0 confirmé, 0 contredit** (AG-001, AG-002 et AG-003 sans verdict, hors total).
+**Total au 30/10/2026 : 3 amendés, 1 confirmé, 0 contredit** (AG-001, AG-002 et AG-003 sans verdict, hors total).
