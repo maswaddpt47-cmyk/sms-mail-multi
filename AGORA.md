@@ -100,7 +100,21 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-008 — Issue exclusive des créneaux : la somme des statuts fait 100 % — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `ee50cfc`.
+**Proposition** : remplacer les taux par statut cumulés (AG-007) par une **issue unique par créneau** : chaque créneau attribué échu est compté une seule fois, dans son
+issue la plus avancée ; la somme des sept lignes égale le nombre de créneaux attribués (100 %). Bilan : colonne et ligne « Total » ; écran : même carte.
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (changement d'un indicateur affiché ; contradicteur Codex) ; constat de l'utilisateur le 30/10 sur le bilan
+d'octobre : 38+11+2+7+6 = **64 créneaux** et **121 %** pour 53 créneaux attribués, alors qu'AG-007 annonçait ce cumul.
+**Définition métier — proposée par l'auteur, non tranchée** : ordre de priorité Réalisé > Confirmé > En attente > Lapin > Pas de retour > Excusé > Annulé. Un créneau
+« réalisé puis réattribué » est Réalisé ; un créneau libéré puis repris reste dans l'issue de son titulaire actif. Le taux de concrétisation reste égal à la ligne
+Réalisé. **Le taux de lapin existant reste cumulé** (il compte aussi un lapin suivi d'une réattribution) : la ligne Lapin de l'issue peut donc être plus basse que lui.
+Les volumes en fiches (65) restent à côté, avec leur propre total.
+**Ce que ça engage** : rien de stocké ; les taux par statut cumulés d'AG-007 disparaissent de l'affichage (calcul remplacé, pas ajouté).
+**Non vérifié par l'auteur** : l'ordre Lapin > Pas de retour > Excusé > Annulé est un choix de lecture (du plus au moins problématique pour le service), à confirmer ;
+effet sur les vraies sauvegardes (tests sur données fictives).
+**Si personne ne répond, je fais quoi ?** — livrer cet ordre (calcul d'affichage, se défait en un commit), annoncé sous le tableau ; amender selon Codex.
+**Où regarder** : `index.html` : `slotRates` (`issues`), `monthlyReportData`, `monthlyReportHtml`, `renderStats` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
 # Blocs tranchés
 
