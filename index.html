@@ -3341,19 +3341,25 @@ function printMonthlyReport(html,title){
 
 /* ============================== RENDER: STATS ============================== */
 /* infobulle d'une case (survol ; toucher sur mobile), partagée par Orientations et la heatmap de Statistiques */
+var _tipTimer=null,_tipGlobal=false;
 function attachPermanenceTip(node){
   var lastTouch=0; /* les événements souris émulés après un toucher (mouseleave) ne doivent pas masquer l'infobulle */
   function fromTouch(){return Date.now()-lastTouch<1000;}
-  function show(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;tip.textContent=node.dataset.tip;tip.style.display='block';move(e);}
+  function hide(){clearTimeout(_tipTimer);var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';}
+  /* Au toucher (30/10) : l'infobulle reste lisible — au-dessus du doigt, jusqu'à un nouveau toucher ailleurs ou après un temps proportionnel au texte (6 à 15 s). */
+  if(!_tipGlobal){_tipGlobal=true;document.addEventListener('touchstart',function(e){if(!(e.target.closest&&e.target.closest('[data-tip]')))hide();},{passive:true});}
+  function show(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;clearTimeout(_tipTimer);tip.textContent=node.dataset.tip;tip.style.display='block';move(e);}
   function move(e){var tip=document.getElementById('stat-tooltip');if(!tip)return;
-    var x=(e.touches?e.touches[0].clientX:e.clientX)+14,y=(e.touches?e.touches[0].clientY:e.clientY)-10;
-    if(x+250>window.innerWidth)x=x-270;tip.style.left=x+'px';tip.style.top=y+'px';}
-  function hide(){var tip=document.getElementById('stat-tooltip');if(tip)tip.style.display='none';}
+    var t=e.touches&&e.touches[0],cx=t?t.clientX:e.clientX,cy=t?t.clientY:e.clientY,w=tip.offsetWidth||240,h=tip.offsetHeight||40;
+    var x=cx+14,y=t?cy-h-18:cy-10;   /* doigt : au-dessus du point touché, pour ne pas le masquer */
+    if(x+w>window.innerWidth-8)x=cx-w-14;
+    x=Math.max(8,Math.min(x,window.innerWidth-w-8));y=Math.max(8,y);
+    tip.style.left=x+'px';tip.style.top=y+'px';}
   node.addEventListener('mouseenter',function(e){if(!fromTouch())show(e);});
   node.addEventListener('mousemove',function(e){if(!fromTouch())move(e);});
   node.addEventListener('mouseleave',function(){if(!fromTouch())hide();});
   node.addEventListener('touchstart',function(e){lastTouch=Date.now();show(e);},{passive:true});
-  node.addEventListener('touchend',function(){lastTouch=Date.now();setTimeout(hide,1800);});
+  node.addEventListener('touchend',function(){lastTouch=Date.now();clearTimeout(_tipTimer);_tipTimer=setTimeout(hide,Math.min(15000,Math.max(6000,(node.dataset.tip||'').length*70)));});
 }
 /* Carte « Prochaines permanences » : une case par créneau, dans l'ordre des heures. Déplacée de Statistiques vers
    Orientations le 26/10/2026 (demande utilisateur). `rdv` = statsRdvModel(...) ; `rerender` rafraîchit l'onglet appelant. */
