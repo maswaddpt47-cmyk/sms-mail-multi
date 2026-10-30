@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **29/10/2026**, base `main` (`eb30957`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **30/10/2026**, base `main` (`e28931f`). Ménage du fichier fait les 23, 25 et 29/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -262,6 +262,8 @@ Aucune pour l'instant.
   6. Toute migration délicate mérite un test ciblé avant commit.
 - **Commune de « Ouvrir une journée » = liste déroulante**, pas un champ texte
   (une faute de frappe créerait une journée invisible).
+- **Rappel d'export « N messages non sauvegardés »** (30/10, `e28931f`) : toutes les 5 fiches, seulement sans jeton GitHub
+  ou si `gh-last-backup` > 24 h ; `since-export` retombe à 0 après export JSON **ou** sauvegarde GitHub. Non éprouvé en navigateur.
 - **Rétention des sauvegardes GitHub : 30 jours** (`GH_BACKUP_RETENTION_JOURS`) ;
   `ghCleanOldBackups()` garde toujours la plus récente.
 - **Changer d'onglet re-rend son contenu** (`stats`/`agenda`/`orientations`/
@@ -288,8 +290,7 @@ Aucune pour l'instant.
 ## Pistes d'amélioration
 
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
-26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** (badge Agenda, bandeau,
-page profil) ; « Prochaines permanences » **déplacée vers Orientations** (26/10, accord utilisateur ; `buildPermanencesCard`, CMS propre `S.orientCMS`).
+26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** ; « Prochaines permanences » **déplacée vers Orientations** (`buildPermanencesCard`).
 
 **En attente** : aucune.
 
