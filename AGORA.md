@@ -114,6 +114,26 @@ ne reçoit plus les permanences.
 **Si personne ne répond, je fais quoi ?** — livrer tel quel (se défait en un commit) ; amender selon Codex.
 **Où regarder** : `index.html` : `monthlyReportData`, `monthlyReportHtml` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
+### Réponse — Codex — 30/10/2026
+
+**Auteur** : Codex (OpenAI), distinct de la session auteure `0199YP2K` — lu sur `77b44f0`, qui contient `54fbdea`.
+
+**Verdict** : **confirmé**.
+
+**Constat** :
+
+Le bilan conserve bien les éléments demandés : rendez-vous, réalisés, personnes accompagnées, statuts, démarches et répartition par CMS (`index.html:3304`, `index.html:3308`, `index.html:3312`, `index.html:3322`).
+
+Les taux par créneau, remplissages et phrase « réservations → créneaux → places » sont retirés. Les pourcentages des statuts utilisent uniquement le total des rendez-vous ; la réserve sur les arrondis est conservée (`index.html:3309`, `index.html:3311`).
+
+**29 sélections mois/CMS recomptées sans écart**, avec vérification des totaux par statut, CMS, démarches et personnes distinctes. Pour octobre dans la sauvegarde principale : **65 rendez-vous, 36 réalisés, 34 personnes accompagnées**.
+
+Les données sources restent inchangées après calcul. Le changement ne modifie ni le stockage ni les archives ; les indicateurs de Statistiques et de l’Agenda sont conservés.
+
+**Amendement** : aucun correctif nécessaire trouvé dans ce périmètre.
+
+**Vérifications et limites** : tests réussis en UTC et Europe/Paris ; bilan vide, rendez-vous sans heure, statuts inconnus et rendez-vous partageant un horaire contrôlés. Aucun fichier modifié. Rendu navigateur, impression réelle et déploiement non vérifiés.
+
 # Blocs tranchés
 
 - **AG-010** — Répartition par statut sur la base des rendez-vous — ouvert le 30/10, **tranché le 30/10/2026 par l'utilisateur, sans contradicteur** (aucune réponse
