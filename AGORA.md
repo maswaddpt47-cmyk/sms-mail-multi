@@ -100,7 +100,19 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-007 — Taux par statut (tous les statuts) en Statistiques et au Bilan mensuel — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `78cf777`.
+**Proposition** : afficher, pour chacun des sept statuts, le taux de créneaux concernés = créneaux attribués échus portant au moins une fiche de ce statut ÷
+créneaux attribués échus ; une carte « Taux par statut » à l'écran et une colonne « Taux (créneaux) » dans la répartition par statut du bilan.
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (nouvel indicateur affiché ; contradicteur Codex), demandé par l'utilisateur.
+**Définition métier — proposée par l'auteur, non tranchée** : l'utilisateur a demandé « les taux de tous les statuts » sans préciser l'unité ni la base ; j'ai repris
+celles de la concrétisation et du lapin (créneaux, échus, un créneau peut compter dans plusieurs statuts, donc **la somme dépasse 100 %** si un créneau a été
+libéré puis réattribué). Statut vide ou inconnu = En attente (`statutAffiche`). Alternative écartée : part des fiches (déjà affichée par la barre des statuts).
+**Ce que ça engage** : rien de stocké ; deux unités voisines à l'écran (fiches pour les volumes, créneaux pour ces taux), annoncées sous les libellés. Les taux
+Réalisé et Lapin doivent égaler la concrétisation et le lapin existants.
+**Non vérifié par l'auteur** : lisibilité d'une somme > 100 % pour un lecteur du bilan ; effet sur les vraies sauvegardes (tests sur données fictives).
+**Si personne ne répond, je fais quoi ?** — livrer tel quel (calcul d'affichage, se défait en un commit) ; amender selon la réponse de Codex.
+**Où regarder** : `index.html` : `slotRates` (`parStatut`), `monthlyReportData`, `monthlyReportHtml`, `renderStats` ; tests `scripts/check-stats-rdv.js` (`TZ=UTC` et `TZ=Europe/Paris`).
 
 # Blocs tranchés
 
