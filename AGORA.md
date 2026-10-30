@@ -100,7 +100,28 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-006 — Calculs Statistiques/Bilan : corrections de l'audit du 30/10 et remplissage net — ouvert le 30/10/2026
+**Auteur** : session `0199YP2K` — lu sur `eeed45b`.
+**Proposition** : corriger les points 1 à 5 de l'audit Codex du 30/10 (délai RDV, filtres CMS, début de période, clé « usagers »,
+« traitées le jour même ») et ajouter un taux de remplissage **net** (créneaux ayant au moins une fiche non libérée).
+**Critère déclencheur** : n° 7 de `MD-LIB/agora.md` (tout calcul ou chiffre affiché ; contradicteur Codex), demandé aussi par l'utilisateur.
+**Définitions métier — tranchées par l'utilisateur le 30/10** : (a) remplissage = base **fixe** 6 places par journée, 3 par demi-journée,
+sans tenir compte des créneaux masqués ; (b) remplissage net = créneaux dont au moins une fiche n'est ni Lapin, ni Excusé, ni Annulé, ni
+Pas de retour, sur la même base ; le remplissage actuel (tous statuts) est conservé à côté.
+**Défauts démontrés (audit, à corriger)** : (1) délai RDV : deux dates civiles comparées par une même fonction, zéro jour inclus, négatifs exclus ;
+(2) clé `cmsKey` pour tout filtre, regroupement et dédoublonnage CMS (messages, préparation, heatmap, délais par CMS) ;
+(3) début de période dérivé de la date civile Europe/Paris ; (4) une seule clé « usager » (nom|prénom, espaces retirés, minuscules) pour
+messages, archive et usagers accompagnés ; (5) « traitées le jour même » = même date civile, plus zéro jour ouvré.
+**Ce que ça engage** : des chiffres affichés peuvent bouger (délai moyen hors France métropolitaine, nombre d'usagers des messages, filtres CMS) ;
+aucun stockage nouveau. Les archives annuelles déjà calculées ne sont pas recalculées : leurs `usagersN` et `avgRdv` ne seront pas strictement
+comparables aux nouvelles.
+**Non vérifié par l'auteur** : l'effet sur les vraies sauvegardes (tests sur données fictives seulement, en UTC et Europe/Paris) ; les points 6 et 7
+de l'audit, non traités ; l'homonymie (deux personnes de mêmes nom et prénom restent une).
+**Si personne ne répond, je fais quoi ?** — livrer ces corrections (comportement défini ci-dessus, testé), ne rien recalculer dans les archives,
+noter les points 6 et 7 comme non traités ; tout amendement de Codex se traite dans un commit suivant.
+**Où regarder** : `index.html` : `statsRdvModel` (début de période), `slotRates`, `placesJournee`, `preparationCohort`,
+`legacyPreparationEstimate`, `computeYearArchive`, `renderStats` (délais, usagers, heatmap), `monthlyReportData`.
+Tests : `scripts/check-stats-rdv.js`, `scripts/check-reactivity.js`, en `TZ=UTC` et `TZ=Europe/Paris`.
 
 # Blocs tranchés
 
