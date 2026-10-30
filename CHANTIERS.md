@@ -15,7 +15,8 @@ dans « Points à ne pas défaire ».
 - **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
 - **Validé par l'utilisateur le 30/10 (« tout est ok »)** : rappel d'export, signatures par profil et import Orientations
   « Villeneuve/Lot », alerte « Libérer ? », bilan mensuel, lien date/lieu → Agenda, barres « Prochaines permanences »,
-  stat des Relances. Reste : **relire les démarches saisies librement avant toute diffusion du bilan** (AG-004).
+  stat des Relances. **Relecture des démarches libres du bilan (AG-004) : couverte par ce « tout est ok », déclaré par
+  l'utilisateur le 30/10, non vérifiée par Claude** ; la mention « à relire » reste dans le bilan tant qu'il ne demande pas de la retirer.
 
 ## Contrats à conserver
 
