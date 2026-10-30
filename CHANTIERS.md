@@ -179,16 +179,18 @@ dans « Points à ne pas défaire ».
   préremplissage Google Messages Web (ne pas inventer de paramètres `phone`/`body`). Piste SMSGate (appli
   Android) : son API n'a pas de CORS, il faudrait un relais serveur ; rien mis en place. Si retenu, soumettre
   dépendance/contrat à l'AGORA avant implémentation. WhatsApp : lien officiel, mais compte requis.
-- **Espacements SMS** : arrêté à la demande de l'utilisateur après `45d182c`
-  (rendu reçu insatisfaisant). Ne pas annoncer le problème résolu. Acquis :
-  au plus une ligne vide entre paragraphes, CRLF normalisés, e-mails inchangés ;
-  le rendu dans Google Messages réel reste à confirmer.
+- **Espacements SMS** : arrêté à la demande de l'utilisateur après `45d182c` (rendu reçu insatisfaisant) ; ne pas annoncer le
+  problème résolu. Acquis : une ligne vide max entre paragraphes, CRLF normalisés, e-mails inchangés ; rendu Google Messages réel à confirmer.
 
 ## Décisions à trancher
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-Aucune pour l'instant.
+- **Audit Codex du 30/10 des calculs Statistiques/Bilan** (rapport `sms-mail-multi-backups/audits/2026-10-30-statistiques-bilan-mensuel.md`, lu le 30/10) :
+  29 sélections mois/CMS recomptées, **aucun chiffre du bilan faux**. 7 défauts latents reproduits sur contre-exemples fictifs, **non corrigés** : délai RDV
+  selon le fuseau, filtres CMS non uniformes (messages/préparation/heatmap), début de période en fuseau local, « usagers » des messages (clé sans séparateur),
+  « jour même » = 0 jour ouvré, statut inconnu/démarche absente, `toString` comme statut. **À trancher (utilisateur)** : capacité du remplissage = base fixe
+  6/3 (actuelle) ou grille réelle (20/08 Saint-Pardoux : 5 places en Agenda, 6 ici) ; le libellé « même règle que les places disponibles » est à corriger quoi qu'il en soit. Pas d'AGORA : l'utilisateur tranche.
 
 ## Chantiers restants
 
