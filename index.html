@@ -6546,7 +6546,7 @@ function renderAgendaRdvDialog(overlay,box){
       Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||toLocalDateStr(new Date()),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
-    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
+    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',commune:commune,date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
     var secondary=el('div',{class:'ui-rdv-secondary-actions'});
     secondary.appendChild(action('ag-rdv-duplicate','Dupliquer sur un autre créneau','ui-rdv-action-link',function(){
       S.agendaAvailability={dateStr:date,commune:commune,duplicate:messageFields()};S.modal='agenda-availability';renderModal();
@@ -6563,20 +6563,27 @@ function renderAgendaRdvDialog(overlay,box){
       var wrapper=field('ag-rdv-edit-'+key,label,input);if(wide)wrapper.classList.add('ui-rdv-field-wide');form.appendChild(wrapper);return input;
     }
     var civ=el('select',{onChange:function(event){edit.civilite=event.target.value;}});[['','—'],['M.','M.'],['Mme','Mme']].forEach(function(option){civ.appendChild(el('option',{value:option[0]},option[1]));});civ.value=edit.civilite||'';
-    form.appendChild(field('ag-rdv-edit-civilite','Civilité',civ));editInput('prenom','Prénom');editInput('nom','Nom *');editInput('telephone','Téléphone','tel');editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateReception','Réception de la demande','date',true);editInput('dateDemande','Date du message / proposition (suivi)','date',true);
+    form.appendChild(field('ag-rdv-edit-civilite','Civilité',civ));editInput('prenom','Prénom');editInput('nom','Nom *');editInput('telephone','Téléphone','tel');
+    var cmsSel=el('select',{onChange:function(event){edit.commune=event.target.value;}});
+    var cmsNoms=S.secteurs.slice();if(edit.commune&&cmsNoms.indexOf(edit.commune)===-1)cmsNoms.push(edit.commune);
+    cmsNoms.forEach(function(nom){cmsSel.appendChild(el('option',{value:nom},nom));});cmsSel.value=edit.commune||'';
+    var cmsField=field('ag-rdv-edit-commune','CMS *',cmsSel);cmsField.classList.add('ui-rdv-field-wide');form.appendChild(cmsField);
+    editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateReception','Réception de la demande','date',true);editInput('dateDemande','Date du message / proposition (suivi)','date',true);
     var notes=el('textarea',{rows:3,onInput:function(event){edit.notes=event.target.value;}});notes.value=edit.notes||'';
     var noteField=field('ag-rdv-edit-notes','Notes',notes);noteField.classList.add('ui-rdv-field-wide');form.appendChild(noteField);body.appendChild(form);
     body.appendChild(el('p',{class:'ui-rdv-help'},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
     var editActions=el('div',{class:'ui-rdv-primary-actions'});
     editActions.appendChild(action('ag-rdv-back','Annuler','',function(){ar.editing=false;renderModal();}));
     editActions.appendChild(action('ag-rdv-save','Enregistrer','ui-rdv-action-primary',function(){
-      if(!String(edit.nom||'').trim()||!edit.date||!edit.heure){showToast('Nom, date et heure requis','warn');return;}
+      if(!String(edit.nom||'').trim()||!edit.date||!edit.heure||!edit.commune){showToast('Nom, CMS, date et heure requis','warn');return;}
       var found=locate();if(!found)return;
-      if(t.statut!=='annule'&&(edit.date!==t.date||edit.heure!==t.heure)){
-        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===commune||!h.commune||!commune)&&['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
+      if(t.statut!=='annule'&&(edit.date!==t.date||edit.heure!==t.heure||edit.commune!==commune)){
+        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===edit.commune||!h.commune||!edit.commune)&&['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
         if(occupied&&!confirm('Créneau déjà pris le '+edit.date.split('-').reverse().join('/')+' à '+edit.heure+(occupied.nom?' — '+[occupied.civilite,occupied.prenom,occupied.nom].filter(Boolean).join(' '):'')+'\n\nEnregistrer quand même ?'))return;
       }
-      var saved=update({civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});
+      var cmsKeyNew=cmsKey(edit.commune),cmsNew=edit.commune!==commune?S.cmsList.find(function(c){var cn=cmsKey(c.nom);return cn===cmsKeyNew||cmsKeyNew.indexOf(cn)!==-1||cn.indexOf(cmsKeyNew)!==-1;}):null;
+      var cmsPatch={commune:edit.commune};if(edit.commune!==commune)cmsPatch.selectedCMS=cmsNew?String(cmsNew.id):'';
+      var saved=update(Object.assign(cmsPatch,{civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes}));
       if(!saved)return;ensureDayOpenFor(owner,saved.commune,saved.date);ar.editing=false;renderAgenda();renderTabs();renderModal();showToast('RDV modifié');
     }));footer.appendChild(editActions);
   }
