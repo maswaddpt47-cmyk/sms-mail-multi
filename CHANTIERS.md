@@ -31,7 +31,7 @@ dans « Points à ne pas défaire ».
   même** : reprise maintenue, ne pas rouvrir sans donnée réelle contraire.
 - Moyenne et couverture : même population (CMS et période au jour de première préparation). Champs conservés
   par JSON/sauvegardes, exposés par le CSV ; agrégats annuels dans `preparationMetrics` (unité/version) ;
-  `avgReact` inchangé, présenté comme estimation. Contrat additif soumis à l'AGORA AG-002.
+  `avgReact` inchangé, présenté comme estimation. Contrat additif, AG-002 tranché le 30/10.
 - **Réactivité estimée** : tuile pour les fiches sans `premierePreparationAt`, réception → `ts` en jours
   ouvrés, **médiane** (`ts` est réécrit à chaque régénération) ; relances exclues ; « N % — Traitées le jour
   même » + médiane en note. Calcul d'affichage, rien de stocké.
@@ -101,7 +101,7 @@ dans « Points à ne pas défaire ».
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
   distinct d'Excusé ; ICS : CANCELLED, même UID. Compteur quotidien : créneaux libérés filtrés avant la
-  priorité par type de message. Taux : Annulé au dénominateur comme Excusé. AG-001 ouvert (contrat de données).
+  priorité par type de message. Taux : Annulé au dénominateur comme Excusé. AG-001 tranché le 30/10 (contrat de données).
 
 ### Agenda
 - Navigation seule (Précédent/Aujourd'hui/Suivant + titre) en barre sticky ;

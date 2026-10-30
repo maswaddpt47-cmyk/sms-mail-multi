@@ -100,52 +100,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-001 — Statut Annulé et motif facultatif — ouvert le 22/10/2026
-**Auteur** : session `cx2210an` — lu sur `a6390d7`.
-**Proposition** : ajouter `statut: 'annule'` et `annulationMotif` facultatif aux
-fiches, sans migration ; afficher Annulé en rouge et libérer le créneau.
-Exclure rappels/relances et exporter l'événement ICS annulé avec son UID existant.
-**Critère déclencheur** : n° 1 (`CLAUDE.md`, section AGORA), nouvelle valeur
-persistée et champ conservés dans les exports/sauvegardes.
-**Ce que ça engage** : les versions consommatrices doivent connaître ce nouvel
-état ; ne jamais le convertir en Excusé ni supprimer son motif.
-**Non vérifié par l'auteur** : relecture d'un export contenant Annulé par une
-ancienne version externe de l'application ; aucune donnée réelle utilisée.
-**Si personne ne répond, je fais quoi ?** — livrer l'ajout demandé, additif et
-sans migration. Différer toute redéfinition des dénominateurs statistiques :
-la répartition compte Annulé séparément, les formules de taux restent celles
-existantes (RDV passés, comme Excusé). Aucune archive agrégée recalculée.
-**Où regarder** : `index.html` : `getSlots`, `hasConflict`, `STATUT_STYLES`,
-`renderAgendaRdvDialog`, `computeYearArchive`, `ICS_CANCEL_STATUTS` ;
-`writeProfileHistory`/`exportDataForProfile`/`doImport` conservent les champs.
-
-## AG-002 — Réception et première préparation, délai lundi–vendredi — ouvert le 22/10/2026
-**Auteur** : session `cx2210rp` — lu sur `6e0c16f`.
-**Proposition** : champs additifs `dateReception` (jour ISO) et
-`premierePreparationAt` (instant ISO avec fuseau), séparés du legacy `dateDemande`.
-Moyenne réception → première préparation en jours lundi–vendredi, couverture affichée.
-**Critère déclencheur** : n° 1 (`CLAUDE.md`, section AGORA), contrat persistant
-et agrégat annuel additif `preparationMetrics` distinct de l’ancien `avgReact`.
-**Ce que ça engage** : conserver la première préparation lors des régénérations,
-exports/imports et modifications de fiche ; aucune assimilation à un envoi réel.
-`dateDemande` garde son rôle legacy pour les échanges/relances.
-**Non vérifié par l'auteur** : les vraies dates de réception/première préparation
-des fiches anciennes ; `ts` est écrasable et ne permet pas de les reconstruire.
-**Si personne ne répond, je fais quoi ?** — appliquer la demande explicite « Go »
-sans migration automatique : seul un nouveau message préparé initialise le premier
-instant ; une fiche ancienne déjà préparée reste sans premier instant fiable.
-Afficher le nombre de fiches mesurables/exclues, garder les anciennes archives
-identifiées en jours calendaires, sans recalculer leurs agrégats.
-**Où regarder** : `addHistory`, `handleGenerate`, `copyBody`, `renderGenerate`,
-`openHistInGen`, `renderAgendaRdvDialog`, `preparationStats`, `computeYearArchive`.
-
-**Précision utilisateur — 22/10/2026** : la date de réception déjà saisie dans
-l’historique est bien le point zéro. Le lecteur compatible reprend `dateDemande`
-uniquement si le nouveau champ `dateReception` est absent. Une nouvelle valeur
-explicitement vide reste inconnue. Aucune première préparation n’est déduite de `ts`.
+Aucun.
 
 # Blocs tranchés
 
+- **AG-001** — Statut Annulé et motif facultatif — ouvert le 22/10, **tranché le 30/10/2026 par l'utilisateur, sans
+  contradicteur** (aucune réponse inscrite ; rien d'autre n'a été vérifié ici) : `annule` + `annulationMotif` livrés, additifs, sans
+  migration ; créneau libéré, ni rappel ni relance, ICS CANCELLED avec le même UID ; taux : Annulé au dénominateur comme Excusé ;
+  aucune archive recalculée. Conclusion dans `CHANTIERS.md` (« Statut Annulé »). Hors total ci-dessous (aucun verdict).
+- **AG-002** — Réception et première préparation, délai lundi–vendredi — ouvert le 22/10, **tranché le 30/10/2026 par
+  l'utilisateur, sans contradicteur** : contrat additif `dateReception` / `premierePreparationAt` / `preparationMetrics` livré
+  (go du 22/10, précision utilisateur : `dateDemande` repris seulement si `dateReception` est absente, jamais déduit de `ts`).
+  Conclusion dans `CHANTIERS.md` (« Préparation moyenne »). Hors total ci-dessous (aucun verdict).
 - **AG-005** — Stats : « Relance » comptée d'après `dateRelance` — ouvert le 26/10, **tranché le 26/10/2026** — verdict **amendé**
   (Codex, 7 défauts vérifiés dans le code ; mes chiffres du bloc, 27 et 190, étaient faux : 28 et 191). Décision de l'utilisateur
   (« tout ») : la ligne devient « Fiches avec relance renseignée » (28/164), **hors** du volume de messages ; plus de `dateRelance`
