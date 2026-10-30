@@ -180,10 +180,7 @@ dans « Points à ne pas défaire ».
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-- **Règles de collaboration proposées le 30/10/2026, en attente d'accord** (pas d'AGORA : c'est à l'utilisateur de décider) : (1) *un test ajouté se vérifie par mutation* — le casser
-  volontairement et constater qu'il échoue ; cinq commits ont laissé des assertions inertes absorbées par un commentaire de fin de ligne, relevé par Codex (AG-009) ; (2) *une heure donnée à
-  l'utilisateur se convertit par commande* (`TZ=Europe/Paris date`), pas de tête : +2 h au lieu de +1 h le 30/10 (précision de la règle 8bis) ; (3) *proposer à MD-LIB* la consigne « pull après
-  des modifications hors session » (déjà dans ce `CLAUDE.md`). À présenter en début de session ; sur accord, inscrire dans `CLAUDE.md` (et `collaboration.md` pour 1 et 2).
+Aucune pour l'instant. (Les trois règles proposées le 30/10 sont inscrites sur accord de l'utilisateur : `CLAUDE.md` 8bis, 8unvicies, 8duovicies ; MD-LIB `collaboration.md` règles 55 et 56 ; propagation aux autres projets à proposer.)
 
 ## Chantiers restants
 
