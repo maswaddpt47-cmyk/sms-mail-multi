@@ -62,9 +62,8 @@ dans « Points à ne pas défaire ».
   de l'Agenda) ; chaque heure ouvre Messages sur ce créneau (`openMessagesOnSlot`).
   **Cases occupées cliquables** (26/10) : RDV → fenêtre de l'Agenda (`agenda-rdv`, modification), créneau bloqué ou
   pause → « Libérer ? » ; `S._lastModal` rafraîchit les stats (défilement conservé) à la fermeture de la fenêtre.
-- **Lapins par permanence** (Statistiques, validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin /
-  **créneaux** de la journée (pas les fiches : un créneau réattribué en porte plusieurs). 10 plus récentes ; `lapinDays` testé.
-- **Délai moyen RDV par CMS** (22/10) : liste par CMS (ou chiffre seul si un CMS) ; jours calendaires `ts` → RDV ; archives toujours globales.
+- **Lapins par permanence** (validée) : journées passées avec ≥1 lapin ; « 2/6 » = **créneaux** avec lapin / créneaux de la journée (pas les fiches) ; 10 plus récentes.
+- **Délai moyen RDV par CMS** (22/10) : par CMS (chiffre seul si un CMS), jours civils `ts` → RDV ; archives globales.
 - **Taux de remplissage** (30/10, demande utilisateur ; **validé par l'utilisateur le 30/10**, demi-journée Saint-Pardoux comprise) : créneaux attribués échus / places, journée = date + CMS avec
   ≥1 RDV daté d'une heure ; **6 places, 3 pour une demi-journée** (Saint-Pardoux, `placesJournee` → `assignedHalfOf`, même règle que les places
   disponibles, d'après la permanence enregistrée ; sans permanence : 6, `sansPerm`). **Remplissage net** (30/10, à valider) : créneaux non libérés (≥1 fiche ni Lapin/Excusé/Annulé/Pas de retour) / même base ; tuile + ligne du bilan. Limites : journée sans RDV non comptée, tous statuts
@@ -76,8 +75,11 @@ dans « Points à ne pas défaire ».
 - **Animation des graphes de Statistiques** (30/10, demande utilisateur : « à la façon des bilans de NEWGEN », **à valider à l'œil**) : barres, graphique mensuel et heatmap se dessinent
   en 800 ms (décélération `cubic-bezier(.215,.61,.355,1)`) quand la carte apparaît (≥ 20 % visible) et rejouent à chaque retour (`animerGraphesStats`, classe `ui-anim-pre`) ; tuiles en glissement
   décalé et **compteurs de tous les chiffres** (tuiles, statuts, valeurs des barres, y compris décimaux et « n / total (x %) ») qui montent de 0 à leur valeur en 800 ms à l'arrivée à l'écran et au retour (`compterNombre`) ; rien en mouvement réduit ; à l'impression valeurs finales (`beforeprint`). **Sans ECharts** (dépendance de ~1 Mo refusée dans un fichier unique : critère 1 d'AGORA si l'on y revient).
-- **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (au moins un RDV ; libres et bloqués exclus, libellés précisés le 30/10), places = créneaux (phrase sous « Le suivi des rendez-vous », note
-  par tuile). « Traitées le jour même (estimation) » ≠ « Mesure horodatée ». `countUp()` partagé, coupé si mouvement réduit.
+- **Bilan : phrase de lecture et infobulles** (30/10, 65/53/54 lus comme « un même sujet » ; **à valider**, **AG-009 ouvert, Codex attendu**) : « 65 réservations enregistrées sur 53 créneaux
+  attribués (12 ont repris un créneau libéré), pour 54 places offertes (1 jamais attribuée) » (`repris`, `libres`) ; 8 infobulles ⓘ à l'aperçu (`meta.infobulles`, jamais imprimées) ; `#stat-tooltip` z-index 600 ;
+  les « i » des tuiles de Statistiques marchent aussi au toucher.
+- **Unités affichées** (25/10) : nombres = fiches ; taux = **créneaux attribués** (≥1 RDV ; libres et bloqués exclus) ; places = créneaux. « Traitées le jour même (estimation) » ≠ « Mesure horodatée ».
+  Compteurs : `compterNombre` (voir « Animation »).
 - **Date/lieu des permanences → Agenda** (25/10) : `ui-permanence-link` → `agendaScope='mine'`, `agendaTimelineDate` +
   `agendaFocusDay`, consultation seule ; validé le 30/10. **Badges rouge/orange de l'Agenda
   cliquables** : jour du **premier** RDV concerné (`badgeGo`, `stopPropagation`) ; le badge vert reste inerte.
