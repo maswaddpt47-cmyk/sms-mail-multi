@@ -126,6 +126,7 @@ Aucun.
   verdict **amendé** (Codex) : écart 0 sur 20 sélections, mais 6 défauts de données incomplètes (CMS, heure, statut,
   démarche, fuseau, variantes de CMS) **corrigés dans le code** (donc un amendement qui a changé le code) et une
   promesse de confidentialité trop forte reformulée. Décision de l'utilisateur : démarches saisies librement
-  **laissées telles quelles, avec la mention « à relire avant toute diffusion »**. Conclusion dans `CHANTIERS.md`.
+  **laissées telles quelles, avec la mention « à relire avant toute diffusion »** (mention retirée le 30/10/2026 sur
+  demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
 **Total au 26/10/2026 : 2 amendés, 0 confirmé, 0 contredit.**

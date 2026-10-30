@@ -15,8 +15,8 @@ dans « Points à ne pas défaire ».
 - **« Traitées le jour même »** = estimation sur les anciennes fiches, à ne pas confondre avec la préparation horodatée.
 - **Validé par l'utilisateur le 30/10 (« tout est ok »)** : rappel d'export, signatures par profil et import Orientations
   « Villeneuve/Lot », alerte « Libérer ? », bilan mensuel, lien date/lieu → Agenda, barres « Prochaines permanences »,
-  stat des Relances. **Relecture des démarches libres du bilan (AG-004) : couverte par ce « tout est ok », déclaré par
-  l'utilisateur le 30/10, non vérifiée par Claude** ; la mention « à relire » reste dans le bilan tant qu'il ne demande pas de la retirer.
+  stat des Relances. **Relecture des démarches libres du bilan (AG-004) : déclarée faite par l'utilisateur le 30/10, non vérifiée par
+  Claude.**
 
 ## Contrats à conserver
 
@@ -96,8 +96,8 @@ dans « Points à ne pas défaire ».
   `monthlyReportData` réutilise `statsRdvModel`/`slotRates` ; vocabulaire « rendez-vous enregistrés » / « créneaux horaires » ;
   archives jamais mélangées. Tests : `check-stats-rdv.js`. **Audit Codex 26/10 (AG-004, amendé)** : 20 sélections recomptées,
   écart 0 ; corrigé : fiches sans CMS/heure/statut/démarche, jour courant Europe/Paris (`parisDayStr`), CMS regroupés (`cmsKey`).
-  Démarches libres laissées telles quelles + mention « à relire avant toute diffusion » (29 sur 162) : **l'utilisateur relit les
-  textes libres avant tout envoi à la hiérarchie**.
+  Démarches libres (29 sur 162) reproduites telles quelles ; **mention « à relire » retirée du bilan le 30/10 sur demande de l'utilisateur**
+  (il a relu les textes libres).
 
 ### Statut Annulé (22/10)
 - `annule` + `annulationMotif` facultatif, séparés d'Excusé ; créneau libéré, ni rappel ni relance ; rouge
