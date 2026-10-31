@@ -78,6 +78,15 @@ recopier ses réponses à la main ne se justifie plus). Elle remplace « ne modi
 > dans « Vérification des étapes d'AG-013 »), selon le gabarit du fichier, avec fichier:ligne. N'édite aucun autre bloc
 > ni aucun autre fichier. Commite et pousse directement sur `main`.
 
+**Variante clôture d'une étape** (décision de l'utilisateur du 31/10/2026, après 9 « amendé » de suite sur l'étape 2 : chaque tour
+explorait le voisinage du dernier correctif). Remplacer « vérifie l'étape N d'AG-013 : commits … » par :
+
+> fais la vérification de clôture de l'étape N d'AG-013 (commits …) : inventorie en une seule passe **tous** les cas restants sur
+> l'ensemble du périmètre de l'étape, pas seulement les commits cités, et classe chacun « probable en usage réel » ou « théorique »
+> (panne ponctuelle du stockage, donnée déjà corrompue…), avec fichier:ligne et scénario reproduit.
+
+S'il ne reste que des cas « théoriques », l'utilisateur peut clore l'étape et les inscrire comme risque accepté dans `CHANTIERS.md`.
+
 Codex doit alors pouvoir écrire (lever « Lecture seule » pour cette passe). L'utilisateur écrit ensuite « pull » à la
 session Claude, qui contrôle `git show --stat <sha>` : seul `AGORA.md` est touché, et `git diff` n'ajoute que des lignes
 (aucun bloc existant modifié). Sinon, annuler le commit et inscrire la réponse à la main. Le code reste interdit à Codex.
