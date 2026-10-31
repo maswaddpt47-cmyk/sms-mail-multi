@@ -3118,6 +3118,10 @@ function computeYearArchive(year){
 function archiveYear(year){
   var entries=S.history.filter(function(h){return entryYear(h)===year;});
   if(!entries.length){showToast('Aucune donnée pour '+year,'warn');return;}
+  /* AG-013 étape 2 (P09, vérification de clôture de Codex) : une archive existante n'est jamais remplacée. Ses taux, moyennes
+     et usagers distincts ne s'additionnent pas avec de nouvelles fiches ; les fiches réapparues (import, restauration)
+     restent dans l'historique, rien n'est supprimé. */
+  if(S.yearlyStats&&S.yearlyStats[year]){showToast('⚠️ '+year+' est déjà archivée : les '+entries.length+' fiche(s) de '+year+' réapparues ne sont pas archivées, pour ne pas remplacer l\'archive existante. Rien n\'a été supprimé.','warn');return;}
   if(!confirm("Archiver l'année "+year+" ?\n\n"+entries.length+" entrée(s) d'historique seront résumées en statistiques agrégées et anonymisées, puis définitivement supprimées de l'historique nominatif. Cette action est irréversible."))return;
   var arc=computeYearArchive(year);
   var stats=Object.assign({},S.yearlyStats);stats[year]=arc;
@@ -7041,6 +7045,10 @@ function renderModal(){
       box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;margin-top:6px;"},'RGPD — RÉTENTION'));
       box.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);line-height:1.5;margin-bottom:2px;"},"Selon le RGPD, résume en statistiques anonymisées puis supprime définitivement le détail nominatif d'une année révolue."));
       toArchive.forEach(function(ya){
+        if(S.yearlyStats&&S.yearlyStats[ya.year]){   /* P09 : année déjà archivée, pas de bouton qui remplacerait l'archive */
+          box.appendChild(el('div',{style:"font-size:11.5px;color:var(--c-muted);line-height:1.5;"},'⚠️ '+ya.year+' déjà archivée : '+ya.count+' fiche(s) réapparue(s) (import ou restauration), conservée(s) dans l\'historique et non archivée(s) pour ne pas remplacer l\'archive existante.'));
+          return;
+        }
         box.appendChild(dataBtn('📦 Archiver l\'année '+ya.year+' ('+ya.count+' entrée(s))','oklch(0.97 0.04 75)','oklch(0.46 0.09 70)','1.5px solid oklch(0.85 0.06 75)',(function(y){return function(){archiveYear(y);};})(ya.year)));
       });
     }
