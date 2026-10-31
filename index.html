@@ -1346,6 +1346,11 @@ function maybeAutoBackupProfile(profileId){
 }
 
 /* pousse un fichier daté, puis nettoie les anciens (garde GH_BACKUP_RETENTION_JOURS) */
+/* P08 (vérification finale de Codex) : « fiches non sauvegardées » = since-export. couvert[pid] = nombre de fiches déjà
+   couvertes par une sauvegarde ou un export de cette session ; couvert + since-export = total des ajouts. Un instantané qui
+   part avec T fiches et réussit ne retire que ce qu'un instantané plus récent (ou un export) n'a pas déjà retiré. */
+var _couvert={};
+function couvertDe(pid){return _couvert[pid]||0;}
 function githubPush(silent,onSuccess,pid){
   pid=pid||S.activeProfile;
   var token=ghToken();
@@ -1355,6 +1360,7 @@ function githubPush(silent,onSuccess,pid){
   if(!sauvegardeFiable(pid)){if(!silent)showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}   /* T12 */
   /* P08 (vérification de clôture de Codex) : nombre de fiches non sauvegardées au moment de l'instantané envoyé */
   var sinceDepart=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
+  var totalDepart=couvertDe(pid)+sinceDepart;   /* total des ajouts couverts par l'instantané envoyé */
   var content=btoa(unescape(encodeURIComponent(JSON.stringify(donnees,null,2))));
   var file=ghNowFile(pid);
   /* chaque backup est un nouveau fichier horodaté — pas besoin de SHA */
@@ -1381,7 +1387,9 @@ function githubPush(silent,onSuccess,pid){
       localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
       /* P08 : seules les fiches présentes dans l'instantané envoyé sont retirées du compteur ; celles ajoutées pendant l'envoi restent comptées */
       var sinceFin=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
-      localStorage.setItem(pkFor(pid,'since-export'),String(Math.max(0,sinceFin-sinceDepart)));
+      var aRetirer=Math.max(0,totalDepart-couvertDe(pid));   /* chevauchement ou export intervenu pendant l'envoi : rien n'est retiré deux fois */
+      localStorage.setItem(pkFor(pid,'since-export'),String(Math.max(0,sinceFin-aRetirer)));
+      _couvert[pid]=Math.max(couvertDe(pid),totalDepart);
       if(pid===S.activeProfile){S._ghNewerBackup=null;renderHeader();}
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
@@ -1783,7 +1791,7 @@ function doCopy(text){
   });
 }
 /* P03/P05 : identité du dossier en cours (profil, personne, créneau, message) */
-function empreinteDossier(){return JSON.stringify([S.activeProfile,S.civilite,S.prenom,S.nom,S.telephone,S.date,S.heure,S.commune,S.selectedCMS,S.channel,S.msgType,S.selectedDemarche]);}
+function empreinteDossier(){return JSON.stringify([S.activeProfile,S.civilite,S.prenom,S.nom,S.telephone,S.date,S.heure,S.commune,S.selectedCMS,S.channel,S.msgType,S.selectedDemarche,S.demarcheAutre,S.dateDemande,S.dateReception,S.generatedBody,S.generatedSubject]);}   /* P03 : démarche libre et contenu compris */
 function flashCopied(key){S.copied[key]=true;renderAll();setTimeout(function(){S.copied[key]=false;renderAll();},1800);}
 function isDuplicate(nom,demarche,date){
   return S.history.some(function(h){
@@ -1794,24 +1802,32 @@ function isDuplicate(nom,demarche,date){
 }
 /* Après une copie réussie : date de réception et nouveau message enregistrés ensemble (4e amendement de Codex, 31/10).
    Renvoie le résultat d'operationHistorique. */
-function enregistrerCopie(text){
+/* P03 (vérification finale de Codex) : tout ce que l'enregistrement d'une copie lit du formulaire est figé au départ de la
+   copie, démarche libre comprise ; l'enregistrement ne relit plus S à l'arrivée. */
+function figerChampsCopie(){
+  var r=compute();
+  return {activeProfile:S.activeProfile,channel:S.channel,msgType:S.msgType,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,
+    selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,
+    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
+}
+function enregistrerCopie(text,fige){
+  var F=fige||figerChampsCopie();
   /* réception et message enregistrés ensemble */
   return operationHistorique(function(){
-    var receptionRecord=S.history.find(function(h){return h.date===S.date&&h.heure===S.heure&&h.commune===S.commune&&(h.nom||'').toLowerCase()===(S.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(S.prenom||'').toLowerCase();});
-    if(receptionRecord&&receptionDateFor(receptionRecord)!==(S.dateReception||'')){
-      S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:S.dateReception||''});
+    var receptionRecord=S.history.find(function(h){return h.date===F.date&&h.heure===F.heure&&h.commune===F.commune&&(h.nom||'').toLowerCase()===(F.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(F.prenom||'').toLowerCase();});
+    if(receptionRecord&&receptionDateFor(receptionRecord)!==(F.dateReception||'')){
+      S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:F.dateReception||''});
       if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
     }
     /* P05 (vérification de clôture de Codex) : une copie répétée du même message pour la même personne et le même créneau
        n'est pas réenregistrée ; un même texte pour un autre dossier l'est (modèles génériques). */
     var dernier=S.history[0];
-    var dejaEnregistre=!!dernier&&dernier.body===text&&dernier.date===S.date&&dernier.heure===S.heure&&dernier.commune===S.commune
-      &&(dernier.nom||'').toLowerCase()===(S.nom||'').toLowerCase()&&(dernier.prenom||'').toLowerCase()===(S.prenom||'').toLowerCase();
+    var dejaEnregistre=!!dernier&&dernier.body===text&&dernier.date===F.date&&dernier.heure===F.heure&&dernier.commune===F.commune
+      &&(dernier.nom||'').toLowerCase()===(F.nom||'').toLowerCase()&&(dernier.prenom||'').toLowerCase()===(F.prenom||'').toLowerCase();
     if(text&&!dejaEnregistre){
-      var r=compute();var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
-      if(cms&&r.dem){
-        if(isDuplicate(S.nom,r.dem.nom,S.date))showToast('⚠️ Doublon détecté : '+S.nom+' / '+r.dem.nom+' déjà dans l\'historique','warn');
-        if(!addHistory({channel:S.channel,msgType:S.msgType,body:text,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:r.dem.nom,selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',ts:new Date().toLocaleString('fr-FR')},true))throw new Error('message refusé');
+      if(F.cmsTrouve&&F.dem){
+        if(isDuplicate(F.nom,F.dem.nom,F.date))showToast('⚠️ Doublon détecté : '+F.nom+' / '+F.dem.nom+' déjà dans l\'historique','warn');
+        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:new Date().toLocaleString('fr-FR')},true))throw new Error('message refusé');
       }
     }
   });
@@ -1821,11 +1837,11 @@ function copyBody(){
   if(text!==S.generatedBody){S.generatedBody=text;updatePreviewOnly();}
   /* P03 (vérification de clôture de Codex) : le dossier copié est figé au départ ; s'il a changé pendant l'attente du
      presse-papiers (autre profil ou autre dossier), la copie est faite mais rien n'est enregistré dans le mauvais dossier. */
-  var ctxDepart=contexteFige(),dossierDepart=empreinteDossier();
+  var ctxDepart=contexteFige(),dossierDepart=empreinteDossier(),champsFiges=figerChampsCopie();
   function afterCopy(ok){
     if(!ok)return;
     if(!contexteIntact(ctxDepart)||empreinteDossier()!==dossierDepart){flashCopied('body');showToast('⚠️ Texte copié, mais le dossier a changé pendant la copie : rien n\'a été enregistré. Recopiez depuis le bon dossier.','warn');return;}
-    enregistrerCopie(text);
+    enregistrerCopie(text,champsFiges);
     flashCopied('body');showToast("✓ Copié !");
   }
   /* SMS : texte brut, avec une ligne vide maximum entre les paragraphes.
@@ -2244,7 +2260,7 @@ function sauvegardeFiable(pid){
 var MSG_SAUVEGARDE_REFUSEE='⚠️ Sauvegarde refusée : des données n\'ont pas pu être lues, elle serait incomplète. Rechargez la page.';
 function exportData(){return exportDataForProfile(S.activeProfile);}
 function openExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
-function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
+function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);_couvert[S.activeProfile]=couvertDe(S.activeProfile)+(parseInt(localStorage.getItem(pk('since-export'))||'0',10)||0);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
 function openImport(){S.modal='import';S.importText="";S.importError="";renderModal();}
 function closeModal(){S.modal=null;renderModal();}

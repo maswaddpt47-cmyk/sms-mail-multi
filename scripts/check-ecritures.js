@@ -29,7 +29,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('archiveOldDaysCore'),fonction('identiteMandat'),fonction('numeroMandatValable'),fonction('generateMandatNum'),  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
+  fonction('archiveOldDaysCore'),fonction('identiteMandat'),fonction('numeroMandatValable'),fonction('generateMandatNum'),  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('figerChampsCopie'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
@@ -346,6 +346,19 @@ async function restaurer(contenu,fonction,options){
     if(change){assert.equal(h1.length+h2.length,0,'P03 '+change+' changé : rien enregistré');assert(e.journal.toasts.some(t=>/dossier a changé/.test(t)));}
     else{assert.equal(h1.length,1,'P03 témoin : copie enregistrée');assert.equal(h1[0].nom,'COPIE');}
   }
+  /* ── P03 (vérification finale de Codex) : démarche libre modifiée pendant la copie → refus ; champs figés au départ ── */
+  {const e=prepCopie();e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');Object.assign(e.S,{selectedDemarche:'__autre__',demarcheAutre:'DEMARCHE_A',generatedBody:'Message de A'});
+   e.ctx.compute=()=>({dem:{nom:e.S.selectedDemarche==='__autre__'?e.S.demarcheAutre:'X'},body:'x'});
+   let fin;e.ctx.doCopy=()=>new Promise(r=>{fin=r;});e.ctx.compactSmsText=t=>t;e.ctx.updatePreviewOnly=()=>{};e.ctx.flashCopied=()=>{};
+   e.ctx.copyBody();e.S.demarcheAutre='DEMARCHE_B';fin(true);await new Promise(r=>setTimeout(r,0));
+   assert.equal(JSON.parse(e.st.getItem('ess-p1-history')).length,0,'P03 : démarche libre changée pendant la copie → rien enregistré');
+   assert(e.journal.toasts.some(t=>/dossier a changé/.test(t)));
+   // l'enregistrement lui-même ne relit plus le formulaire : champs figés avant, formulaire modifié après
+   const f=prepCopie();f.S.history=[];f.st.setItem(f.ctx.pk('history'),'[]');Object.assign(f.S,{selectedDemarche:'__autre__',demarcheAutre:'DEMARCHE_A'});
+   f.ctx.compute=()=>({dem:{nom:f.S.selectedDemarche==='__autre__'?f.S.demarcheAutre:'X'},body:'x'});
+   const fige=f.ctx.figerChampsCopie();Object.assign(f.S,{demarcheAutre:'DEMARCHE_B',nom:'AUTRE',prenom:'Z'});
+   assert.equal(f.ctx.enregistrerCopie('Message de A',fige).ok,true);
+   const h=JSON.parse(f.st.getItem('ess-p1-history'))[0];assert.equal(h.demarche,'DEMARCHE_A','P03 : démarche figée');assert.equal(h.nom,'COPIE','P03 : nom figé');}
   /* ── P02 : chaque lecture de fichier qui écrit retient son profil (contrôle de structure) et le contexte est vérifié ── */
   {const lecteurs=[...html.matchAll(/new FileReader\(\);[\s\S]{0,140}?onload=function\((?:e|ev)\)\{([\s\S]{0,160})/g)];
    const sansGarde=lecteurs.filter(m=>!/contexteIntact\(ctxDepart\)/.test(m[1])&&!/Lecture du fichier/.test(m[1]));
@@ -356,11 +369,12 @@ async function restaurer(contenu,fonction,options){
   /* ── P08 / T12 : vrai githubPush, réseau simulé ── */
   function prepPush(){const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
     e.st.setItem('ess-p1-history',JSON.stringify([rdv('s1','2026-11-03','09:30','SAUVE','A')]));e.ctx.loadProfileData();
-    vm.runInContext(fonction('exportDataForProfile')+fonction('sauvegardeFiable'),e.ctx);   // vraies fonctions, extraites du fichier
+    vm.runInContext(section('var _couvert={};','function githubPush(')+fonction('exportDataForProfile')+fonction('sauvegardeFiable')+fonction('exportData')+fonction('downloadExport'),e.ctx);   // vraies fonctions, extraites du fichier
     const push=vm.runInContext('('+fonction('githubPush')+')',e.ctx);
     Object.assign(e.ctx,{ghToken:()=>'jeton-fictif',ghNowFile:()=>'b/p1/fictif.json',ghCleanOldBackups(){},renderHeader(){},btoa:x=>Buffer.from(x,'binary').toString('base64'),unescape,encodeURIComponent});
-    const res={puts:0,envoye:null,finPut:null};
-    e.ctx.fetch=(url,opt)=>{if(opt&&opt.method==='PUT'){res.puts++;res.envoye=JSON.parse(decodeURIComponent(escape(Buffer.from(JSON.parse(opt.body).content,'base64').toString('binary'))));return new Promise(r=>{res.finPut=()=>r({ok:true});});}return Promise.resolve({ok:false});};
+    const res={puts:0,envoye:null,finPut:null,fins:[]};
+    e.ctx.fetch=(url,opt)=>{if(opt&&opt.method==='PUT'){res.puts++;res.envoye=JSON.parse(decodeURIComponent(escape(Buffer.from(JSON.parse(opt.body).content,'base64').toString('binary'))));return new Promise(r=>{res.finPut=()=>r({ok:true});res.fins.push(res.finPut);});}return Promise.resolve({ok:false});};
+    Object.assign(e.ctx,{Blob:function(){},URL:{createObjectURL:()=>'x',revokeObjectURL(){}},document:{createElement:()=>({click(){}})}});
     return {e,push,res};}
   const tours=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));};
   {const {e,push,res}=prepPush();e.st.setItem('ess-p1-since-export','1');
@@ -369,6 +383,19 @@ async function restaurer(contenu,fonction,options){
    res.finPut();await tours();
    assert.equal(e.st.getItem('ess-p1-since-export'),'1','P08 : la fiche ajoutée pendant l\'envoi reste comptée');
    push(true);await tours();res.finPut();await tours();assert.equal(e.st.getItem('ess-p1-since-export'),'0','P08 témoin : tout envoyé → 0');}
+  // P08 (vérification finale de Codex) : deux sauvegardes chevauchantes, dans les deux ordres d'arrivée des réponses
+  for(const ordre of ['A puis B','B puis A']){
+    const {e,push,res}=prepPush();const since=(v)=>e.st.setItem('ess-p1-since-export',String(v));const lire=()=>e.st.getItem('ess-p1-since-export');
+    since(1);push(true);await tours();since(2);push(true);await tours();assert.equal(res.fins.length,2,'deux envois en vol');
+    const [finA,finB]=res.fins;
+    if(ordre==='A puis B'){finA();await tours();since(parseInt(lire(),10)+1);finB();await tours();assert.equal(lire(),'1','P08 chevauchement '+ordre+' : seule la fiche ajoutée entre les deux réponses reste comptée');}
+    else{finB();await tours();assert.equal(lire(),'0','P08 '+ordre+' : B couvre tout');finA();await tours();assert.equal(lire(),'0','P08 '+ordre+' : A, plus ancienne, ne retire rien de plus');}
+  }
+  // P08 : export local pendant un envoi, puis ajout, puis réponse → la fiche ajoutée reste comptée
+  {const {e,push,res}=prepPush();e.st.setItem('ess-p1-since-export','1');push(true);await tours();
+   e.ctx.downloadExport();assert.equal(e.st.getItem('ess-p1-since-export'),'0','P08 : export remet à zéro');
+   e.st.setItem('ess-p1-since-export','1');res.finPut();await tours();
+   assert.equal(e.st.getItem('ess-p1-since-export'),'1','P08 : export puis ajout pendant un envoi → la fiche ajoutée reste comptée');}
   {const {e,push,res}=prepPush();let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
    push(false);await tours();
    assert.equal(res.puts,0,'T12 : aucune sauvegarde envoyée avec un historique non lu');assert(e.journal.toasts.some(t=>/Sauvegarde refusée/.test(t)),'T12 : refus annoncé');
