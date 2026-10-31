@@ -418,6 +418,65 @@ async function restaurer(contenu,fonction,options){
     assert.equal(e.st.getItem('ess-cms'),brut,JSON.stringify(brut)+' : source illisible conservée (marqueur CMS ancien)');
     assert.equal(e.st.getItem('ess-pm-start-v1'),null);
   }
+  /* ── Balayage du chargement (après la 9e vérification de Codex) : aucune donnée illisible au chargement n'est écrasée ── */
+  {
+    const valeurs={'ess-cms':[{nom:'Agen',adresse:'1 rue fictive'},{nom:'Fumel'}],'ess-demarches':[{id:'d1',nom:'Démarche fictive'}],'ess-secteurs':['Secteur fictif'],
+      'ess-templates':{sms:'modèle perso'},'ess-custom-tpl':[{id:'c1'}],'ess-vars':[{nom:'v'}],'ess-hidden':['cle'],'ess-mandats':[{id:'m1'}],
+      'ess-p1-history':[rdv('h1','2026-09-01','09:30','HIST','A')],'ess-p1-yearly-stats':{2024:{total:3}},'ess-p1-orientations':[{nom:'ORI'}],
+      'ess-p1-permanences':[{commune:'Fumel',jour:1}]};
+    const marqueurs={'ess-pm-start-v1':'1','ess-tpl-version':'v5-lapin-templates','ess-p1-perm-version':3};
+    const preparer=(faits)=>{const e=charger();
+      for(const[k,v]of Object.entries(valeurs))e.st.setItem(k,JSON.stringify(v));
+      e.st.setItem('ess-cms-migrated-v2','1');
+      if(faits)for(const[k,v]of Object.entries(marqueurs))e.st.setItem(k,JSON.stringify(v));
+      return e;};
+    const modes={'lecture refusée':null,'chaîne vide':'','JSON malformé':'{pas du json','mauvais type':'T'};
+    let cas=0;
+    for(const faits of [true,false])for(const cle of Object.keys(valeurs).concat(Object.keys(marqueurs)))for(const[mode,brut]of Object.entries(modes)){
+      const estMarqueur=cle in marqueurs;if(estMarqueur&&mode==='mauvais type')continue;   // un marqueur n'a pas de type de liste/objet
+      const e=preparer(faits);const nom=(faits?'migrations faites':'migrations à faire')+', '+cle+', '+mode;
+      if(brut==='T')e.st.setItem(cle,Array.isArray(valeurs[cle])?'{"a":1}':'[1]');else if(brut!==null)e.st.setItem(cle,brut);
+      const avant=e.st.getItem(cle);let n=0;
+      if(brut===null)e.st.lecturePanne=k=>k===cle&&++n===1;   // une seule lecture refusée
+      e.ctx.loadProfileData();
+      // la panne vise la 1re lecture : pour une clé lue d'abord par la migration CMS (ess-cms), refaire avec la 2e
+      e.st.lecturePanne=null;
+      if(!estMarqueur||brut!==null)assert.equal(e.st.getItem(cle),avant,nom+' : valeur stockée intacte après chargement');
+      for(const[k,v]of Object.entries(valeurs))if(k!==cle&&!(k==='ess-cms'&&!faits)&&!(k==='ess-templates'&&!faits)&&!(k==='ess-p1-permanences'&&!faits))
+        assert.equal(e.st.getItem(k),JSON.stringify(v),nom+' : '+k+' intact');
+      if(!estMarqueur){
+        assert.equal(e.ctx.lsSet(cle,Array.isArray(valeurs[cle])?[]:{}),false,nom+' : clé verrouillée, écriture refusée');
+        assert.equal(e.st.getItem(cle),avant,nom+' : rien écrit après coup');
+        assert(e.journal.toasts.some(t=>/illisibles au chargement/.test(t)),nom+' : message dédié');
+        if(brut===null){e.ctx.loadProfileData();
+          const ref=preparer(faits);ref.ctx.loadProfileData();   // même départ, chargement sans panne
+          assert.equal(e.st.getItem(cle),ref.st.getItem(cle),nom+' : après rétablissement, même résultat qu\'un chargement sans panne');
+          assert.equal(e.ctx._clesIllisibles[cle],undefined,nom+' : déverrouillée au chargement réussi suivant');}
+      }
+      cas++;
+    }
+    assert(cas>=80,'au moins 80 cas parcourus ('+cas+')');
+    // fiche saisie après un chargement où l'historique n'a pas pu être lu : refusée, historique intact
+    {const e=preparer(true);let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+     assert.equal(e.S.history.length,0,'mémoire au repli');
+     assert.equal(e.ctx.addHistory({date:'2026-11-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'N'}),false,'fiche refusée');
+     assert.equal(e.st.getItem('ess-p1-history'),JSON.stringify(valeurs['ess-p1-history']),'historique intact après saisie');assert.equal(e.journal.pushs,0,'aucune sauvegarde automatique');
+     e.ctx.loadProfileData();assert.equal(e.S.history.length,1,'historique relu au chargement suivant');
+     assert.equal(e.ctx.addHistory({date:'2026-11-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'N'}),true,'saisie de nouveau possible');
+     assert.equal(JSON.parse(e.st.getItem('ess-p1-history')).length,2);}
+    // pauses déjeuner : historique illisible → journées non modifiées non plus (écriture groupée)
+    {const e=preparer(true);const demain=e.ctx.toLocalDateStr(new Date(Date.now()+864e5*2));
+     e.st.setItem('ess-p1-permanences',JSON.stringify([{commune:'Fumel',exceptDate:demain,debut:'09:30',fin:'16:30'}]));
+     e.ctx.getSlots=()=>[{heure:'12:30',taken:false}];
+     let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+     const perm=e.st.getItem('ess-p1-permanences'),hist=e.st.getItem('ess-p1-history');
+     e.ctx.applyLunchBreaks();
+     assert.equal(e.st.getItem('ess-p1-history'),hist,'pauses : historique illisible non écrasé');
+     assert.equal(e.st.getItem('ess-p1-permanences'),perm,'pauses : journées non marquées sans leur pause');
+     e.ctx.loadProfileData();e.ctx.applyLunchBreaks();
+     const h=JSON.parse(e.st.getItem('ess-p1-history'));assert.equal(h.length,2,'pause ajoutée au chargement réussi suivant');assert.equal(h[0].id,'h1','historique d\'origine conservé');
+     assert.equal(JSON.parse(e.st.getItem('ess-p1-permanences'))[0].pauseAuto,true);}
+  }
   // journées et version : refus de l'une ou de l'autre → ni l'une ni l'autre ; migration rejouée ensuite
   for(const refus of ['permanences','perm-version']){
     const e=charger();const ancien=[{commune:'Fumel',jour:1}];e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(ancien));
