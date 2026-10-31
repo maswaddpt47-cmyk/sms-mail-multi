@@ -29,7 +29,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('migrateSharedCmsList'),
+  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
@@ -312,6 +312,50 @@ async function restaurer(contenu,fonction,options){
    assert.equal(e.st.etat(),avant,'copie : stockage inchangé');assert.equal(e.S.history.length,1);assert.equal(e.S.history[0].dateReception,'2026-10-01','réception rétablie');assert.equal(e.journal.pushs,0);
    const f=prepCopie();assert.equal(f.ctx.enregistrerCopie('nouveau message').ok,true);
    assert.equal(f.S.history[0].body,'nouveau message');assert.equal(f.S.history.find(h=>h.id==='c1').dateReception,'2026-10-10');}
+  /* ── P05 : même texte pour deux dossiers distincts → deux fiches ; même dossier recopié → une seule ── */
+  {const e=prepCopie();e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');
+   assert.equal(e.ctx.enregistrerCopie('Texte générique').ok,true);
+   Object.assign(e.S,{nom:'AUTRE',prenom:'B',heure:'10:30'});assert.equal(e.ctx.enregistrerCopie('Texte générique').ok,true);
+   assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history'))).length,2,'P05 : texte identique, dossier différent → enregistré');
+   assert.equal(e.ctx.enregistrerCopie('Texte générique').ok,true);
+   assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history'))).length,2,'P05 témoin : même dossier recopié → pas de doublon');}
+  /* ── P04 : deux fiches de même nom et même créneau, prénoms différents → la bonne est retrouvée ── */
+  {const e=charger();const A=rdv('a','2026-11-05','09:30','HOMONYME','Alice'),B=rdv('b','2026-11-05','09:30','HOMONYME','Bruno');
+   const arr=[A,B];const copieB=JSON.parse(JSON.stringify(B));delete copieB.id;
+   assert.equal(e.ctx.findHistIdx(arr,copieB),1,'P04 : prénom pris en compte');
+   assert.equal(e.ctx.findHistIdx(arr,JSON.parse(JSON.stringify(B))),1,'P04 : identifiant pris en compte');
+   const copieA=JSON.parse(JSON.stringify(A));delete copieA.id;assert.equal(e.ctx.findHistIdx(arr,copieA),0,'P04 témoin');
+   const inconnu=Object.assign({},copieA,{prenom:'Chloé'});assert.equal(e.ctx.findHistIdx(arr,inconnu),-1,'P04 : aucune fiche d\'une autre personne modifiée');}
+  /* ── P03 : dossier changé pendant l'attente du presse-papiers → rien enregistré ; témoin sans changement ── */
+  for(const change of ['dossier','profil',null]){
+    const e=prepCopie();e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');e.S.generatedBody='Message de A';
+    let fin;e.ctx.doCopy=()=>new Promise(r=>{fin=r;});e.ctx.compactSmsText=t=>t;e.ctx.updatePreviewOnly=()=>{};e.ctx.flashCopied=()=>{};
+    e.ctx.copyBody();
+    if(change==='dossier')Object.assign(e.S,{nom:'AUTRE',prenom:'B'});
+    if(change==='profil'){e.st.setItem('ess-cms-migrated-v2','1');e.S.activeProfile='p2';e.ctx.loadProfileData();}
+    fin(true);await new Promise(r=>setTimeout(r,0));
+    const h1=JSON.parse(e.st.getItem('ess-p1-history')||'[]'),h2=JSON.parse(e.st.getItem('ess-p2-history')||'[]');
+    if(change){assert.equal(h1.length+h2.length,0,'P03 '+change+' changé : rien enregistré');assert(e.journal.toasts.some(t=>/dossier a changé/.test(t)));}
+    else{assert.equal(h1.length,1,'P03 témoin : copie enregistrée');assert.equal(h1[0].nom,'COPIE');}
+  }
+  /* ── P02 : chaque lecture de fichier qui écrit retient son profil (contrôle de structure) et le contexte est vérifié ── */
+  {const lecteurs=[...html.matchAll(/new FileReader\(\);[\s\S]{0,140}?onload=function\((?:e|ev)\)\{([\s\S]{0,160})/g)];
+   const sansGarde=lecteurs.filter(m=>!/contexteIntact\(ctxDepart\)/.test(m[1])&&!/Lecture du fichier/.test(m[1]));
+   assert.equal(lecteurs.length,6,'6 lectures de fichier recensées');assert.equal(sansGarde.length,0,'P02 : toute lecture de fichier qui écrit vérifie son contexte');
+   const e=charger();const c=e.ctx.contexteFige();assert.equal(e.ctx.contexteIntact(c),true);
+   e.st.setItem('ess-cms-migrated-v2','1');e.S.activeProfile='p2';e.ctx.loadProfileData();assert.equal(e.ctx.contexteIntact(c),false,'P02 : profil changé détecté');
+   const d=e.ctx.contexteFige();e.ctx.loadProfileData();assert.equal(e.ctx.contexteIntact(d),false,'P02 : rechargement du même profil détecté');}
+  /* ── T14 : chargement interrompu → aucune donnée écrite ensuite ; rechargement réussi → écritures rétablies ── */
+  {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('b','2026-11-04','09:30','B','B')]));e.S.history=[rdv('a','2026-11-03','09:30','A','A')];
+   e.S.activeProfile='p2';let n=0;e.st.lecturePanne=k=>k==='ess-cms-migrated-v2'&&++n===1;
+   assert.throws(()=>e.ctx.loadProfileData(),'T14 : chargement interrompu');e.st.lecturePanne=null;
+   const avant=e.st.getItem('ess-p2-history');
+   assert.equal(e.ctx.addHistory({date:'2026-11-05',heure:'09:30',commune:'Fumel',nom:'C',prenom:'C'}),false,'T14 : saisie refusée');
+   assert.equal(e.st.getItem('ess-p2-history'),avant,'T14 : historique de p2 non remplacé par la mémoire de p1');
+   assert(e.journal.toasts.some(t=>/Chargement du profil interrompu/.test(t)));
+   e.st.setItem('ess-cms-migrated-v2','1');e.ctx.loadProfileData();
+   assert.equal(e.ctx.addHistory({date:'2026-11-05',heure:'09:30',commune:'Fumel',nom:'C',prenom:'C'}),true,'T14 : écritures rétablies après chargement réussi');
+   assert.deepEqual(JSON.parse(e.st.getItem('ess-p2-history')).map(h=>h.nom).sort(),['B','C'],'T14 : B conservé');}
   // bloquer toute une journée : refus au 2e créneau → aucun créneau bloqué, aucune sauvegarde
   {const e=charger();e.S.history=[];e.S.permanences=[{commune:'Fumel',exceptDate:'2026-10-14',pauseAuto:true}];e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(e.S.permanences));const avant=e.st.etat();
    let n=0;e.st.panne=k=>k===e.ctx.pk('history')&&++n===2;
