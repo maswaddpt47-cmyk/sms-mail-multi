@@ -1178,7 +1178,11 @@ function ecrireTout(paires){
   _ecrituresGroupees++;
   try{
     for(var i=0;i<paires.length;i++){
-      if(!lsSet(paires[i][0],paires[i][1])){ecrireTout.incoherent=!restaurerCles(cles.slice(0,i+1),brut.slice(0,i+1));return false;}
+      if(!lsSet(paires[i][0],paires[i][1])){
+        ecrireTout.incoherent=!restaurerCles(cles.slice(0,i+1),brut.slice(0,i+1));
+        realignerDepuisStockage(cles);   /* 3e amendement de Codex : la mémoire suit l'état final du stockage, pas l'état intermédiaire */
+        return false;
+      }
     }
     return true;
   }finally{_ecrituresGroupees--;}
@@ -1197,6 +1201,7 @@ function operationHistorique(fn){
   finally{_ecrituresGroupees--;}
   if(ok){maybeAutoBackupProfile(S.activeProfile);return {ok:true,incoherent:false,valeur:valeur};}
   S.history=histAvant;S.permanences=permAvant;
+  _echecsEcriture++;   /* une opération imbriquée qui échoue fait échouer celle qui l'englobe (planning, ICS) */
   return {ok:false,incoherent:!restaurerCles(cles,brut)};
 }
 /* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
@@ -1674,7 +1679,17 @@ function lancerLapin(h){
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
+/* AG-013, étape 2 (3e amendement de Codex, 31/10) : une fiche, l'ouverture de sa journée, la pause déjeuner et le compteur
+   d'export sont enregistrés ensemble ou pas du tout (operationHistorique). Renvoie true seulement si tout est enregistré. */
 function addHistory(item,prepared){
+  var r=operationHistorique(function(){return addHistoryBrut(item,prepared);});
+  if(!r.ok||r.valeur===false)return false;
+  var rappel=addHistoryBrut.rappel;addHistoryBrut.rappel=0;
+  if(rappel)setTimeout(function(){showToast('💾 '+rappel+' messages non sauvegardés — pensez à exporter !','warn');},600);
+  return true;
+}
+function addHistoryBrut(item,prepared){
+  addHistoryBrut.rappel=0;
   /* doublon : même date + heure + commune + nom + prénom → remplace l'existant
      (le prénom est inclus pour ne pas fusionner deux personnes de même nom sur le même créneau) */
   if(item.date&&item.heure&&item.nom){
@@ -1704,7 +1719,7 @@ function addHistory(item,prepared){
   /* rappel seulement si la sauvegarde GitHub ne couvre pas : pas de jeton, ou dernière réussite > 24 h */
   var lastGh=Date.parse(localStorage.getItem(pk('gh-last-backup'))||'')||0;
   var ghCouvre=ghToken()&&(Date.now()-lastGh<86400000);
-  if(since>0&&since%5===0&&!ghCouvre)setTimeout(function(){showToast('💾 '+since+' messages non sauvegardés — pensez à exporter !','warn');},600);
+  if(since>0&&since%5===0&&!ghCouvre)addHistoryBrut.rappel=since;   /* affiché par addHistory, seulement si tout est enregistré */
   return true;
 }
 function doCopy(text){
@@ -2072,7 +2087,11 @@ function libererApresRelance(h){
 }
 /* bloque un créneau libre pour indisponibilité (pas un usager) — profil actif uniquement */
 function blockSlot(commune,dateStr,heure,motif){
-  if(hasConflict(dateStr,heure,commune))return;
+  if(hasConflict(dateStr,heure,commune))return false;
+  /* journée ouverte et blocage enregistrés ensemble ou pas du tout (3e amendement de Codex, 31/10) */
+  return operationHistorique(function(){blockSlotBrut(commune,dateStr,heure,motif);}).ok;
+}
+function blockSlotBrut(commune,dateStr,heure,motif){
   ensureDayOpen(commune,dateStr);
   /* la journée vient peut-être de recevoir sa pause déjeuner : on en met le motif à jour au lieu d'empiler un doublon */
   var already=S.history.find(function(h){return h.msgType==='indispo'&&h.date===dateStr&&h.commune===commune&&h.heure===heure;});
@@ -5213,7 +5232,7 @@ function renderAgenda(){
         openWrap.appendChild(el('button',{type:'button',class:'ui-ag-block-btn',title:'Bloquer ce créneau (indisponible)','aria-label':'Bloquer le créneau de '+slot.heure+' le '+dateLabel,
           onClick:(function(d,h){return function(){
             var motif=prompt('Motif du blocage à '+h+' (facultatif) :','');if(motif===null)return;
-            blockSlot(d.perm.commune,d.dateStr,h,motif);renderAgenda();showToast('✓ Créneau '+h+' bloqué');
+            var okBloc=blockSlot(d.perm.commune,d.dateStr,h,motif);renderAgenda();if(okBloc)showToast('✓ Créneau '+h+' bloqué');
           };})(day,slot.heure)},'🚫'));
         slotList.appendChild(openWrap);
         return;
@@ -6483,16 +6502,22 @@ function confirmOrientImport(){
     (byProfile[r.targetProfile]=byProfile[r.targetProfile]||[]).push(obj);
   });
   var totalAdded=0;
-  var breakdown=[];
+  var breakdown=[],paires=[],nouveaux={};
   Object.keys(byProfile).forEach(function(pid){
     var arr=readProfileOrientations(pid).slice();
     var existIds=arr.map(function(o){return o.id;});
     var fresh=byProfile[pid].filter(function(o){return existIds.indexOf(o.id)===-1;});
-    arr=arr.concat(fresh);
-    writeProfileOrientations(pid,arr);
+    arr=arr.concat(fresh);nouveaux[pid]=arr;
+    paires.push([pid===S.activeProfile?pk('orientations'):'ess-'+pid+'-orientations',arr]);
     totalAdded+=fresh.length;
     if(fresh.length>0){var pf=getProfile(pid);breakdown.push((pf?pf.nom:pid)+' ('+fresh.length+')');}
   });
+  /* tous les profils en une fois (3e amendement de Codex, 31/10) : en cas d'échec, rien n'est écrit, la préparation reste */
+  if(paires.length&&!ecrireTout(paires)){
+    showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Import annulé : enregistrement impossible, aucune orientation ajoutée. Votre sélection est conservée.','err');
+    renderModal();return false;
+  }
+  Object.keys(nouveaux).forEach(function(pid){if(pid===S.activeProfile)S.orientations=nouveaux[pid];maybeAutoBackupProfile(pid);});
   S.orientImportRows=null;S.orientImportCmsFilter='';S.orientImportBulkTarget='';S.modal=null;
   renderOrientations();renderTabs();renderModal();
   var msg;
