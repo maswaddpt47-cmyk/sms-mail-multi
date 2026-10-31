@@ -1,6 +1,6 @@
 # Consignes de travail pour Codex
 
-Consignes de l’utilisateur, mises à jour le 20/10/2026, adaptées des règles de MD-LIB.
+Consignes de l’utilisateur, mises à jour le 31/10/2026, adaptées des règles de MD-LIB.
 Cette copie contient les règles essentielles pour démarrer sans dépendre
 d’un accès réseau. Les consignes explicites de la session et les règles
 spécifiques du projet restent applicables.
@@ -33,6 +33,7 @@ force-push. Vérifier le déploiement Pages avant d’annoncer une mise en ligne
 
 ## Communication et blocages
 
+- **Accord durable du 31/10/2026** : l’utilisateur a demandé « Arrête de me demander les autorisations, je te les donnes ». Poursuivre les actions nécessaires au travail demandé sans redemander un accord déjà donné. Les contrôles imposés par la plateforme restent applicables ; privilégier une méthode autorisée qui fonctionne, sans répéter une demande technique bloquée ni contourner un refus.
 - Annoncer l’action et le résultat attendu ; répondre court, clairement,
   sans compliments automatiques ni explications techniques inutiles.
 - Donner un point utile au plus toutes les 60 secondes pendant le travail.
