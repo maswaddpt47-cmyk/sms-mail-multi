@@ -373,6 +373,20 @@ async function restaurer(contenu,fonction,options){
   // clé réellement absente : traitement inchangé (ancien catalogue de profil absent → pas de blocage)
   {const e=charger();e.st.setItem('ess-cms',JSON.stringify([{nom:'Agen'}]));e.ctx.migrateSharedCmsList();
    assert.equal(e.st.getItem('ess-cms-migrated-v2'),'1','clés absentes : migration achevée');}
+  // 8e vérification de Codex : vrai chargement, réglage Fumel encore à faire, source partagée vide ou malformée → rien réécrit, même après deux chargements
+  for(const brut of ['','{pas du json']){
+    const e=charger();e.st.setItem('ess-cms',brut);e.st.setItem('ess-p1-cms',JSON.stringify([{nom:'Fumel'}]));
+    e.st.setItem('ess-tpl-version','"v5-lapin-templates"');e.st.setItem(e.ctx.pk('perm-version'),'3');
+    e.ctx.loadProfileData();e.ctx.loadProfileData();
+    const q=JSON.stringify(brut);
+    assert.equal(e.st.getItem('ess-cms'),brut,q+' : source refusée conservée après deux chargements');
+    assert.equal(e.st.getItem('ess-pm-start-v1'),null,q+' : réglage Fumel non posé');
+    assert.equal(e.st.getItem('ess-cms-migrated-v2'),null,q+' : migration CMS non déclarée achevée');
+    e.st.setItem('ess-cms',JSON.stringify([{nom:'Agen'}]));e.ctx.loadProfileData();
+    assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen','Fumel'],q+' : fusion complète après réparation');
+    assert.equal(JSON.parse(e.st.getItem('ess-cms'))[1].debutApresMidi,'14:00',q+' : réglage Fumel posé après réparation');
+    assert.equal(e.st.getItem('ess-pm-start-v1'),'"1"');assert.equal(e.st.getItem('ess-cms-migrated-v2'),'1');
+  }
   // journées et version : refus de l'une ou de l'autre → ni l'une ni l'autre ; migration rejouée ensuite
   for(const refus of ['permanences','perm-version']){
     const e=charger();const ancien=[{commune:'Fumel',jour:1}];e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(ancien));
