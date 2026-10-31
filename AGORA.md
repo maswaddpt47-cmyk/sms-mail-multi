@@ -328,6 +328,38 @@ Deux défauts restent reproduits dans les deux fuseaux :
 
 Vérifications en mémoire sous Node, fonctions métier réelles, données fictives ; stockage, réseau et rendu simulés. Aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
 
+### Sixième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `708a911`, commits `a73bd18` et `34a99e3` vérifiés.
+**Verdict** : amendé. Les contre-exemples de la cinquième vérification sont corrigés ; une lecture de source en échec peut encore faire valider une migration CMS incomplète.
+**Constat** :
+
+Vérifications exécutées sous Node en UTC et Europe/Paris :
+
+- Catalogue partagé : écriture refusée → marqueur absent ; après rétablissement, la fusion est retentée et complète (`index.html:7519`, `index.html:7520`).
+- Réglage Fumel, modèles et permanences : refus des données ou du marqueur → ancien état conservé ; nouveau chargement après rétablissement → données et version enregistrées ensemble (`index.html:7531`, `index.html:7544`, `index.html:7557`). Les permanences ont aussi été vérifiées avec la vraie fonction de migration et le chargement complet, au-delà de la portion extraite par le harnais.
+- Génération : lecture préalable refusée ou écriture brute du compteur d'export refusée → aucune fiche ni sauvegarde, message explicite de non-enregistrement. Si la restauration d'une ancienne clé est également refusée, le message d'incohérence remonte correctement (`index.html:1634`, `index.html:1636`, `index.html:1637`, `index.html:1690`). Sans panne, une fiche et une sauvegarde, avec succès annoncé.
+
+La suite `scripts/check-ecritures.js` passe dans les deux fuseaux. Les mutations rétablissant le marqueur après catalogue refusé et l'ancien succès inconditionnel de génération sont rejetées dans les deux fuseaux ; la première échoue notamment à `scripts/check-ecritures.js:350`.
+
+**Défaut résiduel : les lectures des catalogues sources confondent absence et erreur.**
+
+`migrateSharedCmsList` lit le catalogue partagé et les anciens catalogues avec `ls` (`index.html:7515`, `index.html:7516`). Cette fonction retourne la valeur par défaut en cas d'erreur de lecture ou de JSON illisible (`index.html:971`). La fusion peut donc être enregistrée et marquée achevée sans avoir lu toutes ses sources.
+
+Deux variantes fictives reproduites en UTC et Europe/Paris, avec un catalogue partagé contenant A et un ancien catalogue de profil contenant B :
+
+1. Lecture de l'ancien catalogue refusée une seule fois : B est omis de la fusion, mais le marqueur est enregistré. Après rétablissement, la migration s'arrête sur le marqueur (`index.html:7508`) ; B reste absent du catalogue partagé. Sa source héritée est conservée.
+2. Lecture du catalogue partagé refusée une seule fois : sa valeur de repli est une liste vide. La fusion issue de l'ancien catalogue remplace alors le catalogue partagé par B seul, puis pose le marqueur. A, présent dans le catalogue partagé avant l'opération, n'y est plus. La migration n'est pas retentée après rétablissement.
+
+Les nouveaux tests refusent l'écriture du catalogue (`scripts/check-ecritures.js:349`), mais ne refusent pas ces lectures sources. Poser le marqueur après une écriture relue protège l'enregistrement du résultat ; il faut aussi vérifier que ce résultat a été construit à partir de sources effectivement lues.
+
+**Calculs et formats inchangés** : comparaison exacte avec `6673c62` de l'initialisation de l'état, des statistiques/bilan (`index.html:3225`, `index.html:3423`), des archives (`index.html:3045`), de la préparation et de l'estimation (`index.html:2992`, `index.html:3005`), de la migration des permanences (`index.html:1871`) et de l'export (`index.html:2168`). Version des permanences inchangée (`index.html:1864`).
+
+**Amendement** :
+
+Lire et valider toutes les sources de la migration CMS avant toute écriture, en distinguant une clé absente d'une lecture impossible ou d'un contenu illisible. Dans ces derniers cas, conserver le catalogue partagé et laisser la migration inachevée pour une nouvelle tentative. Ajouter les deux refus de lecture ci-dessus aux tests, avec contrôle de l'état conservé puis de la fusion complète après rétablissement ; conserver le traitement prévu des clés réellement absentes.
+
+Vérifications en mémoire, données fictives, fonctions métier réelles ; stockage, réseau et rendu simulés. Aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
