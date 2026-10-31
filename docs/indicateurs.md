@@ -33,7 +33,7 @@ du CMS choisi, dont **la date du RDV** est dans la période (« Tout » : toutes
 | Remplissage net | créneaux non libérés / mêmes places | idem | une fiche active suffit à garder le créneau occupé | 3228 |
 | Rendez-vous par mois | fiches par statut affiché | mois du RDV | statut inconnu compté « en attente » | 3072, 3838 |
 | Lapins par permanence | créneaux avec Lapin / créneaux de la journée | RDV passés | 10 journées les plus récentes affichées | `lapinDays` |
-| Activité annuelle (heatmap) | créneaux de RDV par jour | RDV | blocages exclus ; Excusé et Annulé comptés | heatmap |
+| Activité annuelle (heatmap) | créneaux de RDV par jour, **depuis le 1er juillet** de l'année scolaire en cours | RDV | **ne suit pas le filtre de période** (toutes les fiches du CMS choisi) ; blocages exclus ; Excusé et Annulé comptés | 4022-4040 |
 
 ## Statistiques — « Messages et usagers »
 
@@ -48,9 +48,9 @@ message** (`ts`, texte « JJ/MM/AAAA », sinon les 10 premiers caractères, sino
 | Messages par mois | fiches par canal | mois de génération | canal inconnu compté SMS | 3940-3947 |
 | Répartition par type | fiches par type de message | génération | — | 3995 |
 | Relances | fiches avec date de relance ou type relance | génération (pas la date de relance) | anciennes dates automatiques non distinguées | 3996 |
-| Messages par CMS / commune | fiches par CMS | génération | sans CMS regroupé | `comptageParCms` |
-| Préparation moy. (lun.–ven.) | jours ouvrés réception → première préparation | jour de première préparation | fiches sans horodatage exclues (compteur affiché) | `preparationStats`, 2827 |
-| Traitées le jour même (estimation) | part des anciennes fiches préparées le jour de la réception | génération | estimation : `ts` est réécrit à chaque régénération | 2840 |
+| Messages par CMS / commune | fiches par CMS | génération | **fiches sans CMS exclues** (non regroupées) | `comptageParCms`, 3193 |
+| Préparation moy. (lun.–ven.) | jours ouvrés réception → première préparation | **population propre** (`preparationCohort`, 2856 ; 3873) : fiches hors blocages du CMS choisi dont le jour de première préparation — à défaut la date du message — est dans la période ; ce n'est pas la population « Messages » ci-dessus | fiches sans horodatage exclues de la moyenne (compteur affiché) | `preparationStats`, 2827 |
+| Traitées le jour même (estimation) | part des anciennes fiches préparées le jour de la réception | même population que la préparation moyenne (3875) | estimation : `ts` est réécrit à chaque régénération | 2840 |
 | Délai moy. RDV (par CMS) | jours civils génération → RDV | génération | RDV antérieur au message ou date invalide : exclu | `delaiRdvJours`, 3177 |
 
 ## Bilan mensuel imprimable
@@ -71,8 +71,11 @@ rendez-vous enregistrés (décision AG-011).
 ## Archives annuelles (`computeYearArchive`, 2880)
 
 Population : fiches de l'**année du RDV** (`entryYear`, 2867 ; à défaut année du message), hors
-blocages. Calculées une fois, jamais recalculées ; les archives anciennes gardent leur méthode
-d'origine (comptage par fiche avant le 23/10).
+blocages, **tous CMS et tous statuts, sans filtre de période ni jour courant** (l'année est révolue).
+Ce n'est ni la population de Statistiques ni celle du bilan : `usagersN` compte les personnes de
+toutes les fiches, pas seulement les réalisées (≠ « Personnes accompagnées »). Calculées une fois,
+jamais recalculées ; les archives anciennes gardent leur méthode d'origine (comptage par fiche
+avant le 23/10).
 
 | Champ | Ce qu'il compte | Réserve connue |
 |---|---|---|
@@ -80,7 +83,7 @@ d'origine (comptage par fiche avant le 23/10).
 | `statuts`, `realiseN`, `lapinN` | fiches par statut affiché | — |
 | `concretPct`, `lapinPct` | taux par créneau, arrondis | numérateur et dénominateur non conservés (2896-2897) |
 | `byMonth` | fiches par canal et **mois de génération** | un RDV de janvier préparé en décembre met « décembre » de l'année précédente dans l'archive (2905-2910) |
-| `trendByMonth`, `heatmap`, `byDemarche`, `byCMS`, `relances` | par mois du RDV, jour/heure, démarche, CMS, relance | — |
+| `trendByMonth`, `heatmap`, `byDemarche`, `byCMS`, `relances` | par mois du RDV, jour de semaine et heure, démarche, CMS, relance | `byCMS` exclut les fiches sans CMS ; `heatmap` compte des fiches (pas des créneaux), contrairement à l'écran |
 
 ## À trancher par l'utilisateur
 
