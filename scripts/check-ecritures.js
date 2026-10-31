@@ -29,7 +29,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
+  fonction('archiveOldDaysCore'),  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
@@ -180,6 +180,14 @@ for(const n of [1,2]){
   assert.equal(e.st.etat(),avant,'archivage, panne '+n+' : stockage inchangé');assert.equal(JSON.stringify([e.S.history,e.S.yearlyStats]),mem);
   assert.equal(e.journal.pushs,0);assert(!e.journal.toasts.some(t=>/archivée/.test(t)));assert(e.journal.toasts.some(t=>/Archivage annulé/.test(t)));
 }
+// T11 (vérification de clôture de Codex) : historique purgé écrit, relecture refusée, restauration refusée → message d'incohérence, jamais « aucune donnée supprimée »
+{const e=prepArchive();const H=e.ctx.pk('history');let relu=0,ecrit=0;
+ e.st.lecturePanne=k=>k===H&&e.st.ecritures>=2&&++relu===1;   // relecture de l'historique purgé refusée
+ const set0=e.st.setItem;e.st.setItem=(k,v)=>{if(k===H&&++ecrit===2)throw new Error('QuotaExceededError');return set0(k,v);};   // sa restauration refusée
+ e.ctx.archiveYear(2025);e.st.lecturePanne=null;e.st.setItem=set0;
+ assert(e.journal.toasts.some(t=>/retour en arrière incomplet/.test(t)),'T11 : incohérence annoncée');
+ assert(!e.journal.toasts.some(t=>/aucune donnée supprimée/.test(t)),'T11 : pas de fausse assurance');
+ assert.equal(e.S.history.length,JSON.parse(e.st.getItem(H)).length,'T11 : mémoire = stockage');}
 // P09 (vérification de clôture de Codex) : une année déjà archivée n'est jamais réarchivée ; archive et fiches réapparues conservées
 {const e=prepArchive();e.S.history.push(rdv('r','2024-05-02','09:30','REVENU','R'));e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
  const avant=e.st.etat();e.ctx.archiveYear(2024);
@@ -379,6 +387,29 @@ async function restaurer(contenu,fonction,options){
     else{assert.equal(e.ctx.writeProfileOrientations('p2',relu.concat([{nom:'NOUVELLE'}])),true,'T03 témoin : relue correctement → écrite');
       assert.deepEqual(JSON.parse(e.st.getItem(k)).map(o=>o.nom),['ANCIENNE','NOUVELLE'],'T03 : anciennes conservées');}
   }
+  /* ── T02 : écriture des pauses refusée dès la lecture préalable → mémoire inchangée, échec propagé ── */
+  {const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
+   const demain=e.ctx.toLocalDateStr(new Date(Date.now()+864e5*2));
+   e.st.setItem('ess-p1-permanences',JSON.stringify([{commune:'Fumel',exceptDate:demain,debut:'09:30',fin:'16:30',pauseAuto:true}]));
+   e.ctx.loadProfileData();e.S.permanences=[{commune:'Fumel',exceptDate:demain,debut:'09:30',fin:'16:30'}];e.st.setItem('ess-p1-permanences',JSON.stringify(e.S.permanences));e.ctx._versionLue['ess-p1-permanences']=e.st.getItem('ess-p1-permanences');
+   e.ctx.getSlots=()=>[{heure:'12:30',taken:false}];const avant=e.st.etat(),echecs=e.ctx._echecsEcriture;
+   let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;
+   assert.equal(e.ctx.applyLunchBreaks(),false,'T02 : échec annoncé');e.st.lecturePanne=null;
+   assert.equal(e.S.history.length,0,'T02 : aucune pause fantôme en mémoire');assert.equal(e.S.permanences[0].pauseAuto,undefined,'T02 : journée non marquée en mémoire');
+   assert.equal(e.st.etat(),avant,'T02 : stockage inchangé');assert(e.ctx._echecsEcriture>echecs,'T02 : échec compté (propagé)');
+   assert.equal(e.ctx.applyLunchBreaks(),true,'T02 témoin');assert.equal(e.S.history.length,1);assert.equal(JSON.parse(e.st.getItem('ess-p1-history')).length,1);}
+  /* ── T01 : historique non lu → pas de migration des journées ni d'archivage automatique d'après un repli vide ── */
+  {const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"']])e.st.setItem(k,v);
+   const ancien=[{commune:'Fumel',jour:1}];e.st.setItem('ess-p1-permanences',JSON.stringify(ancien));e.st.setItem('ess-p1-history',JSON.stringify([rdv('h1','2026-09-01','09:30','HIST','A')]));
+   let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+   assert.equal(e.st.getItem('ess-p1-perm-version'),null,'T01 : migration des journées suspendue');assert.equal(e.st.getItem('ess-p1-permanences'),JSON.stringify(ancien),'T01 : journées intactes');
+   e.ctx.loadProfileData();assert.equal(e.st.getItem('ess-p1-perm-version'),'3','T01 : migration faite au chargement réussi suivant');}
+  {const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
+   const vieux='2026-01-15',perms=[{commune:'Fumel',exceptDate:vieux}];e.st.setItem('ess-p1-permanences',JSON.stringify(perms));
+   e.st.setItem('ess-p1-history',JSON.stringify([rdv('h1',vieux,'09:30','APOINTER','A','Fumel','en_attente')]));
+   let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+   assert.equal(e.ctx.archiveOldDaysCore(true),0,'T01 : pas d\'archivage d\'après un historique non lu');assert.equal(e.st.getItem('ess-p1-permanences'),JSON.stringify(perms));
+   e.ctx.loadProfileData();assert.equal(e.ctx.archiveOldDaysCore(true),0,'T01 témoin : journée avec RDV en attente jamais archivée');}
   /* ── T14 : chargement interrompu → aucune donnée écrite ensuite ; rechargement réussi → écritures rétablies ── */
   {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('b','2026-11-04','09:30','B','B')]));e.S.history=[rdv('a','2026-11-03','09:30','A','A')];
    e.S.activeProfile='p2';let n=0;e.st.lecturePanne=k=>k==='ess-cms-migrated-v2'&&++n===1;
