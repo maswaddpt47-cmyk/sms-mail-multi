@@ -7504,8 +7504,8 @@ function showProfileSelect(){
    localStorage — v1 lisait un fallback [] et perdait donc ces entrées "par défaut mais jamais
    sauvegardées" lors de la fusion. v2 relit avec DEFAULT_CMS comme fallback et fusionne dans
    la liste partagée déjà existante (rien de ce qui est déjà là n'est retiré, seulement complété). */
-function migrateSharedCmsList(){
-  if(localStorage.getItem('ess-cms-migrated-v2'))return;
+function migrateSharedCmsList(){   /* renvoie vrai si la migration est achevée (marqueur présent ou posé) */
+  if(localStorage.getItem('ess-cms-migrated-v2'))return true;
   var merged=[];var byNom={};
   function add(c){
     var key=(c.nom||'').trim().toLowerCase();if(!key)return;
@@ -7525,21 +7525,23 @@ function migrateSharedCmsList(){
   }
   var sources=[lireSource('ess-cms',[])];
   PROFILES.forEach(function(p){sources.push(lireSource('ess-'+p.id+'-cms',DEFAULT_CMS));});
-  if(sources.some(function(src){return src===null;}))return;
+  if(sources.some(function(src){return src===null;}))return false;
   sources.forEach(function(src){src.forEach(add);});
   /* AG-013 étape 2 (5e vérification de Codex) : le marqueur n'est posé qu'après l'enregistrement relu du catalogue
      fusionné ; sinon la fusion (sans effet si rejouée) est retentée au prochain chargement. */
-  if(merged.length&&!lsSet('ess-cms',merged))return;
-  try{localStorage.setItem('ess-cms-migrated-v2','1');}catch(e){}
+  if(merged.length&&!lsSet('ess-cms',merged))return false;
+  try{localStorage.setItem('ess-cms-migrated-v2','1');return true;}catch(e){return false;}
 }
 function loadProfileData(){
   S.dateReception='';
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
-  migrateSharedCmsList();
+  var cmsMigre=migrateSharedCmsList();
   S.cmsList=ls('ess-cms',DEFAULT_CMS);
-  /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier */
-  if(ls('ess-pm-start-v1','')!=='1'){
+  /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier.
+     AG-013 étape 2 (8e vérification de Codex) : pas tant que la migration CMS est inachevée — une source refusée
+     (illisible, vide, lecture impossible) n'est jamais remplacée par le repli ; le réglage sera posé après réparation. */
+  if(cmsMigre&&ls('ess-pm-start-v1','')!=='1'){
     S.cmsList=S.cmsList.map(function(c){return /^fumel\b/i.test(String(c.nom||'').trim())&&!c.debutApresMidi?Object.assign({},c,{debutApresMidi:'14:00'}):c;});
     if(!ecrireTout([['ess-cms',S.cmsList],['ess-pm-start-v1','1']]))S.cmsList=ls('ess-cms',DEFAULT_CMS);   /* réglage et marqueur ensemble ou pas du tout */
   }
