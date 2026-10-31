@@ -182,6 +182,43 @@ assert.equal(ctx.monthlyReportData(avecFutur,'2026-10','',new Date(2026,10,2,12)
 const vide=ctx.monthlyReportData(bil,'2025-01','',nowBil);assert.equal(vide.empty,true);
 assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:true}),/archivée/);assert.match(ctx.monthlyReportHtml(vide,{profil:'P',date:'d',archivedYear:false}),/Aucun rendez-vous daté/);
 assert.equal(ctx.monthlyReportData(bil,'2026-9','',nowBil),null);
+// AG-012 : le suivi compte les RDV du mois/CMS ayant une relance renseignée, une fois chacun.
+// L'ancien champ dateRelance ne prouve pas un envoi : il reste une trace, même sans horodatage.
+const followed=[
+  {...row('suivi-realise','2026-10-03','realise','09:30',' A '),dateRelance:'2026-09-29',tsRelance:'2026-09-29T09:00:00Z'},
+  {...row('suivi-deux-marques','2026-10-03','pas_de_retour','10:30','A','relance'),dateRelance:'2026-10-02'},
+  row('suivi-type-seul','2026-10-04','confirme','09:30','A','relance'),
+  {...row('suivi-autre-cms','2026-10-05','excuse','09:30','B'),dateRelance:'2026-10-03'},
+  {...row('suivi-cms-vide','2026-10-06','lapin','09:30',''),dateRelance:'2026-10-04'},
+  row('suivi-absent','2026-10-07','realise','09:30','A'),
+  {...row('suivi-futur','2026-10-28','confirme','09:30','A'),dateRelance:'2026-10-20'},
+  {...row('suivi-autre-mois','2026-09-30','realise','09:30','A'),dateRelance:'2026-10-01'},
+  {...row('suivi-bloque','2026-10-03',null,'11:30','A','indispo'),dateRelance:'2026-10-02'},
+  {...row('suivi-sans-date','','realise','09:30','A'),dateRelance:'2026-10-02'}
+];
+const followBefore=JSON.stringify(followed),followReport=ctx.monthlyReportData(followed,'2026-10','',nowBil);
+assert.equal(followReport.followup.recorded,5);
+assert.equal(ctx.monthlyReportData(followed,'2026-10','a',nowBil).followup.recorded,3);
+assert.equal(ctx.monthlyReportData(followed,'2026-10','B',nowBil).followup.recorded,1);
+assert.equal(ctx.monthlyReportData(followed,'2026-10','Inconnu',nowBil).followup.recorded,0);
+assert.equal(ctx.monthlyReportData(followed,'2026-10','',new Date(2026,10,2,12)).followup.recorded,6);
+// Recomptage indépendant et unité : ni marqueurs additionnés, ni regroupement par personne ou par statut.
+let followExpected=0;
+for(const h of followed){
+  if(h.msgType==='indispo'||!/^2026-10-\d{2}$/.test(h.date||'')||h.date>'2026-10-25')continue;
+  if(h.dateRelance)followExpected++;else if(h.msgType==='relance')followExpected++;
+}
+assert.equal(followReport.followup.recorded,followExpected);
+assert.equal(JSON.stringify(ctx.monthlyReportData(followed,'2026-10','',nowBil)),JSON.stringify(followReport));
+assert.equal(JSON.stringify(followed),followBefore);
+assert.equal(ctx.monthlyReportData([], '2026-10','',nowBil).followup.recorded,0);
+const followHtml=ctx.monthlyReportHtml(followReport,{profil:'Profil fictif',date:'25/10/2026'});
+assert.match(followHtml,/Suivi des rendez-vous/);
+assert.match(followHtml,/relance renseignée/);
+assert.match(followHtml,/automatiquement/);
+assert.match(followHtml,/mois.*rendez-vous/i);
+assert.doesNotMatch(followHtml,/SMS envoyés|relances envoyées|taux de réussite/i);
+assert(followHtml.indexOf('Démarches accompagnées')<followHtml.indexOf('Répartition par statut'));
 // Pause déjeuner d'office : conditions d'application, puis les chiffres de places ne bougent pas.
 const lp0={id:'p',commune:'A',exceptDate:'2026-10-30',debut:'09:30',fin:'16:30'},todayL='2026-10-25';
 const lunch=ctx.lunchBreakEntry(lp0,[],todayL);

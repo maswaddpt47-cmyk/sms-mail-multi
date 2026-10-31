@@ -42,6 +42,7 @@ def build(output):
         'Les journées archivées se consultent aussi dans ce menu : seules celles avec des rendez-vous sont comptées, et Afficher ouvre directement une ancienne date. Masquer revient à la période précédente.\n'
         'Sur ordinateur, l’en-tête occupe moins de hauteur. Le fond de chaque tuile reprend la couleur de son statut, en clair comme en sombre.\n'
         'Dans Agenda, ouvrir la tuile rouge Annulé : le motif est modifiable dans la fiche. Le créneau est à nouveau disponible et aucun rappel automatique n’est proposé.\n'
+        'Dans Statistiques → Bilan mensuel, les personnes accompagnées et les RDV réalisés apparaissent en tête, puis le suivi des relances et les démarches. Deux RDV fictifs portent une relance renseignée ; le bilan suit le mois du rendez-vous. Les statuts et leur répartition restent disponibles plus bas, ainsi que les limites du comptage, à l’écran et dans Imprimer / PDF.\n'
         'Dans Statistiques, RDV réalisés remplace RDV aujourd’hui. Les premiers graphes montrent les statuts par mois et les prochaines permanences sur une base de 6 créneaux par journée complète et 3 par demi-journée, avec les rendez-vous prévus et places disponibles ; le classement des démarches porte sur les accompagnements réalisés. Les bilans suivent la période/CMS et la date du RDV ; les messages suivent leur date de génération. Les prochaines permanences suivent le CMS, indépendamment de la période passée. Leur légende distingue Réservé (vert), En attente (rose du statut), Bloqué (gris) et Disponible (case vide). Les attentes gardent leur place dans le total réservé. Voir les données ouvre le tableau mensuel.\n'
         'Dans Messages, les SMS gardent au maximum une ligne vide entre les paragraphes, sans ajouter de blanc dans les listes ; les espacements excessifs sont réduits aussi à la copie après modification manuelle. La copie e-mail garde sa mise en forme et ses liens enrichis.\n'
         'Le délai Préparation moy. utilise réception et première préparation, du lundi au vendredi (jours fériés inclus). La couverture indique les dossiers mesurés/non mesurables. La réception historique déjà renseignée est reprise sans ressaisie ; les nouvelles réceptions se renseignent dans Messages, Historique ou la fiche Agenda. Aucune première préparation ancienne n’est inventée.\n'
@@ -71,3 +72,4 @@ if __name__ == '__main__':
                         default=Path(tempfile.gettempdir()) / 'sms-mail-ui-preview')
     args = parser.parse_args()
     print(json.dumps(build(args.output_dir.resolve()), ensure_ascii=False))
+

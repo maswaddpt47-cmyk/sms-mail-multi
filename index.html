@@ -3262,9 +3262,13 @@ function monthlyReportData(history,month,cms,now){
   var byCms=Object.keys(communes).map(function(k){return communes[k];}).sort().map(function(c){var r=model(c);return {cms:c,entries:r.entries.length,realised:r.realised.length};});
   var dem=Object.keys(total.byDemarche).map(function(k){return {nom:k,n:total.byDemarche[k]};}).sort(function(a,b){return b.n-a.n||a.nom.localeCompare(b.nom);});
   var top=dem.slice(0,10),others=dem.slice(10);
+  /* AG-012 (31/10) : même population de RDV, une seule relance par RDV selon l'usage déclaré.
+     Comme la statistique existante : date ou type renseigné, sans déduire un envoi ni modifier l'historique. */
+  var followup={recorded:total.entries.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length};
   /* AG-011 (30/10) : une seule base, les rendez-vous enregistrés ; aucun taux par créneau dans le bilan */
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
+    followup:followup,
     demarches:top,otherDemarches:others.length,otherDemarchesN:others.reduce(function(n,d){return n+d.n;},0),
     byCms:byCms,empty:!total.entries.length,
     sansCms:total.entries.filter(function(h){return !h.commune;}).length,
@@ -3278,9 +3282,14 @@ var BILAN_CSS='.bilan{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;font-
   +'.bilan .sub{font-size:12px;color:#555;margin-bottom:14px;}.bilan table{width:100%;border-collapse:collapse;font-size:12px;}'
   +'.bilan td,.bilan th{border:1px solid #bbb;padding:5px 8px;text-align:left;vertical-align:top;}.bilan th{background:#f0f0f0;}'
   +'.bilan td.n{text-align:right;}.bilan .tw{overflow-x:auto;}.bilan ul{margin:6px 0 0;padding-left:18px;font-size:12px;}.bilan .vide{padding:12px;border:1px dashed #999;}'
-  +'.bilan section{page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}'
+  +'.bilan section{break-inside:avoid;page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}'
+  +'.bilan .bilan-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0;}.bilan .bilan-kpi{min-width:0;border:1px solid #c7d3df;border-radius:10px;background:#f3f6fa;padding:12px;}'
+  +'.bilan .bilan-kpi-value{display:block;font-size:34px;font-weight:700;line-height:1.15;color:#183f59;margin-bottom:6px;}.bilan .bilan-kpi-label{font-size:13px;font-weight:700;overflow-wrap:anywhere;}'
+  +'.bilan .bilan-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 0;color:#444;font-size:12px;}.bilan .bilan-total strong{font-size:18px;color:#1a1a2e;}'
+  +'.bilan .bilan-followup{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-left:3px solid #5c778b;background:#f3f6fa;padding:10px 12px;margin:10px 0 6px;}.bilan .bilan-followup strong{font-size:24px;line-height:1.2;white-space:nowrap;}.bilan .bilan-followup p{margin:0;font-weight:700;}.bilan .bilan-followup-note{margin:6px 0;color:#555;font-size:11px;}'
   +'.bilan .bilan-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border:1px solid #999;border-radius:50%;color:#666;font-size:9px;font-weight:700;cursor:help;vertical-align:middle;}'
-  +'@media print{.bilan .bilan-info{display:none;}}';
+  +'@media(max-width:420px){.bilan h1{font-size:18px;}.bilan .bilan-kpi{padding:10px;}.bilan .bilan-kpi-value{font-size:30px;}.bilan td,.bilan th{padding:5px 6px;}}'
+  +'@media print{.bilan .bilan-info{display:none;}.bilan .bilan-kpi,.bilan .bilan-followup{background:none;border-color:#999;}.bilan .bilan-kpi-value{font-size:30px;color:#1a1a2e;}}';
 function monthlyReportHtml(d,meta){
   function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -3301,14 +3310,12 @@ function monthlyReportHtml(d,meta){
     h+='<p class="vide">Aucun rendez-vous daté de ce mois dans l’historique détaillé de ce profil'+(d.cms?' pour ce CMS':'')+'.'
       +(meta.archivedYear?' L’année '+d.year+' a été archivée : le détail nominatif n’existe plus, seules les statistiques annuelles agrégées subsistent (Statistiques → sélecteur d’année). Ce bilan ne reprend jamais les archives.':'')+'</p>';
   } else {
-    h+='<section><h2>Résultats du mois</h2><table><tr><th>Indicateur</th><th>Valeur</th></tr>'
-      +'<tr><td>Rendez-vous du mois (tous statuts)'+info('rdv')+'</td><td class="n">'+d.entries+'</td></tr>'
-      +'<tr><td>dont réalisés'+info('realises')+'</td><td class="n">'+d.realised+'</td></tr>'
-      +'<tr><td>Personnes accompagnées'+info('personnes')+'</td><td class="n">'+d.accompanied+'</td></tr></table></section>';
-    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous</th><th>Part des rendez-vous'+info('repartition')+'</th></tr>';
-    STAT.forEach(function(k){if(statutTransitoireVide(k[0],d.byStatut))return;h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.byStatut[k[0]],d.entries)+'</td></tr>';});
-    h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+d.entries+' / '+d.entries+' · 100 %</b></td></tr></table>'
-      +'<p>Les pourcentages arrondis peuvent ne pas totaliser exactement 100 %.</p></section>';
+    h+='<section><h2>Résultats du mois</h2><div class="bilan-kpis">'
+      +'<div class="bilan-kpi"><span class="bilan-kpi-value">'+d.accompanied+'</span><span class="bilan-kpi-label">Personnes accompagnées'+info('personnes')+'</span></div>'
+      +'<div class="bilan-kpi"><span class="bilan-kpi-value">'+d.realised+'</span><span class="bilan-kpi-label">RDV réalisés'+info('realises')+'</span></div></div>'
+      +'<p class="bilan-total"><span>Rendez-vous du mois (tous statuts)'+info('rdv')+'</span><strong>'+d.entries+'</strong></p></section>';
+    h+='<section><h2>Suivi des rendez-vous</h2><div class="bilan-followup"><p>RDV avec relance renseignée</p><strong>'+d.followup.recorded+'</strong></div>'
+      +'<p class="bilan-followup-note">Chaque rendez-vous avec une relance renseignée compte une fois au mois du rendez-vous, même si la relance date d’un autre mois.</p></section>';
     h+='<section><h2>Démarches accompagnées</h2>';
     if(!d.demarches.length&&!d.sansDemarche)h+='<p>Aucun accompagnement réalisé ce mois-ci.</p>';
     else{
@@ -3319,6 +3326,10 @@ function monthlyReportHtml(d,meta){
       h+='</table>';
     }
     h+='</section>';
+    h+='<section><h2>Répartition par statut</h2><table><tr><th>Statut</th><th>Rendez-vous</th><th>Part des rendez-vous'+info('repartition')+'</th></tr>';
+    STAT.forEach(function(k){if(statutTransitoireVide(k[0],d.byStatut))return;h+='<tr><td>'+k[1]+'</td><td class="n">'+d.byStatut[k[0]]+'</td><td class="n">'+pc(d.byStatut[k[0]],d.entries)+'</td></tr>';});
+    h+='<tr><td><b>Total</b></td><td class="n"><b>'+d.entries+'</b></td><td class="n"><b>'+d.entries+' / '+d.entries+' · 100 %</b></td></tr></table>'
+      +'<p>Les pourcentages arrondis peuvent ne pas totaliser exactement 100 %.</p></section>';
     h+='<section><h2>Répartition par CMS</h2><table><tr><th>CMS</th><th>Rendez-vous</th><th>dont réalisés</th></tr>';
     d.byCms.forEach(function(c){h+='<tr><td>'+esc(c.cms)+'</td><td class="n">'+c.entries+'</td><td class="n">'+c.realised+'</td></tr>';});
     if(d.sansCms&&!d.cms)h+='<tr><td>CMS non renseigné</td><td class="n">'+d.sansCms+'</td><td class="n">'+d.sansCmsRealised+'</td></tr>';
@@ -3326,7 +3337,8 @@ function monthlyReportHtml(d,meta){
   }
   h+='<section><h2>Sources et limites</h2><ul>'
     +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', indisponibilités exclues. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
-    +'<li>Tous les chiffres comptent des <b>rendez-vous enregistrés</b> : un rendez-vous annulé, excusé ou lapin puis remplacé par une autre personne reste compté.</li>'
+    +'<li>Les décomptes de rendez-vous portent sur les <b>rendez-vous enregistrés</b> : un rendez-vous annulé, excusé ou lapin puis remplacé par une autre personne reste compté.</li>'
+    +'<li>Une relance renseignée correspond à une date ou un type de relance enregistré, sans confirmation de l’envoi du message. Certaines anciennes dates ajoutées automatiquement peuvent être présentes et ne sont pas distinguées des relances réelles.</li>'
     +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’'+(d.nonPointes>1?'ont':'a')+' pas été pointé'+(d.nonPointes>1?'s':'')+' (statut encore « Confirmé »).</li>':'')
     +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles.</li></ul></section></div>';
   return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */

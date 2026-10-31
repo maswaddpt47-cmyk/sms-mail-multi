@@ -87,6 +87,11 @@
       }
       if(spec.statut==='excuse')item.excuseMotif='Indisponibilité fictive — créneau à nouveau libre.';
       if(spec.statut==='annule')item.annulationMotif='Annulation fictive — rendez-vous à reprogrammer.';
+      /* Une relance fictive par RDV : le bilan montre aussi le travail de suivi. */
+      if(spec.code==='04'||spec.code==='06'){
+        item.dateRelance=localDay(creationDate);
+        item.tsRelance=localDay(creationDate)+'T10:00:00Z';
+      }
       return item;
     });
     history.sort(function(a,b){function stamp(h){var parts=h.ts.slice(0,10).split('/');return parts.reverse().join('-')+h.ts.slice(10);}return stamp(b).localeCompare(stamp(a));});
@@ -155,3 +160,4 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountBanner,{once:true});
   else mountBanner();
 })();
+
