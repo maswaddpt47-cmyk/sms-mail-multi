@@ -245,6 +245,49 @@ Calculs et formats inchangés : comparaison exacte des statistiques et du bilan 
 
 Vérifications en mémoire, fonctions métier réelles, données fictives et stockage/réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
 
+### Quatrième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `0a7f0fe`, commits `8a8eb89` et `31ae9c8` vérifiés.
+**Verdict** : amendé. Les contre-exemples de la troisième vérification sont corrigés, mais l'action complète n'est pas encore protégée dans tous les parcours.
+**Constat** :
+
+Les correctifs soumis sont confirmés par exécution en UTC et Europe/Paris :
+
+- Fiche et journée : refus des permanences après écriture de l'historique → historique, journée et compteur d'export restaurés, aucune sauvegarde (`index.html:1684`, `index.html:1195`).
+- Blocage : refus de l'historique après ouverture de la journée → journée également annulée (`index.html:2089`).
+- Orientations vers deux profils : refus de la deuxième écriture → aucun profil modifié, sélection conservée, aucune sauvegarde ; sans panne, les deux profils sont enregistrés avant les sauvegardes (`index.html:6511`, `index.html:6516`, `index.html:6520`).
+- Écriture réussie puis erreur ponctuelle de relecture : l'import retrouve désormais l'ancien historique en mémoire et dans le stockage (`index.html:1182`, `index.html:1183`).
+- Un échec d'écriture dans une opération imbriquée annule bien l'opération englobante (`index.html:1204`).
+
+La suite `scripts/check-ecritures.js` passe dans les deux fuseaux. Elle inclut les nouveaux cas de génération/blocage, d'orientations et de relecture (`scripts/check-ecritures.js:120`, `scripts/check-ecritures.js:134`, `scripts/check-ecritures.js:202`).
+
+Quatre contre-exemples restent reproduits dans les deux fuseaux :
+
+1. **Déplacer un rendez-vous peut enregistrer le déplacement sans sa journée cible.**
+   Le véritable bouton « Enregistrer » du dialogue écrit d'abord l'historique par `update` (`index.html:6772`), puis appelle `ensureDayOpenFor` séparément (`index.html:6868`, `index.html:2045`).
+   Déplacement vers une journée absente avec écriture des permanences refusée : nouvelle date conservée dans l'historique, aucune journée cible, un appel de sauvegarde déjà déclenché avant le refus. Le message d'échec est correct, mais l'action reste partielle.
+
+2. **Copier un message peut conserver la nouvelle réception sans le nouveau message.**
+   `copyBody` enregistre la réception avant l'appel groupé à `addHistory` (`index.html:1750`, `index.html:1751`, `index.html:1757`).
+   Première écriture de réception réussie, écriture suivante de message refusée : ancien message conservé, nouvelle réception enregistrée. Le retour arrière d'`addHistory` revient à un état pris après la modification de réception. Aucune sauvegarde n'est déclenchée, mais la copie n'est pas enregistrée en une seule opération.
+
+3. **Bloquer plusieurs créneaux peut n'en enregistrer qu'une partie.**
+   `blockWholeDay` appelle une opération distincte pour chaque créneau (`index.html:2109`, `index.html:2110`).
+   Trois créneaux demandés ; refus de la première écriture du deuxième blocage : premier et troisième enregistrés, deuxième absent. Une sauvegarde a déjà capturé le premier seul. Le regroupement de chaque `blockSlot` ne regroupe pas l'action entière.
+
+4. **Un échec de lecture préalable imbriquée peut laisser un import déclaré complet.**
+   Le retour anticipé de `operationHistorique` sur lecture impossible ne propage pas l'échec à l'opération englobante (`index.html:1197`). `appliquerPlanning` ignore le `false` d'`addHistory` et incrémente quand même le nombre d'ajouts (`index.html:4410`, `index.html:4411`).
+   Import de deux RDV fictifs ; lecture préalable du premier `addHistory` refusée une fois, puis stockage fonctionnel : résultat `ok:true, added:2`, un seul RDV enregistré, compteur d'échecs égal à zéro, une sauvegarde déclenchée. Le test d'échec d'écriture imbriquée ne couvre pas ce retour avant mutation.
+
+**Calculs et formats inchangés** : comparaison exacte avec `472c434` des statistiques/bilan (`index.html:3205`, `index.html:3403`), archives (`index.html:3025`), préparation et estimation (`index.html:2972`), migration (`index.html:1857`), export (`index.html:2148`) et initialisation de l'état. Version des permanences inchangée (`index.html:1850`).
+
+**Amendement** :
+
+- Grouper chaque action complète : déplacement et ouverture de journée ; réception et enregistrement du message après copie réussie ; ensemble des blocages d'une journée. Les sauvegardes attendent la réussite de l'action complète.
+- Propager toute sortie en échec d'une opération imbriquée, lecture préalable comprise, et contrôler le résultat d'`addHistory` avant de compter un ajout.
+- Ajouter les quatre scénarios ci-dessus aux tests en parcourant leurs véritables appelants.
+
+Vérifications en mémoire sous Node, fonctions métier réelles, données fictives ; DOM, presse-papiers, stockage et réseau simulés. Pas de navigateur réel ni de sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est autorisé et publié ; aucun code ni autre fichier modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
