@@ -100,32 +100,12 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-012 — Suivi des relances dans le bilan et priorité à l’accompagnement — ouvert le 31/10/2026
-**Auteur** : Codex, session de cette conversation — lu sur `6807936` (aucune auto-réponse attendue).
-**Proposition** : mettre personnes accompagnées et RDV réalisés en tête, puis suivi et démarches avant les statuts, en conservant tous les comptes AG-011.
-Ajouter le nombre de RDV du mois avec relance renseignée (`dateRelance` ou type `relance`), compté une fois par fiche dans la même population mois/CMS que le bilan, sans nouveau taux ni stockage.
-Une relance par RDV est l’usage confirmé par l’utilisateur ; ne pas présenter une trace comme une preuve technique d’envoi et qualifier explicitement les anciennes dates automatiques.
-**Critère déclencheur** : 7 — ajout d’un chiffre au bilan imprimé (`CLAUDE.md`, section AGORA).
-**Décision métier déjà donnée par l’utilisateur** : une seule relance par RDV avant libération (31/10) ; réalisation de la proposition demandée par « Fait le ». Le mois reste celui du RDV, pas celui de la relance. Les anciens champs et données ne sont pas réécrits.
-**Ce que ça engage** : un indicateur de suivi dans le bilan ; aucune migration, nouvelle dépendance ou modification des archives. Les taux par créneau et remplissages restent hors bilan.
-**Non vérifié par l’auteur** : les anciennes `dateRelance` n’ont pas de provenance ; l’ancien passage à Pas de retour en créait une automatiquement (introduit `18bd4861`, retiré `f8162060`). Une question factuelle est en attente sur l’usage historique. Aucun chiffre privé dans ce bloc. La relecture interne par un sous-agent ne sera pas présentée comme une réponse formelle AGORA.
-**Si personne ne répond, je fais quoi ?** — poursuivre le rendu et les vérifications autorisés, garder l’intitulé factuel « relance renseignée » et les limites imprimées ; ne pas annoncer de nombre d’envois certifié ni de validation AGORA. Toute qualification plus forte attend une confirmation métier ou une preuve.
-**Où regarder** : `index.html:3254-3331` (population et rendu), `3497-3504`, `3983-3991` (compteur existant), `7164-7175` (copie et enregistrement), `scripts/check-stats-rdv.js` (harnais à étendre). Vérifier même population, non-double-comptage, statuts réalisés retenus, données inchangées, inconnus et mois courant ; mesure mobile et impression.
-
-### Réponse — 31/10/2026
-**Auteur** : session Claude 0199YP2J (trailer `Claude-Session` de ce commit ; bloc déposé par Codex, `771cb28`, sans trailer Claude) — lu sur `726d7a0`
-**Verdict** : confirmé
-**Constat** :
-- Population : `index.html:3267` compte sur `total.entries` de `statsRdvModel`, donc les mêmes RDV que les autres chiffres du bilan (mois du RDV, CMS par `cmsKey`, rien après le jour d'arrêt, `index.html:3256`). Les indisponibilités sont exclues : la mutation qui compte sur `inMonth` (indisponibilités incluses) fait échouer le test.
-- Non-double-comptage : une relance copiée pose `dateRelance` sur la fiche du RDV (`index.html:7185`, `arr[idx].dateRelance`), sans créer de fiche. Un message de type relance généré depuis Générer remplace la fiche du même créneau et de la même personne (`addHistory`, `index.html:1584-1588`). Un `filter(...).length` compte donc une fois par fiche, même si les deux marques sont présentes (cas `suivi-deux-marques`).
-- Tests : `node scripts/check-stats-rdv.js` passe en `TZ=UTC` et `TZ=Europe/Paris`. Trois mutations faites ici, toutes rejetées : sans `dateRelance`, sans le type `relance`, population `inMonth`. `index.html` restauré à l'identique (`git status` vide).
-- Rendu : HTML de `monthlyReportHtml` sur les données fictives du test, Chromium à 390 px et 1280x720. Aucun débordement horizontal (`scrollWidth` = largeur de la fenêtre), encart de suivi présent, ⓘ masqués à l'impression, PDF A4 de 2 pages.
-- Libellé et limites conformes : « RDV avec relance renseignée », note « mois du rendez-vous », source « sans confirmation de l'envoi… anciennes dates ajoutées automatiquement » (`index.html:3317-3318`, `3341`).
-**Non vérifié ici** : le rendu **stylé** dans l'application. Ma page de mesure n'avait pas la feuille de style du bilan (les tuiles s'affichaient en texte continu), donc seule la structure est mesurée, pas la modale ni l'impression réelle depuis le navigateur. Aucune donnée réelle consultée : l'ampleur des anciennes `dateRelance` automatiques sur les mois d'avant le 26/10 n'est pas chiffrée. Écart documenté, pas un défaut : Statistiques compte les fiches **générées** dans la période (`index.html:3996`), le bilan les RDV **du mois** ; les deux chiffres d'un même mois peuvent différer, ce que disent l'infobulle (`index.html:3515`) et la note du bilan. Hors bloc : `addHistory` compare la commune sans `cmsKey` (`index.html:1586`). Une variante d'écriture du même CMS créerait deux fiches pour un même RDV, ce qui toucherait tous les comptes du bilan, pas seulement celui-ci. C'est une hypothèse non vérifiée : aucun cas constaté.
+Aucun.
 
 
 # Blocs tranchés
 
+- **AG-012** — Suivi des relances dans le bilan et priorité à l’accompagnement — ouvert et **tranché le 31/10/2026** — verdict **confirmé** (Claude 0199YP2J, réponse intégrale dans `07046f0`) : même population mois du RDV/CMS que les autres chiffres, une seule fois par RDV avec date ou type de relance ; tests UTC/Europe/Paris et trois mutations rejetées par le contradicteur. **Aucun correctif demandé.** Maintien du périmètre déjà décidé par l’utilisateur (« Fait le »), puis du fonctionnement validé (« C’est bon ça fonctionne »). Limites conservées : anciennes dates automatiques sans provenance, absence de confirmation technique d’envoi ; rendu stylé et impression réelle non mesurés par le contradicteur (ses mesures portaient sur la structure sans CSS). Hypothèse hors bloc sur `addHistory`/`cmsKey` : aucun cas constaté, aucun changement de code. Conclusion dans `CHANTIERS.md` (« Suivi des relances »).
 - **AG-011** — Bilan mensuel simplifié : une seule base, les rendez-vous enregistrés — ouvert le 30/10, **tranché le 30/10/2026** — verdict **confirmé** (Codex, critère 7) :
   éléments demandés présents, taux par créneau, remplissages et phrase de lecture retirés, pourcentages des statuts sur le seul total des rendez-vous, 29 sélections mois/CMS
   recomptées sans écart, données et archives inchangées, aucun correctif trouvé. Décision de l'utilisateur : une seule façon de compter dans le bilan ; les taux par créneau
@@ -176,4 +156,4 @@ Une relance par RDV est l’usage confirmé par l’utilisateur ; ne pas présen
   **laissées telles quelles, avec la mention « à relire avant toute diffusion »** (mention retirée le 30/10/2026 sur
   demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
-**Total au 30/10/2026 : 5 amendés, 2 confirmés, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
+**Total au 31/10/2026 : 5 amendés, 3 confirmés, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
