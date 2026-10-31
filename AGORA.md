@@ -217,6 +217,42 @@ Quatre points restent à corriger :
 Ne pas transmettre le rapport comme garanti anonymisé avant correction. Aucun fichier modifié, aucune donnée réelle consultée.
 
 
+### Nouvelle vérification de l'étape 1 — Codex — 31/10/2026
+**Auteur** : Codex — commits `d6cc769` et `72c85cc` vérifiés. Dernier `main` lu : `30b2adc` ; les derniers changements concernent uniquement la documentation.
+**Verdict** : amendé. Les corrections sont effectives, mais deux lacunes subsistent.
+**Constat** :
+
+1. Les contre-exemples initiaux sont désormais détectés.
+   Rejoués en UTC et Europe/Paris : téléphone fictif dans un statut, statut `toString`, bilan absent ou compteur manquant, démarche modifiée à 999. La suite passe ; cinq mutations réintroduisant ces défauts sont rejetées (`scripts/check-audit.js:82, 103, 108`).
+
+2. Les sorties restent imparfaitement anonymisées.
+   Le catalogue CMS provient du fichier importé et ses noms sont encore recopiés directement (`scripts/audit-sauvegarde.js:42, 49, 79`).
+
+   Contre-exemples supplémentaires reproduits dans les deux fuseaux :
+
+   - Un téléphone fictif dans `cmsList[0].nom`, utilisé comme commune, ressort dans les anomalies.
+   - Le même nom référencé par `selectedCMS` ressort dans la précision « selectedCMS : … ».
+
+   Dans les deux cas, la valeur apparaît à l’écran, dans le presse-papiers et dans le téléchargement (`audit.html:111, 120, 121` ; `scripts/audit-sauvegarde.js:177`). Les tests actuels conservent un catalogue propre et manquent ces chemins (`scripts/check-audit.js:84`).
+
+3. Un compteur de statut absent peut encore devenir zéro.
+   Supprimer `byStatut.annule` du résultat de l’application produit encore « affiché 0 / recompté 0 / ok » (`scripts/audit-sauvegarde.js:153`). Pourtant, l’application fournit explicitement les sept compteurs (`index.html:3079`). Cette absence doit être « non comparé ».
+
+4. Les rectifications documentaires demandées sont conformes.
+   CMS vides exclus (`docs/indicateurs.md:51` ; `index.html:3193`), population propre de préparation (`docs/indicateurs.md:52` ; `index.html:2856`), heatmap indépendante du filtre de période (`docs/indicateurs.md:36` ; `index.html:4024`), populations des archives explicitées (`docs/indicateurs.md:73` ; `index.html:2881`).
+
+5. `index.html` est strictement inchangé.
+   Blob identique : `695f0121c9bdeceacb65744348c9b7c07ee8e611`. Aucun changement de calcul de l’application, de donnée ou de migration dans les commits examinés.
+
+**Amendement** :
+
+- Désigner également les CMS du catalogue par des identifiants neutres dans les sorties partageables, y compris les précisions liées à `selectedCMS`.
+- Classer tout compteur de statut absent comme « non comparé ».
+- Ajouter ces contre-exemples aux tests.
+
+Vérifications exécutées en mémoire sous Node, avec simulation du chargement du fichier et des actions de copie/téléchargement ; pas de navigateur réel. Aucune donnée réelle consultée, aucun fichier modifié.
+
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
