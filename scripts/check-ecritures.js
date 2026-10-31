@@ -354,16 +354,18 @@ async function restaurer(contenu,fonction,options){
    assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen','Nérac'],'fusion complète après rétablissement');
    assert.deepEqual(e.S.cmsList.map(c=>c.nom),['Agen','Nérac']);}
   // 6e vérification de Codex : source illisible ou lecture refusée une fois → catalogue intact, pas de marqueur, fusion complète ensuite
-  for(const cas of ['ancien refusé','partagé refusé','ancien illisible']){
-    const e=charger();e.st.setItem('ess-cms',JSON.stringify([{nom:'Agen'}]));e.st.setItem('ess-pm-start-v1','"1"');
-    e.st.setItem('ess-p1-cms',cas==='ancien illisible'?'{pas du json':JSON.stringify([{nom:'Nérac'}]));
+  for(const cas of ['ancien refusé','partagé refusé','ancien illisible','ancien vide','partagé vide']){
+    const e=charger();e.st.setItem('ess-cms',cas==='partagé vide'?'':JSON.stringify([{nom:'Agen'}]));e.st.setItem('ess-pm-start-v1','"1"');
+    e.st.setItem('ess-p1-cms',cas==='ancien illisible'?'{pas du json':cas==='ancien vide'?'':JSON.stringify([{nom:'Nérac'}]));
     e.st.setItem('ess-tpl-version','"v5-lapin-templates"');e.st.setItem(e.ctx.pk('perm-version'),'3');
     const cle=cas==='partagé refusé'?'ess-cms':'ess-p1-cms';let n=0;
-    if(cas!=='ancien illisible')e.st.lecturePanne=k=>k===cle&&++n===1;
+    if(cas.endsWith('refusé'))e.st.lecturePanne=k=>k===cle&&++n===1;
     e.ctx.migrateSharedCmsList();e.st.lecturePanne=null;
     assert.equal(e.st.getItem('ess-cms-migrated-v2'),null,cas+' : migration non déclarée achevée');
-    assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen'],cas+' : catalogue partagé intact');
-    if(cas==='ancien illisible')e.st.setItem('ess-p1-cms',JSON.stringify([{nom:'Nérac'}]));
+    if(cas==='partagé vide')assert.equal(e.st.getItem('ess-cms'),'',cas+' : source vide non écrasée');
+    else assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen'],cas+' : catalogue partagé intact');
+    if(cas==='ancien illisible'||cas==='ancien vide')e.st.setItem('ess-p1-cms',JSON.stringify([{nom:'Nérac'}]));
+    if(cas==='partagé vide')e.st.setItem('ess-cms',JSON.stringify([{nom:'Agen'}]));
     e.ctx.loadProfileData();
     assert.equal(e.st.getItem('ess-cms-migrated-v2'),'1',cas+' : marqueur posé après rétablissement');
     assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen','Nérac'],cas+' : fusion complète après rétablissement');
