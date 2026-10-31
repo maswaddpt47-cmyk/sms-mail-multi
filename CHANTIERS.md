@@ -195,7 +195,8 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
   l'utilisateur** à `sms-mail-multi-backups` seul ; sauvegarde testée OK après.
   **Reste** : à terme, domaine dédié pour ne plus partager le `localStorage`.
   L'absence d'expiration du jeton est un choix de l'utilisateur : ne pas la
-  reproposer. Ne pas reproposer le reste sans fait nouveau.
+  reproposer. **Écarté par l'utilisateur le 31/10/2026 (« oublie ») : ne plus le
+  mentionner ni le lister dans les points ouverts**, sauf fait nouveau.
 
 ## Points à ne pas défaire
 
