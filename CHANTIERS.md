@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **30/10/2026**, base `main` (`ab4b6b2`). Pull du 30/10 à 21:54 (Paris) : rien venu de l’extérieur depuis `d5b690e`, seulement deux commits de documentation (`CLAUDE.md`, `AGORA.md`, `CHANTIERS.md`). Validations du 30/10 sur les trois derniers points : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Ménage du fichier fait les 23, 25, 29 et 30/10 ; le récit des tâches terminées est dans `git log` (ancienne version : `git show 9cf8cfb:CHANTIERS.md`).
+État au **31/10/2026**, base `main` (`8883f93`). Actualisation du 31/10 à 07:58 (Paris) via le connecteur GitHub : le clonage Git local échoue sur le proxy réseau. Depuis la base précédente `ab4b6b2`, seule la documentation de reprise a changé. Depuis la base d’audit `77b44f0`, réponse Codex à AG-011 inscrite puis bloc clôturé, infobulles tactiles corrigées et infobulle de préparation ajoutée ; calculs du bilan simplifié inchangés. Validations utilisateur du 30/10 conservées : réponse globale « testé, ça marche » à la liste (animation et compteurs, bilan simplifié, remplissage net), non détaillée par point. Le récit des tâches terminées reste dans Git.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,6 +9,7 @@ dans « Points à ne pas défaire ».
 
 ## En cours / à confirmer
 
+- **Lisibilité du bilan — diagnostic du 31/10/2026** (capture utilisateur et code `8883f93`, `index.html:3075`, `3298-3324`) : le total des RDV et le tableau des statuts précèdent les démarches ; personnes accompagnées et RDV réalisés ont peu de poids visuel. Les démarches comptent une fiche réalisée sous son libellé renseigné, pas chaque action de l’entretien. Préparation, relances, durée, complexité et résultats obtenus ne sont pas mesurés par ce bilan. Aucun défaut de calcul démontré dans cette analyse ; aucun nouveau recomptage des données réelles, test, contrôle d’impression ou de déploiement effectué. Proposition de rendu consignée dans les pistes, application inchangée.
 - **Capacité des demi-journées** (22/10, déployée et validée) : 3 places par demi-journée, 6 par journée
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
@@ -285,7 +286,8 @@ Aucune pour l'instant. (Les trois règles proposées le 30/10 sont inscrites sur
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
 26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** ; « Prochaines permanences » **déplacée vers Orientations** (`buildPermanencesCard`).
 
-**En attente** : aucune.
+**En attente** :
+- **31/10/2026 — Mieux faire ressortir l’accompagnement dans le bilan** — proposée, en attente : donner la priorité visuelle aux personnes accompagnées et aux RDV réalisés, placer les démarches avant le détail des statuts, conserver tous les tableaux et pourcentages existants. Bénéfice : lecture plus directe du travail enregistré, sans saisie supplémentaire. Recommandation : commencer par ce rendu, sans nouveau calcul ni rétablissement des taux par créneau, remplissages ou phrase de lecture retirés par AG-011. Pas de nouveau bloc AGORA à ce stade : diagnostic et proposition, aucune modification du bilan ; toute évolution des indicateurs ou de leur définition devra passer par le critère 7 avant implémentation.
 
 **Écartées** (date — piste — raison)
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
