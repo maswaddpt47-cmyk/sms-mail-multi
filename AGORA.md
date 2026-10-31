@@ -100,7 +100,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-012 — Suivi des relances dans le bilan et priorité à l’accompagnement — ouvert le 31/10/2026
+**Auteur** : Codex, session de cette conversation — lu sur `6807936` (aucune auto-réponse attendue).
+**Proposition** : mettre personnes accompagnées et RDV réalisés en tête, puis suivi et démarches avant les statuts, en conservant tous les comptes AG-011.
+Ajouter le nombre de RDV du mois avec relance renseignée (`dateRelance` ou type `relance`), compté une fois par fiche dans la même population mois/CMS que le bilan, sans nouveau taux ni stockage.
+Une relance par RDV est l’usage confirmé par l’utilisateur ; ne pas présenter une trace comme une preuve technique d’envoi et qualifier explicitement les anciennes dates automatiques.
+**Critère déclencheur** : 7 — ajout d’un chiffre au bilan imprimé (`CLAUDE.md`, section AGORA).
+**Décision métier déjà donnée par l’utilisateur** : une seule relance par RDV avant libération (31/10) ; réalisation de la proposition demandée par « Fait le ». Le mois reste celui du RDV, pas celui de la relance. Les anciens champs et données ne sont pas réécrits.
+**Ce que ça engage** : un indicateur de suivi dans le bilan ; aucune migration, nouvelle dépendance ou modification des archives. Les taux par créneau et remplissages restent hors bilan.
+**Non vérifié par l’auteur** : les anciennes `dateRelance` n’ont pas de provenance ; l’ancien passage à Pas de retour en créait une automatiquement (introduit `18bd4861`, retiré `f8162060`). Une question factuelle est en attente sur l’usage historique. Aucun chiffre privé dans ce bloc. La relecture interne par un sous-agent ne sera pas présentée comme une réponse formelle AGORA.
+**Si personne ne répond, je fais quoi ?** — poursuivre le rendu et les vérifications autorisés, garder l’intitulé factuel « relance renseignée » et les limites imprimées ; ne pas annoncer de nombre d’envois certifié ni de validation AGORA. Toute qualification plus forte attend une confirmation métier ou une preuve.
+**Où regarder** : `index.html:3254-3331` (population et rendu), `3497-3504`, `3983-3991` (compteur existant), `7164-7175` (copie et enregistrement), `scripts/check-stats-rdv.js` (harnais à étendre). Vérifier même population, non-double-comptage, statuts réalisés retenus, données inchangées, inconnus et mois courant ; mesure mobile et impression.
+
 
 # Blocs tranchés
 
