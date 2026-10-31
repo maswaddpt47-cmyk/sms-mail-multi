@@ -391,6 +391,38 @@ Cette substitution a été vérifiée uniquement en mémoire en UTC et Europe/Pa
 
 Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
 
+### Huitième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `dacb651`, commits `4b1fc59` et `8f1c4b5` vérifiés.
+**Verdict** : amendé, limité au chargement qui peut réécrire une source CMS refusée. Le remplacement demandé dans `lireSource` et ses tests sont confirmés.
+**Constat** :
+
+Vérifications exécutées sous Node en UTC et Europe/Paris :
+
+- `lireSource` réserve désormais la valeur par défaut à `v===null` (`index.html:7521`). Une chaîne vide partagée ou héritée est refusée avant toute écriture et sans marqueur (`index.html:7522`, `index.html:7528`) ; après réparation, la fusion complète puis le marqueur sont enregistrés.
+- Les refus de lecture, JSON malformés, objets au lieu d'une liste et éléments nuls restent bloquants ; leur réparation permet la reprise. Une clé réellement absente conserve son traitement par défaut (`index.html:7526`, `index.html:7527`).
+- Syntaxe JavaScript et cinq suites du workflow (`check-stats-rdv.js`, `check-reactivity.js`, `check-affichage.js`, `check-audit.js`, `check-ecritures.js`) passent dans les deux fuseaux. La mutation rétablissant `if(!v)` est rejetée à `scripts/check-ecritures.js:364` dans les deux fuseaux.
+
+**Contre-exemple résiduel : le réglage initial Fumel contourne le refus au chargement.**
+
+Avec `ess-cms=''`, un catalogue hérité fictif valide, le marqueur `ess-pm-start-v1` absent et les autres migrations déjà faites, le véritable `loadProfileData` :
+
+1. appelle la migration CMS, qui refuse correctement la source sans écrire (`index.html:7539`) ;
+2. poursuit avec `ls('ess-cms',DEFAULT_CMS)` (`index.html:7540`), dont le repli masque la source illisible (`index.html:971`) ;
+3. enregistre le catalogue par défaut et le marqueur Fumel (`index.html:7542`, `index.html:7544`) : deux écritures, source vide remplacée, marqueur CMS encore absent ;
+4. au deuxième chargement, sans aucune réparation entre les deux, fusionne ce catalogue de remplacement et pose le marqueur CMS (`index.html:7532`, `index.html:7533`).
+
+Même résultat avec un JSON malformé partagé, en UTC et Europe/Paris, avec les fonctions complètes de chargement et les profils/catalogue par défaut du produit. Le défaut démontré concerne la conservation de la source refusée et l'attente de sa réparation ; aucune perte de catalogue lisible n'est démontrée par ces scénarios.
+
+Les nouveaux tests préposent le marqueur Fumel (`scripts/check-ecritures.js:358`), appellent directement la migration pour le refus (`scripts/check-ecritures.js:363`), puis réparent la source avant de charger le profil (`scripts/check-ecritures.js:368`, `scripts/check-ecritures.js:369`). Ils ne parcourent donc pas ce chargement avec source illisible et réglage initial encore à faire.
+
+**Calculs et formats inchangés** : comparaison intégrale d'`index.html` avec `95d0c6c` ; seule la ligne de `lireSource` diffère. Initialisation de l'état (`index.html:1107`), statistiques/bilan (`index.html:3225`, `index.html:3423`), archives (`index.html:3045`), préparation/estimation (`index.html:2992`, `index.html:3005`), migration/version des permanences (`index.html:1871`, `index.html:1864`) et export (`index.html:2168`) sont identiques.
+
+**Amendement** :
+
+Propager le refus de migration aux écritures CMS ultérieures de `loadProfileData` : conserver la source illisible et ne pas la remplacer par le repli du réglage Fumel. Ajouter le parcours avec marqueur Fumel absent, source partagée vide ou malformée, chargements répétés sans réparation, puis réparation et fusion complète. Maintenir les tests de source héritée et de clé réellement absente.
+
+Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
