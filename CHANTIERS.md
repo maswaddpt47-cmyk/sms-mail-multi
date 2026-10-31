@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **31/10/2026**, base `main` (`9c83595` ; pull du 31/10 par Claude : les commits du 31/10 sont de Codex, `CHANTIERS.md` déjà à jour, seule la base était restée sur `4469cfb`). Livraison demandée par l’utilisateur (« Fait le ») : présentation du bilan et suivi des relances renseignées, sans modification des données ni des archives. Tests ciblés exécutés en UTC et Europe/Paris, syntaxe JS et mutation du compteur vérifiées. **Fonctionnement du bilan validé par l’utilisateur le 31/10/2026** : « C’est bon ça fonctionne ». Retour global, sans précision sur l’impression ni sur les tailles d’écran. Mesures navigateur de Codex toujours non exécutées : Chromium bloqué par le sandbox. Accès Git local au distant indisponible, publication via connecteur GitHub ; déploiement Pages de `4a053b6` vérifié réussi via GitHub Actions (run `41195384650`). Accord durable du 31/10 inscrit dans `AGENTS.md` : ne pas redemander les autorisations déjà accordées ni répéter une demande technique bloquée. Validations utilisateur du 30/10 conservées : réponse globale « testé, ça marche » sur animation/compteurs, bilan simplifié et remplissage net, non détaillée par point. Le récit des tâches terminées reste dans Git.
+État au **31/10/2026**, base `main` (`07046f0`, réponse à AG-012 ; les commits du 31/10 jusqu’à `9c83595` sont de Codex). Livraison demandée par l’utilisateur (« Fait le ») : présentation du bilan et suivi des relances renseignées, sans modification des données ni des archives. Tests ciblés exécutés en UTC et Europe/Paris, syntaxe JS et mutation du compteur vérifiées. **Fonctionnement du bilan validé par l’utilisateur le 31/10/2026** : « C’est bon ça fonctionne ». Retour global, sans précision sur l’impression ni sur les tailles d’écran. Mesures navigateur de Codex toujours non exécutées : Chromium bloqué par le sandbox. Accès Git local au distant indisponible, publication via connecteur GitHub ; déploiement Pages de `4a053b6` vérifié réussi via GitHub Actions (run `41195384650`). Accord durable du 31/10 inscrit dans `AGENTS.md` : ne pas redemander les autorisations déjà accordées ni répéter une demande technique bloquée. Validations utilisateur du 30/10 conservées : réponse globale « testé, ça marche » sur animation/compteurs, bilan simplifié et remplissage net, non détaillée par point. Le récit des tâches terminées reste dans Git.
 
 Carnet de reprise : ce qu'une session sans historique doit savoir pour
 continuer. Mis à jour à chaque avancée, pas en fin de session. Une tâche
@@ -9,7 +9,7 @@ dans « Points à ne pas défaire ».
 
 ## En cours / à confirmer
 
-- **Bilan mensuel du 31/10 — suivi restant** : fonctionnement validé par l’utilisateur (« C’est bon ça fonctionne »), retour global sans détail par appareil ni validation explicite d’Imprimer / PDF. **AG-012 ouvert**, réponse formelle d’une autre session non reçue ; les relectures internes ne la remplacent pas. L’usage ancien avant le 26/10 n’a pas été confirmé explicitement : garder l’intitulé factuel « RDV avec relance renseignée » et les limites imprimées, sans annoncer des envois certifiés.
+- **Bilan mensuel du 31/10 — suivi restant** : fonctionnement validé par l’utilisateur (« C’est bon ça fonctionne »), retour global sans détail par appareil ni validation explicite d’Imprimer / PDF. **AG-012 : réponse « confirmé » d’une session Claude le 31/10 (`07046f0`), à trancher par l’utilisateur** ; rendu stylé dans l’application et impression réelle non mesurés. L’usage ancien avant le 26/10 n’a pas été confirmé explicitement : garder l’intitulé factuel « RDV avec relance renseignée » et les limites imprimées, sans annoncer des envois certifiés.
 - **Capacité des demi-journées** (22/10, déployée et validée) : 3 places par demi-journée, 6 par journée
   complète (le 4 novembre est partagé entre deux lieux). `statsRdvModel.assignedHalf` identifie la moitié
   ouverte ; indispo 12:30 de pause exclue d'une matinée, un vrai RDV 12:30 reste compté.
@@ -182,7 +182,7 @@ dans « Points à ne pas défaire ».
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-- **AG-012 (critère 7)** : ajout du suivi au bilan autorisé par l’utilisateur le 31/10 ; contradiction formelle externe encore attendue. En l’absence de preuve sur l’historique des relances, conserver le libellé et les réserves de provenance plutôt que certifier des envois. Aucune auto-réponse au bloc.
+- **AG-012 (critère 7)** : ajout du suivi au bilan autorisé par l’utilisateur le 31/10 ; **réponse reçue le 31/10 (confirmé, `07046f0`), reste à trancher par l’utilisateur**. En l’absence de preuve sur l’historique des relances, conserver le libellé et les réserves de provenance plutôt que certifier des envois. Aucune auto-réponse au bloc.
 
 ## Chantiers restants
 
