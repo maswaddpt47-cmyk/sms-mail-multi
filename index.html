@@ -7561,7 +7561,9 @@ function loadProfileData(){
   /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier.
      AG-013 étape 2 (8e vérification de Codex) : pas tant que la migration CMS est inachevée — une source refusée
      (illisible, vide, lecture impossible) n'est jamais remplacée par le repli ; le réglage sera posé après réparation. */
-  var cmsCourant=cmsMigre&&lireDonnee('ess-pm-start-v1','')!=='1'?lireListeStockee('ess-cms',DEFAULT_CMS):null;
+  /* 10e vérification de Codex : un marqueur illisible suspend sa migration (aucune écriture), il ne vaut pas absence */
+  var fumelAFaire=lireDonnee('ess-pm-start-v1','')!=='1'&&!_clesIllisibles['ess-pm-start-v1'];
+  var cmsCourant=cmsMigre&&fumelAFaire?lireListeStockee('ess-cms',DEFAULT_CMS):null;
   /* 9e vérification de Codex : le réglage part du catalogue relu strictement, jamais du repli de ls() ;
      lecture refusée ou contenu illisible → rien écrit, marqueur Fumel non posé, retenté au chargement suivant. */
   if(cmsCourant){
@@ -7577,7 +7579,7 @@ function loadProfileData(){
   S.templates=lireDonnee('ess-templates',DEFAULT_TEMPLATES);
   /* migration : forcer les templates builtin à la dernière version par défaut */
   var _tplV='v5-lapin-templates';
-  if(lireDonnee('ess-tpl-version','')!==_tplV){
+  if(lireDonnee('ess-tpl-version','')!==_tplV&&!_clesIllisibles['ess-tpl-version']){
     S.templates=Object.assign({},DEFAULT_TEMPLATES);
     if(!ecrireTout([['ess-templates',S.templates],['ess-tpl-version',_tplV]]))S.templates=lireDonnee('ess-templates',DEFAULT_TEMPLATES);   /* modèles et version ensemble */
   }
@@ -7589,7 +7591,7 @@ function loadProfileData(){
   S.mandats=lireDonnee('ess-mandats',[]);
   S.orientations=lireDonnee(pk('orientations'),[]);
   S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
-  if(lireDonnee(pk('perm-version'),'')!==PERM_MODEL_VERSION){
+  if(lireDonnee(pk('perm-version'),'')!==PERM_MODEL_VERSION&&!_clesIllisibles[pk('perm-version')]){
     S.permanences=migratePermanences(S.permanences,S.history);
     /* journées et version ensemble : une version sans les journées migrées sauterait la migration au chargement suivant */
     if(!ecrireTout([[pk('permanences'),S.permanences],[pk('perm-version'),PERM_MODEL_VERSION]]))S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
