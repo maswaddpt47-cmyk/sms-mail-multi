@@ -360,6 +360,37 @@ Lire et valider toutes les sources de la migration CMS avant toute écriture, en
 
 Vérifications en mémoire, données fictives, fonctions métier réelles ; stockage, réseau et rendu simulés. Aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
 
+### Septième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `95d0c6c`, commits `0d2a584` et `ebbdba5` vérifiés.
+**Verdict** : amendé, limité à une valeur source vide encore assimilée à une clé absente. Les contre-exemples de refus de lecture et de JSON malformé sont corrigés.
+**Constat** :
+
+La migration lit maintenant toutes les sources avant la fusion et les écritures (`index.html:7520`, `index.html:7526`, `index.html:7527`, `index.html:7528`). Rejoué sous Node en UTC et Europe/Paris :
+
+- Lecture refusée une fois sur le catalogue partagé ou sur un ancien catalogue de profil : aucune écriture, catalogue intact, marqueur absent ; après rétablissement, fusion complète puis marqueur.
+- JSON malformé, objet au lieu d'une liste ou élément nul : aucune écriture ni marqueur ; après réparation de la source, fusion complète.
+- Clé réellement absente : valeur par défaut conservée et migration achevée.
+
+La suite `scripts/check-ecritures.js` passe dans les deux fuseaux. Les nouveaux tests couvrent les refus de lecture, le JSON illisible, la relance et l'absence (`scripts/check-ecritures.js:357`, `scripts/check-ecritures.js:364`, `scripts/check-ecritures.js:369`, `scripts/check-ecritures.js:372`). Deux mutations remplaçant les erreurs de lecture ou de décodage par une valeur par défaut sont rejetées dans les deux fuseaux.
+
+**Cas résiduel reproduit : une clé existante contenant la chaîne vide.**
+
+`localStorage.getItem` renvoie `null` pour une absence, mais `lireSource` utilise `if(!v)return defaut` (`index.html:7521`). Une valeur stockée `''`, qui n'est pas un JSON lisible, reçoit donc le traitement d'une absence au lieu de passer par le refus de décodage (`index.html:7522`).
+
+Avec une source partagée ou héritée contenant cette chaîne vide, la migration écrit une fusion sans cette source puis pose le marqueur (`index.html:7532`, `index.html:7533`). Après remplacement de la source vide par un catalogue JSON valide, une nouvelle tentative ne fait aucune écriture : le marqueur arrête la migration (`index.html:7508`). La fusion attendue après réparation n'a donc pas lieu. La valeur initiale est déjà illisible ; le défaut démontré porte sur la validation et sur la reprise après réparation.
+
+Le cas est reproduit pour le catalogue partagé et pour un ancien catalogue de profil dans les deux fuseaux. Les tests actuels utilisent un JSON malformé non vide (`scripts/check-ecritures.js:359`), pas une chaîne vide stockée.
+
+**Calculs et formats inchangés** : comparaison exacte avec `708a911` de l'initialisation de l'état, des statistiques/bilan (`index.html:3225`, `index.html:3423`), des archives (`index.html:3045`), de la préparation et de l'estimation (`index.html:2992`, `index.html:3005`), de la migration des permanences (`index.html:1871`) et de l'export (`index.html:2168`). Version des permanences inchangée (`index.html:1864`).
+
+**Amendement** :
+
+Réserver la valeur par défaut à `v === null` dans `lireSource`. Une chaîne vide existante doit être refusée comme les autres contenus illisibles, sans écriture ni marqueur. Ajouter les tests de source vide partagée/héritée, de réparation puis relance, et maintenir le contrôle des clés réellement absentes.
+
+Cette substitution a été vérifiée uniquement en mémoire en UTC et Europe/Paris : sources vides bloquées, fusion complète après réparation, traitement des clés absentes conservé.
+
+Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
