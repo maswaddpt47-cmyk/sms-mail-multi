@@ -23,7 +23,8 @@ const CODE=[
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
   fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),
-  fonction('readProfileOrientations'),fonction('confirmOrientImport'),
+  fonction('readProfileOrientations'),fonction('confirmOrientImport'),fonction('enregistrerDeplacement'),fonction('enregistrerCopie'),fonction('ensureDayOpenFor'),fonction('blockWholeDay'),
+  fonction('preparationDayUTC'),fonction('receptionDateFor'),
   section('function getPermanence(','/* RDV confirmé dont la date est passée'),
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
@@ -44,7 +45,7 @@ function charger(){
     templates:{sms:'modèle'},hiddenBuiltinKeys:[],importText:'',importError:'',modal:'import',saveStatus:''};
   const ctx=vm.createContext({
     Date,JSON,Object,Array,String,Math,Promise,parseInt,escape,decodeURIComponent,setTimeout,atob:s=>Buffer.from(s,'base64').toString('binary'),
-    localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},renderOrientations(){},getProfile:(pid)=>({nom:pid}),findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
+    localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},renderOrientations(){},compute:()=>({dem:{nom:'Démarche fictive'},body:'x'}),isDuplicate:()=>false,getProfile:(pid)=>({nom:pid}),findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
     ghToken:()=>'jeton-fictif',githubPush(){journal.pushs++;},HISTORY_MAX:99999,getSlots:()=>[],LUNCH_MOTIF:'Pause déjeuner',
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
@@ -274,6 +275,53 @@ async function restaurer(contenu,fonction,options){
   {const e=charger();e.st.setItem(e.ctx.pk('since-export'),'4');e.st.ecritures=0;const avant=e.st.etat();
    e.st.panne=(k,i)=>k===e.ctx.pk('history')&&i>4;   // l'enregistrement final de l'historique échoue
    assert.equal(e.ctx.importICSText(ics),-1);assert.equal(e.st.etat(),avant,'ICS : stockage restauré');assert.equal(e.S.history.length,0);assert.equal(e.journal.pushs,0);}
+
+  /* ── 4e vérification de Codex : actions complètes, par leurs vrais chemins ── */
+  // déplacement d'un RDV (profil actif) : fiche modifiée sur place + journée cible refusée → tout rétabli
+  {const e=charger();e.S.history=[rdv('m1','2026-10-05','09:30','FICTIF','M','Fumel','confirme')];e.S.permanences=[{commune:'Fumel',exceptDate:'2026-10-05'}];
+   e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(e.S.permanences));const avant=e.st.etat();
+   const appliquer=()=>{const f=e.S.history[0];Object.assign(f,{date:'2026-10-09'});return e.ctx.writeProfileHistory('p1',e.S.history)?f:null;};
+   e.st.panne=k=>k===e.ctx.pk('permanences');
+   assert.equal(e.ctx.enregistrerDeplacement('p1',appliquer).ok,false);
+   assert.equal(e.st.etat(),avant,'déplacement : stockage inchangé');assert.equal(e.S.history[0].date,'2026-10-05','fiche modifiée sur place : rétablie');assert.equal(e.journal.pushs,0);
+   const f=charger();f.S.history=[rdv('m1','2026-10-05','09:30','FICTIF','M','Fumel','confirme')];
+   const ok=f.ctx.enregistrerDeplacement('p1',()=>{const x=f.S.history[0];x.date='2026-10-09';return f.ctx.writeProfileHistory('p1',f.S.history)?x:null;});
+   assert.equal(ok.ok,true);assert(f.S.permanences.some(p=>p.exceptDate==='2026-10-09'),'journée cible ouverte');assert.equal(f.journal.pushs,1);}
+  // déplacement d'un RDV d'un autre profil : historique et journées de ce profil rétablis
+  {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('m2','2026-10-05','09:30','FICTIF','N','Fumel','confirme')]));e.st.setItem('ess-p2-permanences','[]');const avant=e.st.etat();
+   e.st.panne=k=>k==='ess-p2-permanences';
+   const r=e.ctx.enregistrerDeplacement('p2',()=>{const arr=JSON.parse(e.st.getItem('ess-p2-history'));arr[0].date='2026-10-09';return e.ctx.writeProfileHistory('p2',arr)?arr[0]:null;});
+   assert.equal(r.ok,false);assert.equal(e.st.etat(),avant,'autre profil : historique et journées inchangés');}
+  // copie d'un message : réception enregistrée puis message refusé → ni réception ni message
+  function prepCopie(){const e=charger();Object.assign(e.S,{date:'2026-10-12',heure:'09:30',commune:'Fumel',nom:'COPIE',prenom:'C',dateReception:'2026-10-10',selectedCMS:1,channel:'sms',msgType:'confirmation'});
+    e.S.history=[Object.assign(rdv('c1','2026-10-12','09:30','COPIE','C'),{dateReception:'2026-10-01',body:'ancien'})];e.S.permanences=[];
+    e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem(e.ctx.pk('permanences'),'[]');return e;}
+  {const e=prepCopie(),avant=e.st.etat();e.st.panne=k=>k===e.ctx.pk('permanences');
+   assert.equal(e.ctx.enregistrerCopie('nouveau message').ok,false);
+   assert.equal(e.st.etat(),avant,'copie : stockage inchangé');assert.equal(e.S.history.length,1);assert.equal(e.S.history[0].dateReception,'2026-10-01','réception rétablie');assert.equal(e.journal.pushs,0);
+   const f=prepCopie();assert.equal(f.ctx.enregistrerCopie('nouveau message').ok,true);
+   assert.equal(f.S.history[0].body,'nouveau message');assert.equal(f.S.history.find(h=>h.id==='c1').dateReception,'2026-10-10');}
+  // bloquer toute une journée : refus au 2e créneau → aucun créneau bloqué, aucune sauvegarde
+  {const e=charger();e.S.history=[];e.S.permanences=[{commune:'Fumel',exceptDate:'2026-10-14',pauseAuto:true}];e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(e.S.permanences));const avant=e.st.etat();
+   let n=0;e.st.panne=k=>k===e.ctx.pk('history')&&++n===2;
+   assert.equal(e.ctx.blockWholeDay('Fumel','2026-10-14',[{heure:'09:30'},{heure:'10:30'},{heure:'11:30'}],'Formation'),false);
+   assert.equal(e.st.etat(),avant,'journée : aucun créneau bloqué');assert.equal(e.S.history.length,0);assert.equal(e.journal.pushs,0);
+   const f=charger();assert.equal(f.ctx.blockWholeDay('Fumel','2026-10-14',[{heure:'09:30'},{heure:'10:30'},{heure:'11:30',taken:{}}],'Formation'),true);
+   assert.equal(f.S.history.length,2,'créneaux libres bloqués, créneau pris ignoré');assert.equal(f.journal.pushs,1);}
+  // protection isolée : une opération imbriquée en échec de lecture préalable, dont le résultat est ignoré, fait échouer l'englobante
+  {const e=charger();e.S.history=[];let lectures=0;e.st.lecturePanne=k=>k===e.ctx.pk('history')&&++lectures===2;
+   const r=e.ctx.operationHistorique(()=>{e.ctx.operationHistorique(()=>{});e.S.history.push(rdv('i','2026-10-20','09:30','I','I'));});
+   e.st.lecturePanne=null;assert.equal(r.ok,false,'échec imbriqué ignoré par l\'appelant : l\'englobante échoue quand même');assert.equal(e.S.history.length,0);}
+  // lecture préalable impossible dans une opération imbriquée : l'import entier échoue, aucun ajout compté
+  for(const quoi of ['planning','ics']){
+    const e=charger();e.S.history=[];e.S.permanences=[];const avant=e.st.etat();let lectures=0;
+    e.st.lecturePanne=k=>k===e.ctx.pk('history')&&++lectures===2;   // 1re : opération englobante ; 2e : premier addHistory
+    const r=quoi==='planning'?e.ctx.appliquerPlanning([{date:'2026-10-15',heure:'09:30',nom:'A',prenom:'A',commune:'Fumel'},{date:'2026-10-16',heure:'09:30',nom:'B',prenom:'B',commune:'Fumel'}])
+      :e.ctx.importICSText('BEGIN:VEVENT\nDTSTART;TZID=Europe/Paris:20261015T093000\nSUMMARY:A\nLOCATION:Fumel\nEND:VEVENT\nBEGIN:VEVENT\nDTSTART;TZID=Europe/Paris:20261016T093000\nSUMMARY:B\nLOCATION:Fumel\nEND:VEVENT');
+    e.st.lecturePanne=null;
+    assert(quoi==='planning'?r.ok===false&&r.added===0:r===-1,quoi+' : échec annoncé, aucun ajout compté');
+    assert.equal(e.st.etat(),avant,quoi+' : rien enregistré');assert.equal(e.S.history.length,0);assert.equal(e.journal.pushs,0);
+  }
 
   /* ── Rappel d'export : après la 5e fiche enregistrée, jamais après une fiche refusée ── */
   {const e=charger();e.st.setItem(e.ctx.pk('since-export'),'4');
