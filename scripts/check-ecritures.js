@@ -424,6 +424,26 @@ async function restaurer(contenu,fonction,options){
     assert.equal(e.st.getItem('ess-cms'),brut,JSON.stringify(brut)+' : source illisible conservée (marqueur CMS ancien)');
     assert.equal(e.st.getItem('ess-pm-start-v1'),null);
   }
+  /* ── P01 (vérification de clôture de Codex) : deux onglets sur le même profil, aucun n'écrase l'autre ── */
+  {const A=charger(),B=charger();B.ctx.localStorage=A.st;B.st=A.st;   // B partage le stockage de A (deux onglets)
+   for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])A.st.setItem(k,v);
+   A.ctx.loadProfileData();B.ctx.loadProfileData();
+   const fiche=(n)=>({date:'2026-11-05',heure:n==='A'?'09:30':'10:30',commune:'Fumel',nom:'ONGLET'+n,prenom:n});
+   assert.equal(A.ctx.addHistory(fiche('A')),true,'P01 : A enregistre');
+   assert.equal(A.ctx.lsSet('ess-p1-history',A.S.history),true,'P01 témoin : écritures successives du même onglet sans conflit');
+   assert.equal(B.ctx.addHistory(fiche('B')),false,'P01 : B, parti d\'un état ancien, est refusé');
+   const stock=()=>JSON.parse(A.st.getItem('ess-p1-history')).map(h=>h.nom).sort().join(',');
+   assert.equal(stock(),'ONGLETA','P01 : la fiche de A n\'est pas écrasée');
+   assert(B.journal.toasts.some(t=>/autre onglet/.test(t)),'P01 : conflit annoncé');
+   assert.equal(B.S.history.map(h=>h.nom).join(','),'ONGLETA','P01 : la mémoire de B suit le stockage');
+   assert.equal(B.ctx.addHistory(fiche('B')),true,'P01 : B refait son action');assert.equal(stock(),'ONGLETA,ONGLETB','P01 : les deux fiches sont conservées');
+   // réglage commun (catalogue CMS) modifié par A puis par B : même protection
+   A.S.cmsList=[{id:1,nom:'Agen'}];assert.equal(A.ctx.lsSet('ess-cms',A.S.cmsList),true);
+   B.S.cmsList=[{id:2,nom:'Nérac'}];assert.equal(B.ctx.lsSet('ess-cms',B.S.cmsList),false,'P01 : réglage commun protégé');
+   assert.equal(JSON.parse(A.st.getItem('ess-cms'))[0].nom,'Agen');assert.equal(B.S.cmsList[0].nom,'Agen','P01 : mémoire de B réalignée');
+   // symétrie : A, désormais en retard sur B, est refusé à son tour, puis réaligné
+   assert.equal(A.ctx.addHistory(Object.assign(fiche('A'),{heure:'11:30'})),false,'P01 : A en retard refusé à son tour');
+   assert.equal(A.S.history.length,2,'P01 : mémoire de A réalignée sur les deux fiches');}
   /* ── Balayage du chargement (après la 9e vérification de Codex) : aucune donnée illisible au chargement n'est écrasée ── */
   {
     const valeurs={'ess-cms':[{nom:'Agen',adresse:'1 rue fictive'},{nom:'Fumel'}],'ess-demarches':[{id:'d1',nom:'Démarche fictive'}],'ess-secteurs':['Secteur fictif'],
