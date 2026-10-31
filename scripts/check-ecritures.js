@@ -28,7 +28,10 @@ const CODE=[
   section('function getPermanence(','/* RDV confirmé dont la date est passée'),
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
-  section('/* AG-013, étape 2 : même RDV','function importPlanningJson(')
+  section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
+  fonction('handleGenerate'),fonction('migrateSharedCmsList'),
+  // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
+  section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
 
 function stockage(){
@@ -49,6 +52,8 @@ function charger(){
     ghToken:()=>'jeton-fictif',githubPush(){journal.pushs++;},HISTORY_MAX:99999,getSlots:()=>[],LUNCH_MOTIF:'Pause déjeuner',
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
+    canGenerate:()=>true,telProblem:()=>'',renderGenerate(){},renderMandat(){},
+    PROFILES:[{id:'p1'},{id:'p2'}],DEFAULT_CMS:[],DEFAULT_DEMARCHES:[],DEFAULT_SECTEURS:[],DEFAULT_TEMPLATES:{sms:'défaut v5'},DEFAULT_CUSTOM:[],DEFAULT_PERMANENCES:[],
     GH_REPO:'depot/fictif',GH_BRANCH:'main',ghHeaders:()=>({}),ghListBackups:(t,cb)=>cb([{path:'b/p1/backup.json'}]),fetch:null
   });
   vm.runInContext(CODE+'\nvar _ghLastAutoPushByProfile={},_toastId=0;',ctx);
@@ -337,5 +342,51 @@ async function restaurer(contenu,fonction,options){
    assert.equal(e.ctx.ecrireTout([['a',1],['b',2]]),true);assert.equal(pendant,1);assert.equal(e.journal.pushs,0);
    e.ctx.maybeAutoBackupProfile('p1');assert.equal(e.journal.pushs,1);}
 
+  /* ── 5e vérification de Codex : migrations du chargement, marqueur seulement avec ses données (vrai loadProfileData) ── */
+  // catalogue partagé : refus du catalogue fusionné → pas de marqueur, fusion retentée et complète après rétablissement
+  {const e=charger();e.st.setItem('ess-cms',JSON.stringify([{nom:'Agen'}]));e.st.setItem('ess-p1-cms',JSON.stringify([{nom:'Nérac'}]));e.st.setItem('ess-pm-start-v1','"1"');
+   e.st.setItem('ess-tpl-version','"v5-lapin-templates"');e.st.setItem(e.ctx.pk('perm-version'),'3');
+   e.st.panne=k=>k==='ess-cms';e.ctx.loadProfileData();
+   assert.equal(e.st.getItem('ess-cms-migrated-v2'),null,'catalogue refusé : migration non déclarée achevée');
+   assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen']);
+   e.st.panne=null;e.ctx.loadProfileData();
+   assert.equal(e.st.getItem('ess-cms-migrated-v2'),'1','marqueur posé au chargement suivant, format inchangé');
+   assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen','Nérac'],'fusion complète après rétablissement');
+   assert.deepEqual(e.S.cmsList.map(c=>c.nom),['Agen','Nérac']);}
+  // journées et version : refus de l'une ou de l'autre → ni l'une ni l'autre ; migration rejouée ensuite
+  for(const refus of ['permanences','perm-version']){
+    const e=charger();const ancien=[{commune:'Fumel',jour:1}];e.st.setItem(e.ctx.pk('permanences'),JSON.stringify(ancien));
+    e.st.setItem('ess-cms-migrated-v2','1');e.st.setItem('ess-pm-start-v1','"1"');e.st.setItem('ess-tpl-version','"v5-lapin-templates"');
+    e.st.panne=k=>k===e.ctx.pk(refus);e.ctx.loadProfileData();
+    assert.equal(e.st.getItem(e.ctx.pk('perm-version')),null,refus+' refusé : version non posée');
+    assert.equal(e.st.getItem(e.ctx.pk('permanences')),JSON.stringify(ancien),refus+' refusé : ancien modèle intact');
+    assert.deepEqual(e.S.permanences,ancien,refus+' refusé : mémoire = stockage');
+    e.st.panne=null;e.ctx.loadProfileData();
+    assert.equal(e.st.getItem(e.ctx.pk('perm-version')),'3');assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('permanences')))[0].migree,true,refus+' : migration rejouée et enregistrée');
+  }
+  // modèles et version ; réglage Fumel et son marqueur
+  {const e=charger();e.st.setItem('ess-templates',JSON.stringify({sms:'ancien'}));e.st.setItem('ess-cms',JSON.stringify([{nom:'Fumel'}]));e.st.setItem('ess-cms-migrated-v2','1');e.st.setItem(e.ctx.pk('perm-version'),'3');
+   e.st.panne=k=>k==='ess-tpl-version'||k==='ess-pm-start-v1';e.ctx.loadProfileData();
+   assert.equal(e.st.getItem('ess-templates'),JSON.stringify({sms:'ancien'}),'version refusée : modèles d\'avant conservés');assert.equal(e.st.getItem('ess-tpl-version'),null);
+   assert.equal(e.S.templates.sms,'ancien','mémoire = stockage');
+   assert.equal(JSON.parse(e.st.getItem('ess-cms'))[0].debutApresMidi,undefined,'marqueur Fumel refusé : réglage non écrit');assert.equal(e.S.cmsList[0].debutApresMidi,undefined);
+   e.st.panne=null;e.ctx.loadProfileData();
+   assert.equal(e.st.getItem('ess-tpl-version'),'"v5-lapin-templates"');assert.equal(JSON.parse(e.st.getItem('ess-templates')).sms,'défaut v5');
+   assert.equal(JSON.parse(e.st.getItem('ess-cms'))[0].debutApresMidi,'14:00');assert.equal(e.st.getItem('ess-pm-start-v1'),'"1"');}
+
+  /* ── 5e vérification de Codex : handleGenerate (véritable appelant) n'annonce jamais un succès après une opération annulée ── */
+  {const e=charger();e.ctx.handleGenerate();   // garde : succès normal
+   assert.equal(e.S.history.length,1);assert(e.journal.toasts.some(m=>/généré et enregistré/.test(m)),'succès affiché quand tout est enregistré');}
+  for(const variante of ['lecture','since-export']){
+    const e=charger();const avant=e.st.etat();let n=0;
+    if(variante==='lecture')e.st.lecturePanne=k=>k===e.ctx.pk('history')&&++n===1;
+    else e.st.panne=k=>k===e.ctx.pk('since-export');
+    e.ctx.handleGenerate();e.st.lecturePanne=null;e.st.panne=null;
+    assert.equal(e.S.history.length,0,variante+' : aucune fiche');assert.equal(e.st.etat(),avant,variante+' : rien enregistré');assert.equal(e.journal.pushs,0);
+    assert(!e.journal.toasts.some(m=>/généré et enregistré/.test(m)),variante+' : pas de faux succès');
+    assert(e.journal.toasts.some(m=>/NON enregistré/.test(m)),variante+' : échec annoncé');
+  }
+
+  console.log('Migrations du chargement (marqueur avec ses données) et handleGenerate OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
 })().catch(e=>{console.error(e);process.exit(1);});
