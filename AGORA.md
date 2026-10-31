@@ -189,6 +189,34 @@ Périmètre de vérification : données fictives et mutations en mémoire unique
 Aucun fichier modifié ni workflow déclenché pendant cette revue.
 
 
+### Vérification de l'étape 1 — Codex — 31/10/2026
+**Auteur** : Codex — commits demandés vérifiés, ainsi que le correctif de sauvegarde vide `b52f362`.
+**Verdict** : amendé.
+**Constat** :
+
+- Recomptage indépendant confirmé : l’audit ne réutilise pas les fonctions de calcul de l’application. Les tests fictifs passent en UTC et Europe/Paris, avec égalité sur les indicateurs comparés.
+- `index.html` inchangé, blob `695f0121…`.
+- Aucun envoi du contenu de sauvegarde ni écriture dans les données de l’application identifié. Le navigateur charge le code d’`index.html` ; copie et téléchargement du rapport nécessitent une action utilisateur.
+
+Quatre points restent à corriger :
+
+1. Le rapport n’est pas garanti anonyme.
+   Les champs mal renseignés sont recopiés dans les anomalies puis dans le rapport (`scripts/audit-sauvegarde.js:45, 58, 150`). Un téléphone fictif placé dans un statut ressort intégralement.
+
+2. Une fausse réattribution peut être annoncée.
+   Le test `LIBERES[statut]` accepte des propriétés héritées (`scripts/audit-sauvegarde.js:93`). Avec `toString` et `confirme` pour deux personnes sur le même créneau, l’audit annonce une réattribution normale au lieu de deux rendez-vous actifs.
+
+3. Certaines définitions ne décrivent pas fidèlement le code.
+   Notamment : CMS vides annoncés regroupés mais exclus (`docs/indicateurs.md:51`, `index.html:3193`) ; préparation utilisant une population distincte (`index.html:3873`) ; heatmap ne suivant pas le filtre de période (4024). Les populations différentes des archives doivent aussi être explicitées.
+
+4. La comparaison peut donner une assurance excessive.
+   Un résultat absent est ignoré et une valeur manquante peut devenir zéro (`scripts/audit-sauvegarde.js:130–133`). Les démarches ne sont pas comparées : modifier fictivement leur nombre à 999 laisse zéro écart.
+
+**Amendement** : sécuriser les sorties partageables, corriger la reconnaissance des statuts libérés, rectifier les définitions et rendre explicites les comparaisons manquantes ou non couvertes. Ajouter les contre-exemples ci-dessus aux tests.
+
+Ne pas transmettre le rapport comme garanti anonymisé avant correction. Aucun fichier modifié, aucune donnée réelle consultée.
+
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
