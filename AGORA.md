@@ -288,6 +288,46 @@ Quatre contre-exemples restent reproduits dans les deux fuseaux :
 
 Vérifications en mémoire sous Node, fonctions métier réelles, données fictives ; DOM, presse-papiers, stockage et réseau simulés. Pas de navigateur réel ni de sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est autorisé et publié ; aucun code ni autre fichier modifié.
 
+### Cinquième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `6673c62`, commits `f87db3e` et `73d2b44` vérifiés.
+**Verdict** : amendé. Les quatre contre-exemples de la quatrième vérification sont corrigés ; un chargement peut encore enregistrer un marqueur sans ses données, et un faux succès de génération subsiste.
+**Constat** :
+
+Les contre-exemples ont été rejoués en UTC et Europe/Paris :
+
+- Déplacement refusé après modification de la fiche : historique et journées restaurés pour le profil actif et pour un autre profil, sans sauvegarde (`index.html:1196`, `index.html:1200`, `index.html:2102`).
+- Copie : réception et nouveau message sont annulés ensemble si l'enregistrement échoue (`index.html:1748`).
+- Blocage de plusieurs créneaux : refus au deuxième créneau → aucun blocage conservé, aucune sauvegarde (`index.html:2125`).
+- Lecture préalable refusée dans le premier `addHistory` imbriqué : le planning entier échoue, aucun ajout compté, stockage restauré, aucune sauvegarde (`index.html:1199` ; résultats d'`addHistory` contrôlés dans le planning et l'ICS).
+
+La suite `scripts/check-ecritures.js` passe dans les deux fuseaux. Elle exécute les nouvelles fonctions de déplacement, copie et blocage (`scripts/check-ecritures.js:26`, `scripts/check-ecritures.js:279`).
+
+Deux défauts restent reproduits dans les deux fuseaux :
+
+1. **Le chargement peut enregistrer un marqueur de migration sans enregistrer les données correspondantes.**
+   `migrateSharedCmsList` écrit le marqueur avant le catalogue fusionné (`index.html:7506`, `index.html:7515`).
+   Avec un CMS dans le catalogue partagé et un autre dans un ancien catalogue de profil, refuser l'écriture du catalogue laisse le marqueur à « terminé » et le catalogue partagé incomplet. Après rétablissement du stockage, la migration s'arrête sur le marqueur et ne retente pas la fusion (`index.html:7505`). Les données héritées restent dans leur ancienne clé ; aucune purge n'est démontrée.
+
+   Même défaut reproduit dans `loadProfileData` : les permanences migrées et leur version sont écrites séparément (`index.html:7552`, `index.html:7553`). Si l'écriture des permanences est refusée mais celle de la version réussit, le stockage conserve l'ancien modèle hebdomadaire avec le marqueur du nouveau modèle. Au chargement suivant, la migration est sautée (`index.html:7550`) : les journées datées attendues ne sont pas créées.
+
+   Le même schéma de deux écritures non groupées est présent, par lecture, pour le réglage initial du CMS et son marqueur (`index.html:7526`), ainsi que les modèles prédéfinis et leur version (`index.html:7539`, `index.html:7540`). Le harnais n'extrait pas `migrateSharedCmsList` ni `loadProfileData`.
+
+2. **La génération peut encore annoncer « enregistré » après une opération annulée.**
+   Deux variantes exécutées : lecture préalable d'historique refusée une fois (`index.html:1199`) ; écriture brute du compteur `since-export` refusée (`index.html:1720`).
+   Dans les deux cas, l'opération échoue et restaure correctement l'état précédent : aucune fiche ni journée nouvelle, aucune sauvegarde. Pourtant le seul message affiché est « Message généré et enregistré ».
+
+   `handleGenerate` ignore le `false` d'`addHistory` (`index.html:1634`) et annonce le succès (`index.html:1635`). Ces pannes ne passent pas par `lsSet`, donc le filet de remplacement de `showToast` n'est pas armé (`index.html:1489`). Le test appelle encore `showToast` manuellement après un refus d'écriture dans `addHistory`, au lieu de parcourir ce véritable appelant (`scripts/check-ecritures.js:100`).
+
+**Calculs et formats inchangés** : comparaison exacte avec `0a7f0fe` de l'initialisation de l'état, des statistiques/bilan (`index.html:3222`, `index.html:3420`), des archives (`index.html:3042`), de la préparation et de l'estimation (`index.html:2989`, `index.html:3002`), de la migration (`index.html:1868`) et de l'export (`index.html:2165`). Version des permanences inchangée (`index.html:1861`).
+
+**Amendement** :
+
+- Grouper les données et leurs marqueurs de migration au chargement ; ne déclarer une migration achevée qu'après enregistrement relu de son résultat. Couvrir les couples catalogue/marqueur, permanences/version et modèles/version, sans changer leur méthode ni leur format.
+- Contrôler explicitement le résultat d'`addHistory` dans `handleGenerate` et faire remonter les échecs de l'opération jusqu'au message final, y compris ceux qui ne passent pas par `lsSet`.
+- Ajouter les scénarios de chargement, leur relance après panne, et les deux variantes de génération aux tests, avec leurs véritables appelants.
+
+Vérifications en mémoire sous Node, fonctions métier réelles, données fictives ; stockage, réseau et rendu simulés. Aucun navigateur réel ni sauvegarde réelle déclenchée. Pour cette revue, seul cet ajout à `AGORA.md` est publié ; aucun code ni autre fichier modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
