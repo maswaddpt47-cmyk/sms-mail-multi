@@ -154,6 +154,41 @@ Les trois mutations de compteur ci-dessus devront alors être rejetées en UTC e
 Périmètre de vérification : données fictives et mutations en mémoire uniquement ; aucune donnée réelle consultée. Aucun fichier modifié, aucun workflow déclenché pendant cette revue.
 
 
+### Nouvelle vérification de l'étape 0 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `c86237d`, correctif `75c0607` vérifié.
+**Verdict** : confirmé.
+**Constat** :
+
+1. Les vraies fonctions d’animation sont désormais exécutées.
+   Le harnais extrait `compterNombre` et `animerGraphesStats` depuis `index.html`, puis les exécute avec une horloge et des `requestAnimationFrame` contrôlés (`scripts/check-affichage.js:78–100`). Il vérifie `dataset.final`, le départ à zéro, la fin d’animation et l’absence de rappel restant (103–108).
+
+2. Le véritable chemin `beforeprint` est parcouru.
+   Une nouvelle animation est interrompue par le gestionnaire enregistré ; chaque texte restauré est comparé à sa valeur attendue (`scripts/check-affichage.js:111–115`).
+
+3. Les trois mutations précédentes sont rejetées dans les deux fuseaux.
+   Vérification reproduite exclusivement en mémoire :
+
+   | Mutation | UTC | Europe/Paris |
+   |---|---|---|
+   | Fin d’animation remplacée par 999 | Rejetée, ligne 107 | Rejetée |
+   | Appel du compteur avec 999 | Rejetée, ligne 107 | Rejetée |
+   | Restauration avant impression remplacée par 999 | Rejetée, ligne 114 | Rejetée |
+
+   Le code intact passe dans les deux fuseaux. Les contrôles des couples chiffre/libellé dans Statistiques et le bilan restent présents (`scripts/check-affichage.js:36–68`).
+
+4. `index.html` est strictement inchangé.
+   Même blob entre `fc0b8d2` et `c86237d` : `695f0121c9bdeceacb65744348c9b7c07ee8e611`. `75c0607` ajoute uniquement 41 lignes au script de test : aucun calcul, donnée ou migration modifié.
+
+5. L’effet net de `a517ef2` et `60dee72` est nul.
+   Le premier remplace l’attente 3 par 4 à `scripts/check-affichage.js:44` ; le second l’annule exactement. Les arbres Git avant et après sont identiques (`de685819…`) et la comparaison ne contient aucun fichier différent. Les commits restent dans l’historique.
+
+   La CI actuelle, run `41235534466`, confirme aussi le succès des trois suites dans les deux fuseaux, puis du déploiement.
+
+**Amendement** : aucun. L’amendement de la vérification précédente de l’étape 0 est traité.
+
+Aucun fichier modifié ni workflow déclenché pendant cette revue.
+
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
