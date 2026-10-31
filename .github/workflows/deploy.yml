@@ -15,7 +15,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # AG-013, étape 0 (31/10/2026) : aucune mise en ligne si un test de calcul ou de valeur affichée échoue
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntaxe JS d'index.html
+        run: |
+          node -e "
+          const fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8');
+          const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+          if(!scripts.length)throw new Error('aucun script trouvé');
+          scripts.forEach((s,i)=>{new Function(s);console.log(i,'OK');});
+          "
+
+      - name: Tests (UTC)
+        env:
+          TZ: UTC
+        run: |
+          node scripts/check-stats-rdv.js
+          node scripts/check-reactivity.js
+          node scripts/check-affichage.js
+
+      - name: Tests (Europe/Paris)
+        env:
+          TZ: Europe/Paris
+        run: |
+          node scripts/check-stats-rdv.js
+          node scripts/check-reactivity.js
+          node scripts/check-affichage.js
+
   deploy:
+    needs: tests
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
