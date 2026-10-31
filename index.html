@@ -1136,7 +1136,7 @@ var S={
    - _echecsEcriture compte les échecs, pour qu'une opération groupée annule tout après un échec intermédiaire. */
 var _echecsEcriture=0,_echecEcritureRecent=false,_stockageEnEchec=false;
 var CHAMPS_STOCKES={'history':'history','permanences':'permanences','orientations':'orientations','yearly-stats':'yearlyStats'};
-var CLES_REGLAGES={'ess-cms':'cmsList','ess-demarches':'demarches','ess-secteurs':'secteurs','ess-templates':'templates','ess-custom-tpl':'customTemplates','ess-vars':'customVars','ess-mandats':'mandats','ess-hidden':'hiddenBuiltinKeys'};
+var CLES_REGLAGES={'ess-fav-demarches':'favDemarches','ess-cms':'cmsList','ess-demarches':'demarches','ess-secteurs':'secteurs','ess-templates':'templates','ess-custom-tpl':'customTemplates','ess-vars':'customVars','ess-mandats':'mandats','ess-hidden':'hiddenBuiltinKeys'};
 function champDeCle(k){
   if(Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k))return CLES_REGLAGES[k];
   var pre='ess-'+S.activeProfile+'-',suf=k.indexOf(pre)===0?k.slice(pre.length):'';
@@ -1301,7 +1301,7 @@ var _ghLastAutoPushByProfile={};
    tout est enregistré ; renvoie true/false. */
 function reglagesAPersister(now){
   return [['ess-cms',S.cmsList],['ess-demarches',S.demarches],['ess-secteurs',S.secteurs],['ess-templates',S.templates],
-    ['ess-custom-tpl',S.customTemplates],['ess-vars',S.customVars],['ess-hidden',S.hiddenBuiltinKeys],['ess-lastSave',now]];
+    ['ess-custom-tpl',S.customTemplates],['ess-vars',S.customVars],['ess-hidden',S.hiddenBuiltinKeys],['ess-fav-demarches',S.favDemarches||[]],['ess-lastSave',now]];   /* P06 : favoris enregistrés */
 }
 function persist(){
   var now=new Date().toLocaleString('fr-FR');
@@ -7663,6 +7663,7 @@ function loadProfileDataCorps(){
   S.customTemplates=lireDonnee('ess-custom-tpl',DEFAULT_CUSTOM);
   S.customVars=lireDonnee('ess-vars',[]);
   S.hiddenBuiltinKeys=lireDonnee('ess-hidden',[]);
+  S.favDemarches=lireDonnee('ess-fav-demarches',[]);   /* P06 (vérification de clôture de Codex) : les favoris étaient affichés mais jamais enregistrés */
   S.history=lireDonnee(pk('history'),[]);
   S.yearlyStats=lireDonnee(pk('yearly-stats'),{});
   S.mandats=lireDonnee('ess-mandats',[]);

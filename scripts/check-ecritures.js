@@ -77,7 +77,7 @@ function sansErreur(S){const c=JSON.parse(JSON.stringify(S));delete c.importErro
  assert.equal(ctx.ecrireTout([['k1','n1'],['k2','n2']]),false);assert.equal(ctx.ecrireTout.incoherent,true,'retour arrière échoué : signalé');}
 
 /* ── persist (réel) : tout ou rien ── */
-{const e=charger();const n=e.ctx.reglagesAPersister('x').length;assert.equal(n,8);
+{const e=charger();const n=e.ctx.reglagesAPersister('x').length;assert.equal(n,9,'8 réglages + favoris des démarches (P06)');
  assert.equal(e.ctx.persist(),true);assert.equal(e.journal.pushs,1);assert.match(e.S.saveStatus,/^Sauvegardé/);   // garde
  for(let k=1;k<=n;k++){
    const f=charger();f.st.setItem('ess-cms','"ancien"');f.st.ecritures=0;const avant=f.st.etat();
@@ -410,6 +410,11 @@ async function restaurer(contenu,fonction,options){
    let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
    assert.equal(e.ctx.archiveOldDaysCore(true),0,'T01 : pas d\'archivage d\'après un historique non lu');assert.equal(e.st.getItem('ess-p1-permanences'),JSON.stringify(perms));
    e.ctx.loadProfileData();assert.equal(e.ctx.archiveOldDaysCore(true),0,'T01 témoin : journée avec RDV en attente jamais archivée');}
+  /* ── P06 : favoris des démarches enregistrés et relus ── */
+  {const e=charger();e.st.setItem('ess-cms-migrated-v2','1');e.ctx.loadProfileData();
+   e.S.favDemarches=['d1','d3'];assert.equal(e.ctx.persist(),true);
+   const f=charger();f.ctx.localStorage=e.st;f.st=e.st;f.ctx.loadProfileData();
+   assert.deepEqual([...f.S.favDemarches],['d1','d3'],'P06 : favoris retrouvés dans une nouvelle instance');}
   /* ── T14 : chargement interrompu → aucune donnée écrite ensuite ; rechargement réussi → écritures rétablies ── */
   {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('b','2026-11-04','09:30','B','B')]));e.S.history=[rdv('a','2026-11-03','09:30','A','A')];
    e.S.activeProfile='p2';let n=0;e.st.lecturePanne=k=>k==='ess-cms-migrated-v2'&&++n===1;
