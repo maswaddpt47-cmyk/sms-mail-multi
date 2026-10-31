@@ -1144,8 +1144,9 @@ function champDeCle(k){
 }
 function realignerDepuisStockage(cles){
   cles.forEach(function(k){
-    var champ=champDeCle(k);if(!champ)return;
+    var champ=champDeCle(k);if(!champ&&!cleSuivie(k))return;
     var brut;try{brut=localStorage.getItem(k);}catch(e){return;}   /* lecture impossible : on ne touche à rien */
+    noterVersion(k,brut);if(!champ)return;   /* P01 : la mémoire suit désormais cette version */
     if(brut===null){if(!Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k))S[champ]=champ==='yearlyStats'?{}:[];return;}   /* donnée de profil absente = vide */
     try{S[champ]=JSON.parse(brut);}catch(e){}
   });
@@ -1156,8 +1157,15 @@ function realignerDepuisStockage(cles){
    verrouillée : lsSet refuse de l'écrire jusqu'au prochain chargement réussi. Ni une migration du chargement, ni les
    pauses déjeuner, ni une saisie ultérieure ne peuvent donc écraser une donnée qu'on n'a pas pu lire. */
 var _clesIllisibles={};
+/* P01 (vérification de clôture de Codex) : deux onglets sur le même profil. Chaque onglet retient la dernière valeur brute
+   qu'il a lue ou écrite de chaque donnée suivie ; lsSet refuse d'écrire si le stockage a changé entre-temps (autre onglet),
+   recharge la mémoire depuis le stockage et demande de refaire l'action : aucun onglet n'écrase les modifications d'un autre. */
+var _versionLue={};
+function cleSuivie(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||/^ess-[^-]+-(history|permanences|orientations|yearly-stats)$/.test(k);}
+function noterVersion(k,brut){if(cleSuivie(k))_versionLue[k]=brut;}
 function lireDonnee(k,defaut){
   var v;try{v=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return defaut;}
+  noterVersion(k,v);
   if(v===null)return defaut;
   var j;try{j=JSON.parse(v);}catch(e){_clesIllisibles[k]=true;return defaut;}
   var liste=Array.isArray(defaut),objet=!liste&&!!defaut&&typeof defaut==='object';
@@ -1165,13 +1173,16 @@ function lireDonnee(k,defaut){
   return j;
 }
 function lsSet(k,v){
-  try{if(_clesIllisibles[k])throw new Error('illisible au chargement');var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');return true;}
+  var conflit=false;
+  try{if(_clesIllisibles[k])throw new Error('illisible au chargement');
+    if(Object.prototype.hasOwnProperty.call(_versionLue,k)&&localStorage.getItem(k)!==_versionLue[k]){conflit=true;throw new Error('modifié dans un autre onglet');}
+    var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');noterVersion(k,txt);return true;}
   catch(e){
     _echecsEcriture++;_stockageEnEchec=true;
     if(!_echecEcritureRecent){_echecEcritureRecent=true;setTimeout(function(){_echecEcritureRecent=false;},0);}
     realignerDepuisStockage([k]);
     S.saveStatus='⚠️ Enregistrement impossible : rechargez la page et exportez vos données';try{renderHeader();}catch(e2){}
-    showToast(_clesIllisibles[k]?'⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.':'⚠️ Stockage plein. Exportez vos données !','warn');
+    showToast(conflit?'⚠️ Ces données ont été modifiées dans un autre onglet : rien n\'a été écrasé, l\'affichage est à jour. Refaites votre dernière action.':_clesIllisibles[k]?'⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.':'⚠️ Stockage plein. Exportez vos données !','warn');
     return false;
   }
 }
@@ -1182,7 +1193,7 @@ function lsSet(k,v){
 var _ecrituresGroupees=0;
 function restaurerCles(cles,brut){
   var ok=true;
-  for(var j=cles.length-1;j>=0;j--){try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;}catch(e){ok=false;}}
+  for(var j=cles.length-1;j>=0;j--){try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;else noterVersion(cles[j],brut[j]);}catch(e){ok=false;}}
   return ok;
 }
 function ecrireTout(paires){
@@ -1218,7 +1229,9 @@ function operationHistorique(fn,pid){
   if(ok){maybeAutoBackupProfile(pid);return {ok:true,incoherent:false,valeur:valeur};}
   if(actif){S.history=histAvant;S.permanences=permAvant;}
   _echecsEcriture++;   /* une opération imbriquée qui échoue fait échouer celle qui l'englobe (planning, ICS) */
-  return {ok:false,incoherent:!restaurerCles(cles,brut)};
+  var restaure=restaurerCles(cles,brut);
+  if(actif)realignerDepuisStockage(cles);   /* P01 : la mémoire suit l'état final du stockage (y compris les écritures d'un autre onglet) */
+  return {ok:false,incoherent:!restaure};
 }
 /* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
@@ -7563,6 +7576,7 @@ function loadProfileData(){
   S.dateReception='';
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
+  _versionLue={};   /* P01 : seules les données du profil chargé et les réglages communs sont suivies */
   _clesIllisibles={};   /* relu à chaque chargement : une clé redevenue lisible est déverrouillée */
   var cmsMigre=migrateSharedCmsList();
   S.cmsList=lireDonnee('ess-cms',DEFAULT_CMS);
