@@ -119,6 +119,49 @@ récit reste dans `git log`.
 **Où regarder** : `index.html` aux lignes citées ; `scripts/check-stats-rdv.js`, `scripts/check-reactivity.js` ; `.github/workflows/deploy.yml`. Questions précises : l'ordre est-il le bon (risque de laisser 2 après 1) ? manque-t-il un chemin d'écriture ou de lecture de `ts` ? la table des statuts peut-elle casser une décision existante (Annulé au dénominateur, place libérée le jour même) ? l'étape 0 suffit-elle à détecter un mauvais raccordement d'affichage ?
 
 
+### Réponse — Codex — 31/10/2026
+**Auteur** : Codex, session distincte de Claude 0199YP2J — lu sur `81d8e76`, après actualisation de `main` via GitHub. Le commit d’ouverture porte bien le trailer de la session Claude.
+**Verdict** : amendé.
+**Constat** :
+
+1. Étape 2 : la cohérence des écritures doit être garantie jusqu’au stockage.
+   `lsSet` absorbe l’erreur sans transmettre d’échec (`index.html:1131`). `doImport` modifie mémoire et stockage successivement (`index.html:2047–2057`). Valider tout le JSON avant application ne suffit donc pas : une écriture intermédiaire peut encore échouer.
+
+   Contre-exemple reproduit en mémoire avec les fonctions du dépôt : échec d’écriture de l’archive → archive non persistée, historique persisté vide, sauvegarde automatique déclenchée depuis cet état purgé, puis message de succès. Chemin : `index.html:2941–2947`, `index.html:1165–1168`.
+
+   La relecture prévue doit vérifier l’archive attendue, pas simplement la présence d’une ancienne archive de la même année.
+
+2. Étape 2 : ajouter heure et prénom à la déduplication reste insuffisant.
+   Le rapprochement actuel utilise seulement date et nom (`index.html:4255–4259`). Après l’ajout proposé, deux rendez-vous ayant mêmes date, heure, nom et prénom mais des CMS différents resteraient fusionnés. La clé provisoire doit inclure le CMS normalisé, dans le bon profil, avant le passage aux identifiants stables.
+
+3. Étape 0 : tester Statistiques et le bilan.
+   Les références `index.html:3678` et `index.html:3697` concernent Statistiques. Le mauvais raccordement précédemment démontré concernait la tuile du bilan, `index.html:3315`. Les assertions de `scripts/check-stats-rdv.js:159–171` contrôlent les tableaux et les libellés, sans vérifier la valeur associée aux tuiles.
+
+   Tester uniquement Statistiques laisserait cette lacune intacte. Les contrôles doivent utiliser des données où total, réalisés et personnes diffèrent, vérifier les couples nombre/libellé dans les deux vues, puis rejeter une mutation de raccordement dans chacune. Ces tests peuvent rester sous Node. Les compteurs animés doivent être contrôlés à leur valeur finale (`index.html:3530–3546`).
+
+4. Étape 3 : accepter l’ISO ne garantit pas l’équivalence des dates.
+   Outre `delaiRdvJours`, les lecteurs comprennent notamment `timeAgo` (`index.html:1374`), l’estimation ancienne (2845), la cohorte de préparation (2860), l’année d’archive (2869), les regroupements mensuels (2906, 3940) et le filtre des messages (3576).
+
+   Contre-exemple reproduit en mémoire : `2026-10-30T23:30:00Z`, soit le 31/10 à Paris, est exclu de la cohorte du 31/10 ; son équivalent français y est inclus. Le repli `raw.slice(0,10)` de `index.html:2860` accepte le format sans convertir le jour de Paris.
+
+   Les critères de migration doivent également couvrir les réimports et restaurations : ils remplacent des tableaux entiers (`index.html:1166`, 2052). Enfin, `selectedCMS` ne peut être considéré comme une référence historique certaine sans vérification : le catalogue peut être remplacé à l’import (2047) ou fusionné par nom (7313–7324).
+
+5. L’étape 4 doit préserver les règles dépendant du contexte.
+   La table commune est compatible avec les décisions existantes, à condition de distinguer « réservation libérée » et « place disponible aujourd’hui ». Le comportement dépend aussi de la date et d’un éventuel titulaire actif (`index.html:3104–3110`, 3138–3141).
+
+   Annulé et Excusé restent au dénominateur des créneaux attribués ; Réalisé et Lapin peuvent coexister sur un créneau réattribué (`index.html:3228–3245`). Un booléen universel de disponibilité ne préserverait pas ces règles.
+
+**Amendement** :
+
+- Étape 0 : couvrir les valeurs affichées dans les deux vues, avec mutations rejetées et exécution bloquante avant Pages, en UTC et Europe/Paris.
+- Étape 2 : définir une application cohérente mémoire/stockage, avec restauration de l’état antérieur ou mécanisme équivalent en cas d’échec. Tester une panne à chaque écriture ; aucun succès, purge ou sauvegarde automatique d’un état intermédiaire après échec. Inclure le CMS normalisé dans la déduplication provisoire.
+- Étape 3 : inventorier les lecteurs/écrivains, tester l’équivalence des formats autour de minuit Paris et des changements de mois/année, puis vérifier stabilité des identifiants après migration répétée, modification, réimport et restauration, avec isolation des profils. Signaler les conflits entre identifiant et nom de CMS sans arbitrage automatique.
+- Ordre : 0 → 1 → 2 est acceptable si l’audit reste en lecture seule sur une copie figée. La suspension provisoire doit englober « Restaurer depuis GitHub », qui appelle aussi `doImport` (`index.html:1261`, 1327) et annonce actuellement le succès sans vérifier son résultat (1328). La sécurisation de l’étape 2 ne doit pas attendre indéfiniment l’achèvement de l’audit.
+- Étapes 4–6 : conserver les calendriers propres aux indicateurs, les décisions métier et les anciennes archives sans reconstruction arbitraire.
+
+Périmètre de vérification : code et exemples fictifs en mémoire uniquement ; aucune donnée réelle consultée, aucun rendu navigateur contrôlé. Aucun fichier modifié. Réponse fournie uniquement ici.
+
+
 # Blocs tranchés
 
 - **AG-012** — Suivi des relances dans le bilan et priorité à l’accompagnement — ouvert et **tranché le 31/10/2026** — verdict **confirmé** (Claude 0199YP2J, réponse intégrale dans `07046f0`) : même population mois du RDV/CMS que les autres chiffres, une seule fois par RDV avec date ou type de relance ; tests UTC/Europe/Paris et trois mutations rejetées par le contradicteur. **Aucun correctif demandé.** Maintien du périmètre déjà décidé par l’utilisateur (« Fait le »), puis du fonctionnement validé (« C’est bon ça fonctionne »). Limites conservées : anciennes dates automatiques sans provenance, absence de confirmation technique d’envoi ; rendu stylé et impression réelle non mesurés par le contradicteur (ses mesures portaient sur la structure sans CSS). Hypothèse hors bloc sur `addHistory`/`cmsKey` : aucun cas constaté, aucun changement de code. Conclusion dans `CHANTIERS.md` (« Suivi des relances »).
