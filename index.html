@@ -1243,7 +1243,8 @@ function operationHistorique(fn,pid){
 /* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
 function pk(suffix){return pkFor(S.activeProfile,suffix);}
-function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:ls('ess-'+profileId+'-history',[]);}
+/* T03 (vérification de clôture de Codex) : la donnée d'un autre profil est lue strictement ; illisible → verrouillée, aucune écriture ne la remplace */
+function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:lireDonnee('ess-'+profileId+'-history',[]);}
 /* nombre de RDV réellement occupés aujourd'hui pour un profil (dédoublonné par créneau, hors statuts freeAgain) */
 function countTodayRdv(profileId){
   var today=toLocalDateStr(new Date());
@@ -1350,7 +1351,11 @@ function githubPush(silent,onSuccess,pid){
   var token=ghToken();
   if(!token){if(!silent)showToast('⚠️ Token GitHub manquant — ajoutez-le dans Configuration','warn');return;}
   if(!silent)showToast('⏳ Sauvegarde GitHub en cours…','ok');
-  var content=btoa(unescape(encodeURIComponent(JSON.stringify(exportDataForProfile(pid),null,2))));
+  var donnees=exportDataForProfile(pid);
+  if(!sauvegardeFiable(pid)){if(!silent)showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}   /* T12 */
+  /* P08 (vérification de clôture de Codex) : nombre de fiches non sauvegardées au moment de l'instantané envoyé */
+  var sinceDepart=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
+  var content=btoa(unescape(encodeURIComponent(JSON.stringify(donnees,null,2))));
   var file=ghNowFile(pid);
   /* chaque backup est un nouveau fichier horodaté — pas besoin de SHA */
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
@@ -1374,7 +1379,9 @@ function githubPush(silent,onSuccess,pid){
       }
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
       localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
-      localStorage.setItem(pkFor(pid,'since-export'),'0');
+      /* P08 : seules les fiches présentes dans l'instantané envoyé sont retirées du compteur ; celles ajoutées pendant l'envoi restent comptées */
+      var sinceFin=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
+      localStorage.setItem(pkFor(pid,'since-export'),String(Math.max(0,sinceFin-sinceDepart)));
       if(pid===S.activeProfile){S._ghNewerBackup=null;renderHeader();}
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
@@ -2216,13 +2223,20 @@ function unarchiveDay(id){
 /* modals */
 /* démarches/templates/customTemplates/secteurs/customVars/mandats/cmsList sont partagés entre profils : lus depuis S quel que soit pid */
 function exportDataForProfile(pid){
-  var permanences=pid===S.activeProfile?S.permanences:ls('ess-'+pid+'-permanences',[]);
-  var yearlyStats=pid===S.activeProfile?S.yearlyStats:ls('ess-'+pid+'-yearly-stats',{});
+  var permanences=pid===S.activeProfile?S.permanences:lireDonnee('ess-'+pid+'-permanences',[]);
+  var yearlyStats=pid===S.activeProfile?S.yearlyStats:lireDonnee('ess-'+pid+'-yearly-stats',{});
   return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),yearlyStats:yearlyStats,permanences:permanences,orientations:readProfileOrientations(pid)};
 }
+/* T12 (vérification de clôture de Codex) : une sauvegarde n'est faite que si toutes les données du profil (et les réglages
+   communs) ont pu être lues ; sinon elle serait incomplète tout en annonçant un succès. À appeler après exportDataForProfile. */
+function sauvegardeFiable(pid){
+  if(_chargementEchoue)return false;
+  return !Object.keys(_clesIllisibles).some(function(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||k.indexOf('ess-'+pid+'-')===0;});
+}
+var MSG_SAUVEGARDE_REFUSEE='⚠️ Sauvegarde refusée : des données n\'ont pas pu être lues, elle serait incomplète. Rechargez la page.';
 function exportData(){return exportDataForProfile(S.activeProfile);}
-function openExport(){S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
-function downloadExport(){var blob=new Blob([JSON.stringify(exportData(),null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
+function openExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
+function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
 function openImport(){S.modal='import';S.importText="";S.importError="";renderModal();}
 function closeModal(){S.modal=null;renderModal();}
@@ -4622,9 +4636,9 @@ function renderAgenda(){
       rememberArchived(pid,S.permanences,showArch);
       return S.permanences.filter(function(p){return p.exceptDate&&(showArch||!p.archived);});
     }
-    var raw=ls('ess-'+pid+'-permanences',[]);
+    var raw=lireDonnee('ess-'+pid+'-permanences',[]);
     rememberArchived(pid,raw,false);
-    return migratePermanences(raw,ls('ess-'+pid+'-history',[])).filter(function(p){return !p.archived;});
+    return migratePermanences(raw,lireDonnee('ess-'+pid+'-history',[])).filter(function(p){return !p.archived;});
   }
   function agendaSourcePermanences(){
     if(S.agendaScope==='mine')return permanencesOuvertesDe(S.activeProfile).map(function(p){return Object.assign({},p,{_profile:S.activeProfile});});
@@ -4705,7 +4719,7 @@ function renderAgenda(){
   (function(){
     var aPointer=scopeHist.filter(function(h){
       if(!isAPointer(h))return false;
-      var perms=h._profile===S.activeProfile?S.permanences:ls('ess-'+h._profile+'-permanences',[]);
+      var perms=h._profile===S.activeProfile?S.permanences:lireDonnee('ess-'+h._profile+'-permanences',[]);
       return perms.some(function(p){return p.commune===h.commune&&p.exceptDate===h.date&&!p.archived;});
     }).sort(function(a,b){return(a.date+(a.heure||'')).localeCompare(b.date+(b.heure||''));});
     if(!aPointer.length)return;
@@ -6560,7 +6574,7 @@ function parseXlsxOrientationsAsync(arrayBuffer){
   });
 }
 
-function readProfileOrientations(profileId){return profileId===S.activeProfile?S.orientations:ls('ess-'+profileId+'-orientations',[]);}
+function readProfileOrientations(profileId){return profileId===S.activeProfile?S.orientations:lireDonnee('ess-'+profileId+'-orientations',[]);}   /* T03 */
 function writeProfileOrientations(profileId,arr){
   var actif=profileId===S.activeProfile,cle=actif?pk('orientations'):'ess-'+profileId+'-orientations';
   if(!lsSet(cle,arr))return false;   /* AG-013 étape 2 : mémoire réalignée par lsSet, pas de sauvegarde */
