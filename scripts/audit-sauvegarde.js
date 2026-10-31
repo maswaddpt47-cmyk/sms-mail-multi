@@ -39,14 +39,16 @@
     if(!Array.isArray(donnees.history))throw new Error('La sauvegarde ne contient pas d\'historique (« history »).');
     var historique=donnees.history,catalogue=Array.isArray(donnees.cmsList)?donnees.cmsList:[];
     var nomsCatalogue=Object.create(null),parId=Object.create(null);
-    catalogue.forEach(function(c){if(c&&c.nom)nomsCatalogue[cle(c.nom)]=c.nom;if(c&&c.id!=null)parId[String(c.id)]=c;});
+    var rangCatalogue=Object.create(null);
+    catalogue.forEach(function(c,n){if(c&&c.nom&&!rangCatalogue[cle(c.nom)]){nomsCatalogue[cle(c.nom)]=c.nom;rangCatalogue[cle(c.nom)]='CMS n°'+(n+1);}if(c&&c.id!=null)parId[String(c.id)]=c;});
     var anomalies=[],formats={'français':0,ISO:0,autre:0,absent:0},ecritures=Object.create(null);
-    /* Sorties partageables (amendement Codex du 31/10) : aucune valeur saisie n'est recopiée telle quelle. Une date ou une
-       heure n'apparaît que si elle a la forme attendue ; un CMS que sous son nom du catalogue, sinon « CMS hors catalogue n°X ». */
+    /* Sorties partageables (amendements Codex du 31/10) : aucune valeur venant du fichier n'est recopiée, catalogue compris.
+       Une date ou une heure n'apparaît que si elle a la forme attendue ; un CMS sous un numéro neutre : « CMS n°k » (rang dans
+       Configuration → CMS), sinon « CMS hors catalogue n°X ». */
     var horsCatalogue=Object.create(null),nbHors=0;
     function libelleCms(commune){
       var k=cle(commune);if(!k)return '';
-      if(Object.prototype.hasOwnProperty.call(nomsCatalogue,k))return nomsCatalogue[k];
+      if(Object.prototype.hasOwnProperty.call(rangCatalogue,k))return rangCatalogue[k];
       if(!horsCatalogue[k])horsCatalogue[k]='CMS hors catalogue n°'+(++nbHors);
       return horsCatalogue[k];
     }
@@ -76,7 +78,7 @@
       if(h.selectedCMS!=null&&h.selectedCMS!==''&&catalogue.length){
         var c=parId[String(h.selectedCMS)];
         if(!c)signaler('Référence CMS inconnue','attention',i,h,'selectedCMS sans correspondance');
-        else if(cle(c.nom)!==cle(h.commune))signaler('Référence CMS et nom différents','attention',i,h,'selectedCMS : '+c.nom);
+        else if(cle(c.nom)!==cle(h.commune))signaler('Référence CMS et nom différents','attention',i,h,'la référence désigne '+(libelleCms(c.nom)||'un CMS sans nom'));
       }
       formats[formatTs(h.ts)]++;
       ['dateDemande','dateReception','dateRelance'].forEach(function(champ){
@@ -121,7 +123,10 @@
         if(h.msgType==='relance'||h.dateRelance)l.relances++;
       });
     });
-    var lignes=Object.keys(recompte).sort().map(function(k){var l=recompte[k];return {mois:l.mois,cms:l.cms,libelle:l.libelle,fiches:l.fiches,realisees:l.realisees,personnes:Object.keys(l.personnes).length,statuts:l.statuts,relances:l.relances,demarches:l.demarches};});
+    var lignes=Object.keys(recompte).sort().map(function(k){var l=recompte[k];var sortie={mois:l.mois,libelle:l.libelle,fiches:l.fiches,realisees:l.realisees,personnes:Object.keys(l.personnes).length,statuts:l.statuts,relances:l.relances};
+      /* clé brute du CMS et noms de démarches : saisies du fichier, gardées pour la comparaison mais non énumérables (jamais copiées) */
+      Object.defineProperty(sortie,'cms',{value:l.cms});Object.defineProperty(sortie,'demarches',{value:l.demarches});
+      return sortie;});
 
     var parType=Object.create(null);anomalies.forEach(function(a){parType[a.type]=(parType[a.type]||0)+1;});
     return {
@@ -150,7 +155,7 @@
       ajouter(l,'Rendez-vous',d.entries,l.fiches);ajouter(l,'Réalisés',d.realised,l.realisees);
       ajouter(l,'Personnes accompagnées',d.accompanied,l.personnes);ajouter(l,'Relances renseignées',d.followup&&d.followup.recorded,l.relances);
       var bs=d.byStatut&&typeof d.byStatut==='object'?d.byStatut:null;
-      STATUTS.forEach(function(s){ajouter(l,'Statut '+s,bs?(Object.prototype.hasOwnProperty.call(bs,s)?bs[s]:0):undefined,l.statuts[s]||0);});
+      STATUTS.forEach(function(s){ajouter(l,'Statut '+s,bs&&Object.prototype.hasOwnProperty.call(bs,s)?bs[s]:undefined,l.statuts[s]||0);});   /* l'application fournit les sept compteurs : un absent n'est pas un zéro */
       var top=Array.isArray(d.demarches)?d.demarches:null,noms=Object.keys(l.demarches);
       if(!top){ajouter(l,'Démarches',undefined,noms.length);return;}
       var vus=Object.create(null);

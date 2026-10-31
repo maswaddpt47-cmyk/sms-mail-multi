@@ -94,6 +94,16 @@ assert(rf.anomalies.length>=8,'les champs pollués sont bien signalés');   // g
 assert.doesNotMatch(A.rapportTexte(rf,ef),new RegExp(TEL_SECRET+'|'+NOM_SECRET),'rapport sans valeur saisie');
 assert.doesNotMatch(JSON.stringify(rf.anomalies)+JSON.stringify(ef)+JSON.stringify(rf.recomptage.map(l=>l.libelle)),new RegExp(TEL_SECRET),'aucune sortie affichée ne recopie la saisie');
 assert(rf.anomalies.some(a=>/^CMS hors catalogue n°\d+$/.test(a.cms)),'CMS inconnu désigné par un numéro');
+// 1 bis. catalogue pollué (2e vérification de Codex) : son nom ne ressort ni comme CMS ni dans la précision selectedCMS
+const catPollue={cmsList:[{id:1,nom:TEL_SECRET},{id:2,nom:'Fumel'}],history:[
+  f('2026-10-23','09:30',TEL_SECRET,'realise','CAT','A'),
+  f('2026-10-23','10:30','Fumel','realise','CAT','B',{selectedCMS:1}),
+  f('2026-10-23','11:30','Fumel','realise','CAT','C',{selectedCMS:1}),f('2026-10-23','11:30','fumel','realise','CAT','D')]};
+const rc=A.auditer(catPollue,{maintenant});
+const ec=A.comparer(rc,(m,c)=>app.monthlyReportData(catPollue.history,m,c,maintenant),{});
+assert(rc.anomalies.some(a=>a.type==='Référence CMS et nom différents'),'chemin selectedCMS parcouru');   // garde
+assert(rc.recomptage.some(l=>l.libelle==='CMS n°1'),'CMS du catalogue désigné par son rang');
+assert.doesNotMatch(A.rapportTexte(rc,ec)+JSON.stringify(rc)+JSON.stringify(ec),new RegExp(TEL_SECRET),'aucun nom du catalogue recopié');
 // 2. statut hérité (toString) : pas une place libérée
 const herite=A.auditer({history:[f('2026-10-22','09:30','Fumel','toString','UN','A'),f('2026-10-22','09:30','Fumel','confirme','DEUX','B')]},{maintenant});
 assert.equal(herite.parType['Deux RDV actifs sur un créneau'],2,'toString n\'est pas un statut libéré');
@@ -103,6 +113,8 @@ const absent=A.comparer(r,()=>null,noms);
 assert(absent.length&&absent.every(e=>e.statut==='non comparé'),'bilan absent signalé');
 const trou=A.comparer(r,(m,c)=>{const d=bilan(m,c);return d&&Object.assign({},d,{accompanied:undefined});},noms);
 assert(trou.some(e=>e.indicateur==='Personnes accompagnées'&&e.statut==='non comparé'),'valeur manquante signalée');
+const sansAnnule=A.comparer(r,(m,c)=>{const d=bilan(m,c);if(!d)return d;const bs=Object.assign({},d.byStatut);delete bs.annule;return Object.assign({},d,{byStatut:bs});},noms);
+assert(sansAnnule.some(e=>e.indicateur==='Statut annule'&&e.statut==='non comparé'),'compteur de statut absent : non comparé, pas zéro');
 assert.match(A.rapportTexte(r,absent),/non comparée/);assert.match(A.rapportTexte(r,ecarts),/Non couvert par la comparaison/);
 // 4. démarches modifiées : écart détecté
 const dem999=A.comparer(r,(m,c)=>{const d=bilan(m,c);return d&&Object.assign({},d,{demarches:d.demarches.map(x=>Object.assign({},x,{n:999}))});},noms);
