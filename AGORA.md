@@ -457,6 +457,43 @@ Vérifier la lecture et la validité du catalogue courant avant toute écriture 
 
 Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
 
+### Dixième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `377bc06`, commits `0d5c733` et `2fe817c` vérifiés.
+**Verdict** : amendé. Les refus de lecture du catalogue sont corrigés ; une lecture refusée d'un marqueur peut encore déclencher une réécriture qui perd un réglage ou un texte personnalisé.
+**Constat** :
+
+Vérifications exécutées sous Node en UTC et Europe/Paris :
+
+- Les lectures refusées du catalogue, marqueur CMS ancien ou posé pendant le chargement, conservent la personnalisation ; après rétablissement, le réglage Fumel aboutit sans perte. Le chargement complet a été exécuté avec les fonctions et valeurs par défaut du produit, en refusant successivement les lectures d'`ess-cms` (`index.html:7503`, `index.html:7529`, `index.html:7547`, `index.html:7551`).
+- Sources partagées vides, malformées ou listes invalides, marqueur CMS présent ou absent : deux chargements ne réécrivent pas la source refusée ; réparation puis fusion/réglage complets. Les sources héritées et les clés réellement absentes gardent les protections et valeurs par défaut précédentes (`index.html:7505`, `index.html:7507`, `index.html:7530`, `index.html:7531`).
+- Syntaxe JavaScript et cinq suites du workflow passent dans les deux fuseaux. Trois mutations sont rejetées dans chacun : remplacement de la lecture stricte Fumel par `ls` (`scripts/check-ecritures.js:402`), erreur de lecture transformée en valeur par défaut et chaîne vide assimilée à une absence (`scripts/check-ecritures.js:364`).
+
+**Défaut résiduel commun : la lecture des marqueurs confond encore erreur et absence avant une réécriture.**
+
+Deux scénarios avec données fictives, chargement complet et fonctions réelles sont reproduits dans les deux fuseaux :
+
+1. **Un choix Fumel déjà enregistré est remplacé.**
+   Le catalogue est valide, les marqueurs CMS et Fumel sont présents, et l'utilisateur a choisi « Par défaut — 13h30 » : le champ `debutApresMidi` est absent, conformément à `saveCms` et à l'option proposée (`index.html:1848`, `index.html:5718` ; contrat `CHANTIERS.md:254`).
+
+   Refuser seulement la première lecture d'`ess-pm-start-v1` fait retourner `''` par `ls` (`index.html:7547`, `index.html:971`). Le chargement croit le réglage initial à faire, relit correctement le catalogue puis enregistre 14:00 et le marqueur (`index.html:7551`, `index.html:7552`).
+
+   Témoin sans panne : zéro écriture, grille 13:30/14:30/15:30. Avec ce refus unique : deux écritures, grille 14:00/15:00/16:00. Le choix enregistré est perdu.
+
+2. **Un modèle intégré personnalisé est remplacé.**
+   Les modèles sont valides, avec un texte fictif personnalisé, et `ess-tpl-version` contient déjà la version courante. Cette personnalisation est enregistrable par `saveBuiltin` (`index.html:1807`) et indiquée dans l'interface (`index.html:5527`).
+
+   Refuser seulement la première lecture d'`ess-tpl-version` fait déclencher la réinitialisation (`index.html:7563`, `index.html:971`) : `DEFAULT_TEMPLATES` remplace les textes puis est enregistré avec la version (`index.html:7564`, `index.html:7565`). Deux écritures, texte personnalisé perdu ; témoin sans panne : zéro écriture et texte conservé.
+
+Les nouveaux tests refusent les lectures d'`ess-cms` (`scripts/check-ecritures.js:399`) ; ils ne refusent pas celles de ces deux marqueurs. Le même essai sur la version des permanences, avec des journées au format courant et la vraie migration, conserve l'état final : aucune perte démontrée pour ce scénario.
+
+**Calculs et formats inchangés** : comparaison exacte avec `d60e1d2` de l'état initial (`index.html:1107`), statistiques/bilan (`index.html:3225`, `index.html:3423`), archives (`index.html:3045`), préparation/estimation (`index.html:2992`, `index.html:3005`), migration/version des permanences (`index.html:1871`, `index.html:1864`) et export (`index.html:2168`). Le code hors lecture stricte, migration CMS et réglage Fumel est identique.
+
+**Amendement** :
+
+Lire les marqueurs sans assimiler un refus de lecture ou un contenu illisible à une absence. Sur erreur, suspendre les écritures correspondantes et conserver les réglages/textes existants ; maintenir les initialisations prévues pour une clé réellement absente ou une ancienne version valide. Ajouter, pour Fumel et les modèles, les scénarios marqueur courant déjà présent + personnalisation valide + lecture refusée une fois, avec témoin sans panne et reprise sans perte après rétablissement.
+
+Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
