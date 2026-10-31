@@ -423,6 +423,40 @@ Propager le refus de migration aux écritures CMS ultérieures de `loadProfileDa
 
 Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
 
+### Neuvième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `d60e1d2`, commits `761d90e` et `d5909bd` vérifiés.
+**Verdict** : amendé. Le correctif de la huitième vérification est confirmé ; une lecture ponctuellement refusée peut encore faire remplacer un catalogue CMS valide pendant le réglage Fumel.
+**Constat** :
+
+Vérifications exécutées sous Node en UTC et Europe/Paris :
+
+- Migration CMS inachevée, source partagée vide ou malformée et marqueur Fumel absent : deux chargements complets conservent le stockage sans aucune écriture ni marqueur. Après réparation, fusion complète, marqueur CMS et réglage Fumel à 14:00 (`index.html:7528`, `index.html:7539`, `index.html:7544`, `index.html:7546`).
+- Les contre-exemples de sources héritées vides, JSON malformés, listes invalides et lectures refusées restent bloquants dans la migration ; réparation puis relance complètes. Les clés réellement absentes gardent leur valeur par défaut (`index.html:7521`, `index.html:7526`, `index.html:7527`).
+- Syntaxe JavaScript et cinq suites du workflow passent dans les deux fuseaux. Trois mutations sont rejetées dans chacun : suppression de la garde `cmsMigre`, refus transformé en succès (`scripts/check-ecritures.js:382`), et succès de migration transformé en échec (`scripts/check-ecritures.js:387`). Les nouveaux tests exécutent bien deux chargements puis la réparation (`scripts/check-ecritures.js:380`, `scripts/check-ecritures.js:385`).
+
+**Défaut résiduel : la lecture du catalogue courant peut encore fournir un repli ensuite enregistré.**
+
+Scénario fictif reproduit dans les deux fuseaux avec le véritable `loadProfileData` complet, les fonctions de pauses/archivage et les profils/catalogue par défaut du produit :
+
+1. Le marqueur CMS est présent, le marqueur Fumel absent et `ess-cms` contient un catalogue JSON valide avec une personnalisation fictive.
+2. La migration retourne immédiatement `true` sur son marqueur (`index.html:7508`).
+3. Seule la première lecture suivante d'`ess-cms` est refusée. `ls` fournit alors `DEFAULT_CMS` (`index.html:7540`, `index.html:971`).
+4. Les lectures suivantes fonctionnent : `ecrireTout` lit correctement l'ancien catalogue, puis enregistre pourtant le repli et le marqueur Fumel (`index.html:7544`, `index.html:7546`).
+
+Résultat : deux écritures, catalogue personnalisé remplacé par les valeurs par défaut, marqueur Fumel posé. Un nouveau chargement après rétablissement ne récupère pas la personnalisation. Le catalogue initial était valide ; l'erreur de lecture ponctuelle suffit à provoquer sa perte.
+
+Même défaut avec marqueur CMS initialement absent : la migration lit, fusionne et enregistre correctement le catalogue ; refuser seulement la lecture suivante de chargement (`index.html:7540`) fait ensuite enregistrer le repli par Fumel. Quatre écritures au total et personnalisation perdue, reproduit dans les deux fuseaux.
+
+Les variantes avec marqueur CMS déjà présent et source vide ou malformée, signalées dans `CHANTIERS.md:9`, remplacent également cette source. Le scénario de lecture refusée ci-dessus établit en plus la perte d'un catalogue valide. Les nouveaux tests couvrent le refus initial de migration, puis une réparation avant le succès (`scripts/check-ecritures.js:378`, `scripts/check-ecritures.js:385`) ; ils ne refusent pas la lecture du catalogue courant après une migration déclarée achevée.
+
+**Calculs et formats inchangés** : comparaison exacte avec `dacb651` de l'état initial (`index.html:1107`), statistiques/bilan (`index.html:3225`, `index.html:3423`), archives (`index.html:3045`), préparation/estimation (`index.html:2992`, `index.html:3005`), migration/version des permanences (`index.html:1871`, `index.html:1864`) et export (`index.html:2168`). Le reste d'`index.html` est identique hors migration CMS et garde du réglage Fumel.
+
+**Amendement** :
+
+Vérifier la lecture et la validité du catalogue courant avant toute écriture du réglage Fumel, que le marqueur CMS soit ancien ou tout juste posé. Distinguer absence réelle, refus de lecture et contenu illisible ; sur erreur, conserver le stockage et ne pas poser le marqueur Fumel. Tester le catalogue personnalisé valide avec lecture refusée une fois, les deux états du marqueur CMS, puis la reprise sans perte après rétablissement. Conserver les tests de réparation et de clés absentes.
+
+Tests avec données fictives, fonctions métier réelles et stockage/réseau de sauvegarde simulés ; aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
