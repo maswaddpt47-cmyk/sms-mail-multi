@@ -152,6 +152,43 @@ Cependant, les défauts suivants sont reproduits dans les deux fuseaux :
 
 Vérifications en mémoire, données fictives, stockage et réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
 
+### Nouvelle vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `c8f04ab`, commits `06e37c5` et `1e59a4f` vérifiés.
+**Verdict** : amendé. Les protections progressent, mais l’étape 2 reste incomplète.
+**Constat** :
+
+Les contre-exemples précédents ont été rejoués en UTC et Europe/Paris. Sont confirmés : import et réglages groupés, lecture préalable sans écriture si elle échoue, retour arrière relu et incohérence détectée, refus du CMS nul, annulation après changement de profil, pointage réaligné sur le stockage, compteur d’export restauré et sauvegarde ICS après import complet.
+
+La suite fournie passe dans les deux fuseaux et exécute réellement `persist` et `addHistory` (`scripts/check-ecritures.js:15, 22`). Cependant, cinq défauts restent reproduits :
+
+1. Les restaurations masquent encore un retour arrière incomplet.
+   Première écriture réussie, puis panne persistante : `doImport` signale correctement l’incohérence, mais `ghRestoreLatest` et `ghRestoreFile` affichent encore « aucune donnée modifiée », alors que le catalogue stocké a changé (`index.html:2141, 1324, 1393`).
+
+2. La validation accepte encore un élément qui fait planter l’application après enregistrement.
+   Un modèle personnalisé sélectionné avec `body:1` est accepté (`index.html:2117`). L’import l’enregistre, déclenche une sauvegarde automatique, puis `fillTemplate` plante sur `.replace` (`index.html:2144, 2145, 1475`).
+   Le cas `cmsList:[null]` est corrigé ; la validation des champs nécessaires aux lecteurs reste insuffisante.
+
+3. La génération ordinaire reste hors protection.
+   Avec une écriture d’historique refusée : une fiche reste en mémoire, aucune dans le stockage, une sauvegarde automatique est déclenchée et « Message généré et enregistré » apparaît (`index.html:1596, 1597, 1667, 1669`).
+
+   D’autres chemins restent directs : suppression dans l’historique (`index.html:2173`) et `writeProfileOrientations` (`index.html:6431`). Reproductions : mémoire différente du stockage ; les orientations déclenchent également une sauvegarde après échec. Les écritures de `clearHistory`, `saveHistItem` et de l’import JSON des orientations restent aussi sans contrôle du résultat (`index.html:2152, 2174, 6499`).
+
+4. Des appelants ignorent encore l’échec de `persist`.
+   Dupliquer une démarche avec une panne ponctuelle laisse deux démarches en mémoire contre une dans le stockage, puis affiche « Démarche dupliquée » malgré l’échec (`index.html:1797`). Le nouveau `persist` retourne pourtant correctement `false` (`index.html:1238`).
+
+5. Un appelant indirect annonce encore un faux succès.
+   Après une écriture refusée, `libererApresRelance` affiche « Créneau libéré » alors que le rendez-vous reste « En attente » (`index.html:2039, 2040`). La protection de `pointerStatut` fonctionne, mais son résultat ne remonte pas jusqu’au dernier message.
+
+Le contrôle des appelants dans le test vérifie surtout la forme des lignes de code ; il n’exécute pas ces appels indirects (`scripts/check-ecritures.js:85`).
+
+Calculs et formats inchangés : comparaison exacte des statistiques et du bilan (`index.html:3148, 3346`), du calcul des archives (2968), de l’export (2098) et de la migration des permanences (1811). Aucun changement de format identifié.
+
+**Amendement** :
+
+Protéger les chemins métier restants et leurs mutations en mémoire, propager échec et incohérence jusqu’au dernier appelant, valider les champs consommés avant toute écriture, puis ajouter les contre-exemples ci-dessus aux tests exécutés.
+
+Vérifications en mémoire avec données fictives, stockage et réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
