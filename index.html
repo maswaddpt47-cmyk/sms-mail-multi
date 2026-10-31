@@ -1128,7 +1128,27 @@ var S={
 };
 
 /* ============================== PERSISTENCE ============================== */
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');}}
+/* AG-013, étape 2 (31/10/2026) : une écriture est relue ; renvoie false si elle n'est pas enregistrée à l'identique. */
+function lsSet(k,v){
+  try{var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');return true;}
+  catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');return false;}
+}
+/* Plusieurs écritures d'un coup ([[clé, valeur], …]) : si l'une échoue, les clés déjà écrites reprennent leur valeur
+   d'avant (absente comprise). Aucune sauvegarde GitHub automatique pendant l'opération : jamais d'état à moitié écrit. */
+var _ecrituresGroupees=0;
+function ecrireTout(paires){
+  var avant=paires.map(function(p){var v=null;try{v=localStorage.getItem(p[0]);}catch(e){}return [p[0],v];});
+  _ecrituresGroupees++;
+  try{
+    for(var i=0;i<paires.length;i++){
+      if(!lsSet(paires[i][0],paires[i][1])){
+        for(var j=i;j>=0;j--){try{if(avant[j][1]===null)localStorage.removeItem(avant[j][0]);else localStorage.setItem(avant[j][0],avant[j][1]);}catch(e){}}
+        return false;
+      }
+    }
+    return true;
+  }finally{_ecrituresGroupees--;}
+}
 /* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
 function pk(suffix){return pkFor(S.activeProfile,suffix);}
@@ -1203,7 +1223,7 @@ function ghNowFile(pid){
 }
 /* déclenche un backup throttlé (2 min) pour un profil donné — utilisé lors d'écritures cross-profil */
 function maybeAutoBackupProfile(profileId){
-  if(!ghToken())return;
+  if(_ecrituresGroupees||!ghToken())return;
   var nowMs=Date.now();
   if(nowMs-(_ghLastAutoPushByProfile[profileId]||0)>120000){
     _ghLastAutoPushByProfile[profileId]=nowMs;
@@ -1258,8 +1278,9 @@ function ghRestoreLatest(token,onSuccess){
       .then(function(r){if(!r.ok)throw new Error();return r.json();})
       .then(function(data){
         var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
-        S.importText=json;doImport();
-        if(onSuccess)onSuccess();
+        S.importText=json;
+        if(doImport()){if(onSuccess)onSuccess();}
+        else showToast('❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
       })
       .catch(function(){showToast('❌ Impossible de restaurer depuis GitHub','err');});
   });
@@ -1324,8 +1345,9 @@ function ghRestoreFile(token,filePath){
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(data){
       var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
-      S.importText=json;doImport();
-      showToast('✅ Restauration réussie !');
+      S.importText=json;
+      if(doImport())showToast('✅ Restauration réussie !');
+      else showToast('❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
     })
     .catch(function(){showToast('❌ Impossible de restaurer ce backup','err');});
 }
@@ -2041,21 +2063,36 @@ function downloadExport(){var blob=new Blob([JSON.stringify(exportData(),null,2)
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
 function openImport(){S.modal='import';S.importText="";S.importError="";renderModal();}
 function closeModal(){S.modal=null;renderModal();}
+/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement, puis appliquée en une fois (ecrireTout) ; en cas d'échec rien n'est
+   modifié, ni en mémoire ni dans le stockage, et aucun succès n'est annoncé. Renvoie true seulement si tout est enregistré. */
+var IMPORT_LISTES=['cmsList','demarches','secteurs','customTemplates','customVars','mandats','history','permanences','orientations'];
+function verifierSauvegarde(data){
+  if(!data||typeof data!=='object'||Array.isArray(data))return 'Ce fichier n\'est pas une sauvegarde complète.';
+  for(var i=0;i<IMPORT_LISTES.length;i++){var k=IMPORT_LISTES[i];if(data[k]!=null&&!Array.isArray(data[k]))return 'Sauvegarde invalide (« '+k+' » n\'est pas une liste).';}
+  if(data.yearlyStats!=null&&(typeof data.yearlyStats!=='object'||Array.isArray(data.yearlyStats)))return 'Sauvegarde invalide (« yearlyStats »).';
+  if(data.history&&data.history.some(function(h){return !h||typeof h!=='object'||Array.isArray(h);}))return 'Sauvegarde invalide (fiche illisible dans l\'historique).';
+  return '';
+}
 function doImport(){
+  var data;
+  try{data=JSON.parse(S.importText.trim());}catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";renderModal();return false;}
+  var erreur=verifierSauvegarde(data);
+  if(erreur){S.importError='❌ '+erreur+' Aucune donnée modifiée.';renderModal();return false;}
+  var neuf={},paires=[];
   try{
-    var data=JSON.parse(S.importText.trim());
-    if(data.cmsList)S.cmsList=data.cmsList;if(data.demarches)S.demarches=data.demarches;if(data.secteurs)S.secteurs=data.secteurs;
-    if(data.customTemplates)S.customTemplates=data.customTemplates;if(data.customVars)S.customVars=data.customVars;
     /* on n'importe pas les templates builtin — ils sont définis dans le code */
-    /* cmsList est persisté via persist() ci-dessous (clé partagée entre profils) */
-    if(data.mandats){S.mandats=data.mandats;lsSet('ess-mandats',S.mandats);}
-    if(data.history){S.history=data.history;lsSet(pk('history'),S.history);}
-    if(data.yearlyStats){S.yearlyStats=data.yearlyStats;lsSet(pk('yearly-stats'),S.yearlyStats);}
-    if(data.permanences){S.permanences=migratePermanences(data.permanences,S.history);lsSet(pk('permanences'),S.permanences);lsSet(pk('perm-version'),PERM_MODEL_VERSION);}
-    if(data.orientations){S.orientations=data.orientations;lsSet(pk('orientations'),S.orientations);}
-    S.modal=null;S.importText="";S.importError="";
-    persist();regen();renderAll();showToast("✅ Import réussi !");
-  }catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";renderModal();}
+    [['cmsList','ess-cms'],['demarches','ess-demarches'],['secteurs','ess-secteurs'],['customTemplates','ess-custom-tpl'],['customVars','ess-vars'],['mandats','ess-mandats']]
+      .forEach(function(c){if(data[c[0]]){neuf[c[0]]=data[c[0]];paires.push([c[1],data[c[0]]]);}});
+    if(data.history){neuf.history=data.history;paires.push([pk('history'),data.history]);}
+    if(data.yearlyStats){neuf.yearlyStats=data.yearlyStats;paires.push([pk('yearly-stats'),data.yearlyStats]);}
+    if(data.permanences){neuf.permanences=migratePermanences(data.permanences,neuf.history||S.history);paires.push([pk('permanences'),neuf.permanences],[pk('perm-version'),PERM_MODEL_VERSION]);}
+    if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
+  }catch(e){S.importError="❌ Sauvegarde illisible. Aucune donnée modifiée.";renderModal();return false;}
+  if(!ecrireTout(paires)){S.importError="❌ Enregistrement impossible (stockage plein ?) : import annulé, aucune donnée modifiée.";renderModal();return false;}
+  Object.keys(neuf).forEach(function(k){S[k]=neuf[k];});
+  S.modal=null;S.importText="";S.importError="";
+  persist();regen();renderAll();showToast("✅ Import réussi !");
+  return true;
 }
 
 /* history */
@@ -2939,10 +2976,14 @@ function archiveYear(year){
   if(!entries.length){showToast('Aucune donnée pour '+year,'warn');return;}
   if(!confirm("Archiver l'année "+year+" ?\n\n"+entries.length+" entrée(s) d'historique seront résumées en statistiques agrégées et anonymisées, puis définitivement supprimées de l'historique nominatif. Cette action est irréversible."))return;
   var arc=computeYearArchive(year);
-  S.yearlyStats[year]=arc;
-  lsSet(pk('yearly-stats'),S.yearlyStats);
+  var stats=Object.assign({},S.yearlyStats);stats[year]=arc;
   var remaining=S.history.filter(function(h){return entryYear(h)!==year;});
-  writeProfileHistory(S.activeProfile,remaining);
+  /* AG-013, étape 2 : l'archive est écrite et relue avant la suppression du détail ; au moindre échec, rien n'est supprimé */
+  if(!ecrireTout([[pk('yearly-stats'),stats],[pk('history'),remaining]])){
+    showToast('❌ Archivage annulé : enregistrement impossible, aucune donnée supprimée. Exportez vos données.','err');
+    return;
+  }
+  S.yearlyStats=stats;S.history=remaining;
   showToast('✅ Année '+year+' archivée ('+entries.length+' RDV)');
   if(ghToken())githubPush(true);
   renderModal();renderAll();
@@ -4242,6 +4283,36 @@ function importICSText(text){
   });
   return added;
 }
+/* AG-013, étape 2 : même RDV = même date, heure, CMS (cmsKey), nom et prénom, dans le profil actif (avant : date + nom
+   seulement, deux RDV distincts pouvaient se remplacer). Tout ou rien : en cas d'échec, historique et journées
+   reviennent à leur état d'avant, en mémoire et dans le stockage, sans sauvegarde automatique intermédiaire. */
+function memeRdvPlanning(h,entry){
+  function t(v){return String(v||'').trim().toLowerCase();}
+  return h.date===entry.date&&String(h.heure||'')===String(entry.heure||'')&&cmsKey(h.commune)===cmsKey(entry.commune)&&t(h.nom)===t(entry.nom)&&t(h.prenom)===t(entry.prenom);
+}
+function appliquerPlanning(entries){
+  var cles=[pk('history'),pk('permanences')],brut=cles.map(function(k){try{return localStorage.getItem(k);}catch(e){return null;}});
+  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[]));   /* copie : le remplacement d'un doublon modifie S.history sur place */
+  var added=0,updated=0,ok=false;
+  _ecrituresGroupees++;
+  try{
+    entries.forEach(function(entry){
+      var dup=S.history.find(function(h){return memeRdvPlanning(h,entry);});
+      if(dup){S.history.splice(S.history.indexOf(dup),1,Object.assign({},dup,entry));updated++;return;}
+      addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''}));
+      added++;
+    });
+    ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences);
+  }catch(e){ok=false;}
+  finally{_ecrituresGroupees--;}
+  if(!ok){
+    S.history=histAvant;S.permanences=permAvant;
+    cles.forEach(function(k,i){try{if(brut[i]===null)localStorage.removeItem(k);else localStorage.setItem(k,brut[i]);}catch(e){}});
+    return {ok:false,added:0,updated:0};
+  }
+  maybeAutoBackupProfile(S.activeProfile);
+  return {ok:true,added:added,updated:updated};
+}
 function importPlanningJson(){
   var inp=document.createElement('input');inp.type='file';inp.accept='.json';
   inp.onchange=function(){
@@ -4250,19 +4321,10 @@ function importPlanningJson(){
       try{
         var entries=JSON.parse(e.target.result);
         if(!Array.isArray(entries))throw new Error();
-        var added=0;
-        entries.forEach(function(entry){
-          /* dédup : même date + heure + nom (insensible casse) */
-          var dup=S.history.find(function(h){
-            return h.date===entry.date&&(h.nom||'').toLowerCase()===(entry.nom||'').toLowerCase();
-          });
-          if(dup){S.history.splice(S.history.indexOf(dup),1,Object.assign({},dup,entry));return;};
-          addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''}));
-          added++;
-        });
-        lsSet(pk('history'),S.history);
+        var r=appliquerPlanning(entries);
+        if(!r.ok){showToast('❌ Import annulé : enregistrement impossible, aucune donnée modifiée','err');return;}
         renderAgenda();renderTabs();
-        showToast('✅ '+added+' RDV importé(s)'+(entries.length-added>0?' · '+(entries.length-added)+' doublon(s) ignoré(s)':''));
+        showToast('✅ '+r.added+' RDV importé(s)'+(r.updated?' · '+r.updated+' déjà présent(s), mis à jour':''));
       }catch(ex){showToast('⚠️ Fichier JSON invalide','warn');}
     };fr.readAsText(file);
   };inp.click();
