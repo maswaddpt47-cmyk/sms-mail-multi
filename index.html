@@ -1188,19 +1188,21 @@ function ecrireTout(paires){
   }finally{_ecrituresGroupees--;}
 }
 var MSG_INCOHERENT='⚠️ Enregistrement interrompu et retour en arrière incomplet : certaines données ont pu changer. Rechargez la page, vérifiez vos données et exportez une sauvegarde.';
-/* Opération en tout ou rien sur l'historique et les journées du profil actif : fn() modifie S.history / S.permanences,
-   y compris par addHistory, ensureDayOpen ou applyLunchBreaks ; l'état final est écrit et relu. Au moindre échec,
-   mémoire et stockage (historique, journées, compteur d'export) reviennent à l'état d'avant. Une seule sauvegarde
-   automatique, à la fin. Renvoie {ok, incoherent, valeur}. */
-function operationHistorique(fn){
-  var cles=[pk('history'),pk('permanences'),pk('since-export')],brut;
-  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){return {ok:false,incoherent:false};}
-  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[])),valeur,ok=false,echecsAvant=_echecsEcriture;
+/* Opération en tout ou rien sur l'historique et les journées d'un profil (actif par défaut) : fn() modifie l'historique et
+   les journées, y compris par addHistory, ensureDayOpen(For) ou applyLunchBreaks, ou une fiche sur place ; l'état final est
+   écrit et relu. Au moindre échec, y compris d'une opération imbriquée ou d'une lecture préalable, mémoire et stockage
+   (historique, journées, compteur d'export) reviennent à l'état d'avant (copie profonde : une fiche modifiée sur place est
+   aussi rétablie). Une seule sauvegarde automatique, à la fin. Renvoie {ok, incoherent, valeur}. */
+function operationHistorique(fn,pid){
+  pid=pid||S.activeProfile;var actif=pid===S.activeProfile;
+  var cles=[pkFor(pid,'history'),pkFor(pid,'permanences'),pkFor(pid,'since-export')],brut;
+  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return {ok:false,incoherent:false};}
+  var histAvant=actif?JSON.parse(JSON.stringify(S.history)):null,permAvant=actif?JSON.parse(JSON.stringify(S.permanences||[])):null,valeur,ok=false,echecsAvant=_echecsEcriture;
   _ecrituresGroupees++;
-  try{valeur=fn();ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}
+  try{valeur=fn();ok=(!actif||(lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)))&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}
   finally{_ecrituresGroupees--;}
-  if(ok){maybeAutoBackupProfile(S.activeProfile);return {ok:true,incoherent:false,valeur:valeur};}
-  S.history=histAvant;S.permanences=permAvant;
+  if(ok){maybeAutoBackupProfile(pid);return {ok:true,incoherent:false,valeur:valeur};}
+  if(actif){S.history=histAvant;S.permanences=permAvant;}
   _echecsEcriture++;   /* une opération imbriquée qui échoue fait échouer celle qui l'englobe (planning, ICS) */
   return {ok:false,incoherent:!restaurerCles(cles,brut)};
 }
@@ -1741,22 +1743,31 @@ function isDuplicate(nom,demarche,date){
       &&h.date===date;
   });
 }
-function copyBody(){
-  var text=S.channel==='sms'?compactSmsText(S.generatedBody):S.generatedBody;
-  if(text!==S.generatedBody){S.generatedBody=text;updatePreviewOnly();}
-  function afterCopy(ok){
-    if(!ok)return;
+/* Après une copie réussie : date de réception et nouveau message enregistrés ensemble (4e amendement de Codex, 31/10).
+   Renvoie le résultat d'operationHistorique. */
+function enregistrerCopie(text){
+  /* réception et message enregistrés ensemble */
+  return operationHistorique(function(){
     var receptionRecord=S.history.find(function(h){return h.date===S.date&&h.heure===S.heure&&h.commune===S.commune&&(h.nom||'').toLowerCase()===(S.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(S.prenom||'').toLowerCase();});
     if(receptionRecord&&receptionDateFor(receptionRecord)!==(S.dateReception||'')){
-      receptionRecord.dateReception=S.dateReception||'';lsSet(pk('history'),S.history);
+      S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:S.dateReception||''});
+      if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
     }
     if(text&&(!S.history.length||S.history[0].body!==text)){
       var r=compute();var cms=S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);});
       if(cms&&r.dem){
         if(isDuplicate(S.nom,r.dem.nom,S.date))showToast('⚠️ Doublon détecté : '+S.nom+' / '+r.dem.nom+' déjà dans l\'historique','warn');
-        addHistory({channel:S.channel,msgType:S.msgType,body:text,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:r.dem.nom,selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',ts:new Date().toLocaleString('fr-FR')},true);
+        if(!addHistory({channel:S.channel,msgType:S.msgType,body:text,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:r.dem.nom,selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',ts:new Date().toLocaleString('fr-FR')},true))throw new Error('message refusé');
       }
     }
+  });
+}
+function copyBody(){
+  var text=S.channel==='sms'?compactSmsText(S.generatedBody):S.generatedBody;
+  if(text!==S.generatedBody){S.generatedBody=text;updatePreviewOnly();}
+  function afterCopy(ok){
+    if(!ok)return;
+    enregistrerCopie(text);
     flashCopied('body');showToast("✓ Copié !");
   }
   /* SMS : texte brut, avec une ligne vide maximum entre les paragraphes.
@@ -2086,6 +2097,11 @@ function libererApresRelance(h){
   if(pointerStatut(h,'pas_de_retour'))showToast('✓ Créneau libéré');
 }
 /* bloque un créneau libre pour indisponibilité (pas un usager) — profil actif uniquement */
+/* Modification d'un RDV (dialogue Agenda) : la fiche et sa journée cible sont enregistrées ensemble, dans le profil
+   propriétaire (4e amendement de Codex, 31/10). appliquer() modifie et enregistre la fiche, renvoie la fiche ou null. */
+function enregistrerDeplacement(owner,appliquer){
+  return operationHistorique(function(){var saved=appliquer();if(!saved)throw new Error('modification refusée');ensureDayOpenFor(owner,saved.commune,saved.date);return saved;},owner);
+}
 function blockSlot(commune,dateStr,heure,motif){
   if(hasConflict(dateStr,heure,commune))return false;
   /* journée ouverte et blocage enregistrés ensemble ou pas du tout (3e amendement de Codex, 31/10) */
@@ -2107,7 +2123,8 @@ function releaseSlot(entry){
 }
 /* bloque tous les créneaux encore libres passés en paramètre en une fois */
 function blockWholeDay(commune,dateStr,slots,motif){
-  slots.forEach(function(s){if(!s.taken)blockSlot(commune,dateStr,s.heure,motif);});
+  /* tous les créneaux ou aucun (4e amendement de Codex, 31/10) */
+  return operationHistorique(function(){slots.forEach(function(s){if(!s.taken&&!hasConflict(dateStr,s.heure,commune))blockSlotBrut(commune,dateStr,s.heure,motif);});}).ok;
 }
 function deletePerm(id){S.permanences=S.permanences.filter(function(p){return p.id!==id;});lsSet(pk('permanences'),S.permanences);renderConfig();}
 function savePerm(id){
@@ -4388,7 +4405,7 @@ function importICSText(text){
     /* éviter doublons */
     var dup=S.history.find(function(h){return h.date===dateStr&&h.heure===heureStr&&(h.commune===location||!location);});
     if(dup)return;
-    addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR')});
+    if(!addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR')}))throw new Error('RDV refusé');
     added++;
   });});
   importICSText.incoherent=!!r.incoherent;
@@ -4407,7 +4424,7 @@ function appliquerPlanning(entries){
     entries.forEach(function(entry){
       var dup=S.history.find(function(h){return memeRdvPlanning(h,entry);});
       if(dup){S.history.splice(S.history.indexOf(dup),1,Object.assign({},dup,entry));updated++;return;}
-      addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''}));
+      if(!addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''})))throw new Error('RDV refusé');
       added++;
     });
   });
@@ -5121,8 +5138,8 @@ function renderAgenda(){
             var motif=prompt('Motif (facultatif) — ex. "Salon des maires à Agen" :','');
             if(motif===null)return;
             if(!confirm('Bloquer '+freeTarget.length+' créneau(x) libre(s) ?'))return;
-            blockWholeDay(dCom,dStr,target,motif);
-            renderAgenda();showToast('✓ Créneaux marqués indisponibles');
+            var okJour=blockWholeDay(dCom,dStr,target,motif);
+            renderAgenda();if(okJour)showToast('✓ Créneaux marqués indisponibles');
           } else if(blockedTarget.length){
             if(!confirm('Libérer les '+blockedTarget.length+' créneau(x) bloqué(s) de cette période ?'))return;
             blockedTarget.forEach(function(s){
@@ -6864,8 +6881,11 @@ function renderAgendaRdvDialog(overlay,box){
       }
       var cmsKeyNew=cmsKey(edit.commune),cmsNew=edit.commune!==commune?S.cmsList.find(function(c){var cn=cmsKey(c.nom);return cn===cmsKeyNew||cmsKeyNew.indexOf(cn)!==-1||cn.indexOf(cmsKeyNew)!==-1;}):null;
       var cmsPatch={commune:edit.commune};if(edit.commune!==commune)cmsPatch.selectedCMS=cmsNew?String(cmsNew.id):'';
-      var saved=update(Object.assign(cmsPatch,{civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes}));
-      if(!saved)return;ensureDayOpenFor(owner,saved.commune,saved.date);ar.editing=false;renderAgenda();renderTabs();renderModal();showToast('RDV modifié');
+      var saved=null,patch=Object.assign(cmsPatch,{civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});
+      /* modification et journée cible ensemble (4e amendement de Codex, 31/10) */
+      var op=enregistrerDeplacement(owner,function(){return update(patch);});saved=op.valeur;
+      if(!op.ok){S.modal=null;renderModal();renderAgenda();renderTabs();if(op.incoherent)showToast(MSG_INCOHERENT,'err');return;}
+      ar.editing=false;renderAgenda();renderTabs();renderModal();showToast('RDV modifié');
     }));footer.appendChild(editActions);
   }
   if(footer.children.length)box.appendChild(footer);
