@@ -41,7 +41,7 @@ assert(band,'bande des tuiles introuvable');
 const tuiles={};band.children.forEach(t=>{tuiles[t.children[1].children[0].text]=t.children[0].text;});
 assert.equal(Object.keys(tuiles).length,8,'les huit tuiles sont rendues');   // garde : le test est bien arrivé aux tuiles
 // valeurs attendues recomptées à la main sur les données ci-dessus, indépendamment du modèle
-assert.equal(tuiles['RDV réalisés'],'3');
+assert.equal(tuiles['RDV réalisés'],'4');   // PREUVE DE BLOCAGE, À ANNULER
 assert.equal(tuiles['RDV sur la période'],'7');
 assert.equal(tuiles['Usagers accompagnés'],'2');
 assert.equal(tuiles['Places disponibles à venir'],'—');
