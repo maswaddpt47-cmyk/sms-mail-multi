@@ -69,6 +69,19 @@ ouvert le bloc inscrit la réponse **telle quelle** sous
 l'utilisateur tranche. Codex ne modifie jamais le code. Règle complète : MD-LIB
 `agora.md` §12.
 
+**Phrase de relais pour Codex** (décision de l'utilisateur du 29/10/2026 pour GDINV2, reprise ici le 31/10/2026 :
+recopier ses réponses à la main ne se justifie plus). Elle remplace « ne modifie rien » :
+
+> pull **maswaddpt47-cmyk/sms-mail-multi**, lis son `AGORA.md` et [réponds à AG-00N | vérifie l'étape N d'AG-013 : commits …].
+> Autorisation exceptionnelle de l'utilisateur : tu peux modifier **un seul fichier, `AGORA.md`**, en y **ajoutant**
+> ta réponse (`### Réponse — Codex — JJ/MM/AAAA` sous le bloc, ou `### Vérification de l'étape N — Codex — JJ/MM/AAAA`
+> dans « Vérification des étapes d'AG-013 »), selon le gabarit du fichier, avec fichier:ligne. N'édite aucun autre bloc
+> ni aucun autre fichier. Commite et pousse directement sur `main`.
+
+Codex doit alors pouvoir écrire (lever « Lecture seule » pour cette passe). L'utilisateur écrit ensuite « pull » à la
+session Claude, qui contrôle `git show --stat <sha>` : seul `AGORA.md` est touché, et `git diff` n'ajoute que des lignes
+(aucun bloc existant modifié). Sinon, annuler le commit et inscrire la réponse à la main. Le code reste interdit à Codex.
+
 ## Gabarit
 
 ```markdown
