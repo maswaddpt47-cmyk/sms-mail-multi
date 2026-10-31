@@ -202,6 +202,49 @@ Protéger les chemins métier restants et leurs mutations en mémoire, propager 
 
 Vérifications en mémoire avec données fictives, stockage et réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
 
+### Troisième vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `472c434`, commits `ca9f9bc` et `b04d109` vérifiés.
+**Verdict** : amendé. Les anciens contre-exemples sont corrigés, mais des actions restent partiellement enregistrées.
+**Constat** :
+
+`check-ecritures.js` passe en UTC et Europe/Paris. Les contre-exemples rejoués confirment le réalignement après refus, la suspension des sauvegardes, la suppression des faux succès, le refus de `body:1` et la propagation de l’incohérence dans les restaurations.
+
+Trois défauts restent reproduits dans les deux fuseaux :
+
+1. Rendez-vous enregistré sans sa journée.
+   La génération écrit l’historique, puis ouvre la journée (`index.html:1698, 1699`). Si l’écriture des permanences échoue (1881), le résultat est : une fiche enregistrée, aucune journée, rendez-vous absent de « Mon agenda », compteur d’export incrémenté.
+
+   Le message d’échec et le blocage de sauvegarde fonctionnent, mais la première écriture n’est pas annulée.
+
+   Le cas inverse existe : bloquer un créneau ouvre la journée avant d’enregistrer le blocage (`index.html:2076, 2081`). Si cette dernière écriture échoue, la journée reste créée sans blocage.
+
+2. Import d’orientations partiel entre profils.
+   `confirmOrientImport` enregistre les profils successivement (`index.html:6487, 6492`). Avec une orientation pour p1, puis une pour p2, et un refus sur la deuxième écriture :
+
+   - p1 contient l’orientation, p2 reste vide ;
+   - un appel de sauvegarde de p1 est déjà déclenché (`index.html:6473`) ;
+   - la préparation d’import est effacée (`index.html:6496`).
+
+   Le remplacement du message de succès ne restaure pas la première écriture.
+
+3. Mémoire désalignée après un retour arrière pourtant réussi.
+   Dans l’import JSON, l’écriture du nouvel historique réussit, puis sa relecture échoue une fois. Le filet recharge alors le nouvel historique en mémoire (`index.html:1158`). Le retour arrière restaure ensuite l’ancien historique dans le stockage (1181), sans réaligner à nouveau la mémoire.
+
+   Résultat : stockage ancien, mémoire nouvelle, `doImport()` retourne `false`, mais annonce « aucune donnée modifiée » (`index.html:2179`).
+
+Les tests de génération refusent seulement la première écriture d’historique ; ils ne parcourent pas l’échec de la journée après une première écriture réussie (`scripts/check-ecritures.js:96`).
+
+Calculs et formats inchangés : comparaison exacte des statistiques et du bilan (`index.html:3186, 3384`), des archives (3006), de la préparation (2953), de la migration (1842) et de l’export (2129).
+
+**Amendement** :
+
+- Grouper l’action complète : historique, journée et compteur ; grouper également les profils d’un même import avant toute sauvegarde.
+- Conserver la préparation d’import en cas d’échec.
+- Réaligner la mémoire après le retour arrière, sur l’état final du stockage.
+- Ajouter ces contre-exemples aux tests.
+
+Vérifications en mémoire, fonctions métier réelles, données fictives et stockage/réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
