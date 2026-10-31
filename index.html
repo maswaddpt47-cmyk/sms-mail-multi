@@ -1631,8 +1631,10 @@ function handleGenerate(){
   }
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
-  addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR')},true);
-  showToast("✓ Message généré et enregistré");
+  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR')},true);
+  /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
+  if(enregistre)showToast("✓ Message généré et enregistré");
+  else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
@@ -1685,6 +1687,7 @@ function lancerLapin(h){
    d'export sont enregistrés ensemble ou pas du tout (operationHistorique). Renvoie true seulement si tout est enregistré. */
 function addHistory(item,prepared){
   var r=operationHistorique(function(){return addHistoryBrut(item,prepared);});
+  addHistory.incoherent=!!r.incoherent;
   if(!r.ok||r.valeur===false)return false;
   var rappel=addHistoryBrut.rappel;addHistoryBrut.rappel=0;
   if(rappel)setTimeout(function(){showToast('💾 '+rappel+' messages non sauvegardés — pensez à exporter !','warn');},600);
@@ -7503,7 +7506,6 @@ function showProfileSelect(){
    la liste partagée déjà existante (rien de ce qui est déjà là n'est retiré, seulement complété). */
 function migrateSharedCmsList(){
   if(localStorage.getItem('ess-cms-migrated-v2'))return;
-  localStorage.setItem('ess-cms-migrated-v2','1');
   var merged=[];var byNom={};
   function add(c){
     var key=(c.nom||'').trim().toLowerCase();if(!key)return;
@@ -7512,7 +7514,10 @@ function migrateSharedCmsList(){
   }
   ls('ess-cms',[]).forEach(add);
   PROFILES.forEach(function(p){ls('ess-'+p.id+'-cms',DEFAULT_CMS).forEach(add);});
-  if(merged.length)lsSet('ess-cms',merged);
+  /* AG-013 étape 2 (5e vérification de Codex) : le marqueur n'est posé qu'après l'enregistrement relu du catalogue
+     fusionné ; sinon la fusion (sans effet si rejouée) est retentée au prochain chargement. */
+  if(merged.length&&!lsSet('ess-cms',merged))return;
+  try{localStorage.setItem('ess-cms-migrated-v2','1');}catch(e){}
 }
 function loadProfileData(){
   S.dateReception='';
@@ -7523,7 +7528,7 @@ function loadProfileData(){
   /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier */
   if(ls('ess-pm-start-v1','')!=='1'){
     S.cmsList=S.cmsList.map(function(c){return /^fumel\b/i.test(String(c.nom||'').trim())&&!c.debutApresMidi?Object.assign({},c,{debutApresMidi:'14:00'}):c;});
-    lsSet('ess-cms',S.cmsList);lsSet('ess-pm-start-v1','1');
+    if(!ecrireTout([['ess-cms',S.cmsList],['ess-pm-start-v1','1']]))S.cmsList=ls('ess-cms',DEFAULT_CMS);   /* réglage et marqueur ensemble ou pas du tout */
   }
   S.demarches=ls('ess-demarches',DEFAULT_DEMARCHES);
   /* fusion : ajouter les démarches par défaut manquantes sans écraser les personnalisations */
@@ -7536,8 +7541,7 @@ function loadProfileData(){
   var _tplV='v5-lapin-templates';
   if(ls('ess-tpl-version','')!==_tplV){
     S.templates=Object.assign({},DEFAULT_TEMPLATES);
-    lsSet('ess-templates',S.templates);
-    lsSet('ess-tpl-version',_tplV);
+    if(!ecrireTout([['ess-templates',S.templates],['ess-tpl-version',_tplV]]))S.templates=ls('ess-templates',DEFAULT_TEMPLATES);   /* modèles et version ensemble */
   }
   S.customTemplates=ls('ess-custom-tpl',DEFAULT_CUSTOM);
   S.customVars=ls('ess-vars',[]);
@@ -7549,8 +7553,8 @@ function loadProfileData(){
   S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
   if(ls(pk('perm-version'),'')!==PERM_MODEL_VERSION){
     S.permanences=migratePermanences(S.permanences,S.history);
-    lsSet(pk('permanences'),S.permanences);
-    lsSet(pk('perm-version'),PERM_MODEL_VERSION);
+    /* journées et version ensemble : une version sans les journées migrées sauterait la migration au chargement suivant */
+    if(!ecrireTout([[pk('permanences'),S.permanences],[pk('perm-version'),PERM_MODEL_VERSION]]))S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
   }
   applyLunchBreaks();
   archiveOldDaysCore(true);
