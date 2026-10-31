@@ -182,7 +182,8 @@ dans « Points à ne pas défaire ».
 
 Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 
-Aucune nouvelle décision : AG-012 confirmé sans amendement, périmètre déjà demandé et fonctionnement déjà validé par l’utilisateur. Les limites de provenance sont conservées dans le contrat du bilan.
+- **AG-013 (critères 7, 1 et 6) — plan de fiabilisation des statistiques** : réflexions de Claude et de Codex croisées le 31/10 (deux documents Word, hors dépôt), plan consolidé en 7 étapes soumis à Codex par AGORA. Bloc ouvert parce que le plan touche aux calculs affichés, au format de stockage et à une migration. **Rien n'est lancé** ; d'ici l'étape 2, ne pas lancer « RGPD — Rétention » ni d'import JSON.
+- AG-012 : clos, confirmé sans amendement, périmètre déjà demandé et fonctionnement déjà validé par l’utilisateur. Les limites de provenance sont conservées dans le contrat du bilan.
 
 ## Chantiers restants
 
