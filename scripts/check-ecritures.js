@@ -29,7 +29,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('archiveOldDaysCore'),  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
+  fonction('archiveOldDaysCore'),fonction('identiteMandat'),fonction('numeroMandatValable'),fonction('generateMandatNum'),  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
@@ -415,6 +415,13 @@ async function restaurer(contenu,fonction,options){
    e.S.favDemarches=['d1','d3'];assert.equal(e.ctx.persist(),true);
    const f=charger();f.ctx.localStorage=e.st;f.st=e.st;f.ctx.loadProfileData();
    assert.deepEqual([...f.S.favDemarches],['d1','d3'],'P06 : favoris retrouvés dans une nouvelle instance');}
+  /* ── P07 : changer de bénéficiaire alloue un nouveau numéro ── */
+  {const e=charger();Object.assign(e.S,{mandatPrenom:'Alice',mandatNom:'FICTIF',mandatNum:''});
+   const allouer=()=>{if(!e.ctx.numeroMandatValable()){e.S.mandatNum=e.ctx.generateMandatNum();e.S.mandatNumPour=e.ctx.identiteMandat();}return e.S.mandatNum;};
+   const n1=allouer();assert.equal(allouer(),n1,'P07 témoin : même bénéficiaire, même numéro');
+   Object.assign(e.S,{mandatPrenom:'Bruno',mandatNom:'AUTRE'});const n2=allouer();
+   assert.notEqual(n2,n1,'P07 : autre bénéficiaire, autre numéro');assert.equal(e.st.getItem('ess-mandat-counter'),'2','P07 : compteur avancé deux fois');
+   assert(/if\(!numeroMandatValable\(\)\)\{S\.mandatNum=generateMandatNum\(\);S\.mandatNumPour=identiteMandat\(\);\}/.test(fonction('generateMandatDocx')),'P07 : la génération du document utilise ce contrôle');}
   /* ── T14 : chargement interrompu → aucune donnée écrite ensuite ; rechargement réussi → écritures rétablies ── */
   {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('b','2026-11-04','09:30','B','B')]));e.S.history=[rdv('a','2026-11-03','09:30','A','A')];
    e.S.activeProfile='p2';let n=0;e.st.lecturePanne=k=>k==='ess-cms-migrated-v2'&&++n===1;

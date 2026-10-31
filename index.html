@@ -6046,6 +6046,10 @@ function renderConfig(){
 /* ============================== MANDAT ============================== */
 function todayFR(){return new Date().toLocaleDateString("fr-FR",{year:"numeric",month:"long",day:"numeric"});}
 
+/* P07 (vérification de clôture de Codex) : un numéro de mandat appartient à un bénéficiaire (prénom + nom) ; en changer
+   en alloue un nouveau au prochain document, au lieu de réutiliser celui du précédent. */
+function identiteMandat(){return [(S.mandatPrenom||'').trim().toLowerCase(),(S.mandatNom||'').trim().toLowerCase()].join('|');}
+function numeroMandatValable(){return !!S.mandatNum&&S.mandatNumPour===identiteMandat();}
 function generateMandatNum(){
   var counter=(parseInt(localStorage.getItem('ess-mandat-counter')||'0',10))+1;
   localStorage.setItem('ess-mandat-counter',String(counter));
@@ -6216,9 +6220,9 @@ function buildMandatDoc(){
   page.appendChild(header);
 
   // ── Numéro de mandat ──
-  var num=S.mandatNum||('MAN-'+new Date().getFullYear()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0'));
+  var num=(numeroMandatValable()&&S.mandatNum)||('MAN-'+new Date().getFullYear()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0'));
   var numBadge=el('div',{style:"text-align:right;font-size:10.5pt;color:#1B4991;font-weight:700;margin-bottom:10px;"});
-  numBadge.textContent="N° "+num+(S.mandatNum?"":" (sera confirmé au téléchargement)");
+  numBadge.textContent="N° "+num+(numeroMandatValable()?"":" (sera confirmé au téléchargement)");
   page.appendChild(numBadge);
 
   // ── Titre ──
@@ -6289,7 +6293,7 @@ function buildMandatDoc(){
 
 function generateMandatDocx(){
   if(!S.mandatNom&&!S.mandatPrenom){showToast("Renseignez au moins le nom de l'usager","warn");return;}
-  if(!S.mandatNum)S.mandatNum=generateMandatNum();
+  if(!numeroMandatValable()){S.mandatNum=generateMandatNum();S.mandatNumPour=identiteMandat();}
   var user=mandatUserStr()||"[Usager]";
   var lieu=S.mandatCommune||"";
   var today=todayFR();
@@ -6430,7 +6434,7 @@ function renderMandats(){
 function regenMandat(m){
   S.mandatSource="";
   S.mandatCivilite=m.civilite||"";S.mandatPrenom=m.prenom||"";S.mandatNom=m.nom||"";
-  S.mandatNum=m.num||"";S.mandatCommune=m.commune||"";
+  S.mandatNum=m.num||"";S.mandatNumPour=identiteMandat();S.mandatCommune=m.commune||"";
   S.activeTab="mandat";
   renderTabs();showActivePane();renderMandat();
 }
