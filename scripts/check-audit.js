@@ -9,7 +9,7 @@ const app=vm.createContext({Date});
 vm.runInContext(section('function toLocalDateStr(d){','\n')+'\n'+section('var DUREE_CRENEAU=60;','function hasConflict(')+section('function statsRdvModel(','/* ============================== RENDER: STATS'),app);
 
 const NOM_SECRET='ZORGLUB',TEL_SECRET='0611223344';
-function f(date,heure,commune,statut,nom,prenom,extra){return Object.assign({date,heure,commune,statut,nom:NOM_SECRET+'-'+nom,prenom,msgType:'confirmation',channel:'sms',ts:'01/10/2026 10:00:00',telephone:TEL_SECRET,body:'message '+NOM_SECRET},extra||{});}
+function f(date,heure,commune,statut,nom,prenom,extra){return Object.assign({date,heure,commune,statut,nom:NOM_SECRET+'-'+nom,prenom,msgType:'confirmation',channel:'sms',ts:'01/10/2026 10:00:00',telephone:TEL_SECRET,demarche:prenom==='Léa'?'Démarche B':'Démarche A',body:'message '+NOM_SECRET},extra||{});}
 const sauvegarde={
   cmsList:[{id:1,nom:'Villeneuve-Sur-Lot'},{id:2,nom:'Fumel'}],
   history:[
@@ -62,7 +62,8 @@ const noms={};sauvegarde.history.forEach(h=>{if(h.commune&&!noms[A.cle(h.commune
 const bilan=(m,c)=>app.monthlyReportData(sauvegarde.history,m,c,maintenant);
 const ecarts=A.comparer(r,bilan,noms);
 assert(ecarts.length>=11*3,'comparaison menée sur plusieurs CMS');   // garde : la comparaison a bien eu lieu
-assert.deepEqual(ecarts.filter(e=>e.ecart!==0),[],'bilan de l\'application = recomptage indépendant');
+assert.deepEqual(ecarts.filter(e=>e.statut!=='ok'),[],'bilan de l\'application = recomptage indépendant');
+assert(ecarts.some(e=>/^Démarche n°1$/.test(e.indicateur)),'les démarches sont comparées');
 // un bilan faux est détecté
 const faux=A.comparer(r,(m,c)=>{const d=bilan(m,c);return d&&Object.assign({},d,{realised:d.realised+1});},noms);
 assert(faux.some(e=>e.indicateur==='Réalisés'&&e.ecart===1),'écart volontaire détecté');
@@ -77,6 +78,35 @@ assert.equal(JSON.stringify(sauvegarde),avant,'la sauvegarde n\'est pas modifié
   assert.doesNotMatch(src,/localStorage|sessionStorage|indexedDB|XMLHttpRequest|method:\s*['"]POST/i,p+' : ni stockage ni envoi');
 });
 assert.throws(()=>A.auditer({}),/historique/);
+
+/* Contre-exemples de Codex (vérification de l'étape 1, 31/10) */
+// 1. aucune valeur saisie recopiée : un téléphone glissé dans n'importe quel champ ne ressort pas
+const fuite={cmsList:sauvegarde.cmsList,history:[
+  f('2026-10-20','09:30','Fumel',TEL_SECRET,'FUITE','A'),
+  f('2026-10-20','10:30','Fumel','realise','FUITE','B',{channel:TEL_SECRET,msgType:TEL_SECRET}),
+  f('2026-10-20',TEL_SECRET,'Fumel','realise','FUITE','C'),
+  f(TEL_SECRET,'11:30','Fumel','realise','FUITE','D'),
+  f('2026-10-21','09:30',TEL_SECRET,'realise','FUITE','E',{demarche:TEL_SECRET}),
+  f('2026-10-21','09:30','Fumel','pas_de_retour','FUITE','F',{dateRelance:TEL_SECRET,dateDemande:TEL_SECRET,dateReception:TEL_SECRET})]};
+const rf=A.auditer(fuite,{maintenant});
+const ef=A.comparer(rf,(m,c)=>app.monthlyReportData(fuite.history,m,c,maintenant),{});
+assert(rf.anomalies.length>=8,'les champs pollués sont bien signalés');   // garde
+assert.doesNotMatch(A.rapportTexte(rf,ef),new RegExp(TEL_SECRET+'|'+NOM_SECRET),'rapport sans valeur saisie');
+assert.doesNotMatch(JSON.stringify(rf.anomalies)+JSON.stringify(ef)+JSON.stringify(rf.recomptage.map(l=>l.libelle)),new RegExp(TEL_SECRET),'aucune sortie affichée ne recopie la saisie');
+assert(rf.anomalies.some(a=>/^CMS hors catalogue n°\d+$/.test(a.cms)),'CMS inconnu désigné par un numéro');
+// 2. statut hérité (toString) : pas une place libérée
+const herite=A.auditer({history:[f('2026-10-22','09:30','Fumel','toString','UN','A'),f('2026-10-22','09:30','Fumel','confirme','DEUX','B')]},{maintenant});
+assert.equal(herite.parType['Deux RDV actifs sur un créneau'],2,'toString n\'est pas un statut libéré');
+assert.equal(herite.reattributions,0);
+// 3. bilan absent ou valeur manquante : « non comparé », jamais zéro
+const absent=A.comparer(r,()=>null,noms);
+assert(absent.length&&absent.every(e=>e.statut==='non comparé'),'bilan absent signalé');
+const trou=A.comparer(r,(m,c)=>{const d=bilan(m,c);return d&&Object.assign({},d,{accompanied:undefined});},noms);
+assert(trou.some(e=>e.indicateur==='Personnes accompagnées'&&e.statut==='non comparé'),'valeur manquante signalée');
+assert.match(A.rapportTexte(r,absent),/non comparée/);assert.match(A.rapportTexte(r,ecarts),/Non couvert par la comparaison/);
+// 4. démarches modifiées : écart détecté
+const dem999=A.comparer(r,(m,c)=>{const d=bilan(m,c);return d&&Object.assign({},d,{demarches:d.demarches.map(x=>Object.assign({},x,{n:999}))});},noms);
+assert(dem999.some(e=>/^Démarche n°/.test(e.indicateur)&&e.statut==='écart'),'démarches faussées détectées');
 const vide=A.auditer({history:[]},{maintenant});
 assert.equal(vide.fiches,0);assert.deepEqual(A.comparer(vide,bilan,{}),[]);
 assert.match(A.rapportTexte(vide,[]),/sauvegarde vide/,'une sauvegarde vide est signalée, pas présentée comme sans écart');

@@ -101,12 +101,12 @@
       remplir($('ecarts'),['Résultat'],[[['Aucune fiche dans cette sauvegarde. Vérifier qu\'elle vient du bon profil et de l\'appareil où l\'application est utilisée (chaque navigateur garde ses propres données).','attention']]]);
     }else if(!ecarts){
       $('comparaisonNote').textContent='Comparaison indisponible : la page doit être ouverte depuis le site en ligne pour lire le calcul de l\'application. Le recomptage seul est montré.';
-      remplir($('ecarts'),['Mois','CMS','Rendez-vous','Réalisés','Personnes','Relances'],r.recomptage.map(function(l){return [[l.mois],[l.cms||'(tous)'],[String(l.fiches)],[String(l.realisees)],[String(l.personnes)],[String(l.relances)]];}));
+      remplir($('ecarts'),['Mois','CMS','Rendez-vous','Réalisés','Personnes','Relances'],r.recomptage.map(function(l){return [[l.mois],[l.libelle],[String(l.fiches)],[String(l.realisees)],[String(l.personnes)],[String(l.relances)]];}));
     }else{
-      var nonNuls=ecarts.filter(function(e){return e.ecart!==0;});
-      $('comparaisonNote').textContent=ecarts.length+' valeurs comparées, '+nonNuls.length+' écart(s). Seules les lignes en écart sont listées.';
-      remplir($('ecarts'),['Mois','CMS','Indicateur','Affiché','Recompté','Écart'],nonNuls.map(function(e){return [[e.mois],[e.cms],[e.indicateur],[String(e.affiche)],[String(e.recompte)],[String(e.ecart),'attention']];}));
-      if(!nonNuls.length)remplir($('ecarts'),['Résultat'],[[['Aucun écart entre le bilan de l\'application et le recomptage indépendant.','ok']]]);
+      var nonNuls=ecarts.filter(function(e){return e.statut!=='ok';}),nc=ecarts.filter(function(e){return e.statut==='non comparé';}).length;
+      $('comparaisonNote').textContent=ecarts.length+' valeurs, '+(nonNuls.length-nc)+' écart(s), '+nc+' non comparée(s). Non couvert : '+A.NON_COUVERT+'.';
+      remplir($('ecarts'),['État','Mois','CMS','Indicateur','Affiché','Recompté'],nonNuls.map(function(e){return [[e.statut,'attention'],[e.mois],[e.cms],[e.indicateur],[String(e.affiche)],[String(e.recompte)]];}));
+      if(!nonNuls.length)remplir($('ecarts'),['Résultat'],[[['Aucun écart ni valeur non comparée entre le bilan de l\'application et le recomptage indépendant, sur les indicateurs comparés.','ok']]]);
     }
     remplir($('detail'),['Gravité','Type','Fiche','Date','Heure','CMS','Précision'],r.anomalies.map(function(a){return [[a.gravite,a.gravite],[a.type],[a.rang?String(a.rang):'—'],[a.date],[a.heure],[a.cms],[a.detail]];}));
     rapport=A.rapportTexte(r,ecarts);

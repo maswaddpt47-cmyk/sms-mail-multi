@@ -38,30 +38,40 @@
     if(!donnees||typeof donnees!=='object')throw new Error('Le fichier ne contient pas une sauvegarde lisible.');
     if(!Array.isArray(donnees.history))throw new Error('La sauvegarde ne contient pas d\'historique (« history »).');
     var historique=donnees.history,catalogue=Array.isArray(donnees.cmsList)?donnees.cmsList:[];
-    var nomsCatalogue={},parId={};
+    var nomsCatalogue=Object.create(null),parId=Object.create(null);
     catalogue.forEach(function(c){if(c&&c.nom)nomsCatalogue[cle(c.nom)]=c.nom;if(c&&c.id!=null)parId[String(c.id)]=c;});
     var anomalies=[],formats={'français':0,ISO:0,autre:0,absent:0},ecritures=Object.create(null);
+    /* Sorties partageables (amendement Codex du 31/10) : aucune valeur saisie n'est recopiée telle quelle. Une date ou une
+       heure n'apparaît que si elle a la forme attendue ; un CMS que sous son nom du catalogue, sinon « CMS hors catalogue n°X ». */
+    var horsCatalogue=Object.create(null),nbHors=0;
+    function libelleCms(commune){
+      var k=cle(commune);if(!k)return '';
+      if(Object.prototype.hasOwnProperty.call(nomsCatalogue,k))return nomsCatalogue[k];
+      if(!horsCatalogue[k])horsCatalogue[k]='CMS hors catalogue n°'+(++nbHors);
+      return horsCatalogue[k];
+    }
     function signaler(type,gravite,i,h,detail){
-      anomalies.push({type:type,gravite:gravite,rang:i+1,date:String(h.date||''),heure:String(h.heure||''),cms:String(h.commune||''),detail:detail||''});
+      anomalies.push({type:type,gravite:gravite,rang:i+1,date:dateReelle(h.date)?String(h.date):(h.date?'(date illisible)':''),
+        heure:heureValide(h.heure)?String(h.heure):'',cms:libelleCms(h.commune),detail:detail||''});
     }
     var creneaux=Object.create(null);
     historique.forEach(function(h,i){
       if(!h||typeof h!=='object'){anomalies.push({type:'Fiche illisible',gravite:'erreur',rang:i+1,date:'',heure:'',cms:'',detail:''});return;}
       var blocage=h.msgType==='indispo';
       if(!h.date)signaler('Date absente','erreur',i,h);
-      else if(!dateReelle(h.date))signaler('Date impossible ou mal écrite','erreur',i,h,'valeur : '+String(h.date).slice(0,20));
-      if(h.msgType!=null&&TYPES.indexOf(h.msgType)===-1)signaler('Type de message inconnu','attention',i,h,String(h.msgType).slice(0,30));
+      else if(!dateReelle(h.date))signaler('Date impossible ou mal écrite','erreur',i,h);
+      if(h.msgType!=null&&TYPES.indexOf(h.msgType)===-1)signaler('Type de message inconnu','attention',i,h);
       if(blocage)return;
       if(!h.heure)signaler('Heure absente','info',i,h,'comptée dans les nombres, exclue des taux par créneau');
-      else if(!heureValide(h.heure))signaler('Heure mal écrite','attention',i,h,String(h.heure).slice(0,10));
+      else if(!heureValide(h.heure))signaler('Heure mal écrite','attention',i,h);
       if(h.statut==null||h.statut==='')signaler('Statut vide','attention',i,h,'compté « en attente »');
-      else if(STATUTS.indexOf(h.statut)===-1)signaler('Statut inconnu','attention',i,h,String(h.statut).slice(0,30)+' — compté « en attente »');
-      if(h.channel!=null&&CANAUX.indexOf(h.channel)===-1)signaler('Canal inconnu','attention',i,h,String(h.channel).slice(0,20));
+      else if(STATUTS.indexOf(h.statut)===-1)signaler('Statut inconnu','attention',i,h,'compté « en attente »');
+      if(h.channel!=null&&CANAUX.indexOf(h.channel)===-1)signaler('Canal inconnu','attention',i,h);
       if(!String(h.commune||'').trim())signaler('CMS vide','attention',i,h,'compté seulement dans « Tous les CMS »');
       else{
         var k=cle(h.commune);
         (ecritures[k]=ecritures[k]||Object.create(null))[String(h.commune)]=1;
-        if(catalogue.length&&!nomsCatalogue[k])signaler('CMS absent du catalogue','attention',i,h);
+        if(catalogue.length&&!Object.prototype.hasOwnProperty.call(nomsCatalogue,k))signaler('CMS absent du catalogue','attention',i,h);
       }
       if(h.selectedCMS!=null&&h.selectedCMS!==''&&catalogue.length){
         var c=parId[String(h.selectedCMS)];
@@ -70,7 +80,7 @@
       }
       formats[formatTs(h.ts)]++;
       ['dateDemande','dateReception','dateRelance'].forEach(function(champ){
-        if(h[champ]&&!dateReelle(h[champ]))signaler('Date mal écrite ('+champ+')','attention',i,h,String(h[champ]).slice(0,20));
+        if(h[champ]&&!dateReelle(h[champ]))signaler('Date mal écrite ('+champ+')','attention',i,h);
       });
       if(h.dateRelance&&h.statut==='pas_de_retour'&&String(h.dateRelance)<MISE_EN_LIGNE_TS_RELANCE)
         signaler('Relance de provenance incertaine','info',i,h,'date de relance antérieure au 26/10 sur une fiche « Pas de retour »');
@@ -80,7 +90,7 @@
     });
     Object.keys(ecritures).forEach(function(k){
       var v=Object.keys(ecritures[k]);
-      if(v.length>1)anomalies.push({type:'Même CMS écrit de plusieurs façons',gravite:'attention',rang:null,date:'',heure:'',cms:v.join(' / '),detail:'les statistiques les regroupent ; d\'autres écrans les distinguent'});
+      if(v.length>1)anomalies.push({type:'Même CMS écrit de plusieurs façons',gravite:'attention',rang:null,date:'',heure:'',cms:libelleCms(v[0]),detail:v.length+' écritures différentes ; les statistiques les regroupent, d\'autres écrans les distinguent'});
     });
     var reattributions=0;
     Object.keys(creneaux).forEach(function(kc){
@@ -90,7 +100,7 @@
       Object.keys(parPersonne).forEach(function(p){
         if(p&&parPersonne[p].length>1)parPersonne[p].forEach(function(i){signaler('Doublon probable (même personne, même créneau)','attention',i,historique[i],parPersonne[p].length+' fiches');});
       });
-      var actives=rangs.filter(function(i){return !LIBERES[historique[i].statut];});
+      var actives=rangs.filter(function(i){return !Object.prototype.hasOwnProperty.call(LIBERES,historique[i].statut);});
       var personnesActives=Object.create(null);actives.forEach(function(i){personnesActives[personne(historique[i])]=1;});
       if(Object.keys(personnesActives).length>1)actives.forEach(function(i){signaler('Deux RDV actifs sur un créneau','attention',i,historique[i],actives.length+' fiches non libérées');});
       else if(Object.keys(parPersonne).length>1)reattributions++;
@@ -99,19 +109,19 @@
     /* Recomptage indépendant, par mois du RDV et par CMS (clé normalisée), mêmes règles que les définitions
        (docs/indicateurs.md) mais écrit sans le code de l'application. */
     var recompte=Object.create(null);
-    function ligne(mois,cms){var k=mois+'|'+cms;return recompte[k]||(recompte[k]={mois:mois,cms:cms,fiches:0,realisees:0,personnes:Object.create(null),statuts:{},relances:0});}
+    function ligne(mois,cms,libelle){var k=mois+'|'+cms;return recompte[k]||(recompte[k]={mois:mois,cms:cms,libelle:libelle,fiches:0,realisees:0,personnes:Object.create(null),statuts:{},relances:0,demarches:Object.create(null)});}
     historique.forEach(function(h){
       if(!h||typeof h!=='object'||h.msgType==='indispo'||!/^\d{4}-\d{2}-\d{2}$/.test(String(h.date||'')))return;
       if(h.date>aujourdhui)return;   /* le bilan ne compte rien après le jour courant */
       var mois=h.date.slice(0,7),statut=STATUTS.indexOf(h.statut)!==-1?h.statut:'en_attente';
-      [ligne(mois,''),String(h.commune||'').trim()?ligne(mois,cle(h.commune)):null].forEach(function(l){
+      [ligne(mois,'','(tous)'),String(h.commune||'').trim()?ligne(mois,cle(h.commune),libelleCms(h.commune)):null].forEach(function(l){
         if(!l)return;
         l.fiches++;l.statuts[statut]=(l.statuts[statut]||0)+1;
-        if(h.statut==='realise'){l.realisees++;var p=personne(h);if(p)l.personnes[p]=1;}
+        if(h.statut==='realise'){l.realisees++;var p=personne(h);if(p)l.personnes[p]=1;if(h.demarche)l.demarches[h.demarche]=(l.demarches[h.demarche]||0)+1;}
         if(h.msgType==='relance'||h.dateRelance)l.relances++;
       });
     });
-    var lignes=Object.keys(recompte).sort().map(function(k){var l=recompte[k];return {mois:l.mois,cms:l.cms,fiches:l.fiches,realisees:l.realisees,personnes:Object.keys(l.personnes).length,statuts:l.statuts,relances:l.relances};});
+    var lignes=Object.keys(recompte).sort().map(function(k){var l=recompte[k];return {mois:l.mois,cms:l.cms,libelle:l.libelle,fiches:l.fiches,realisees:l.realisees,personnes:Object.keys(l.personnes).length,statuts:l.statuts,relances:l.relances,demarches:l.demarches};});
 
     var parType=Object.create(null);anomalies.forEach(function(a){parType[a.type]=(parType[a.type]||0)+1;});
     return {
@@ -123,14 +133,30 @@
   }
 
   /* Comparaison « affiché / recompté / écart » : `bilan(mois, cms)` renvoie le résultat de monthlyReportData de
-     l'application (fourni par l'appelant) ; le CMS de l'application est son nom d'origine. */
+     l'application (fourni par l'appelant) ; le CMS de l'application est son nom d'origine. Un bilan absent ou une valeur
+     manquante est « non comparé », jamais compté comme zéro (amendement Codex du 31/10). Les démarches sont désignées par leur
+     rang, pas par leur nom (saisie libre possible). */
+  var NON_COUVERT='taux par créneau, remplissage et places de Statistiques, préparation et délai, messages par mois et par type, heatmap, archives annuelles';
   function comparer(resultat,bilan,nomsCms){
     var ecarts=[];
+    function ajouter(l,indicateur,affiche,recompte){
+      var comparable=typeof affiche==='number'&&isFinite(affiche);
+      ecarts.push({mois:l.mois,cms:l.libelle,indicateur:indicateur,affiche:comparable?affiche:'absent',recompte:recompte,
+        ecart:comparable?affiche-recompte:null,statut:!comparable?'non comparé':affiche===recompte?'ok':'écart'});
+    }
     resultat.recomptage.forEach(function(l){
-      var d=bilan(l.mois,l.cms?(nomsCms[l.cms]||l.cms):'');if(!d)return;
-      [['Rendez-vous',d.entries,l.fiches],['Réalisés',d.realised,l.realisees],['Personnes accompagnées',d.accompanied,l.personnes],
-       ['Relances renseignées',d.followup&&d.followup.recorded,l.relances]].concat(STATUTS.map(function(s){return ['Statut '+s,(d.byStatut||{})[s]||0,l.statuts[s]||0];}))
-        .forEach(function(c){ecarts.push({mois:l.mois,cms:l.cms||'(tous)',indicateur:c[0],affiche:c[1],recompte:c[2],ecart:(c[1]||0)-(c[2]||0)});});
+      var d=null;try{d=bilan(l.mois,l.cms?(nomsCms[l.cms]||l.cms):'');}catch(e){d=null;}
+      if(!d||typeof d!=='object'){ajouter(l,'Bilan entier (non produit par l\'application)',undefined,l.fiches);return;}
+      ajouter(l,'Rendez-vous',d.entries,l.fiches);ajouter(l,'Réalisés',d.realised,l.realisees);
+      ajouter(l,'Personnes accompagnées',d.accompanied,l.personnes);ajouter(l,'Relances renseignées',d.followup&&d.followup.recorded,l.relances);
+      var bs=d.byStatut&&typeof d.byStatut==='object'?d.byStatut:null;
+      STATUTS.forEach(function(s){ajouter(l,'Statut '+s,bs?(Object.prototype.hasOwnProperty.call(bs,s)?bs[s]:0):undefined,l.statuts[s]||0);});
+      var top=Array.isArray(d.demarches)?d.demarches:null,noms=Object.keys(l.demarches);
+      if(!top){ajouter(l,'Démarches',undefined,noms.length);return;}
+      var vus=Object.create(null);
+      top.forEach(function(x,k){vus[x&&x.nom]=1;ajouter(l,'Démarche n°'+(k+1),x&&x.n,Object.prototype.hasOwnProperty.call(l.demarches,x&&x.nom)?l.demarches[x.nom]:0);});
+      ajouter(l,'Autres démarches (total)',d.otherDemarchesN,noms.filter(function(n){return !vus[n];}).reduce(function(s,n){return s+l.demarches[n];},0));
+      ajouter(l,'Démarches distinctes',typeof d.otherDemarches==='number'?top.length+d.otherDemarches:undefined,noms.length);
     });
     return ecarts;
   }
@@ -142,15 +168,16 @@
     var types=Object.keys(r.parType).sort();
     if(!types.length)t.push('  aucune');types.forEach(function(k){t.push('  '+k+' : '+r.parType[k]);});
     if(ecarts){
-      var nonNuls=ecarts.filter(function(e){return e.ecart!==0;});
-      t.push('','Comparaison affiché / recompté : '+ecarts.length+' valeurs, '+nonNuls.length+' écart(s)');
-      nonNuls.forEach(function(e){t.push('  '+e.mois+' · '+e.cms+' · '+e.indicateur+' : affiché '+e.affiche+', recompté '+e.recompte);});
+      var ecartsVrais=ecarts.filter(function(e){return e.statut==='écart';}),nonCompares=ecarts.filter(function(e){return e.statut==='non comparé';});
+      t.push('','Comparaison affiché / recompté : '+ecarts.length+' valeurs, '+ecartsVrais.length+' écart(s), '+nonCompares.length+' non comparée(s)');
+      ecartsVrais.concat(nonCompares).forEach(function(e){t.push('  ['+e.statut+'] '+e.mois+' · '+e.cms+' · '+e.indicateur+' : affiché '+e.affiche+', recompté '+e.recompte);});
+      t.push('Non couvert par la comparaison : '+NON_COUVERT+'.');
     }
     t.push('','Détail des anomalies (rang dans l\'historique · date · heure · CMS) :');
     r.anomalies.forEach(function(a){t.push('  ['+a.gravite+'] '+a.type+(a.rang?' · fiche '+a.rang:'')+(a.date?' · '+a.date:'')+(a.heure?' '+a.heure:'')+(a.cms?' · '+a.cms:'')+(a.detail?' — '+a.detail:''));});
     return t.join('\n');
   }
 
-  var api={auditer:auditer,comparer:comparer,rapportTexte:rapportTexte,cle:cle};
+  var api={auditer:auditer,comparer:comparer,rapportTexte:rapportTexte,cle:cle,NON_COUVERT:NON_COUVERT};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else racine.AuditSauvegarde=api;
 })(this);
