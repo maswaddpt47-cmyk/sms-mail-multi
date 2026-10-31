@@ -7512,8 +7512,21 @@ function migrateSharedCmsList(){
     if(!byNom[key]){byNom[key]=c;merged.push(c);}
     else if(!byNom[key].adresse&&c.adresse){byNom[key].adresse=c.adresse;}
   }
-  ls('ess-cms',[]).forEach(add);
-  PROFILES.forEach(function(p){ls('ess-'+p.id+'-cms',DEFAULT_CMS).forEach(add);});
+  /* AG-013 étape 2 (6e vérification de Codex) : toutes les sources sont lues et validées avant toute écriture.
+     ls() rend la valeur par défaut aussi sur lecture refusée ou JSON illisible : ici, seule une clé réellement
+     absente prend sa valeur par défaut ; tout autre échec laisse le catalogue partagé intact et la migration
+     inachevée, retentée au prochain chargement. */
+  function lireSource(k,defaut){
+    var v;try{v=localStorage.getItem(k);}catch(e){return null;}
+    if(!v)return defaut;
+    var j;try{j=JSON.parse(v);}catch(e){return null;}
+    if(!Array.isArray(j)||!j.every(function(c){return c&&typeof c==='object';}))return null;
+    return j;
+  }
+  var sources=[lireSource('ess-cms',[])];
+  PROFILES.forEach(function(p){sources.push(lireSource('ess-'+p.id+'-cms',DEFAULT_CMS));});
+  if(sources.some(function(src){return src===null;}))return;
+  sources.forEach(function(src){src.forEach(add);});
   /* AG-013 étape 2 (5e vérification de Codex) : le marqueur n'est posé qu'après l'enregistrement relu du catalogue
      fusionné ; sinon la fusion (sans effet si rejouée) est retentée au prochain chargement. */
   if(merged.length&&!lsSet('ess-cms',merged))return;
