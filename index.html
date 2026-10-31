@@ -1150,14 +1150,28 @@ function realignerDepuisStockage(cles){
     try{S[champ]=JSON.parse(brut);}catch(e){}
   });
 }
+/* AG-013 étape 2 — balayage du chargement (après la 9e vérification de Codex) : lecture stricte des données et
+   verrou des clés illisibles. Clé absente → valeur par défaut. Lecture refusée, chaîne vide, JSON illisible ou type
+   inattendu (liste ou objet, d'après la valeur par défaut) → valeur par défaut EN MÉMOIRE seulement, et la clé est
+   verrouillée : lsSet refuse de l'écrire jusqu'au prochain chargement réussi. Ni une migration du chargement, ni les
+   pauses déjeuner, ni une saisie ultérieure ne peuvent donc écraser une donnée qu'on n'a pas pu lire. */
+var _clesIllisibles={};
+function lireDonnee(k,defaut){
+  var v;try{v=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return defaut;}
+  if(v===null)return defaut;
+  var j;try{j=JSON.parse(v);}catch(e){_clesIllisibles[k]=true;return defaut;}
+  var liste=Array.isArray(defaut),objet=!liste&&!!defaut&&typeof defaut==='object';
+  if(liste&&!Array.isArray(j)||objet&&(!j||typeof j!=='object'||Array.isArray(j))){_clesIllisibles[k]=true;return defaut;}
+  return j;
+}
 function lsSet(k,v){
-  try{var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');return true;}
+  try{if(_clesIllisibles[k])throw new Error('illisible au chargement');var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');return true;}
   catch(e){
     _echecsEcriture++;_stockageEnEchec=true;
     if(!_echecEcritureRecent){_echecEcritureRecent=true;setTimeout(function(){_echecEcritureRecent=false;},0);}
     realignerDepuisStockage([k]);
     S.saveStatus='⚠️ Enregistrement impossible : rechargez la page et exportez vos données';try{renderHeader();}catch(e2){}
-    showToast('⚠️ Stockage plein. Exportez vos données !','warn');
+    showToast(_clesIllisibles[k]?'⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.':'⚠️ Stockage plein. Exportez vos données !','warn');
     return false;
   }
 }
@@ -1900,8 +1914,10 @@ function applyLunchBreaks(){
     if(entry){S.history.push(entry);added=true;}
     changed=true;return Object.assign({},p,{pauseAuto:true});
   });
-  if(added)lsSet(pk('history'),S.history);
-  if(changed)lsSet(pk('permanences'),S.permanences);
+  /* historique et journées ensemble ; une clé illisible au chargement est refusée par lsSet, rien n'est écrit
+     et la mémoire est réalignée sur le stockage (ecrireTout) */
+  var paires=[];if(added)paires.push([pk('history'),S.history]);if(changed)paires.push([pk('permanences'),S.permanences]);
+  if(paires.length)ecrireTout(paires);
 }
 function ensureDayOpen(commune,dateStr){
   if(!commune||!dateStr)return;
@@ -7539,44 +7555,47 @@ function loadProfileData(){
   S.dateReception='';
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
+  _clesIllisibles={};   /* relu à chaque chargement : une clé redevenue lisible est déverrouillée */
   var cmsMigre=migrateSharedCmsList();
-  S.cmsList=ls('ess-cms',DEFAULT_CMS);
+  S.cmsList=lireDonnee('ess-cms',DEFAULT_CMS);
   /* Fumel : après-midi à 14:00 (demande du 25/10/2026), posé une seule fois pour que Configuration puisse le modifier.
      AG-013 étape 2 (8e vérification de Codex) : pas tant que la migration CMS est inachevée — une source refusée
      (illisible, vide, lecture impossible) n'est jamais remplacée par le repli ; le réglage sera posé après réparation. */
-  var cmsCourant=cmsMigre&&ls('ess-pm-start-v1','')!=='1'?lireListeStockee('ess-cms',DEFAULT_CMS):null;
+  var cmsCourant=cmsMigre&&lireDonnee('ess-pm-start-v1','')!=='1'?lireListeStockee('ess-cms',DEFAULT_CMS):null;
   /* 9e vérification de Codex : le réglage part du catalogue relu strictement, jamais du repli de ls() ;
      lecture refusée ou contenu illisible → rien écrit, marqueur Fumel non posé, retenté au chargement suivant. */
   if(cmsCourant){
     S.cmsList=cmsCourant.map(function(c){return /^fumel\b/i.test(String(c.nom||'').trim())&&!c.debutApresMidi?Object.assign({},c,{debutApresMidi:'14:00'}):c;});
-    if(!ecrireTout([['ess-cms',S.cmsList],['ess-pm-start-v1','1']]))S.cmsList=ls('ess-cms',DEFAULT_CMS);   /* réglage et marqueur ensemble ou pas du tout */
+    if(!ecrireTout([['ess-cms',S.cmsList],['ess-pm-start-v1','1']]))S.cmsList=lireDonnee('ess-cms',DEFAULT_CMS);   /* réglage et marqueur ensemble ou pas du tout */
   }
-  S.demarches=ls('ess-demarches',DEFAULT_DEMARCHES);
+  S.demarches=lireDonnee('ess-demarches',DEFAULT_DEMARCHES);
   /* fusion : ajouter les démarches par défaut manquantes sans écraser les personnalisations */
   var existingIds=S.demarches.map(function(d){return d.id;});
   var toAdd=DEFAULT_DEMARCHES.filter(function(d){return existingIds.indexOf(d.id)===-1;});
   if(toAdd.length){S.demarches=S.demarches.concat(toAdd);lsSet('ess-demarches',S.demarches);}
-  S.secteurs=ls('ess-secteurs',DEFAULT_SECTEURS);
-  S.templates=ls('ess-templates',DEFAULT_TEMPLATES);
+  S.secteurs=lireDonnee('ess-secteurs',DEFAULT_SECTEURS);
+  S.templates=lireDonnee('ess-templates',DEFAULT_TEMPLATES);
   /* migration : forcer les templates builtin à la dernière version par défaut */
   var _tplV='v5-lapin-templates';
-  if(ls('ess-tpl-version','')!==_tplV){
+  if(lireDonnee('ess-tpl-version','')!==_tplV){
     S.templates=Object.assign({},DEFAULT_TEMPLATES);
-    if(!ecrireTout([['ess-templates',S.templates],['ess-tpl-version',_tplV]]))S.templates=ls('ess-templates',DEFAULT_TEMPLATES);   /* modèles et version ensemble */
+    if(!ecrireTout([['ess-templates',S.templates],['ess-tpl-version',_tplV]]))S.templates=lireDonnee('ess-templates',DEFAULT_TEMPLATES);   /* modèles et version ensemble */
   }
-  S.customTemplates=ls('ess-custom-tpl',DEFAULT_CUSTOM);
-  S.customVars=ls('ess-vars',[]);
-  S.hiddenBuiltinKeys=ls('ess-hidden',[]);
-  S.history=ls(pk('history'),[]);
-  S.yearlyStats=ls(pk('yearly-stats'),{});
-  S.mandats=ls('ess-mandats',[]);
-  S.orientations=ls(pk('orientations'),[]);
-  S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
-  if(ls(pk('perm-version'),'')!==PERM_MODEL_VERSION){
+  S.customTemplates=lireDonnee('ess-custom-tpl',DEFAULT_CUSTOM);
+  S.customVars=lireDonnee('ess-vars',[]);
+  S.hiddenBuiltinKeys=lireDonnee('ess-hidden',[]);
+  S.history=lireDonnee(pk('history'),[]);
+  S.yearlyStats=lireDonnee(pk('yearly-stats'),{});
+  S.mandats=lireDonnee('ess-mandats',[]);
+  S.orientations=lireDonnee(pk('orientations'),[]);
+  S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
+  if(lireDonnee(pk('perm-version'),'')!==PERM_MODEL_VERSION){
     S.permanences=migratePermanences(S.permanences,S.history);
     /* journées et version ensemble : une version sans les journées migrées sauterait la migration au chargement suivant */
-    if(!ecrireTout([[pk('permanences'),S.permanences],[pk('perm-version'),PERM_MODEL_VERSION]]))S.permanences=ls(pk('permanences'),DEFAULT_PERMANENCES);
+    if(!ecrireTout([[pk('permanences'),S.permanences],[pk('perm-version'),PERM_MODEL_VERSION]]))S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
   }
+  /* une donnée illisible reste verrouillée : sauvegardes automatiques suspendues et bandeau d'alerte */
+  if(Object.keys(_clesIllisibles).length){_stockageEnEchec=true;S.saveStatus='⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.';}
   applyLunchBreaks();
   archiveOldDaysCore(true);
   S.calendarType=ls('ess-caltype','google');
@@ -7585,7 +7604,7 @@ function loadProfileData(){
   S.selectedCMS=last.selectedCMS||"";
   S.selectedDemarche=last.selectedDemarche||"";
   S.commune=last.commune||"";
-  S.saveStatus=lastSave?('Dernière sauvegarde : '+lastSave):'Données chargées';
+  if(!Object.keys(_clesIllisibles).length)S.saveStatus=lastSave?('Dernière sauvegarde : '+lastSave):'Données chargées';   /* l'alerte de donnée illisible reste affichée */
 }
 var _staticListenersBound=false;
 function bindStaticListenersOnce(){
