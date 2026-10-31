@@ -62,7 +62,7 @@
 <script>
 (function(){
   'use strict';
-  var A=window.AuditSauvegarde,rapport='';
+  var A=window.AuditSauvegarde,rapport='',contenu='',nomFichier='';
   function $(id){return document.getElementById(id);}
   function cellule(tr,texte,classe,entete){var c=document.createElement(entete?'th':'td');c.textContent=texte;if(classe)c.className=classe;tr.appendChild(c);}
   function remplir(table,entetes,lignes){
@@ -82,6 +82,7 @@
     try{donnees=JSON.parse(texte);}catch(e){$('etat').textContent='Ce fichier n\'est pas un JSON lisible.';return;}
     var r;
     try{r=A.auditer(donnees);}catch(e){$('etat').textContent=e.message;return;}
+    contenu=['fiches (history) : '+(Array.isArray(donnees.history)?donnees.history.length:'absent'),'permanences : '+(Array.isArray(donnees.permanences)?donnees.permanences.length:'absent'),'CMS : '+(Array.isArray(donnees.cmsList)?donnees.cmsList.length:'absent'),'années archivées : '+(donnees.yearlyStats&&typeof donnees.yearlyStats==='object'?Object.keys(donnees.yearlyStats).length:'absent')].join(' · ');
     $('etat').textContent='Analyse en cours…';
     chargerApplication().then(function(app){
       var noms={};(donnees.history||[]).forEach(function(h){if(h&&h.commune&&!noms[A.cle(h.commune)])noms[A.cle(h.commune)]=String(h.commune).trim();});
@@ -91,7 +92,7 @@
   function afficher(r,ecarts){
     var graves=r.anomalies.filter(function(a){return a.gravite==='erreur';}).length,att=r.anomalies.filter(function(a){return a.gravite==='attention';}).length;
     $('resume').innerHTML='';
-    [['Fiches',r.fiches+' (dont '+r.blocages+' blocages)'],['Date de génération (ts)',Object.keys(r.formatsTs).map(function(k){return k+' : '+r.formatsTs[k];}).join(' · ')],
+    [['Fichier lu',nomFichier],['Contenu du fichier',contenu],['Fiches',r.fiches+' (dont '+r.blocages+' blocages)'],['Date de génération (ts)',Object.keys(r.formatsTs).map(function(k){return k+' : '+r.formatsTs[k];}).join(' · ')],
      ['Créneaux réattribués (normal)',String(r.reattributions)],['Anomalies',graves+' erreur(s), '+att+' à vérifier, '+(r.anomalies.length-graves-att)+' information(s)']]
       .forEach(function(l){var p=document.createElement('p');var b=document.createElement('strong');b.textContent=l[0]+' : ';p.appendChild(b);p.appendChild(document.createTextNode(l[1]));$('resume').appendChild(p);});
     remplir($('types'),['Type','Nombre'],Object.keys(r.parType).sort().map(function(k){return [[k],[String(r.parType[k])]];}));
@@ -113,6 +114,7 @@
   }
   $('fichier').addEventListener('change',function(){
     var f=this.files&&this.files[0];if(!f)return;
+    nomFichier=f.name+' — '+Math.round(f.size/1024)+' Ko, modifié le '+new Date(f.lastModified).toLocaleString('fr-FR',{timeZone:'Europe/Paris'});
     var lecteur=new FileReader();lecteur.onload=function(){analyser(String(lecteur.result));};lecteur.readAsText(f);
   });
   $('copier').addEventListener('click',function(){navigator.clipboard.writeText(rapport).then(function(){$('etat').textContent='Rapport copié.';},function(){$('etat').textContent='Copie impossible : utiliser « Télécharger ».';});});
