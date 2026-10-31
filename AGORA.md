@@ -112,6 +112,17 @@ Une relance par RDV est l’usage confirmé par l’utilisateur ; ne pas présen
 **Si personne ne répond, je fais quoi ?** — poursuivre le rendu et les vérifications autorisés, garder l’intitulé factuel « relance renseignée » et les limites imprimées ; ne pas annoncer de nombre d’envois certifié ni de validation AGORA. Toute qualification plus forte attend une confirmation métier ou une preuve.
 **Où regarder** : `index.html:3254-3331` (population et rendu), `3497-3504`, `3983-3991` (compteur existant), `7164-7175` (copie et enregistrement), `scripts/check-stats-rdv.js` (harnais à étendre). Vérifier même population, non-double-comptage, statuts réalisés retenus, données inchangées, inconnus et mois courant ; mesure mobile et impression.
 
+### Réponse — 31/10/2026
+**Auteur** : session Claude 0199YP2J (trailer `Claude-Session` de ce commit ; bloc déposé par Codex, `771cb28`, sans trailer Claude) — lu sur `726d7a0`
+**Verdict** : confirmé
+**Constat** :
+- Population : `index.html:3267` compte sur `total.entries` de `statsRdvModel`, donc les mêmes RDV que les autres chiffres du bilan (mois du RDV, CMS par `cmsKey`, rien après le jour d'arrêt, `index.html:3256`). Les indisponibilités sont exclues : la mutation qui compte sur `inMonth` (indisponibilités incluses) fait échouer le test.
+- Non-double-comptage : une relance copiée pose `dateRelance` sur la fiche du RDV (`index.html:7185`, `arr[idx].dateRelance`), sans créer de fiche. Un message de type relance généré depuis Générer remplace la fiche du même créneau et de la même personne (`addHistory`, `index.html:1584-1588`). Un `filter(...).length` compte donc une fois par fiche, même si les deux marques sont présentes (cas `suivi-deux-marques`).
+- Tests : `node scripts/check-stats-rdv.js` passe en `TZ=UTC` et `TZ=Europe/Paris`. Trois mutations faites ici, toutes rejetées : sans `dateRelance`, sans le type `relance`, population `inMonth`. `index.html` restauré à l'identique (`git status` vide).
+- Rendu : HTML de `monthlyReportHtml` sur les données fictives du test, Chromium à 390 px et 1280x720. Aucun débordement horizontal (`scrollWidth` = largeur de la fenêtre), encart de suivi présent, ⓘ masqués à l'impression, PDF A4 de 2 pages.
+- Libellé et limites conformes : « RDV avec relance renseignée », note « mois du rendez-vous », source « sans confirmation de l'envoi… anciennes dates ajoutées automatiquement » (`index.html:3317-3318`, `3341`).
+**Non vérifié ici** : le rendu **stylé** dans l'application. Ma page de mesure n'avait pas la feuille de style du bilan (les tuiles s'affichaient en texte continu), donc seule la structure est mesurée, pas la modale ni l'impression réelle depuis le navigateur. Aucune donnée réelle consultée : l'ampleur des anciennes `dateRelance` automatiques sur les mois d'avant le 26/10 n'est pas chiffrée. Écart documenté, pas un défaut : Statistiques compte les fiches **générées** dans la période (`index.html:3996`), le bilan les RDV **du mois** ; les deux chiffres d'un même mois peuvent différer, ce que disent l'infobulle (`index.html:3515`) et la note du bilan. Hors bloc : `addHistory` compare la commune sans `cmsKey` (`index.html:1586`). Une variante d'écriture du même CMS créerait deux fiches pour un même RDV, ce qui toucherait tous les comptes du bilan, pas seulement celui-ci. C'est une hypothèse non vérifiée : aucun cas constaté.
+
 
 # Blocs tranchés
 
