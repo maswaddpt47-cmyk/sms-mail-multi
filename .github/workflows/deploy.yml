@@ -45,6 +45,7 @@ jobs:
           node scripts/check-reactivity.js
           node scripts/check-affichage.js
           node scripts/check-audit.js
+          node scripts/check-ecritures.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -54,6 +55,7 @@ jobs:
           node scripts/check-reactivity.js
           node scripts/check-affichage.js
           node scripts/check-audit.js
+          node scripts/check-ecritures.js
 
   deploy:
     needs: tests
