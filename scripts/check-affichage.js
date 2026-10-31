@@ -73,5 +73,46 @@ Object.values(tuiles).concat(['1,5','3 / 6 (50 %)','66%']).forEach(t=>{
 });
 assert.equal(ctx.nombresEnTexte('3 / 6 (50 %)',0),'0 / 0 (0 %)');
 
+/* ── Animation réelle (amendement Codex du 31/10) : compterNombre et animerGraphesStats exécutés tels quels,
+   horloge et requestAnimationFrame pilotés ; valeur de départ, mi-parcours, fin et restauration avant impression ── */
+let horloge=1000,prochainRaf=1;const rafs=new Map(),ecouteurs={},observateurs=[];
+function lancerRafs(){const lot=[...rafs.entries()];rafs.clear();lot.forEach(([,f])=>f());}
+function noeud(texte){return {textContent:texte,dataset:{},closest:()=>carte};}
+const valeurs=Object.values(tuiles).filter(t=>/\d/.test(t)).concat(['1,5','3 / 6 (50 %)']);
+const nombres=valeurs.map(noeud);
+const carte={classList:{set:new Set(),add(c){this.set.add(c);},remove(c){this.set.delete(c);}},querySelectorAll:()=>nombres};
+const racine={querySelectorAll:()=>[carte]};
+const anim=vm.createContext({
+  Date:{now:()=>horloge},
+  requestAnimationFrame(f){const id=prochainRaf++;rafs.set(id,f);return id;},
+  cancelAnimationFrame(id){rafs.delete(id);},
+  window:{matchMedia:()=>({matches:false}),innerHeight:800,addEventListener(t,f){ecouteurs[t]=f;},
+    IntersectionObserver:class{constructor(cb){this.cb=cb;observateurs.push(this);}observe(){}}},
+  document:{querySelectorAll:sel=>/ui-anim-pre/.test(sel)?[carte]:nombres},
+  renderStats:function(){}
+});
+anim.IntersectionObserver=anim.window.IntersectionObserver;
+vm.runInContext(section('var STATS_NOMBRES=','function renderStats(){'),anim);
+anim.animerGraphesStats(racine);
+assert.equal(observateurs.length,1,'l\'animation est bien branchée');   // garde : le chemin animé est réellement parcouru
+nombres.forEach((n,i)=>{
+  assert.equal(n.dataset.final,valeurs[i],'valeur finale reprise du texte de la tuile');
+  assert.equal(n.textContent,anim.nombresEnTexte(valeurs[i],0),'départ à zéro');
+});
+const visible=v=>observateurs[0].cb([{target:carte,isIntersecting:v,intersectionRatio:v?1:0,intersectionRect:{height:v?500:0}}]);
+visible(true);lancerRafs();lancerRafs();               // double requestAnimationFrame avant le départ
+horloge+=400;lancerRafs();                              // mi-parcours : ni zéro ni valeur finale pour un nombre > 1
+assert(nombres.some((n,i)=>n.textContent!==valeurs[i]),'en cours d\'animation');
+horloge+=500;lancerRafs();                              // au-delà de 800 ms
+nombres.forEach((n,i)=>assert.equal(n.textContent,valeurs[i],'fin d\'animation : '+valeurs[i]));
+assert.equal(rafs.size,0,'animation terminée');
+visible(false);                                         // sortie de l'écran : retour à zéro
+assert.equal(nombres[0].textContent,anim.nombresEnTexte(valeurs[0],0));
+visible(true);lancerRafs();lancerRafs();horloge+=100;lancerRafs();   // impression en pleine animation
+assert(ecouteurs.beforeprint,'restauration avant impression branchée');
+ecouteurs.beforeprint();
+nombres.forEach((n,i)=>assert.equal(n.textContent,valeurs[i],'avant impression : '+valeurs[i]));
+assert(!carte.classList.set.has('ui-anim-pre'));
+
 assert.equal(JSON.stringify(history),before,'lecture seule');
 console.log('Valeurs affichées : tuiles Statistiques, tuiles et total du bilan, suivi des relances, valeur finale des compteurs OK.');
