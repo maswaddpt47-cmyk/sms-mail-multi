@@ -436,12 +436,13 @@ async function restaurer(contenu,fonction,options){
       const estMarqueur=cle in marqueurs;if(estMarqueur&&mode==='mauvais type')continue;   // un marqueur n'a pas de type de liste/objet
       const e=preparer(faits);const nom=(faits?'migrations faites':'migrations à faire')+', '+cle+', '+mode;
       if(brut==='T')e.st.setItem(cle,Array.isArray(valeurs[cle])?'{"a":1}':'[1]');else if(brut!==null)e.st.setItem(cle,brut);
-      const avant=e.st.getItem(cle);let n=0;
+      const avant=e.st.getItem(cle);let n=0;const ecrituresAvant=e.st.ecritures;
       if(brut===null)e.st.lecturePanne=k=>k===cle&&++n===1;   // une seule lecture refusée
       e.ctx.loadProfileData();
       // la panne vise la 1re lecture : pour une clé lue d'abord par la migration CMS (ess-cms), refaire avec la 2e
       e.st.lecturePanne=null;
       if(!estMarqueur||brut!==null)assert.equal(e.st.getItem(cle),avant,nom+' : valeur stockée intacte après chargement');
+      if(estMarqueur&&faits)assert.equal(e.st.ecritures,ecrituresAvant,nom+' : marqueur illisible → migration suspendue, aucune écriture (pas d\'écriture puis retour arrière)');
       for(const[k,v]of Object.entries(valeurs))if(k!==cle&&!(k==='ess-cms'&&!faits)&&!(k==='ess-templates'&&!faits)&&!(k==='ess-p1-permanences'&&!faits))
         assert.equal(e.st.getItem(k),JSON.stringify(v),nom+' : '+k+' intact');
       if(!estMarqueur){
@@ -456,6 +457,15 @@ async function restaurer(contenu,fonction,options){
       cas++;
     }
     assert(cas>=80,'au moins 80 cas parcourus ('+cas+')');
+    // 10e vérification de Codex : choix Fumel « par défaut 13h30 » et modèle intégré personnalisé, marqueurs courants présents
+    for(const[marq,cleDonnee]of[['ess-pm-start-v1','ess-cms'],['ess-tpl-version','ess-templates']]){
+      const temoin=preparer(true);const w0=temoin.st.ecritures;temoin.ctx.loadProfileData();
+      assert.equal(temoin.st.ecritures,w0,marq+' : témoin sans panne, aucune écriture');
+      const e=preparer(true);const avant=e.st.getItem(cleDonnee),w1=e.st.ecritures;let n=0;
+      e.st.lecturePanne=k=>k===marq&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+      assert.equal(e.st.ecritures,w1,marq+' refusé une fois : aucune écriture');assert.equal(e.st.getItem(cleDonnee),avant,marq+' : réglage ou texte conservé');
+      e.ctx.loadProfileData();assert.equal(e.st.getItem(cleDonnee),avant,marq+' : reprise sans perte');
+      assert.equal(e.st.ecritures,w1,marq+' : reprise sans écriture (marqueur courant)');}
     // fiche saisie après un chargement où l'historique n'a pas pu être lu : refusée, historique intact
     {const e=preparer(true);let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
      assert.equal(e.S.history.length,0,'mémoire au repli');
