@@ -10,10 +10,13 @@ function fonction(nom){return section('function '+nom+'(','\nfunction ');}
 const CODE=[
   section('function ls(k,d){','\n'),section('function cmsKey(','\n'),section('function toLocalDateStr(d){','\n'),
   section('/* AG-013, étape 2 (31/10/2026) : une écriture est relue','/* clé cloisonnée par profil actif'),
-  section('function pkFor(','function readProfileHistory('),
+  section('function pkFor(','function countTodayRdv('),
   section('/* Amendement Codex (31/10) : renvoie false si l','/* retrouve l'),
   section('/* Réglages communs, en une fois','function saveLast('),
   section('function maybeAutoBackupProfile(','/* pousse un fichier daté'),
+  section('function showToast(','function renderToast('),
+  fonction('duplicateDem'),fonction('pointerStatut'),fonction('libererApresRelance'),fonction('writeProfileOrientations'),
+  section('function clearHistory(','function exportHistoryCSV('),fonction('deleteHistItem'),fonction('saveHistItem'),
   section('function entryYear(','/* années révolues'),
   section('function archiveYear(','/* affiche les stats agrégées'),
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
@@ -40,17 +43,17 @@ function charger(){
     templates:{sms:'modèle'},hiddenBuiltinKeys:[],importText:'',importError:'',modal:'import',saveStatus:''};
   const ctx=vm.createContext({
     Date,JSON,Object,Array,String,Math,Promise,parseInt,escape,decodeURIComponent,setTimeout,atob:s=>Buffer.from(s,'base64').toString('binary'),
-    localStorage:st,S,confirm:()=>true,showToast:(m)=>journal.toasts.push(m),renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
+    localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
     ghToken:()=>'jeton-fictif',githubPush(){journal.pushs++;},HISTORY_MAX:99999,getSlots:()=>[],LUNCH_MOTIF:'Pause déjeuner',
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
     GH_REPO:'depot/fictif',GH_BRANCH:'main',ghHeaders:()=>({}),ghListBackups:(t,cb)=>cb([{path:'b/p1/backup.json'}]),fetch:null
   });
-  vm.runInContext(CODE+'\nvar _ghLastAutoPushByProfile={};',ctx);
+  vm.runInContext(CODE+'\nvar _ghLastAutoPushByProfile={},_toastId=0;',ctx);
   return {ctx,S,st,journal};
 }
 function rdv(id,date,heure,nom,prenom,commune,statut){return {id,date,heure,nom,prenom,commune:commune||'Fumel',statut:statut||'realise',msgType:'confirmation'};}
-function sansErreur(S){const c=JSON.parse(JSON.stringify(S));delete c.importError;return c;}
+function sansErreur(S){const c=JSON.parse(JSON.stringify(S));delete c.importError;delete c.saveStatus;delete c.toast;return c;}   /* bandeau et message d'alerte : changements d'interface voulus */
 
 /* ── lsSet : vrai si écrit et relu, faux sinon (panne ou écriture perdue sans erreur) ── */
 {const {ctx,st,journal}=charger();
@@ -80,11 +83,56 @@ function sansErreur(S){const c=JSON.parse(JSON.stringify(S));delete c.importErro
  const arr=e.S.history;arr[0].statut='realise';e.st.panne=()=>true;
  assert.equal(e.ctx.writeProfileHistory('p1',arr),false);
  assert.equal(e.S.history[0].statut,'confirme','mémoire réalignée sur le stockage');assert.equal(e.journal.pushs,0,'aucune sauvegarde');
- e.st.panne=null;const arr2=e.S.history;arr2[0].statut='realise';assert.equal(e.ctx.writeProfileHistory('p1',arr2),true);assert.equal(e.journal.pushs,1);}
+ e.st.panne=null;const arr2=e.S.history;arr2[0].statut='realise';assert.equal(e.ctx.writeProfileHistory('p1',arr2),true);
+ assert.equal(e.journal.pushs,0,'après un échec : sauvegardes automatiques suspendues jusqu\'au rechargement');assert.match(e.S.saveStatus,/Enregistrement impossible/);}
+{const e=charger();e.S.history=[rdv('a','2026-10-05','09:30','FICTIF','A')];assert.equal(e.ctx.writeProfileHistory('p1',e.S.history),true);assert.equal(e.journal.pushs,1);}   // sans échec : sauvegarde
 // chaque appelant tient compte du résultat
 html.split('\n').filter(l=>/writeProfileHistory\(/.test(l)&&!/function writeProfileHistory/.test(l)).forEach(l=>{
   assert.match(l,/if\(!writeProfileHistory\(|=writeProfileHistory\(/,'appelant sans contrôle du résultat : '+l.trim().slice(0,90));
 });
+
+/* ── Contre-exemples de la 2e vérification de Codex, exécutés ── */
+// génération ordinaire : addHistory refusé → pas de fiche en mémoire, pas de sauvegarde, pas de succès affiché
+{const e=charger();e.S.history=[];e.st.panne=k=>k===e.ctx.pk('history');
+ assert.equal(e.ctx.addHistory({date:'2026-10-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'P',body:'texte'},true),false);
+ e.ctx.showToast('✓ Message généré et enregistré');
+ assert.equal(e.S.history.length,0,'fiche refusée absente de la mémoire');assert.equal(e.journal.pushs,0);assert.equal(e.st.getItem(e.ctx.pk('since-export')),null,'pas d\'effet secondaire');
+ assert(!e.journal.toasts.some(m=>/généré et enregistré/.test(m)),'pas de faux succès');assert(e.journal.toasts.some(m=>/Opération non enregistrée/.test(m)));}
+// le filet ne dure que l'action en cours : un succès ultérieur s'affiche normalement
+// suppression et effacement de l'historique, modification d'une fiche : mémoire = stockage après échec
+{const e=charger();e.S.history=[rdv('a','2026-10-05','09:30','FICTIF','A'),rdv('b','2026-10-06','09:30','FICTIF','B')];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
+ e.st.panne=()=>true;e.ctx.deleteHistItem(0);assert.equal(e.S.history.length,2,'suppression refusée : fiche toujours là');
+ e.ctx.clearHistory();assert.equal(e.S.history.length,2,'effacement refusé : historique conservé');
+ e.S.editHistBody='modifié';e.ctx.saveHistItem(0);assert.equal(e.S.history[0].body,undefined,'modification refusée : réalignée sur le stockage');
+ assert.equal(e.st.getItem(e.ctx.pk('history')),JSON.stringify(e.S.history),'mémoire = stockage');}
+// protections isolées : réalignement seul (clé absente = vide), retour explicite d'addHistory quand la relecture est impossible,
+// réalignement de tous les réglages quand l'échec porte sur une autre clé que celle modifiée
+{const e=charger();e.S.history=[rdv('z','2026-10-05','09:30','Z','Z')];e.st.panne=()=>true;e.ctx.lsSet(e.ctx.pk('history'),e.S.history);
+ assert.deepEqual(JSON.parse(JSON.stringify(e.S.history)),[],'historique jamais enregistré : réaligné sur vide');}
+{const e=charger();e.S.history=[rdv('a','2026-10-04','09:30','A','A')];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
+ e.st.panne=k=>k===e.ctx.pk('history');e.st.lecturePanne=k=>k===e.ctx.pk('history');
+ assert.equal(e.ctx.addHistory({date:'2026-10-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'P'}),false);e.st.lecturePanne=null;
+ assert.equal(e.S.history.length,1,'relecture impossible : addHistory remet lui-même l\'historique d\'avant');}
+{const e=charger();e.S.demarches=[{id:1,nom:'D',documents:[]}];e.st.setItem('ess-demarches',JSON.stringify(e.S.demarches));
+ e.st.panne=k=>k==='ess-lastSave';e.ctx.duplicateDem(1);
+ assert.equal(e.S.demarches.length,1,'échec sur une autre clé : démarches réalignées par persist');assert(!e.journal.toasts.some(m=>/Démarche dupliquée/.test(m)));}
+// orientations
+{const e=charger();e.S.orientations=[{nom:'A'}];e.st.setItem(e.ctx.pk('orientations'),JSON.stringify(e.S.orientations));e.st.panne=()=>true;
+ assert.equal(e.ctx.writeProfileOrientations('p1',[{nom:'A'},{nom:'B'}]),false);assert.equal(e.S.orientations.length,1);assert.equal(e.journal.pushs,0);}
+// réglages : dupliquer une démarche refusée → une seule démarche, pas de « Démarche dupliquée »
+{const e=charger();e.S.demarches=[{id:1,nom:'D',documents:[]}];e.st.setItem('ess-demarches',JSON.stringify(e.S.demarches));e.st.ecritures=0;
+ e.st.panne=(k,i)=>k==='ess-demarches';e.ctx.duplicateDem(1);
+ assert.equal(e.S.demarches.length,1,'mémoire réalignée');assert(!e.journal.toasts.some(m=>/Démarche dupliquée/.test(m)),'pas de faux succès');}
+// libérer après relance : pas de « Créneau libéré » si le pointage échoue
+{const e=charger();const h=rdv('a','2026-10-05','09:30','FICTIF','A','Fumel','en_attente');h.dateRelance='2026-10-04';e.S.history=[h];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
+ e.st.panne=()=>true;e.ctx.libererApresRelance(h);
+ assert(!e.journal.toasts.some(m=>/Créneau libéré/.test(m)),'pas de faux succès');assert.equal(e.S.history[0].statut,'en_attente','statut réaligné');
+ const f=charger();const h2=rdv('b','2026-10-05','09:30','FICTIF','B','Fumel','en_attente');h2.dateRelance='2026-10-04';f.S.history=[h2];
+ f.ctx.libererApresRelance(h2);assert(f.journal.toasts.some(m=>/Créneau libéré/.test(m)),'sans panne : succès affiché');}
+// opération groupée : un échec intermédiaire annule même si l'écriture finale réussit
+{const e=charger();e.S.history=[];let n=0;e.st.panne=(k)=>k===e.ctx.pk('history')&&++n===1;
+ const r=e.ctx.operationHistorique(()=>{e.ctx.addHistory({date:'2026-10-05',heure:'09:30',commune:'Fumel',nom:'A',prenom:'A'});e.ctx.addHistory({date:'2026-10-06',heure:'09:30',commune:'Fumel',nom:'B',prenom:'B'});});
+ assert.equal(r.ok,false,'échec intermédiaire : opération annulée');assert.equal(e.S.history.length,0);}
 
 /* ── Archivage : panne à chaque écriture → rien supprimé, pas de succès, pas de sauvegarde ── */
 function prepArchive(){
@@ -108,7 +156,7 @@ const sauvegarde={cmsList:[{id:1,nom:'Fumel'},{id:2,nom:'Marmande'}],demarches:[
   history:[rdv('x','2026-10-02','09:30','FICTIF','X')],yearlyStats:{2025:{year:2025}},permanences:[{commune:'Fumel',exceptDate:'2026-10-02'}],orientations:[{nom:'FICTIF'}]};
 function prepImport(texte){
   const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];
-  e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem('ess-cms',JSON.stringify(e.S.cmsList));e.st.setItem('ess-templates','{"sms":"ancien"}');
+  e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem('ess-cms',JSON.stringify(e.S.cmsList));e.st.setItem('ess-templates',JSON.stringify(e.S.templates));
   e.S.importText=texte;e.st.ecritures=0;return e;
 }
 {const e=prepImport(JSON.stringify(sauvegarde));assert.equal(e.ctx.doImport(),true);
@@ -130,7 +178,7 @@ function prepImport(texte){
 for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',JSON.stringify(Object.assign({},sauvegarde,{history:{}}))],
   ['fiche illisible',JSON.stringify(Object.assign({},sauvegarde,{history:[null]}))],['yearlyStats liste',JSON.stringify(Object.assign({},sauvegarde,{yearlyStats:[]}))],
   ['tableau','[1,2]'],['CMS nul','{"cmsList":[null],"history":[]}'],['CMS sans identifiant','{"cmsList":[{"nom":"Fumel"}]}'],
-  ['démarche sans liste de documents','{"demarches":[{"nom":"D","documents":"x"}]}'],['secteur non texte','{"secteurs":[{}]}'],['permanence nulle','{"permanences":[null]}']]){
+  ['démarche sans liste de documents','{"demarches":[{"nom":"D","documents":"x"}]}'],['modèle avec corps numérique','{"customTemplates":[{"nom":"M","body":1}]}'],['fiche avec nom numérique','{"history":[{"date":"2026-10-01","nom":5}]}'],['secteur non texte','{"secteurs":[{}]}'],['permanence nulle','{"permanences":[null]}']]){
   const e=prepImport(texte),avant=e.st.etat();
   assert.equal(e.ctx.doImport(),false,nom);assert.equal(e.st.ecritures,0,nom+' : aucune écriture');assert.equal(e.st.etat(),avant);
   assert.equal(e.journal.pushs,0,nom+' : aucune sauvegarde');assert.equal(e.S.history[0].id,'ancien');
@@ -151,6 +199,10 @@ async function restaurer(contenu,fonction,options){
     const ok=await restaurer(JSON.stringify(sauvegarde),fonction);
     assert.equal(ok.e.S.history[0].id,'x',fonction+' : restauration appliquée');
     if(fonction==='fichier')assert(ok.e.journal.toasts.some(t=>/Restauration réussie/.test(t)));else assert.equal(ok.appele,1);
+    {const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];e.st.setItem('ess-cms','"ancien"');e.st.ecritures=0;e.st.panne=(k,i)=>i>=2;
+     e.ctx.fetch=()=>Promise.resolve({ok:true,json:()=>Promise.resolve({content:Buffer.from(JSON.stringify(sauvegarde),'utf8').toString('base64')})});
+     if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
+     assert(e.journal.toasts.some(m=>/retour en arrière incomplet/.test(m)),fonction+' : incohérence relayée');assert(!e.journal.toasts.some(m=>/aucune donnée modifiée/.test(m)),fonction+' : pas de « aucune donnée modifiée »');}
     for(const [cas,contenu,opt] of [['illisible','{"history":{}}',{}],['stockage plein',JSON.stringify(sauvegarde),{panne:true}],['profil changé',JSON.stringify(sauvegarde),{changerProfil:true}]]){
       const r=await restaurer(contenu,fonction,opt);
       assert(!r.e.journal.toasts.some(t=>/Restauration réussie/.test(t)),fonction+' '+cas+' : pas de succès');
@@ -177,7 +229,7 @@ async function restaurer(contenu,fonction,options){
      const avant=e.st.etat(),mem=JSON.stringify([e.S.history,e.S.permanences]);
      e.st.panne=(k,i)=>i===n;
      const r=e.ctx.appliquerPlanning([{date:'2026-10-05',heure:'09:30',nom:'Martin',prenom:'Léa',commune:'Fumel',statut:'confirme'},{date:'2026-10-06',heure:'09:30',nom:'N',prenom:'P',commune:'Fumel'}]);
-     if(r.ok){assert.equal(e.st.getItem(e.ctx.pk('history')),JSON.stringify(e.S.history),'planning, panne '+n+' rattrapée : stockage = mémoire');}
+     if(r.ok){assert(n>e.st.ecritures,'planning : succès seulement si aucune panne ne s\'est produite');}
      else{echecs++;
        assert.equal(e.st.etat(),avant,'planning, panne '+n+' : stockage restauré (compteur d\'export compris)');
        assert.equal(JSON.stringify([e.S.history,e.S.permanences]),mem,'planning, panne '+n+' : mémoire restaurée');
