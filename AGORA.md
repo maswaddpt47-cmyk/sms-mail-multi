@@ -102,6 +102,58 @@ récit reste dans `git log`.
 
 Aucun.
 
+# Vérification des étapes d'AG-013
+
+Réponses de Codex aux livraisons du plan tranché (AG-013), inscrites telles quelles. Une vérification close sort d'ici ; sa conclusion remonte dans `CHANTIERS.md`.
+
+### Vérification de l'étape 0 — Codex — 31/10/2026
+**Auteur** : Codex — commits `4799761` et `fc0b8d2` vérifiés. `main` a ensuite avancé à `09c51d3`, qui ne modifie que la documentation ; le code de l’étape 0 reste identique.
+**Verdict** : amendé, uniquement sur la couverture des valeurs finales des compteurs.
+**Constat** :
+
+1. Les couples chiffre/libellé sont réellement testés dans les deux vues.
+   Les données distinguent total, réalisés et personnes. Les assertions contrôlent les tuiles de Statistiques (`scripts/check-affichage.js:36–55`), puis les tuiles, le total et les relances du bilan (57–68).
+
+   Mutations reproduites en mémoire dans les deux fuseaux :
+
+   | Mutation | UTC | Europe/Paris |
+   |---|---|---|
+   | Statistiques : réalisés remplacés par le total | Rejetée : 7 ≠ 3 | Rejetée |
+   | Bilan : réalisés remplacés par le total | Rejetée : 6 ≠ 3 | Rejetée |
+
+2. La valeur finale des compteurs animés n’est pas réellement contrôlée.
+   Le script extrait `nombresEnTexte`, mais s’arrête avant `compterNombre` (`scripts/check-affichage.js:19`). Les assertions 70–74 vérifient le formateur avec un facteur égal à 1 ; elles n’exécutent pas l’animation ni la restauration avant impression.
+
+   Ces mutations passent encore dans les deux fuseaux :
+
+   - Fin de `compterNombre` remplacée par `'999'` — `index.html:3533`.
+   - Appel de l’animation remplacé par `compterNombre(n,'999')` — `index.html:3554`.
+   - Valeur restaurée avant impression remplacée par `'999'` — `index.html:3541`.
+
+   Cela démontre une lacune du test, pas un défaut actuel du compteur de production.
+
+3. Les suites passent en UTC et Europe/Paris.
+   Vérification exécutée pour statistiques, réactivité et affichage. Le workflow lance les trois scripts dans chaque fuseau (`.github/workflows/deploy.yml:40–54`), après le contrôle de syntaxe (30–38).
+
+   Le run `41233435678`, sur le SHA exact `fc0b8d2`, confirme également leur réussite dans GitHub Actions.
+
+4. Le blocage de Pages sur échec est confirmé, y compris par un essai réel.
+   Le job de déploiement dépend de `tests` (`.github/workflows/deploy.yml:56–57`), sans contournement par `continue-on-error` ou `always()`.
+
+   Le run `41233467863`, sur une branche de session, contient une assertion volontairement fausse : 4 attendu au lieu de 3, dans `scripts/check-affichage.js:44`. Le job de tests échoue avec le code 1 et le job de déploiement est sauté. Cette mutation n’est pas présente sur `main`.
+
+5. Le périmètre de l’étape 0 est respecté.
+   `4799761` ajoute uniquement `scripts/check-affichage.js`. `fc0b8d2` modifie uniquement le workflow. Aucun changement d’`index.html`, de calcul, de donnée ou de migration dans ces commits.
+
+**Amendement** :
+
+Compléter le harnais Node pour exécuter les vraies fonctions `compterNombre` et le chemin de restauration `beforeprint`, avec une horloge et `requestAnimationFrame` contrôlés. Vérifier le raccordement à `dataset.final`, la valeur obtenue en fin d’animation et celle restaurée avant impression.
+
+Les trois mutations de compteur ci-dessus devront alors être rejetées en UTC et Europe/Paris. Aucun navigateur ni changement des calculs n’est nécessaire pour compléter ce contrôle.
+
+Périmètre de vérification : données fictives et mutations en mémoire uniquement ; aucune donnée réelle consultée. Aucun fichier modifié, aucun workflow déclenché pendant cette revue.
+
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
