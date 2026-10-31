@@ -1128,10 +1128,38 @@ var S={
 };
 
 /* ============================== PERSISTENCE ============================== */
-/* AG-013, étape 2 (31/10/2026) : une écriture est relue ; renvoie false si elle n'est pas enregistrée à l'identique. */
+/* AG-013, étape 2 (31/10/2026) : une écriture est relue ; renvoie false si elle n'est pas enregistrée à l'identique.
+   Filet de sécurité commun à toutes les écritures (amendements Codex du 31/10), quel que soit l'appelant :
+   - la donnée concernée est réalignée en mémoire sur le stockage (l'écran ne montre pas ce qui n'est pas enregistré) ;
+   - les sauvegardes GitHub automatiques sont suspendues jusqu'au rechargement, et l'en-tête le dit ;
+   - un message de succès affiché dans la même action devient un message d'échec (showToast) ;
+   - _echecsEcriture compte les échecs, pour qu'une opération groupée annule tout après un échec intermédiaire. */
+var _echecsEcriture=0,_echecEcritureRecent=false,_stockageEnEchec=false;
+var CHAMPS_STOCKES={'history':'history','permanences':'permanences','orientations':'orientations','yearly-stats':'yearlyStats'};
+var CLES_REGLAGES={'ess-cms':'cmsList','ess-demarches':'demarches','ess-secteurs':'secteurs','ess-templates':'templates','ess-custom-tpl':'customTemplates','ess-vars':'customVars','ess-mandats':'mandats','ess-hidden':'hiddenBuiltinKeys'};
+function champDeCle(k){
+  if(Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k))return CLES_REGLAGES[k];
+  var pre='ess-'+S.activeProfile+'-',suf=k.indexOf(pre)===0?k.slice(pre.length):'';
+  return suf&&Object.prototype.hasOwnProperty.call(CHAMPS_STOCKES,suf)?CHAMPS_STOCKES[suf]:null;
+}
+function realignerDepuisStockage(cles){
+  cles.forEach(function(k){
+    var champ=champDeCle(k);if(!champ)return;
+    var brut;try{brut=localStorage.getItem(k);}catch(e){return;}   /* lecture impossible : on ne touche à rien */
+    if(brut===null){if(!Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k))S[champ]=champ==='yearlyStats'?{}:[];return;}   /* donnée de profil absente = vide */
+    try{S[champ]=JSON.parse(brut);}catch(e){}
+  });
+}
 function lsSet(k,v){
   try{var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');return true;}
-  catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');return false;}
+  catch(e){
+    _echecsEcriture++;_stockageEnEchec=true;
+    if(!_echecEcritureRecent){_echecEcritureRecent=true;setTimeout(function(){_echecEcritureRecent=false;},0);}
+    realignerDepuisStockage([k]);
+    S.saveStatus='⚠️ Enregistrement impossible : rechargez la page et exportez vos données';try{renderHeader();}catch(e2){}
+    showToast('⚠️ Stockage plein. Exportez vos données !','warn');
+    return false;
+  }
 }
 /* Plusieurs écritures d'un coup ([[clé, valeur], …]) : si l'une échoue, les clés déjà écrites reprennent leur valeur
    d'avant (absente comprise). Aucune sauvegarde GitHub automatique pendant l'opération : jamais d'état à moitié écrit.
@@ -1163,9 +1191,9 @@ var MSG_INCOHERENT='⚠️ Enregistrement interrompu et retour en arrière incom
 function operationHistorique(fn){
   var cles=[pk('history'),pk('permanences'),pk('since-export')],brut;
   try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){return {ok:false,incoherent:false};}
-  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[])),valeur,ok=false;
+  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[])),valeur,ok=false,echecsAvant=_echecsEcriture;
   _ecrituresGroupees++;
-  try{valeur=fn();ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences);}catch(e){ok=false;}
+  try{valeur=fn();ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}
   finally{_ecrituresGroupees--;}
   if(ok){maybeAutoBackupProfile(S.activeProfile);return {ok:true,incoherent:false,valeur:valeur};}
   S.history=histAvant;S.permanences=permAvant;
@@ -1232,7 +1260,9 @@ function reglagesAPersister(now){
 }
 function persist(){
   var now=new Date().toLocaleString('fr-FR');
-  if(!ecrireTout(reglagesAPersister(now))){
+  var reglages=reglagesAPersister(now);
+  if(!ecrireTout(reglages)){
+    realignerDepuisStockage(reglages.map(function(p){return p[0];}));   /* mémoire = stockage : la modification refusée n'est pas gardée */
     S.saveStatus='⚠️ Échec de l’enregistrement';renderHeader();
     showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Réglages non enregistrés (stockage plein ?). Exportez vos données.','err');
     return false;
@@ -1262,7 +1292,7 @@ function ghNowFile(pid){
 }
 /* déclenche un backup throttlé (2 min) pour un profil donné — utilisé lors d'écritures cross-profil */
 function maybeAutoBackupProfile(profileId){
-  if(_ecrituresGroupees||!ghToken())return;
+  if(_ecrituresGroupees||_stockageEnEchec||!ghToken())return;
   var nowMs=Date.now();
   if(nowMs-(_ghLastAutoPushByProfile[profileId]||0)>120000){
     _ghLastAutoPushByProfile[profileId]=nowMs;
@@ -1321,7 +1351,7 @@ function ghRestoreLatest(token,onSuccess){
         var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
         S.importText=json;
         if(doImport()){if(onSuccess)onSuccess();}
-        else showToast('❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
+        else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
       })
       .catch(function(){showToast('❌ Impossible de restaurer depuis GitHub','err');});
   });
@@ -1390,7 +1420,7 @@ function ghRestoreFile(token,filePath){
       var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
       S.importText=json;
       if(doImport())showToast('✅ Restauration réussie !');
-      else showToast('❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
+      else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
     })
     .catch(function(){showToast('❌ Impossible de restaurer ce backup','err');});
 }
@@ -1449,6 +1479,7 @@ function timeAgo(tsStr){
 var _toastId=0;
 function showToast(msg,type){
   type=type||'ok';
+  if(_echecEcritureRecent&&type==='ok'){msg='❌ Opération non enregistrée (stockage plein ?) : rechargez la page et exportez vos données.';type='err';}
   var id=Date.now();_toastId=id;
   S.toast={msg:msg,type:type};
   renderToast();
@@ -1658,13 +1689,13 @@ function addHistory(item,prepared){
       else if(prepared&&!previous.body&&(!previous.ts||previous.msgType==='rdv'))merged.premierePreparationAt=new Date().toISOString();
       else delete merged.premierePreparationAt;
       if(merged.body&&(!merged.statut||merged.statut==='libre'))merged.statut='en_attente';
-      S.history.splice(di,1,merged);lsSet(pk('history'),S.history);ensureDayOpen(item.commune,item.date);return;
+      S.history.splice(di,1,merged);if(!lsSet(pk('history'),S.history))return false;ensureDayOpen(item.commune,item.date);return true;
     }
   }
   if(prepared&&!item.premierePreparationAt)item.premierePreparationAt=new Date().toISOString();
   if(item.body&&!item.statut)item.statut='en_attente';
-  var h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
-  S.history=h;lsSet(pk('history'),h);
+  var avant=S.history,h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
+  S.history=h;if(!lsSet(pk('history'),h)){S.history=avant;return false;}   /* AG-013 étape 2 : rien d'autre si la fiche n'est pas enregistrée */
   ensureDayOpen(item.commune,item.date);
   maybeAutoBackupProfile(S.activeProfile);
   /* Rappel export tous les 5 messages */
@@ -1674,8 +1705,8 @@ function addHistory(item,prepared){
   var lastGh=Date.parse(localStorage.getItem(pk('gh-last-backup'))||'')||0;
   var ghCouvre=ghToken()&&(Date.now()-lastGh<86400000);
   if(since>0&&since%5===0&&!ghCouvre)setTimeout(function(){showToast('💾 '+since+' messages non sauvegardés — pensez à exporter !','warn');},600);
+  return true;
 }
-
 function doCopy(text){
   return new Promise(function(resolve){
     if(!text){resolve(false);return;}
@@ -1865,14 +1896,15 @@ function pointerStatut(h,statut){
   var targetP=h._profile||S.activeProfile;
   var arr=readProfileHistory(targetP);
   var idx=findHistIdx(arr,h);
-  if(idx===-1)return;
+  if(idx===-1)return false;
   arr[idx].statut=statut;h.statut=statut;
-  if(!writeProfileHistory(targetP,arr)){renderAgenda();renderTabs();return;}
+  if(!writeProfileHistory(targetP,arr)){renderAgenda();renderTabs();return false;}
   renderAgenda();renderTabs();
   if(statut==='excuse'||statut==='annule'){
     var perm=S.permanences.find(function(p){return p.commune===h.commune&&p.exceptDate===h.date;})||{commune:h.commune};
     S.modal='agenda-rdv';S.agendaRdv={slot:{heure:h.heure,taken:h},day:{dateStr:h.date,perm:perm}};renderModal();
   }
+  return true;
 }
 var DUREE_CRENEAU=60; /* durée fixe des créneaux, quelle que soit la commune */
 var DEBUT_GRILLE=9*60+30; /* premier créneau à 9h30 puis toutes les heures (07/10/2026, avant : 9h00) */
@@ -2036,8 +2068,7 @@ function libererApresRelance(h){
   var t=relanceTs(h),n=isNaN(t)?0:Math.floor((Date.now()-t)/3600000);
   var qui=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'cet usager';
   if(!confirm('Relancé '+(h.tsRelance?'il y a '+n+' h':'le '+h.dateRelance.slice(8,10)+'/'+h.dateRelance.slice(5,7))+', sans réponse de '+qui+'.\nLibérer le créneau de '+(h.heure||'')+' (statut « Pas de retour ») ?'))return;
-  pointerStatut(h,'pas_de_retour');
-  showToast('✓ Créneau libéré');
+  if(pointerStatut(h,'pas_de_retour'))showToast('✓ Créneau libéré');
 }
 /* bloque un créneau libre pour indisponibilité (pas un usager) — profil actif uniquement */
 function blockSlot(commune,dateStr,heure,motif){
@@ -2117,11 +2148,18 @@ function verifierSauvegarde(data){
   for(var j=0;j<IMPORT_LISTES.length;j++){if(IMPORT_LISTES[j]!=='secteurs'&&!objets(IMPORT_LISTES[j]))return 'Sauvegarde invalide (élément illisible dans « '+IMPORT_LISTES[j]+' »).';}
   if(data.secteurs&&data.secteurs.some(function(x){return typeof x!=='string';}))return 'Sauvegarde invalide (« secteurs »).';
   if(data.cmsList&&data.cmsList.some(function(c){return c.id==null||typeof c.nom!=='string';}))return 'Sauvegarde invalide (CMS sans identifiant ou sans nom).';
-  if(data.demarches&&data.demarches.some(function(d){return typeof d.nom!=='string'||(d.documents!=null&&!Array.isArray(d.documents));}))return 'Sauvegarde invalide (démarche illisible).';
+  if(data.demarches&&data.demarches.some(function(d){return typeof d.nom!=='string'||(d.documents!=null&&(!Array.isArray(d.documents)||d.documents.some(function(x){return typeof x!=='string';})));}))return 'Sauvegarde invalide (démarche illisible).';
+  /* champs lus comme du texte par l'application (amendement Codex du 31/10 : un modèle avec body:1 faisait planter fillTemplate) */
+  function textes(liste,champs){return !liste||liste.every(function(x){return champs.every(function(c){return x[c]==null||typeof x[c]==='string';});});}
+  if(!textes(data.customTemplates,['nom','body','sujet','canal','type']))return 'Sauvegarde invalide (modèle personnalisé illisible).';
+  if(!textes(data.customVars,['nom','valeur']))return 'Sauvegarde invalide (variable personnalisée illisible).';
+  if(!textes(data.cmsList,['nom','adresse','debutApresMidi']))return 'Sauvegarde invalide (CMS illisible).';
+  if(!textes(data.history,['date','heure','commune','nom','prenom','civilite','telephone','statut','msgType','channel','body','subject','demarche','ts','dateDemande','dateRelance','dateReception','notes']))return 'Sauvegarde invalide (fiche avec un champ illisible).';
+  if(!textes(data.permanences,['commune','exceptDate','debut','fin']))return 'Sauvegarde invalide (journée illisible).';
   return '';
 }
 function doImport(){
-  var data;
+  var data;ecrireTout.incoherent=false;
   try{data=JSON.parse(S.importText.trim());}catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";renderModal();return false;}
   var erreur=verifierSauvegarde(data);
   if(erreur){S.importError='❌ '+erreur+' Aucune donnée modifiée.';renderModal();return false;}
@@ -2149,7 +2187,7 @@ function doImport(){
 /* history */
 function openHistItem(i){S.histItem=S.history[i];S.modal='hist';renderModal();}
 function copyHistModal(){var h=S.histItem;if(!h)return;doCopy(h.body).then(function(ok){if(ok){flashCopied('histmodal');showToast("✓ Copié !");}});}
-function clearHistory(){S.history=[];lsSet(pk('history'),[]);renderHistory();}
+function clearHistory(){if(lsSet(pk('history'),[]))S.history=[];renderHistory();}
 function exportHistoryCSV(){
   if(!S.history.length){showToast("Aucun historique à exporter","warn");return;}
   var cols=["Date","Canal","Type","Civilité","Prénom","Nom","Téléphone","Démarche","Commune","CMS","Corps","Réception de la demande","Première préparation"];
@@ -2170,7 +2208,7 @@ function exportOrientationsCSV(){
   a.download="orientations-"+S.activeProfile+"-"+new Date().toISOString().slice(0,10)+".csv";a.click();
   showToast("✓ Export CSV téléchargé");
 }
-function deleteHistItem(realIdx){S.history.splice(realIdx,1);lsSet(pk('history'),S.history);renderHistoryList();}
+function deleteHistItem(realIdx){var h=S.history.slice();h.splice(realIdx,1);if(lsSet(pk('history'),h))S.history=h;renderHistoryList();}
 function saveHistItem(realIdx){S.history[realIdx].body=S.editHistBody;S.history[realIdx].notes=S.editHistNotes||"";S.history[realIdx].dateDemande=S.editHistDateDemande||"";S.history[realIdx].dateReception=S.editHistDateReception||"";S.history[realIdx].telephone=S.editHistTel||"";lsSet(pk('history'),S.history);S.editHistIdx=null;S.editHistBody="";S.editHistNotes="";S.editHistDateDemande="";S.editHistDateReception="";S.editHistTel="";renderHistoryList();}
 function reuseHistItem(h){
   S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
@@ -6429,9 +6467,11 @@ function parseXlsxOrientationsAsync(arrayBuffer){
 
 function readProfileOrientations(profileId){return profileId===S.activeProfile?S.orientations:ls('ess-'+profileId+'-orientations',[]);}
 function writeProfileOrientations(profileId,arr){
-  if(profileId===S.activeProfile){S.orientations=arr;lsSet(pk('orientations'),arr);}
-  else{lsSet('ess-'+profileId+'-orientations',arr);}
+  var actif=profileId===S.activeProfile,cle=actif?pk('orientations'):'ess-'+profileId+'-orientations';
+  if(!lsSet(cle,arr))return false;   /* AG-013 étape 2 : mémoire réalignée par lsSet, pas de sauvegarde */
+  if(actif)S.orientations=arr;
   maybeAutoBackupProfile(profileId);
+  return true;
 }
 function confirmOrientImport(){
   var rows=S.orientImportRows||[];
