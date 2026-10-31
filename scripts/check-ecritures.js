@@ -345,6 +345,40 @@ async function restaurer(contenu,fonction,options){
    const e=charger();const c=e.ctx.contexteFige();assert.equal(e.ctx.contexteIntact(c),true);
    e.st.setItem('ess-cms-migrated-v2','1');e.S.activeProfile='p2';e.ctx.loadProfileData();assert.equal(e.ctx.contexteIntact(c),false,'P02 : profil changé détecté');
    const d=e.ctx.contexteFige();e.ctx.loadProfileData();assert.equal(e.ctx.contexteIntact(d),false,'P02 : rechargement du même profil détecté');}
+  /* ── P08 / T12 : vrai githubPush, réseau simulé ── */
+  function prepPush(){const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
+    e.st.setItem('ess-p1-history',JSON.stringify([rdv('s1','2026-11-03','09:30','SAUVE','A')]));e.ctx.loadProfileData();
+    vm.runInContext(fonction('exportDataForProfile')+fonction('sauvegardeFiable'),e.ctx);   // vraies fonctions, extraites du fichier
+    const push=vm.runInContext('('+fonction('githubPush')+')',e.ctx);
+    Object.assign(e.ctx,{ghToken:()=>'jeton-fictif',ghNowFile:()=>'b/p1/fictif.json',ghCleanOldBackups(){},renderHeader(){},btoa:x=>Buffer.from(x,'binary').toString('base64'),unescape,encodeURIComponent});
+    const res={puts:0,envoye:null,finPut:null};
+    e.ctx.fetch=(url,opt)=>{if(opt&&opt.method==='PUT'){res.puts++;res.envoye=JSON.parse(decodeURIComponent(escape(Buffer.from(JSON.parse(opt.body).content,'base64').toString('binary'))));return new Promise(r=>{res.finPut=()=>r({ok:true});});}return Promise.resolve({ok:false});};
+    return {e,push,res};}
+  const tours=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));};
+  {const {e,push,res}=prepPush();e.st.setItem('ess-p1-since-export','1');
+   push(true);await tours();assert.equal(res.puts,1);assert.equal(res.envoye.history.length,1);
+   e.st.setItem('ess-p1-since-export','2');   // une fiche ajoutée pendant l'envoi
+   res.finPut();await tours();
+   assert.equal(e.st.getItem('ess-p1-since-export'),'1','P08 : la fiche ajoutée pendant l\'envoi reste comptée');
+   push(true);await tours();res.finPut();await tours();assert.equal(e.st.getItem('ess-p1-since-export'),'0','P08 témoin : tout envoyé → 0');}
+  {const {e,push,res}=prepPush();let n=0;e.st.lecturePanne=k=>k==='ess-p1-history'&&++n===1;e.ctx.loadProfileData();e.st.lecturePanne=null;
+   push(false);await tours();
+   assert.equal(res.puts,0,'T12 : aucune sauvegarde envoyée avec un historique non lu');assert(e.journal.toasts.some(t=>/Sauvegarde refusée/.test(t)),'T12 : refus annoncé');
+   assert(!e.journal.toasts.some(t=>/réussie/.test(t)));
+   e.ctx.loadProfileData();push(false);await tours();assert.equal(res.puts,1,'T12 témoin : sauvegarde après chargement réussi');assert.equal(res.envoye.history.length,1);}
+  /* ── T03 : donnée d'un autre profil illisible ou lecture refusée → jamais remplacée ── */
+  for(const mode of ['lecture refusée','corrompue']){
+    const e=charger();const k='ess-p2-orientations';e.st.setItem(k,mode==='corrompue'?'{pas du json':JSON.stringify([{nom:'ANCIENNE'}]));
+    const avant=e.st.getItem(k);let n=0;if(mode==='lecture refusée')e.st.lecturePanne=x=>x===k&&++n===1;
+    const lu=e.ctx.readProfileOrientations('p2');e.st.lecturePanne=null;
+    assert.equal(e.ctx.writeProfileOrientations('p2',lu.concat([{nom:'NOUVELLE'}])),false,'T03 '+mode+' : écriture refusée');
+    assert.equal(e.st.getItem(k),avant,'T03 '+mode+' : orientations de p2 intactes');
+    e.st.setItem('ess-cms-migrated-v2','1');e.ctx.loadProfileData();   // un chargement de p1 ne lève pas la protection de p2
+    const relu=e.ctx.readProfileOrientations('p2');
+    if(mode==='corrompue'){assert.equal(e.ctx.writeProfileOrientations('p2',relu.concat([{nom:'NOUVELLE'}])),false,'T03 : reste verrouillée tant qu\'illisible');assert.equal(e.st.getItem(k),avant);}
+    else{assert.equal(e.ctx.writeProfileOrientations('p2',relu.concat([{nom:'NOUVELLE'}])),true,'T03 témoin : relue correctement → écrite');
+      assert.deepEqual(JSON.parse(e.st.getItem(k)).map(o=>o.nom),['ANCIENNE','NOUVELLE'],'T03 : anciennes conservées');}
+  }
   /* ── T14 : chargement interrompu → aucune donnée écrite ensuite ; rechargement réussi → écritures rétablies ── */
   {const e=charger();e.st.setItem('ess-p2-history',JSON.stringify([rdv('b','2026-11-04','09:30','B','B')]));e.S.history=[rdv('a','2026-11-03','09:30','A','A')];
    e.S.activeProfile='p2';let n=0;e.st.lecturePanne=k=>k==='ess-cms-migrated-v2'&&++n===1;
