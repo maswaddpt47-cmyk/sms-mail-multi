@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Audit de sauvegarde — sms-mail-multi</title>
+<style>
+  :root{--fond:#f6f7f9;--carte:#fff;--texte:#1d2733;--doux:#5b6875;--bord:#d5dce3;--accent:#2f6f9f;--alerte:#9a3b00;--erreur:#a11d2b;}
+  @media (prefers-color-scheme:dark){:root{--fond:#121820;--carte:#1b2430;--texte:#e6edf3;--doux:#a5b3c0;--bord:#33414f;--accent:#7fb3dc;--alerte:#f0a35e;--erreur:#ff8a95;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fond);color:var(--texte);font:15px/1.5 Verdana,Arial,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+  h1{font-size:22px;margin:0 0 6px}
+  h2{font-size:17px;margin:26px 0 8px}
+  .note{color:var(--doux);font-size:13px}
+  .carte{background:var(--carte);border:1px solid var(--bord);border-radius:10px;padding:14px 16px;margin:12px 0}
+  label.fichier{display:inline-block;background:var(--accent);color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700}
+  @media (prefers-color-scheme:dark){label.fichier{color:#0d1620}}
+  input[type=file]{position:absolute;left:-9999px}
+  button{font:inherit;border:1px solid var(--bord);background:var(--carte);color:var(--texte);padding:8px 12px;border-radius:8px;cursor:pointer;margin:4px 6px 4px 0}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border-bottom:1px solid var(--bord);padding:6px 8px;text-align:left;vertical-align:top}
+  th{color:var(--doux);font-weight:700}
+  .defile{overflow-x:auto}
+  .erreur{color:var(--erreur);font-weight:700}
+  .attention{color:var(--alerte);font-weight:700}
+  .ok{color:var(--accent);font-weight:700}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>Audit de sauvegarde</h1>
+  <p class="note">Étape 1 d'AG-013. Lecture seule : le fichier reste sur cet ordinateur, rien n'est envoyé, rien n'est corrigé ni enregistré. Le rapport ne contient ni nom, ni prénom, ni téléphone, ni message.</p>
+
+  <div class="carte">
+    <label class="fichier" for="fichier">Choisir une sauvegarde (.json)</label>
+    <input type="file" id="fichier" accept=".json,application/json">
+    <p class="note">Utiliser une copie figée : « Exporter » dans l'application, ou un fichier du dépôt privé de sauvegarde. Ne pas lancer « RGPD — Rétention », import JSON ni « Restaurer depuis GitHub » d'ici la fin de l'étape 2.</p>
+    <p id="etat" class="note" role="status"></p>
+  </div>
+
+  <section id="resultat" hidden>
+    <div class="carte" id="resume"></div>
+    <button type="button" id="copier">Copier le rapport anonymisé</button>
+    <button type="button" id="telecharger">Télécharger le rapport (.txt)</button>
+
+    <h2>Anomalies par type</h2>
+    <div class="carte defile"><table id="types"></table></div>
+
+    <h2>Comparaison du bilan : affiché / recompté / écart</h2>
+    <p class="note" id="comparaisonNote"></p>
+    <div class="carte defile"><table id="ecarts"></table></div>
+
+    <h2>Détail des anomalies</h2>
+    <p class="note">Une fiche se retrouve dans l'Agenda par sa date, son heure et son CMS.</p>
+    <div class="carte defile"><table id="detail"></table></div>
+  </section>
+</main>
+<script src="scripts/audit-sauvegarde.js"></script>
+<script>
+(function(){
+  'use strict';
+  var A=window.AuditSauvegarde,rapport='';
+  function $(id){return document.getElementById(id);}
+  function cellule(tr,texte,classe,entete){var c=document.createElement(entete?'th':'td');c.textContent=texte;if(classe)c.className=classe;tr.appendChild(c);}
+  function remplir(table,entetes,lignes){
+    table.textContent='';var tr=document.createElement('tr');entetes.forEach(function(e){cellule(tr,e,'',true);});table.appendChild(tr);
+    lignes.forEach(function(l){var r=document.createElement('tr');l.forEach(function(v){cellule(r,v[0],v[1]);});table.appendChild(r);});
+  }
+  /* Calcul de l'application : fonctions extraites d'index.html (même méthode que les tests). Indisponible hors ligne. */
+  function chargerApplication(){
+    return fetch('index.html',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error();return r.text();}).then(function(html){
+      function section(de,a){var i=html.indexOf(de);if(i<0)throw new Error(de);var j=html.indexOf(a,i);if(j<0)throw new Error(a);return html.slice(i,j);}
+      var code=section('function toLocalDateStr(d){','\n')+'\n'+section('var DUREE_CRENEAU=60;','function hasConflict(')+section('function statsRdvModel(','/* ============================== RENDER: STATS');
+      return new Function(code+'\nreturn {monthlyReportData:monthlyReportData};')();
+    });
+  }
+  function analyser(texte){
+    var donnees;
+    try{donnees=JSON.parse(texte);}catch(e){$('etat').textContent='Ce fichier n\'est pas un JSON lisible.';return;}
+    var r;
+    try{r=A.auditer(donnees);}catch(e){$('etat').textContent=e.message;return;}
+    $('etat').textContent='Analyse en cours…';
+    chargerApplication().then(function(app){
+      var noms={};(donnees.history||[]).forEach(function(h){if(h&&h.commune&&!noms[A.cle(h.commune)])noms[A.cle(h.commune)]=String(h.commune).trim();});
+      return A.comparer(r,function(mois,cms){return app.monthlyReportData(donnees.history,mois,cms,new Date());},noms);
+    }).catch(function(){return null;}).then(function(ecarts){afficher(r,ecarts);});
+  }
+  function afficher(r,ecarts){
+    var graves=r.anomalies.filter(function(a){return a.gravite==='erreur';}).length,att=r.anomalies.filter(function(a){return a.gravite==='attention';}).length;
+    $('resume').innerHTML='';
+    [['Fiches',r.fiches+' (dont '+r.blocages+' blocages)'],['Date de génération (ts)',Object.keys(r.formatsTs).map(function(k){return k+' : '+r.formatsTs[k];}).join(' · ')],
+     ['Créneaux réattribués (normal)',String(r.reattributions)],['Anomalies',graves+' erreur(s), '+att+' à vérifier, '+(r.anomalies.length-graves-att)+' information(s)']]
+      .forEach(function(l){var p=document.createElement('p');var b=document.createElement('strong');b.textContent=l[0]+' : ';p.appendChild(b);p.appendChild(document.createTextNode(l[1]));$('resume').appendChild(p);});
+    remplir($('types'),['Type','Nombre'],Object.keys(r.parType).sort().map(function(k){return [[k],[String(r.parType[k])]];}));
+    if(!ecarts){
+      $('comparaisonNote').textContent='Comparaison indisponible : la page doit être ouverte depuis le site en ligne pour lire le calcul de l\'application. Le recomptage seul est montré.';
+      remplir($('ecarts'),['Mois','CMS','Rendez-vous','Réalisés','Personnes','Relances'],r.recomptage.map(function(l){return [[l.mois],[l.cms||'(tous)'],[String(l.fiches)],[String(l.realisees)],[String(l.personnes)],[String(l.relances)]];}));
+    }else{
+      var nonNuls=ecarts.filter(function(e){return e.ecart!==0;});
+      $('comparaisonNote').textContent=ecarts.length+' valeurs comparées, '+nonNuls.length+' écart(s). Seules les lignes en écart sont listées.';
+      remplir($('ecarts'),['Mois','CMS','Indicateur','Affiché','Recompté','Écart'],nonNuls.map(function(e){return [[e.mois],[e.cms],[e.indicateur],[String(e.affiche)],[String(e.recompte)],[String(e.ecart),'attention']];}));
+      if(!nonNuls.length)remplir($('ecarts'),['Résultat'],[[['Aucun écart entre le bilan de l\'application et le recomptage indépendant.','ok']]]);
+    }
+    remplir($('detail'),['Gravité','Type','Fiche','Date','Heure','CMS','Précision'],r.anomalies.map(function(a){return [[a.gravite,a.gravite],[a.type],[a.rang?String(a.rang):'—'],[a.date],[a.heure],[a.cms],[a.detail]];}));
+    rapport=A.rapportTexte(r,ecarts);
+    $('resultat').hidden=false;$('etat').textContent='Analyse terminée.';
+  }
+  $('fichier').addEventListener('change',function(){
+    var f=this.files&&this.files[0];if(!f)return;
+    var lecteur=new FileReader();lecteur.onload=function(){analyser(String(lecteur.result));};lecteur.readAsText(f);
+  });
+  $('copier').addEventListener('click',function(){navigator.clipboard.writeText(rapport).then(function(){$('etat').textContent='Rapport copié.';},function(){$('etat').textContent='Copie impossible : utiliser « Télécharger ».';});});
+  $('telecharger').addEventListener('click',function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rapport],{type:'text/plain;charset=utf-8'}));a.download='audit-sauvegarde.txt';a.click();});
+})();
+</script>
+</body>
+</html>
