@@ -2,8 +2,8 @@
 
 Étape 1 d'AG-013 (31/10/2026). Ce fichier décrit **ce que le code calcule aujourd'hui** (`main`
 `ecdaf0f`), indicateur par indicateur ; il ne change aucun calcul. Les numéros renvoient à
-`index.html`. Les points marqués **À trancher** sont des choix métier : l'utilisateur décide,
-la définition retenue remplace alors la description.
+`index.html`. Les choix métier tranchés par l'utilisateur le 31/10/2026 sont en fin de fichier,
+comme **cible future** : tant qu'une étape ne les a pas appliqués, la description fait foi.
 
 Vocabulaire commun :
 
@@ -85,23 +85,18 @@ avant le 23/10).
 | `byMonth` | fiches par canal et **mois de génération** | un RDV de janvier préparé en décembre met « décembre » de l'année précédente dans l'archive (2905-2910) |
 | `trendByMonth`, `heatmap`, `byDemarche`, `byCMS`, `relances` | par mois du RDV, jour de semaine et heure, démarche, CMS, relance | `byCMS` exclut les fiches sans CMS ; `heatmap` compte des fiches (pas des créneaux), contrairement à l'écran |
 
-## À trancher par l'utilisateur
+## Décisions de l'utilisateur du 31/10/2026 — cible future, non appliquée
 
-Aucun de ces points n'est un défaut démontré : ce sont des définitions métier, à choisir avant les
-étapes 4 et 5. Proposition de Claude entre parenthèses.
+Les sections ci-dessus décrivent **les calculs actuels**. Les décisions ci-dessous sont la
+**cible** : elles ne changent encore aucun calcul ni aucune donnée. Leur mise en œuvre suivra les
+étapes d'AG-013 (4 : règles métier ; 5 : calculs partagés ; 6 : archives), avec les blocs AGORA
+nécessaires (critère 7, contradicteur Codex) et un test pour chacune.
 
-1. **Usager = nom + prénom.** Deux homonymes comptent pour une personne ; une faute de frappe
-   compte pour deux. (Garder, en l'écrivant sous le chiffre ; le téléphone n'est pas fiable non plus.)
-2. **Statut vide ou inconnu = « en attente ».** (Garder dans les totaux, mais l'audit les liste
-   pour correction à la main.)
-3. **Fiches sans heure** : comptées dans les nombres, exclues des taux par créneau. (Garder,
-   l'écran le dit déjà.)
-4. **« Messages » = fiches, au jour du dernier message généré.** Une régénération déplace la
-   fiche dans le mois de la régénération. (Garder et le dire ; un vrai compte de messages
-   demanderait de les conserver séparément, écarté par la décision « une relance par RDV ».)
-5. **Délai moyen RDV** mesuré depuis le **dernier** message, pas le premier. (Garder la mesure
-   mais renommer « depuis le dernier message », ou la retirer au profit de la préparation
-   horodatée.)
-6. **Mois de l'archive annuelle** : le graphique « messages par mois » de l'archive suit la date
-   de génération, l'année suit la date du RDV. (Faire suivre l'année de génération pour ce seul
-   graphique, à l'étape 6, sans toucher aux archives existantes.)
+| # | Sujet | Aujourd'hui | Cible décidée |
+|---|---|---|---|
+| 1 | Personnes | nom + prénom (`usagerKey`) | **Garder provisoirement** le rapprochement nom + prénom, avec sa limite écrite à côté du chiffre : ce n'est pas une identification certaine des personnes. |
+| 2 | Statut vide ou inconnu | compté « en attente » (`statutAffiche`) | Le RDV **reste dans les totaux** mais s'affiche **« Statut à vérifier »**, sans être assimilé à « En attente ». |
+| 3 | RDV sans heure | comptés dans les nombres, exclus des taux par créneau, sans compteur | **Comptés dans les volumes, exclus des taux par créneau, et le nombre d'exclus est affiché.** |
+| 4 | « Messages » | fiches au jour du dernier message généré (`ts`, réécrit à chaque régénération) | **Remplacé par « Fiches préparées »**, comptées à leur **première préparation connue** ; une régénération ne déplace plus l'activité d'un mois passé ; les anciennes fiches sans date fiable restent **non mesurables** pour cet indicateur, **sans date reconstruite**. |
+| 5 | Délai depuis le message | « Délai moy. RDV » mesuré depuis le dernier message (`delaiRdvJours`) | **Retiré.** La préparation moyenne horodatée est conservée : elle mesure une durée différente. |
+| 6 | Archives annuelles | année du RDV, mais « messages par mois » sur la date de génération | **Chaque indicateur suit sa propre date** : mois du RDV pour les rendez-vous, mois de première préparation pour les fiches préparées. **Les anciennes archives gardent leur méthode historique.** |
