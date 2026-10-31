@@ -253,6 +253,32 @@ Ne pas transmettre le rapport comme garanti anonymisé avant correction. Aucun f
 Vérifications exécutées en mémoire sous Node, avec simulation du chargement du fichier et des actions de copie/téléchargement ; pas de navigateur réel. Aucune donnée réelle consultée, aucun fichier modifié.
 
 
+### Troisième vérification de l'étape 1 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `7d2f6b2`, commit `a79a4e4` vérifié.
+**Verdict** : confirmé. Le deuxième amendement de l’étape 1 est traité.
+**Constat** :
+
+1. Les deux fuites du catalogue sont corrigées.
+   Le téléphone fictif placé dans `cmsList[0].nom` devient « CMS n°1 » lorsqu’il sert de commune, et « la référence désigne CMS n°1 » via `selectedCMS` (`scripts/audit-sauvegarde.js:43, 51, 81`).
+
+   Contre-exemples rejoués : aucun marqueur fictif dans l’affichage, le presse-papiers ou le téléchargement, y compris lorsque la comparaison est indisponible. Les sorties utilisent les libellés neutralisés (`audit.html:104, 108, 111`) ; copie et téléchargement reprennent le même rapport (`audit.html:112, 120, 121`).
+
+2. Le compteur absent est correctement signalé.
+   Supprimer `byStatut.annule` donne « affiché : absent », « non comparé », avec un écart nul au sens informatique (`null`), sans validation à zéro (`scripts/audit-sauvegarde.js:148, 150, 158`). Ce cas est désormais testé (`scripts/check-audit.js:116`).
+
+3. Les tests passent en UTC et Europe/Paris.
+   Les trois mutations réintroduisant les défauts sont rejetées dans chaque fuseau : nom du catalogue recopié, fuite via `selectedCMS`, compteur absent transformé en zéro (`scripts/check-audit.js:105, 106, 117`).
+
+4. `index.html` est strictement inchangé.
+   Même blob : `695f0121c9bdeceacb65744348c9b7c07ee8e611`. Le commit touche uniquement les trois fichiers annoncés.
+
+Précision : aucune valeur libre du contenu JSON n’est recopiée dans les sorties vérifiées. Les dates et heures valides restent volontairement visibles (`scripts/audit-sauvegarde.js:56`). Le nom local du fichier reste affiché à l’écran, sans entrer dans le rapport (`audit.html:95, 117`).
+
+**Amendement** : aucun.
+
+Vérifications exécutées en mémoire sous Node, avec simulation du chargement et des actions de copie/téléchargement ; pas de navigateur réel. Aucune donnée réelle consultée, aucun fichier modifié.
+
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
