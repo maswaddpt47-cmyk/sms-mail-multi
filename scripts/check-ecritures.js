@@ -22,7 +22,8 @@ const CODE=[
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
-  fonction('addHistory'),
+  fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),
+  fonction('readProfileOrientations'),fonction('confirmOrientImport'),
   section('function getPermanence(','/* RDV confirmé dont la date est passée'),
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
@@ -31,7 +32,7 @@ const CODE=[
 
 function stockage(){
   const m=new Map(),s={panne:null,lecturePanne:null,perte:null,ecritures:0};
-  s.getItem=k=>{if(s.lecturePanne&&s.lecturePanne(k))throw new Error('SecurityError');return m.has(k)?m.get(k):null;};
+  s.getItem=k=>{if(s.lecturePanne&&s.lecturePanne(k))throw new Error('SecurityError');if(s.lectureFausse&&s.lectureFausse(k))return '"relecture faussée"';return m.has(k)?m.get(k):null;};
   s.setItem=(k,v)=>{s.ecritures++;if(s.panne&&s.panne(k,s.ecritures))throw new Error('QuotaExceededError');if(s.perte&&s.perte(k))return;m.set(k,String(v));};
   s.removeItem=k=>{m.delete(k);};   /* une suppression libère de la place : pas d'erreur de quota (comme un navigateur) */
   s.etat=()=>JSON.stringify([...m.entries()].sort());
@@ -43,7 +44,7 @@ function charger(){
     templates:{sms:'modèle'},hiddenBuiltinKeys:[],importText:'',importError:'',modal:'import',saveStatus:''};
   const ctx=vm.createContext({
     Date,JSON,Object,Array,String,Math,Promise,parseInt,escape,decodeURIComponent,setTimeout,atob:s=>Buffer.from(s,'base64').toString('binary'),
-    localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
+    localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},renderOrientations(){},getProfile:(pid)=>({nom:pid}),findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
     ghToken:()=>'jeton-fictif',githubPush(){journal.pushs++;},HISTORY_MAX:99999,getSlots:()=>[],LUNCH_MOTIF:'Pause déjeuner',
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
@@ -116,6 +117,29 @@ html.split('\n').filter(l=>/writeProfileHistory\(/.test(l)&&!/function writeProf
 {const e=charger();e.S.demarches=[{id:1,nom:'D',documents:[]}];e.st.setItem('ess-demarches',JSON.stringify(e.S.demarches));
  e.st.panne=k=>k==='ess-lastSave';e.ctx.duplicateDem(1);
  assert.equal(e.S.demarches.length,1,'échec sur une autre clé : démarches réalignées par persist');assert(!e.journal.toasts.some(m=>/Démarche dupliquée/.test(m)));}
+// 3e vérification de Codex : action à deux données
+// génération : fiche enregistrée mais journée refusée → tout annulé (fiche, journée, compteur)
+{const e=charger();e.S.history=[];e.S.permanences=[];e.st.setItem(e.ctx.pk('since-export'),'2');e.st.ecritures=0;const avant=e.st.etat();
+ e.st.panne=k=>k===e.ctx.pk('permanences');
+ assert.equal(e.ctx.addHistory({date:'2026-10-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'P',body:'texte'},true),false);
+ assert.equal(e.st.etat(),avant,'génération : ni fiche, ni journée, ni compteur');assert.equal(e.S.history.length,0);assert.equal(e.S.permanences.length,0);assert.equal(e.journal.pushs,0);}
+{const e=charger();assert.equal(e.ctx.addHistory({date:'2026-10-05',heure:'09:30',commune:'Fumel',nom:'N',prenom:'P'}),true);   // garde : sans panne
+ assert.equal(e.S.permanences.length,1,'journée ouverte');assert.equal(e.journal.pushs,1,'une seule sauvegarde, à la fin');}
+// blocage d'un créneau : journée ouverte mais blocage refusé → journée annulée aussi
+{const e=charger();e.S.history=[];e.S.permanences=[];const avant=e.st.etat();
+ e.st.panne=k=>k===e.ctx.pk('history');
+ assert.equal(e.ctx.blockSlot('Fumel','2026-10-07','10:30','Réunion'),false);
+ assert.equal(e.st.etat(),avant,'blocage : journée non créée');assert.equal(e.S.permanences.length,0);assert.equal(e.S.history.length,0);}
+{const e=charger();assert.equal(e.ctx.blockSlot('Fumel','2026-10-07','10:30','Réunion'),true);assert.equal(e.S.history.length,1);assert.equal(e.S.permanences.length,1);}
+// import d'orientations sur deux profils : panne sur le second → rien d'écrit, préparation conservée, pas de sauvegarde
+{const e=charger();e.S.orientations=[];const rows=[{include:true,targetProfile:'p1',id:'o1',nom:'A'},{include:true,targetProfile:'p2',id:'o2',nom:'B'}];
+ e.S.orientImportRows=rows;e.S.modal='orient-import';const avant=e.st.etat();
+ e.st.panne=k=>k==='ess-p2-orientations';
+ assert.equal(e.ctx.confirmOrientImport(),false);
+ assert.equal(e.st.etat(),avant,'orientations : aucun profil écrit');assert.equal(e.S.orientImportRows,rows,'préparation conservée');assert.equal(e.journal.pushs,0);
+ assert(!e.journal.toasts.some(m=>/orientation\(s\) ajoutée/.test(m)));
+ const f=charger();f.S.orientations=[];f.S.orientImportRows=rows;f.ctx.confirmOrientImport();
+ assert.equal(JSON.parse(f.st.getItem('ess-p2-orientations')).length,1);assert.equal(f.S.orientations.length,1);assert.equal(f.S.orientImportRows,null);assert.equal(f.journal.pushs,2,'une sauvegarde par profil, après coup');}
 // orientations
 {const e=charger();e.S.orientations=[{nom:'A'}];e.st.setItem(e.ctx.pk('orientations'),JSON.stringify(e.S.orientations));e.st.panne=()=>true;
  assert.equal(e.ctx.writeProfileOrientations('p1',[{nom:'A'},{nom:'B'}]),false);assert.equal(e.S.orientations.length,1);assert.equal(e.journal.pushs,0);}
@@ -175,6 +199,12 @@ function prepImport(texte){
  // valeur d'avant illisible : rien n'est écrit ni supprimé
  const h=prepImport(JSON.stringify(sauvegarde)),avantH=h.st.etat();h.st.lecturePanne=k=>k==='ess-templates';
  assert.equal(h.ctx.doImport(),false);h.st.lecturePanne=null;assert.equal(h.st.etat(),avantH);}
+// import JSON : écriture de l'historique faite mais relecture faussée une fois → retour arrière, mémoire = stockage final
+{const e=prepImport(JSON.stringify(sauvegarde)),avant=e.st.etat();let n=0;
+ e.st.lectureFausse=k=>k===e.ctx.pk('history')&&++n===2;   // 1re lecture : valeur d'avant ; 2e : relecture après écriture
+ assert.equal(e.ctx.doImport(),false);e.st.lectureFausse=null;
+ assert.equal(e.st.etat(),avant,'stockage revenu à l\'ancien');assert.equal(e.S.history[0].id,'ancien','mémoire réalignée sur le stockage final');
+ assert.equal(e.st.getItem(e.ctx.pk('history')),JSON.stringify(e.S.history));}
 for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',JSON.stringify(Object.assign({},sauvegarde,{history:{}}))],
   ['fiche illisible',JSON.stringify(Object.assign({},sauvegarde,{history:[null]}))],['yearlyStats liste',JSON.stringify(Object.assign({},sauvegarde,{yearlyStats:[]}))],
   ['tableau','[1,2]'],['CMS nul','{"cmsList":[null],"history":[]}'],['CMS sans identifiant','{"cmsList":[{"nom":"Fumel"}]}'],
@@ -188,7 +218,7 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
 /* ── Restaurer depuis GitHub : pas de succès si l'import échoue ; profil figé ── */
 async function restaurer(contenu,fonction,options){
   options=options||{};
-  const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];let appele=0;
+  const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));let appele=0;   /* mémoire chargée depuis le stockage, comme dans l'application */
   if(options.panne)e.st.panne=()=>true;
   e.ctx.fetch=()=>new Promise(res=>setTimeout(()=>{if(options.changerProfil)e.S.activeProfile='p2';res({ok:true,json:()=>Promise.resolve({content:Buffer.from(contenu,'utf8').toString('base64')})});},5));
   if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{appele++;});
@@ -244,6 +274,14 @@ async function restaurer(contenu,fonction,options){
   {const e=charger();e.st.setItem(e.ctx.pk('since-export'),'4');e.st.ecritures=0;const avant=e.st.etat();
    e.st.panne=(k,i)=>k===e.ctx.pk('history')&&i>4;   // l'enregistrement final de l'historique échoue
    assert.equal(e.ctx.importICSText(ics),-1);assert.equal(e.st.etat(),avant,'ICS : stockage restauré');assert.equal(e.S.history.length,0);assert.equal(e.journal.pushs,0);}
+
+  /* ── Rappel d'export : après la 5e fiche enregistrée, jamais après une fiche refusée ── */
+  {const e=charger();e.st.setItem(e.ctx.pk('since-export'),'4');
+   assert.equal(e.ctx.addHistory({date:'2026-10-08',heure:'09:30',commune:'Fumel',nom:'R',prenom:'R'}),true);
+   await new Promise(r=>setTimeout(r,700));assert(e.journal.toasts.some(m=>/5 messages non sauvegardés/.test(m)),'rappel affiché après la 5e fiche');
+   const f=charger();f.st.setItem(f.ctx.pk('since-export'),'4');f.st.panne=k=>k===f.ctx.pk('permanences');
+   assert.equal(f.ctx.addHistory({date:'2026-10-08',heure:'09:30',commune:'Fumel',nom:'R',prenom:'R'}),false);
+   await new Promise(r=>setTimeout(r,700));assert(!f.journal.toasts.some(m=>/messages non sauvegardés/.test(m)),'pas de rappel pour une fiche refusée');}
 
   /* ── Pas de sauvegarde automatique pendant une écriture groupée ── */
   {const e=charger();let pendant=-1;
