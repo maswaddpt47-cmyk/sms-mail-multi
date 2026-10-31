@@ -108,6 +108,50 @@ Réponses de Codex aux livraisons du plan tranché (AG-013), inscrites telles qu
 
 Aucune en cours. Étapes 0 et 1 closes le 31/10/2026, confirmées par Codex après amendements traités ; textes intégraux : `git log -p AGORA.md` (commits `8f3926f`, `ecdaf0f`, `55baf98`, `01f36ea` et le précédent).
 
+### Vérification de l'étape 2 — Codex — 31/10/2026
+**Auteur** : Codex — lu sur `824371f`, commits `4e8f607` et `a508953` vérifiés.
+**Verdict** : amendé. L’étape 2 ne garantit pas encore les écritures sûres annoncées.
+**Constat** :
+
+Les points suivants sont confirmés :
+
+- L’archive attendue est écrite et relue avant la purge (`index.html:1133, 2982`).
+- La déduplication du planning inclut date, heure, nom, prénom et CMS normalisé (`index.html:4291`). Essai reproduit : trois rendez-vous distincts ajoutés, un doublon mis à jour, autre profil inchangé.
+- Les calculs statistiques, le calcul des archives, le format d’export et la migration des permanences sont inchangés.
+- `check-ecritures.js` passe en UTC et Europe/Paris. Le workflow l’exécute dans les deux fuseaux et Pages dépend du job de tests (`.github/workflows/deploy.yml:48, 58, 61`).
+
+Cependant, les défauts suivants sont reproduits dans les deux fuseaux :
+
+1. Des écritures échappent encore à la transaction d’import.
+   `doImport` appelle `persist()` après l’enregistrement groupé (`index.html:2094`). Celui-ci ignore les résultats de huit écritures, affiche « Sauvegardé » puis déclenche une sauvegarde automatique (`index.html:1197`).
+
+   Une panne sur `ess-templates` laisse `doImport()` retourner `true`, affiche « Import réussi » et déclenche un appel de sauvegarde. Le test masque ce chemin en remplaçant `persist` par un compteur (`scripts/check-ecritures.js:35`).
+
+2. Le retour arrière peut laisser un import partiel.
+   Ses propres échecs sont ignorés (`index.html:1145`). Première écriture réussie, puis panne persistante : le catalogue enregistré change, la mémoire reste ancienne, mais l’import annonce « aucune donnée modifiée » (`index.html:2091`).
+
+   Une lecture préalable impossible est également assimilée à une absence (`index.html:1140`) : j’ai reproduit la suppression d’une clé existante lors du retour arrière.
+
+3. Une sauvegarde invalide peut être installée puis sauvegardée automatiquement.
+   `{"cmsList":[null],"history":[]}` passe la validation (`index.html:2071`). Les valeurs sont enregistrées, une sauvegarde automatique est déclenchée, puis `regen()` plante sur `c.id` (`index.html:1495, 2094`). Les éléments des listes ne sont pas suffisamment vérifiés avant écriture.
+
+4. Une restauration peut écraser le mauvais profil.
+   Lancer une restauration sous p1, passer à p2 avant la réponse réseau : l’historique de sauvegarde est installé dans p2, avec succès annoncé. Reproduit pour les deux fonctions (`index.html:1273, 1342`), qui utilisent ensuite le profil actif lors de `doImport` (`index.html:2086`).
+
+5. Des chemins d’écriture restent oubliés.
+   `writeProfileHistory` ignore l’échec et autorise quand même une sauvegarde automatique (`index.html:1185`). Après un pointage refusé par le stockage : mémoire « Réalisé », stockage « Confirmé », sauvegarde déclenchée (`index.html:1827`).
+
+   L’import ICS sauvegarde aussi un état intermédiaire : deux rendez-vous importés, mais l’appel automatique intervient après le premier seulement (`index.html:4281, 1626`).
+
+6. Le retour arrière du planning oublie un effet secondaire.
+   Le vrai `addHistory` écrit `since-export` (`index.html:1629`). Après une panne finale, historique et permanences sont restaurés, mais ce compteur reste modifié. Seules deux clés sont restaurées (`index.html:4310`). Le test remplace `addHistory` par une version simplifiée (`scripts/check-ecritures.js:38`).
+
+**Amendement** :
+
+Étendre la protection aux véritables écritures et à leurs appelants, vérifier le retour arrière et traiter explicitement son échec, valider les éléments importés avant toute modification, figer le profil cible des restaurations et couvrir les effets secondaires du planning. Ajouter les contre-exemples ci-dessus aux tests avec les vraies fonctions `persist` et `addHistory`.
+
+Vérifications en mémoire, données fictives, stockage et réseau simulés. Aucun fichier modifié, aucune sauvegarde réelle déclenchée.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
