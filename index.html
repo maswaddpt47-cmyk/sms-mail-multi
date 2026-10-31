@@ -1206,7 +1206,7 @@ function restaurerCles(cles,brut){
 function ecrireTout(paires){
   ecrireTout.incoherent=false;
   var cles=paires.map(function(p){return p[0];}),brut;
-  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){return false;}
+  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return false;}   /* T02 : échec propagé à l'opération englobante */
   _ecrituresGroupees++;
   try{
     for(var i=0;i<paires.length;i++){
@@ -1948,18 +1948,25 @@ function getPermanence(commune,dateStr,permList){
    debut/fin sur cette heure rétrécit silencieusement la grille du sélecteur (bug AG-001 sur
    SMS-mail, corrigé avant même d'arriver ici). Non destructif si la journée existe déjà. */
 function applyLunchBreaks(){
-  var today=toLocalDateStr(new Date()),changed=false,added=false;
-  S.permanences=S.permanences.map(function(p){
+  /* T01 (vérification de clôture de Codex) : historique ou journées non lus → rien n'est calculé sur un repli vide */
+  if(historiqueNonLu()||_clesIllisibles[pk('permanences')])return false;
+  var today=toLocalDateStr(new Date()),changed=false,added=false,hist=S.history.slice();
+  var perms=S.permanences.map(function(p){
     if(p.pauseAuto||!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived)return p;
-    var entry=lunchBreakEntry(p,S.history,today);
-    if(entry){S.history.push(entry);added=true;}
+    var entry=lunchBreakEntry(p,hist,today);
+    if(entry){hist.push(entry);added=true;}
     changed=true;return Object.assign({},p,{pauseAuto:true});
   });
-  /* historique et journées ensemble ; une clé illisible au chargement est refusée par lsSet, rien n'est écrit
-     et la mémoire est réalignée sur le stockage (ecrireTout) */
-  var paires=[];if(added)paires.push([pk('history'),S.history]);if(changed)paires.push([pk('permanences'),S.permanences]);
-  if(paires.length)ecrireTout(paires);
+  /* historique et journées ensemble. T02 : la mémoire n'est modifiée qu'après l'écriture réussie ; sinon elle reste
+     celle du stockage (aucune pause fantôme). */
+  var paires=[];if(added)paires.push([pk('history'),hist]);if(changed)paires.push([pk('permanences'),perms]);
+  if(!paires.length)return true;
+  if(!ecrireTout(paires))return false;
+  if(added)S.history=hist;if(changed)S.permanences=perms;
+  return true;
 }
+/* T01 : vrai si l'historique du profil actif n'a pas pu être lu (repli vide en mémoire) */
+function historiqueNonLu(){return !!_clesIllisibles[pk('history')]||_chargementEchoue;}
 function ensureDayOpen(commune,dateStr){
   if(!commune||!dateStr)return;
   if(S.permanences.some(function(p){return p.commune===commune&&p.exceptDate===dateStr;}))return;
@@ -2199,6 +2206,7 @@ function savePerm(id){
    mois en cours, sauf une journée portant un RDV en attente ou à pointer. `auto` (chargement du profil) laisse aussi de
    côté une journée restaurée à la main (`gardeOuverte`) pour ne pas défaire un « Restaurer ». Retourne le nombre archivé. */
 function archiveOldDaysCore(auto){
+  if(historiqueNonLu()||_clesIllisibles[pk('permanences')])return 0;   /* T01 : un RDV à pointer pourrait être invisible */
   var now=new Date(),cutoff=toLocalDateStr(new Date(now.getFullYear(),now.getMonth(),1,12));
   var n=0;
   S.permanences=S.permanences.map(function(p){
@@ -3176,7 +3184,8 @@ function archiveYear(year){
   var remaining=S.history.filter(function(h){return entryYear(h)!==year;});
   /* AG-013, étape 2 : l'archive est écrite et relue avant la suppression du détail ; au moindre échec, rien n'est supprimé */
   if(!ecrireTout([[pk('yearly-stats'),stats],[pk('history'),remaining]])){
-    showToast('❌ Archivage annulé : enregistrement impossible, aucune donnée supprimée. Exportez vos données.','err');
+    /* T11 (vérification de clôture de Codex) : retour arrière incomplet → ne pas affirmer « aucune donnée supprimée » */
+    showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Archivage annulé : enregistrement impossible, aucune donnée supprimée. Exportez vos données.','err');
     return;
   }
   S.yearlyStats=stats;S.history=remaining;
@@ -7659,7 +7668,7 @@ function loadProfileDataCorps(){
   S.mandats=lireDonnee('ess-mandats',[]);
   S.orientations=lireDonnee(pk('orientations'),[]);
   S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
-  if(lireDonnee(pk('perm-version'),'')!==PERM_MODEL_VERSION&&!_clesIllisibles[pk('perm-version')]){
+  if(lireDonnee(pk('perm-version'),'')!==PERM_MODEL_VERSION&&!_clesIllisibles[pk('perm-version')]&&!_clesIllisibles[pk('history')]&&!_clesIllisibles[pk('permanences')]){   /* T01 : jamais migrée d'après un historique non lu */
     S.permanences=migratePermanences(S.permanences,S.history);
     /* journées et version ensemble : une version sans les journées migrées sauterait la migration au chargement suivant */
     if(!ecrireTout([[pk('permanences'),S.permanences],[pk('perm-version'),PERM_MODEL_VERSION]]))S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);
@@ -7698,6 +7707,7 @@ function bindStaticListenersOnce(){
 function maybeShowOverdueReminder(){
   var todayStr=toLocalDateStr(new Date());
   if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
+  if(historiqueNonLu())return;   /* T01 : pas de rappel « vide » marqué fait pour la journée */
   var overdue=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
   localStorage.setItem(pk('overdue-reminder-date'),todayStr);
   if(!overdue.length)return;
