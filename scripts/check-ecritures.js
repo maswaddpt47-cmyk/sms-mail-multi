@@ -180,6 +180,12 @@ for(const n of [1,2]){
   assert.equal(e.st.etat(),avant,'archivage, panne '+n+' : stockage inchangé');assert.equal(JSON.stringify([e.S.history,e.S.yearlyStats]),mem);
   assert.equal(e.journal.pushs,0);assert(!e.journal.toasts.some(t=>/archivée/.test(t)));assert(e.journal.toasts.some(t=>/Archivage annulé/.test(t)));
 }
+// P09 (vérification de clôture de Codex) : une année déjà archivée n'est jamais réarchivée ; archive et fiches réapparues conservées
+{const e=prepArchive();e.S.history.push(rdv('r','2024-05-02','09:30','REVENU','R'));e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
+ const avant=e.st.etat();e.ctx.archiveYear(2024);
+ assert.equal(e.st.etat(),avant,'P09 : stockage inchangé');assert.equal(e.S.yearlyStats[2024].total,9,'P09 : archive existante conservée');
+ assert.equal(e.S.history.filter(h=>h.date.startsWith('2024')).length,1,'P09 : fiche réapparue conservée');
+ assert(e.journal.toasts.some(t=>/déjà archivée/.test(t)),'P09 : refus annoncé');assert.equal(e.journal.pushs,0);}
 
 /* ── Import JSON : vérifié en entier (éléments compris), appliqué en une fois avec les réglages ── */
 const sauvegarde={cmsList:[{id:1,nom:'Fumel'},{id:2,nom:'Marmande'}],demarches:[{id:1,nom:'D',documents:[]}],secteurs:['Fumel'],customTemplates:[],customVars:[],mandats:[],
