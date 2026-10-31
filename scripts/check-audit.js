@@ -77,4 +77,7 @@ assert.equal(JSON.stringify(sauvegarde),avant,'la sauvegarde n\'est pas modifié
   assert.doesNotMatch(src,/localStorage|sessionStorage|indexedDB|XMLHttpRequest|method:\s*['"]POST/i,p+' : ni stockage ni envoi');
 });
 assert.throws(()=>A.auditer({}),/historique/);
+const vide=A.auditer({history:[]},{maintenant});
+assert.equal(vide.fiches,0);assert.deepEqual(A.comparer(vide,bilan,{}),[]);
+assert.match(A.rapportTexte(vide,[]),/sauvegarde vide/,'une sauvegarde vide est signalée, pas présentée comme sans écart');
 console.log('Audit de sauvegarde : 16 types d\'anomalies, réattribution distinguée, recomptage = bilan de l\'application, écart détecté, rapport anonyme, lecture seule OK.');

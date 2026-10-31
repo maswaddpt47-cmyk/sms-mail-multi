@@ -95,7 +95,10 @@
      ['Créneaux réattribués (normal)',String(r.reattributions)],['Anomalies',graves+' erreur(s), '+att+' à vérifier, '+(r.anomalies.length-graves-att)+' information(s)']]
       .forEach(function(l){var p=document.createElement('p');var b=document.createElement('strong');b.textContent=l[0]+' : ';p.appendChild(b);p.appendChild(document.createTextNode(l[1]));$('resume').appendChild(p);});
     remplir($('types'),['Type','Nombre'],Object.keys(r.parType).sort().map(function(k){return [[k],[String(r.parType[k])]];}));
-    if(!ecarts){
+    if(!r.fiches){
+      $('comparaisonNote').textContent='Rien à comparer : ce fichier ne contient aucune fiche.';
+      remplir($('ecarts'),['Résultat'],[[['Aucune fiche dans cette sauvegarde. Vérifier qu\'elle vient du bon profil et de l\'appareil où l\'application est utilisée (chaque navigateur garde ses propres données).','attention']]]);
+    }else if(!ecarts){
       $('comparaisonNote').textContent='Comparaison indisponible : la page doit être ouverte depuis le site en ligne pour lire le calcul de l\'application. Le recomptage seul est montré.';
       remplir($('ecarts'),['Mois','CMS','Rendez-vous','Réalisés','Personnes','Relances'],r.recomptage.map(function(l){return [[l.mois],[l.cms||'(tous)'],[String(l.fiches)],[String(l.realisees)],[String(l.personnes)],[String(l.relances)]];}));
     }else{
@@ -106,7 +109,7 @@
     }
     remplir($('detail'),['Gravité','Type','Fiche','Date','Heure','CMS','Précision'],r.anomalies.map(function(a){return [[a.gravite,a.gravite],[a.type],[a.rang?String(a.rang):'—'],[a.date],[a.heure],[a.cms],[a.detail]];}));
     rapport=A.rapportTexte(r,ecarts);
-    $('resultat').hidden=false;$('etat').textContent='Analyse terminée.';
+    $('resultat').hidden=false;$('etat').textContent=r.fiches?'Analyse terminée.':'⚠️ Cette sauvegarde ne contient aucune fiche : rien n\'a été audité.';
   }
   $('fichier').addEventListener('change',function(){
     var f=this.files&&this.files[0];if(!f)return;

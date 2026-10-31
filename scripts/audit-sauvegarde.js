@@ -137,7 +137,7 @@
 
   function rapportTexte(r,ecarts){
     var t=['Audit de sauvegarde — sms-mail-multi — jour courant '+r.aujourdhui,'(rapport anonymisé : aucun nom, prénom, téléphone ni message)','',
-      'Fiches : '+r.fiches+' (dont '+r.blocages+' blocages)','Format de la date de génération (ts) : '+Object.keys(r.formatsTs).map(function(k){return k+' '+r.formatsTs[k];}).join(', '),
+      'Fiches : '+r.fiches+' (dont '+r.blocages+' blocages)'+(r.fiches?'':' — ATTENTION : sauvegarde vide, rien n\'a été audité'),'Format de la date de génération (ts) : '+Object.keys(r.formatsTs).map(function(k){return k+' '+r.formatsTs[k];}).join(', '),
       'Créneaux réattribués (place libérée puis reprise, cas normal) : '+r.reattributions,'','Anomalies par type :'];
     var types=Object.keys(r.parType).sort();
     if(!types.length)t.push('  aucune');types.forEach(function(k){t.push('  '+k+' : '+r.parType[k]);});
