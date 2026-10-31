@@ -1134,20 +1134,42 @@ function lsSet(k,v){
   catch(e){showToast('⚠️ Stockage plein. Exportez vos données !','warn');return false;}
 }
 /* Plusieurs écritures d'un coup ([[clé, valeur], …]) : si l'une échoue, les clés déjà écrites reprennent leur valeur
-   d'avant (absente comprise). Aucune sauvegarde GitHub automatique pendant l'opération : jamais d'état à moitié écrit. */
+   d'avant (absente comprise). Aucune sauvegarde GitHub automatique pendant l'opération : jamais d'état à moitié écrit.
+   Amendement Codex (31/10) : une valeur d'avant illisible annule tout avant la première écriture ; le retour arrière est
+   relu, et s'il échoue, ecrireTout.incoherent passe à true (le message ne doit plus dire « aucune donnée modifiée »). */
 var _ecrituresGroupees=0;
+function restaurerCles(cles,brut){
+  var ok=true;
+  for(var j=cles.length-1;j>=0;j--){try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;}catch(e){ok=false;}}
+  return ok;
+}
 function ecrireTout(paires){
-  var avant=paires.map(function(p){var v=null;try{v=localStorage.getItem(p[0]);}catch(e){}return [p[0],v];});
+  ecrireTout.incoherent=false;
+  var cles=paires.map(function(p){return p[0];}),brut;
+  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){return false;}
   _ecrituresGroupees++;
   try{
     for(var i=0;i<paires.length;i++){
-      if(!lsSet(paires[i][0],paires[i][1])){
-        for(var j=i;j>=0;j--){try{if(avant[j][1]===null)localStorage.removeItem(avant[j][0]);else localStorage.setItem(avant[j][0],avant[j][1]);}catch(e){}}
-        return false;
-      }
+      if(!lsSet(paires[i][0],paires[i][1])){ecrireTout.incoherent=!restaurerCles(cles.slice(0,i+1),brut.slice(0,i+1));return false;}
     }
     return true;
   }finally{_ecrituresGroupees--;}
+}
+var MSG_INCOHERENT='⚠️ Enregistrement interrompu et retour en arrière incomplet : certaines données ont pu changer. Rechargez la page, vérifiez vos données et exportez une sauvegarde.';
+/* Opération en tout ou rien sur l'historique et les journées du profil actif : fn() modifie S.history / S.permanences,
+   y compris par addHistory, ensureDayOpen ou applyLunchBreaks ; l'état final est écrit et relu. Au moindre échec,
+   mémoire et stockage (historique, journées, compteur d'export) reviennent à l'état d'avant. Une seule sauvegarde
+   automatique, à la fin. Renvoie {ok, incoherent, valeur}. */
+function operationHistorique(fn){
+  var cles=[pk('history'),pk('permanences'),pk('since-export')],brut;
+  try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){return {ok:false,incoherent:false};}
+  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[])),valeur,ok=false;
+  _ecrituresGroupees++;
+  try{valeur=fn();ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences);}catch(e){ok=false;}
+  finally{_ecrituresGroupees--;}
+  if(ok){maybeAutoBackupProfile(S.activeProfile);return {ok:true,incoherent:false,valeur:valeur};}
+  S.history=histAvant;S.permanences=permAvant;
+  return {ok:false,incoherent:!restaurerCles(cles,brut)};
 }
 /* clé cloisonnée par profil actif — pour history/permanences/orientations et dérivés */
 function pkFor(profileId,suffix){return 'ess-'+profileId+'-'+suffix;}
@@ -1182,10 +1204,18 @@ function countPendingRelances(profileId){
   });
   return count;
 }
+/* Amendement Codex (31/10) : renvoie false si l'historique n'est pas enregistré ; la mémoire est alors réalignée sur le
+   stockage (la modification refusée n'est pas gardée), sans sauvegarde automatique. Les appelants n'annoncent pas de succès. */
 function writeProfileHistory(profileId,arr){
-  if(profileId===S.activeProfile){S.history=arr;lsSet(pk('history'),arr);}
-  else{lsSet('ess-'+profileId+'-history',arr);}
+  var actif=profileId===S.activeProfile,cle=actif?pk('history'):'ess-'+profileId+'-history';
+  if(!lsSet(cle,arr)){
+    if(actif){var relu=ls(cle,null);if(Array.isArray(relu))S.history=relu;}
+    showToast('❌ Modification non enregistrée (stockage plein ?) : rechargez la page et exportez vos données.','err');
+    return false;
+  }
+  if(actif)S.history=arr;
   maybeAutoBackupProfile(profileId);
+  return true;
 }
 /* retrouve l'index d'un item d'historique par référence, ou par clé composite (date+heure+commune+nom) pour les items agrégés d'un autre profil */
 function findHistIdx(arr,item){
@@ -1194,13 +1224,22 @@ function findHistIdx(arr,item){
   return arr.findIndex(function(h){return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase();});
 }
 var _ghLastAutoPushByProfile={};
+/* Réglages communs, en une fois (amendement Codex du 31/10) : « Sauvegardé » et la sauvegarde automatique seulement si
+   tout est enregistré ; renvoie true/false. */
+function reglagesAPersister(now){
+  return [['ess-cms',S.cmsList],['ess-demarches',S.demarches],['ess-secteurs',S.secteurs],['ess-templates',S.templates],
+    ['ess-custom-tpl',S.customTemplates],['ess-vars',S.customVars],['ess-hidden',S.hiddenBuiltinKeys],['ess-lastSave',now]];
+}
 function persist(){
-  lsSet('ess-cms',S.cmsList);lsSet('ess-demarches',S.demarches);lsSet('ess-secteurs',S.secteurs);
-  lsSet('ess-templates',S.templates);lsSet('ess-custom-tpl',S.customTemplates);lsSet('ess-vars',S.customVars);
-  lsSet('ess-hidden',S.hiddenBuiltinKeys);
-  var now=new Date().toLocaleString('fr-FR');lsSet('ess-lastSave',now);
+  var now=new Date().toLocaleString('fr-FR');
+  if(!ecrireTout(reglagesAPersister(now))){
+    S.saveStatus='⚠️ Échec de l’enregistrement';renderHeader();
+    showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Réglages non enregistrés (stockage plein ?). Exportez vos données.','err');
+    return false;
+  }
   S.saveStatus='Sauvegardé le '+now;renderHeader();
   maybeAutoBackupProfile(S.activeProfile);
+  return true;
 }
 function saveLast(){lsSet(pk('last'),{selectedCMS:S.selectedCMS,selectedDemarche:S.selectedDemarche,commune:S.commune});}
 
@@ -1271,12 +1310,14 @@ function githubPush(silent,onSuccess,pid){
 
 /* restaure le backup le plus récent sur GitHub */
 function ghRestoreLatest(token,onSuccess){
+  var pid=S.activeProfile;   /* amendement Codex (31/10) : la restauration vise le profil d'origine, jamais celui choisi entre-temps */
   ghListBackups(token,function(backups){
     if(!backups.length){showToast('❌ Aucun backup trouvé sur GitHub','err');return;}
     var latest=backups[0];
     fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+latest.path+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
       .then(function(r){if(!r.ok)throw new Error();return r.json();})
       .then(function(data){
+        if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
         var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
         S.importText=json;
         if(doImport()){if(onSuccess)onSuccess();}
@@ -1340,10 +1381,12 @@ function ghListBackups(token,cb){
 
 /* restaure un fichier backup précis */
 function ghRestoreFile(token,filePath){
+  var pid=S.activeProfile;
   showToast('⏳ Restauration en cours…','ok');
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+filePath+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(data){
+      if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
       var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
       S.importText=json;
       if(doImport())showToast('✅ Restauration réussie !');
@@ -1824,7 +1867,7 @@ function pointerStatut(h,statut){
   var idx=findHistIdx(arr,h);
   if(idx===-1)return;
   arr[idx].statut=statut;h.statut=statut;
-  writeProfileHistory(targetP,arr);
+  if(!writeProfileHistory(targetP,arr)){renderAgenda();renderTabs();return;}
   renderAgenda();renderTabs();
   if(statut==='excuse'||statut==='annule'){
     var perm=S.permanences.find(function(p){return p.commune===h.commune&&p.exceptDate===h.date;})||{commune:h.commune};
@@ -2070,7 +2113,11 @@ function verifierSauvegarde(data){
   if(!data||typeof data!=='object'||Array.isArray(data))return 'Ce fichier n\'est pas une sauvegarde complète.';
   for(var i=0;i<IMPORT_LISTES.length;i++){var k=IMPORT_LISTES[i];if(data[k]!=null&&!Array.isArray(data[k]))return 'Sauvegarde invalide (« '+k+' » n\'est pas une liste).';}
   if(data.yearlyStats!=null&&(typeof data.yearlyStats!=='object'||Array.isArray(data.yearlyStats)))return 'Sauvegarde invalide (« yearlyStats »).';
-  if(data.history&&data.history.some(function(h){return !h||typeof h!=='object'||Array.isArray(h);}))return 'Sauvegarde invalide (fiche illisible dans l\'historique).';
+  function objets(k){return !data[k]||data[k].every(function(x){return x&&typeof x==='object'&&!Array.isArray(x);});}
+  for(var j=0;j<IMPORT_LISTES.length;j++){if(IMPORT_LISTES[j]!=='secteurs'&&!objets(IMPORT_LISTES[j]))return 'Sauvegarde invalide (élément illisible dans « '+IMPORT_LISTES[j]+' »).';}
+  if(data.secteurs&&data.secteurs.some(function(x){return typeof x!=='string';}))return 'Sauvegarde invalide (« secteurs »).';
+  if(data.cmsList&&data.cmsList.some(function(c){return c.id==null||typeof c.nom!=='string';}))return 'Sauvegarde invalide (CMS sans identifiant ou sans nom).';
+  if(data.demarches&&data.demarches.some(function(d){return typeof d.nom!=='string'||(d.documents!=null&&!Array.isArray(d.documents));}))return 'Sauvegarde invalide (démarche illisible).';
   return '';
 }
 function doImport(){
@@ -2088,10 +2135,14 @@ function doImport(){
     if(data.permanences){neuf.permanences=migratePermanences(data.permanences,neuf.history||S.history);paires.push([pk('permanences'),neuf.permanences],[pk('perm-version'),PERM_MODEL_VERSION]);}
     if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
   }catch(e){S.importError="❌ Sauvegarde illisible. Aucune donnée modifiée.";renderModal();return false;}
-  if(!ecrireTout(paires)){S.importError="❌ Enregistrement impossible (stockage plein ?) : import annulé, aucune donnée modifiée.";renderModal();return false;}
+  /* réglages communs dans la même écriture : plus aucun enregistrement hors transaction après l'import */
+  var now=new Date().toLocaleString('fr-FR'),appliques=Object.assign({},S,neuf);
+  [['ess-templates',appliques.templates],['ess-hidden',appliques.hiddenBuiltinKeys],['ess-lastSave',now]].forEach(function(p){paires.push(p);});
+  if(!ecrireTout(paires)){S.importError=ecrireTout.incoherent?MSG_INCOHERENT:"❌ Enregistrement impossible (stockage plein ?) : import annulé, aucune donnée modifiée.";renderModal();return false;}
   Object.keys(neuf).forEach(function(k){S[k]=neuf[k];});
-  S.modal=null;S.importText="";S.importError="";
-  persist();regen();renderAll();showToast("✅ Import réussi !");
+  S.modal=null;S.importText="";S.importError="";S.saveStatus='Sauvegardé le '+now;
+  maybeAutoBackupProfile(S.activeProfile);
+  regen();renderAll();showToast("✅ Import réussi !");
   return true;
 }
 
@@ -4263,10 +4314,12 @@ function exportICSDay(commune,dateStr){
   downloadICS(buildICS(rdvs),'permanence-'+safeCommune+'-'+dateStr+'.ics');
   showToast('✅ '+rdvs.length+' RDV exportés pour cette journée');
 }
+/* Amendement Codex (31/10) : import ICS en tout ou rien (operationHistorique), une seule sauvegarde automatique à la fin.
+   Renvoie le nombre de RDV ajoutés, ou -1 si rien n'a été enregistré (importICSText.incoherent si le retour arrière a échoué). */
 function importICSText(text){
   var events=text.split('BEGIN:VEVENT').slice(1);
   var added=0;
-  events.forEach(function(ev){
+  var r=operationHistorique(function(){events.forEach(function(ev){
     var get=function(k){var m=ev.match(new RegExp(k+'[^:]*:([^\\r\\n]+)'));return m?m[1].trim():'';};
     var dtRaw=get('DTSTART');
     if(!dtRaw)return;
@@ -4280,8 +4333,9 @@ function importICSText(text){
     if(dup)return;
     addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR')});
     added++;
-  });
-  return added;
+  });});
+  importICSText.incoherent=!!r.incoherent;
+  return r.ok?added:-1;
 }
 /* AG-013, étape 2 : même RDV = même date, heure, CMS (cmsKey), nom et prénom, dans le profil actif (avant : date + nom
    seulement, deux RDV distincts pouvaient se remplacer). Tout ou rien : en cas d'échec, historique et journées
@@ -4291,27 +4345,16 @@ function memeRdvPlanning(h,entry){
   return h.date===entry.date&&String(h.heure||'')===String(entry.heure||'')&&cmsKey(h.commune)===cmsKey(entry.commune)&&t(h.nom)===t(entry.nom)&&t(h.prenom)===t(entry.prenom);
 }
 function appliquerPlanning(entries){
-  var cles=[pk('history'),pk('permanences')],brut=cles.map(function(k){try{return localStorage.getItem(k);}catch(e){return null;}});
-  var histAvant=S.history.slice(),permAvant=JSON.parse(JSON.stringify(S.permanences||[]));   /* copie : le remplacement d'un doublon modifie S.history sur place */
-  var added=0,updated=0,ok=false;
-  _ecrituresGroupees++;
-  try{
+  var added=0,updated=0;
+  var r=operationHistorique(function(){
     entries.forEach(function(entry){
       var dup=S.history.find(function(h){return memeRdvPlanning(h,entry);});
       if(dup){S.history.splice(S.history.indexOf(dup),1,Object.assign({},dup,entry));updated++;return;}
       addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''}));
       added++;
     });
-    ok=lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences);
-  }catch(e){ok=false;}
-  finally{_ecrituresGroupees--;}
-  if(!ok){
-    S.history=histAvant;S.permanences=permAvant;
-    cles.forEach(function(k,i){try{if(brut[i]===null)localStorage.removeItem(k);else localStorage.setItem(k,brut[i]);}catch(e){}});
-    return {ok:false,added:0,updated:0};
-  }
-  maybeAutoBackupProfile(S.activeProfile);
-  return {ok:true,added:added,updated:updated};
+  });
+  return r.ok?{ok:true,added:added,updated:updated}:{ok:false,incoherent:r.incoherent,added:0,updated:0};
 }
 function importPlanningJson(){
   var inp=document.createElement('input');inp.type='file';inp.accept='.json';
@@ -4322,7 +4365,7 @@ function importPlanningJson(){
         var entries=JSON.parse(e.target.result);
         if(!Array.isArray(entries))throw new Error();
         var r=appliquerPlanning(entries);
-        if(!r.ok){showToast('❌ Import annulé : enregistrement impossible, aucune donnée modifiée','err');return;}
+        if(!r.ok){showToast(r.incoherent?MSG_INCOHERENT:'❌ Import annulé : enregistrement impossible, aucune donnée modifiée','err');return;}
         renderAgenda();renderTabs();
         showToast('✅ '+r.added+' RDV importé(s)'+(r.updated?' · '+r.updated+' déjà présent(s), mis à jour':''));
       }catch(ex){showToast('⚠️ Fichier JSON invalide','warn');}
@@ -5062,8 +5105,8 @@ function renderAgenda(){
             var arr=readProfileHistory(targetP);
             var idx=findHistIdx(arr,entry);
             if(idx===-1)return;
-            arr.splice(idx,1);writeProfileHistory(targetP,arr);
-            renderAgenda();showToast('✓ RDV supprimé');
+            arr.splice(idx,1);var okSup=writeProfileHistory(targetP,arr);
+            renderAgenda();if(okSup)showToast('✓ RDV supprimé');
           });})(h,who);
           row.appendChild(delBtn);
           orphanWrap.appendChild(row);
@@ -6661,7 +6704,7 @@ function renderAgendaRdvDialog(overlay,box){
   }
   function update(patch){
     var found=locate();if(!found)return null;
-    Object.assign(found.entry,patch);writeProfileHistory(owner,found.history);
+    Object.assign(found.entry,patch);if(!writeProfileHistory(owner,found.history))return null;
     t=Object.assign({},found.entry,{_profile:owner});
     ar.slot=Object.assign({},ar.slot,{taken:t,heure:t.heure,freeAgain:['excuse','lapin','pas_de_retour','annule'].indexOf(t.statut)!==-1});
     ar.day=Object.assign({},ar.day,{profile:owner,dateStr:t.date,perm:Object.assign({},(ar.day||{}).perm,{commune:t.commune||commune})});
@@ -6726,7 +6769,7 @@ function renderAgendaRdvDialog(overlay,box){
     }));
     secondary.appendChild(action('ag-rdv-delete','Supprimer','ui-rdv-action-danger',function(){
       if(!confirm('Supprimer ce RDV ?'))return;var found=locate();if(!found)return;
-      found.history.splice(found.index,1);writeProfileHistory(owner,found.history);S.modal=null;renderModal();renderAgenda();renderTabs();showToast('RDV supprimé');
+      found.history.splice(found.index,1);var okSup=writeProfileHistory(owner,found.history);S.modal=null;renderModal();renderAgenda();renderTabs();if(okSup)showToast('RDV supprimé');
     }));footer.appendChild(secondary);
   } else {
     var edit=ar.edit||{};ar.edit=edit;
@@ -7064,7 +7107,8 @@ function renderModal(){
       reader.onload=function(ev){
         var n=importICSText(ev.target.result);
         S.modal=null;renderModal();renderAgenda();
-        showToast(n>0?'✅ '+n+' RDV importés':'Aucun nouveau RDV trouvé');
+        if(n<0)showToast(importICSText.incoherent?MSG_INCOHERENT:'❌ Import annulé : enregistrement impossible, aucune donnée modifiée','err');
+        else showToast(n>0?'✅ '+n+' RDV importés':'Aucun nouveau RDV trouvé');
       };
       reader.readAsText(f);
     });
@@ -7244,9 +7288,9 @@ function renderModal(){
           var arr=readProfileHistory(targetP);
           var idx=findHistIdx(arr,rh);
           var _tsRel=new Date().toISOString();
-          if(idx!==-1){arr[idx].dateRelance=_today;rh.dateRelance=_today;arr[idx].tsRelance=_tsRel;rh.tsRelance=_tsRel;writeProfileHistory(targetP,arr);}
+          if(idx!==-1){arr[idx].dateRelance=_today;rh.dateRelance=_today;arr[idx].tsRelance=_tsRel;rh.tsRelance=_tsRel;var okRel=writeProfileHistory(targetP,arr);}
         }
-        S.modal=null;renderModal();renderAgenda();showToast('✓ Message copié — relance enregistrée');
+        S.modal=null;renderModal();renderAgenda();if(okRel!==false)showToast('✓ Message copié — relance enregistrée');
       });
     }},'📋 Copier'));
     rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
@@ -7281,9 +7325,9 @@ function renderModal(){
           var targetP=lh._profile||S.activeProfile;
           var arr=readProfileHistory(targetP);
           var idx=findHistIdx(arr,lh);
-          if(idx!==-1){arr[idx].dateLapin=_today;lh.dateLapin=_today;writeProfileHistory(targetP,arr);}
+          if(idx!==-1){arr[idx].dateLapin=_today;lh.dateLapin=_today;var okLap=writeProfileHistory(targetP,arr);}
         }
-        S.modal=null;renderModal();renderAgenda();showToast('✓ Message absence copié — envoi enregistré');
+        S.modal=null;renderModal();renderAgenda();if(okLap!==false)showToast('✓ Message absence copié — envoi enregistré');
       });
     }},'📋 Copier'));
     lBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
