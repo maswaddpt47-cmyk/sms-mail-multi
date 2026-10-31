@@ -29,7 +29,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('handleGenerate'),fonction('migrateSharedCmsList'),
+  fonction('handleGenerate'),fonction('lireListeStockee'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');
@@ -386,6 +386,37 @@ async function restaurer(contenu,fonction,options){
     assert.deepEqual(JSON.parse(e.st.getItem('ess-cms')).map(c=>c.nom),['Agen','Fumel'],q+' : fusion complète après réparation');
     assert.equal(JSON.parse(e.st.getItem('ess-cms'))[1].debutApresMidi,'14:00',q+' : réglage Fumel posé après réparation');
     assert.equal(e.st.getItem('ess-pm-start-v1'),'"1"');assert.equal(e.st.getItem('ess-cms-migrated-v2'),'1');
+  }
+  // 9e vérification de Codex : catalogue personnalisé valide, réglage Fumel à faire, lecture du catalogue refusée une fois
+  // au chargement — marqueur CMS ancien ou posé par ce chargement → rien perdu, Fumel réglé au chargement suivant
+  for(const marqueur of ['ancien','posé ici']){
+    let suspendu=0;
+    for(let visee=1;visee<=6;visee++){   // la panne vise tour à tour chacune des 6 premières lectures d'ess-cms
+      const e=charger();const perso=[{nom:'Agen',adresse:'1 rue fictive'},{nom:'Fumel'}];const cas=marqueur+', lecture '+visee;
+      e.st.setItem('ess-cms',JSON.stringify(perso));
+      if(marqueur==='ancien')e.st.setItem('ess-cms-migrated-v2','1');
+      e.st.setItem('ess-tpl-version','"v5-lapin-templates"');e.st.setItem(e.ctx.pk('perm-version'),'3');
+      let n=0;e.st.lecturePanne=k=>k==='ess-cms'&&++n===visee;
+      e.ctx.loadProfileData();e.st.lecturePanne=null;
+      const lu=JSON.parse(e.st.getItem('ess-cms'));
+      assert.equal(lu.length,2,cas+' : catalogue personnalisé conservé (pas remplacé par le repli)');assert.equal(lu[0].adresse,'1 rue fictive',cas+' : personnalisation conservée');
+      if(e.st.getItem('ess-pm-start-v1')===null)suspendu++;
+      else assert.equal(lu.find(c=>c.nom==='Fumel').debutApresMidi,'14:00',cas+' : réglage posé sur le vrai catalogue');
+      e.ctx.loadProfileData();
+      const fin=JSON.parse(e.st.getItem('ess-cms'));
+      assert.equal(fin[0].adresse,'1 rue fictive',cas+' : personnalisation conservée après reprise');
+      assert.equal(fin.find(c=>c.nom==='Fumel').debutApresMidi,'14:00',cas+' : réglage Fumel posé à la reprise');
+      assert.equal(e.st.getItem('ess-pm-start-v1'),'"1"',cas);
+    }
+    assert(suspendu>0,marqueur+' : au moins un refus atteint la lecture stricte et suspend le réglage');
+  }
+  // migration déjà achevée, catalogue devenu vide ou malformé, Fumel à faire → source conservée, rien posé
+  for(const brut of ['','{pas du json']){
+    const e=charger();e.st.setItem('ess-cms',brut);e.st.setItem('ess-cms-migrated-v2','1');
+    e.st.setItem('ess-tpl-version','"v5-lapin-templates"');e.st.setItem(e.ctx.pk('perm-version'),'3');
+    e.ctx.loadProfileData();e.ctx.loadProfileData();
+    assert.equal(e.st.getItem('ess-cms'),brut,JSON.stringify(brut)+' : source illisible conservée (marqueur CMS ancien)');
+    assert.equal(e.st.getItem('ess-pm-start-v1'),null);
   }
   // journées et version : refus de l'une ou de l'autre → ni l'une ni l'autre ; migration rejouée ensuite
   for(const refus of ['permanences','perm-version']){
