@@ -3151,11 +3151,9 @@ function computeYearArchive(year){
   var yEntries=S.history.filter(function(h){return entryYear(h)===year;});
   var hist=yEntries.filter(function(h){return h.msgType!=='indispo';});
   var arc={year:year,generatedAt:new Date().toISOString(),totalEntries:yEntries.length};
-  arc.total=hist.length;
-  arc.smsN=hist.filter(function(h){return h.channel==='sms';}).length;
-  arc.mailN=hist.filter(function(h){return h.channel==='mail';}).length;
-  var usagers={};hist.forEach(function(h){var k=usagerKey(h);if(k)usagers[k]=1;});
-  arc.usagersN=Object.keys(usagers).length;
+  var canaux=compterCanaux(hist);
+  arc.total=canaux.total;arc.smsN=canaux.sms;arc.mailN=canaux.mail;
+  arc.usagersN=personnesDistinctes(hist);
   var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
   arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});arc.statuts[STATUT_A_VERIFIER]=0;   /* clé additive (AG-014 B) : absente des archives créées avant, lue comme 0 */
   hist.forEach(function(h){arc.statuts[statutAffiche(h)]++;});
@@ -3190,7 +3188,7 @@ function computeYearArchive(year){
   arc.trendByMonth=trendMap;
   arc.byDemarche=comptageDemarches(hist);
   arc.byType=comptageTypes(hist,['proposition','confirmation','sans_appel']);
-  arc.relances=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length; /* additif (AG-005) : absent des archives créées avant */
+  arc.relances=hist.filter(aRelanceRenseignee).length; /* additif (AG-005) : absent des archives créées avant */
   arc.relancesSur=hist.length;
   var cmsMap=Object.create(null);comptageParCms(hist).forEach(function(c){cmsMap[c.nom]=c.n;});
   arc.byCMS=cmsMap;
@@ -3355,7 +3353,6 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;else sansDemarche++;});
   /* usagers accompagnés (personnes distinctes parmi les fiches Réalisé) et fiches par statut : calculés
      ici pour que l'écran et le bilan mensuel partagent la même population (25/10) */
-  var accompanied={};realised.forEach(function(h){var key=usagerKey(h);if(key)accompanied[key]=true;});
   var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0,a_verifier:0};
   /* statut vide ou inconnu = « Statut à vérifier » (AG-014 B, décision du 31/10), comme le graphe mensuel et `computeYearArchive` */
   entries.forEach(function(h){byStatut[statutAffiche(h)]++;});
@@ -3435,7 +3432,7 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
     .filter(function(d){return d.lapins>0;})
     .sort(function(a,b){return b.date.localeCompare(a.date)||a.commune.localeCompare(b.commune);});
   var free=days.reduce(function(n,d){return n+d.free;},0);
-  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past,capaPerms||permanences,history),accompaniedN:Object.keys(accompanied).length,byStatut:byStatut,sansDemarche:sansDemarche,free:free};
+  return {today:today,start:start,entries:entries,past:past,realised:realised,lapins:lapins,byMonth:byMonth,byDemarche:byDemarche,days:days,lapinDays:lapinDays,slotRates:slotRates(past,capaPerms||permanences,history),accompaniedN:personnesDistinctes(realised),byStatut:byStatut,sansDemarche:sansDemarche,free:free};
 }
 
 /* Taux par créneau (demande utilisateur 23/10, remplace le comptage par fiche du 27/09) : un
@@ -3452,6 +3449,11 @@ function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f
 /* Audit Codex du 30/10 (AG-006). Clé d'un usager : nom|prénom séparés, espaces retirés, minuscules. Nom et prénom ne
    forment pas un identifiant de personne : deux homonymes restent un seul usager. */
 function usagerKey(h){var n=String(h.nom||'').trim().toLowerCase(),p=String(h.prenom||'').trim().toLowerCase();return n||p?n+'|'+p:'';}
+/* Étape 5 d'AG-013 (AG-015 A) : calculs partagés par Statistiques, le bilan et les nouvelles archives, à chiffres constants.
+   `scripts/audit-sauvegarde.js` ne les utilise pas : il reste un recomptage indépendant. */
+function personnesDistinctes(entries){var m={};entries.forEach(function(h){var k=usagerKey(h);if(k)m[k]=1;});return Object.keys(m).length;}
+function compterCanaux(entries){var r={total:entries.length,sms:0,mail:0,inconnu:0};entries.forEach(function(h){if(h.channel==='sms')r.sms++;else if(h.channel==='mail')r.mail++;else r.inconnu++;});return r;}
+function aRelanceRenseignee(h){return h.msgType==='relance'||!!h.dateRelance;}
 /* Jours calendaires du message (ts « JJ/MM/AAAA… ») au RDV (« AAAA-MM-JJ ») : deux dates civiles converties de la même façon,
    sans fuseau d'appareil. Zéro inclus (RDV le jour du message), RDV antérieur ou date invalide : null. */
 function delaiRdvJours(ts,date){
@@ -3553,7 +3555,7 @@ function monthlyReportData(history,month,cms,now){
   var top=dem.slice(0,10),others=dem.slice(10);
   /* AG-012 (31/10) : même population de RDV, une seule relance par RDV selon l'usage déclaré.
      Comme la statistique existante : date ou type renseigné, sans déduire un envoi ni modifier l'historique. */
-  var followup={recorded:total.entries.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length};
+  var followup={recorded:total.entries.filter(aRelanceRenseignee).length};
   /* AG-011 (30/10) : une seule base, les rendez-vous enregistrés ; aucun taux par créneau dans le bilan */
   return {month:month,year:Number(mm[1]),cms:cms||'',today:total.today,partiel:partiel,
     entries:total.entries.length,realised:total.realised.length,accompanied:total.accompaniedN,byStatut:total.byStatut,
@@ -4158,10 +4160,7 @@ function renderStats(){
   lapinCard.appendChild(lapinList);wrap.appendChild(lapinCard);
 
   /* ── KPI ── */
-  var total=hist.length;
-  var smsN=hist.filter(function(h){return h.channel==="sms";}).length;
-  var mailN=hist.filter(function(h){return h.channel==="mail";}).length;
-  var usagers={};hist.forEach(function(h){var k=usagerKey(h);if(k)usagers[k]=1;});
+  var canaux=compterCanaux(hist),total=canaux.total,smsN=canaux.sms,mailN=canaux.mail;
   var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
   var prepMetrics=preparationStats(prepCohort);
   var legacyPrep=legacyPreparationEstimate(prepCohort);
@@ -4179,7 +4178,7 @@ function renderStats(){
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Messages et usagers'));
   wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Un message = une fiche d’historique, comptée au jour de sa génération.'));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
-  [{icon:"📨",val:total,lbl:"Total",col:"oklch(0.5 0.16 266)",isNum:true},{icon:"💬",val:smsN,lbl:"SMS",col:"oklch(0.48 0.14 155)",isNum:true},{icon:"✉️",val:mailN,lbl:"Mails",col:"oklch(0.48 0.13 264)",isNum:true},{icon:"👤",val:Object.keys(usagers).length,lbl:"Usagers",col:"oklch(0.52 0.14 38)",isNum:true}].forEach(function(k){
+  [{icon:"📨",val:total,lbl:"Total",col:"oklch(0.5 0.16 266)",isNum:true},{icon:"💬",val:smsN,lbl:"SMS",col:"oklch(0.48 0.14 155)",isNum:true},{icon:"✉️",val:mailN,lbl:"Mails",col:"oklch(0.48 0.13 264)",isNum:true},{icon:"👤",val:personnesDistinctes(hist),lbl:"Usagers",col:"oklch(0.52 0.14 38)",isNum:true}].forEach(function(k){
     var c=el('div',{class:'ui-stats-metric'});
     var valEl=el('div',{class:'ui-stats-number'},String(k.val));
     c.appendChild(valEl);
@@ -4285,7 +4284,7 @@ function renderStats(){
 
 
   var typeMap=comptageTypes(hist,['proposition','confirmation','sans_appel','relance']);
-  var relanceN=hist.filter(function(h){return h.msgType==='relance'||h.dateRelance;}).length;
+  var relanceN=hist.filter(aRelanceRenseignee).length;
   var typeCard=card("Répartition par type");
   var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
