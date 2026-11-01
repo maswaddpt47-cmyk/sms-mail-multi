@@ -53,8 +53,8 @@ imports) : **non mesurables**, leur nombre est affiché à part, sans mois inven
 | Préparation moy. (lun.–ven.) | jours ouvrés réception → première préparation | **population propre** (`preparationCohort`) : jour de première préparation, à défaut date du message pour situer les exclusions | fiches sans horodatage exclues de la moyenne (compteur affiché) | `preparationStats` |
 | Traitées le jour même (estimation) | part des anciennes fiches préparées le jour de la réception | même population que la préparation moyenne | estimation ; relances exclues | `legacyPreparationEstimate` |
 
-« Délai moy. RDV » (dernier message → RDV) : **retiré le 01/11/2026** (décision 5). Il subsiste seulement dans les
-anciennes archives (`avgRdv`, étape 6).
+« Délai moy. RDV » (dernier message → RDV) : **retiré le 01/11/2026** (décision 5). Il subsiste dans les archives
+(`avgRdv`) : anciennes **et** nouvellement calculées, qui gardent la méthode antérieure jusqu'à l'étape 6 (précision de Codex, 01/11/2026).
 
 ## Bilan mensuel imprimable
 
