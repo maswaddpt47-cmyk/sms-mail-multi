@@ -1109,7 +1109,7 @@ var S={
   activeProfile:null, agendaScope:"mine",
   channel:"sms", msgType:"proposition", selectedTemplate:"__default__", uiMessageSettingsOpen:false,
   selectedCMS:"", selectedDemarche:"", commune:"",
-  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", receptionReprise:"", dateDemande:jourParis(),
+  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", receptionReprise:"", receptionSource:null, dateDemande:jourParis(),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
   statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, relanceReponseH:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
@@ -1698,14 +1698,17 @@ function handleGenerate(){
   if(!confirmerCreneau(S.date,S.heure,S.commune))return;
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
-  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:tsParis()},true);
+  var itemGen={channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:tsParis()};
+  /* AG-022 R1 (amendement de Codex) : un champ Réception non modifié ne remplace jamais une reprise ni une valeur brute par un vide */
+  var rec=receptionAEcrire(S.dateReception,S.receptionSource);if(rec.garder)delete itemGen.dateReception;else itemGen.dateReception=rec.valeur;
+  var enregistre=addHistory(itemGen,true);
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
   if(enregistre)showToast("✓ Message généré et enregistré");
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",receptionReprise:"",dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",receptionReprise:"",receptionSource:null,dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
   S._lastLapinDetected=false;
   saveLast();   /* 01/11/2026 (demande de l'utilisateur) : « Effacer » oublie aussi le dernier CMS et la dernière démarche, sinon ils revenaient au rechargement */
   regen();renderGenerate();
@@ -1838,7 +1841,7 @@ function figerChampsCopie(){
   var r=compute();
   return {activeProfile:S.activeProfile,channel:S.channel,msgType:S.msgType,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,
     selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,
-    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
+    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,receptionSource:S.receptionSource?Object.assign({},S.receptionSource):null,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
 }
 function enregistrerCopie(text,fige){
   var F=fige||figerChampsCopie();
@@ -1848,7 +1851,10 @@ function enregistrerCopie(text,fige){
     /* AG-022 : comparaison avec la réception ENREGISTRÉE ; une reprise non confirmée, ou un champ vide sur une fiche sans réception
        enregistrée, ne réécrit rien (ni confirmation implicite, ni « vide » qui ferait d'une reprise une absence) */
     var garderAbsence=F.receptionAConfirmer||(!F.dateReception&&!!receptionRecord&&!Object.prototype.hasOwnProperty.call(receptionRecord,'dateReception'));
-    if(receptionRecord&&!garderAbsence&&receptionChampInitial(receptionRecord)!==(F.dateReception||'')){
+    /* R2 (amendement de Codex) : champ non modifié depuis le chargement de la fiche → son état brut est conservé, même invalide */
+    var rec=receptionAEcrire(F.dateReception,F.receptionSource);
+    if(rec.intacte)garderAbsence=rec.garder;
+    if(receptionRecord&&!rec.intacte&&!garderAbsence&&receptionChampInitial(receptionRecord)!==(F.dateReception||'')){
       S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:F.dateReception||''});
       if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
     }
@@ -1861,6 +1867,7 @@ function enregistrerCopie(text,fige){
       if(F.cmsTrouve&&F.dem){
         if(isDuplicate(F.nom,F.dem.nom,F.date))showToast('⚠️ Doublon détecté : '+F.nom+' / '+F.dem.nom+' déjà dans l\'historique','warn');
         var itemCopie={channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:tsParis()};
+        if(rec.intacte&&!rec.garder)itemCopie.dateReception=rec.valeur;
         if(garderAbsence)delete itemCopie.dateReception;   /* AG-022 : la fusion ne pose ni reprise confirmée d'office, ni réception vide sur une fiche qui n'en a pas */
         if(!addHistory(itemCopie,true))throw new Error('message refusé');
       }
@@ -2405,7 +2412,7 @@ function reuseHistItem(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date="";S.heure="";S.dateReception="";S.receptionReprise="";
+  S.date="";S.heure="";S.dateReception="";S.receptionReprise="";S.receptionSource=null;
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
   showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
@@ -2429,7 +2436,7 @@ function openHistInGen(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionChampInitial(h);S.receptionReprise=etatReception(h).reprise;   /* AG-022 : reprise à confirmer, jamais préremplie */
+  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionChampInitial(h);S.receptionReprise=etatReception(h).reprise;S.receptionSource=sourceReception(h);   /* AG-022 : reprise à confirmer, jamais préremplie ; R1/R2 : état brut gardé */
   S.dateDemande=h.dateDemande||jourParis();
   S.genNotes=h.notes||"";
   S.selectedTemplate="__default__";
@@ -3157,6 +3164,19 @@ function etatReception(h){
 }
 /* valeur de départ d'un champ « Réception de la demande » : seulement une réception enregistrée ; une reprise n'est jamais préremplie */
 function receptionChampInitial(h){var e=etatReception(h);return e.etat==='enregistree'?e.date:'';}
+/* AG-022, amendement de Codex (R1/R2, 01/11/2026) : état brut de la réception de la fiche chargée dans Générer (champ présent
+   ou absent, valeur telle quelle, même invalide) et valeur de départ du champ. */
+function sourceReception(h){
+  var a=!!h&&Object.prototype.hasOwnProperty.call(h,'dateReception');
+  return {aChamp:a,brut:a?h.dateReception:undefined,init:receptionChampInitial(h||{})};
+}
+/* Réception à écrire depuis Générer (génération ou copie). Champ non modifié depuis le chargement d'une fiche : l'état brut
+   de cette fiche est conservé (absence → aucun champ, la reprise reste à confirmer ; valeur invalide → recopiée telle quelle).
+   Sinon (champ modifié, confirmation, formulaire neuf) : la valeur du champ, comme avant. Renvoie {garder:bool, valeur}. */
+function receptionAEcrire(champ,source){
+  if(source&&(champ||'')===source.init)return source.aChamp?{garder:false,valeur:source.brut,intacte:true}:{garder:true,intacte:true};
+  return {garder:false,valeur:champ||'',intacte:false};
+}
 /* AG-022 : enregistre une réception confirmée ou saisie sur UNE fiche du profil actif ; rien d'autre n'est écrit (ni
    premierePreparationAt, ni dateDemande). Écriture sur une copie : en cas de refus du stockage, l'état reste inchangé. */
 function enregistrerReception(h,date){
@@ -7479,7 +7499,7 @@ function renderOrientations(){
       S.genNotes=o.motif||(o.orienteur?'Orienté par '+o.orienteur:'');
       /* dateDemande = date d'envoi du message, toujours aujourd'hui — o.date est la date de la demande d'orientation d'origine (peut être ancienne), pas la date d'envoi du SMS/mail généré maintenant */
       S.dateDemande=jourParis();
-      S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';S.receptionReprise='';
+      S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';S.receptionReprise='';S.receptionSource=null;
       S.msgType='sans_appel';
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
@@ -7581,7 +7601,7 @@ function renderAgendaRdvDialog(overlay,box){
     followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},(function(){var e=etatReception(t);return e.etat==='enregistree'?formatDate(e.date)+(e.date>t.date?' — postérieure au RDV':''):e.etat==='reprise'?formatDate(e.reprise)+' — ancienne date du message, à confirmer':e.invalide?'Date invalide':'Non renseignée';})())]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
     var primary=el('div',{class:'ui-rdv-primary-actions'});
     primary.appendChild(action('ag-rdv-generate','Préparer SMS / mail','ui-rdv-action-primary',function(){
-      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionChampInitial(t),receptionReprise:etatReception(t).reprise,dateDemande:t.dateDemande||jourParis(),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
+      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionChampInitial(t),receptionReprise:etatReception(t).reprise,receptionSource:sourceReception(t),dateDemande:t.dateDemande||jourParis(),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
     primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',commune:commune,date:date,heure:heure,dateReception:receptionChampInitial(t),dateReceptionInit:receptionChampInitial(t),receptionReprise:etatReception(t).reprise,dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
@@ -8124,7 +8144,7 @@ function renderModal(){
     /* bouton générer */
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;margin-top:4px;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){
       if(!an.nom||!an.selectedCMS||!an.selectedDemarche){showToast('⚠️ Nom, CMS et démarche requis','warn');return;}
-      Object.assign(S,{dateReception:"",receptionReprise:"",civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
+      Object.assign(S,{dateReception:"",receptionReprise:"",receptionSource:null,civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
         selectedCMS:an.selectedCMS,selectedDemarche:an.selectedDemarche,demarcheAutre:an.demarcheAutre||'',
         commune:an.commune,date:an.dateStr,heure:an.heure,channel:an.channel});
       S.modal=null;S.agendaNew=null;renderModal();
@@ -8330,7 +8350,7 @@ function loadProfileData(){
   finally{if(!termine){_chargementEchoue=true;_stockageEnEchec=true;S.saveStatus='⚠️ Chargement du profil interrompu : rien ne sera enregistré. Rechargez la page.';}}
 }
 function loadProfileDataCorps(){
-  S.dateReception='';S.receptionReprise='';
+  S.dateReception='';S.receptionReprise='';S.receptionSource=null;
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
   _versionLue={};   /* P01 : seules les données du profil chargé et les réglages communs sont suivies */
