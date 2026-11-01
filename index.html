@@ -3946,8 +3946,9 @@ function renderStats(){
   function groupByUsager(entries){
     var groups={};
     entries.forEach(function(h){
-      var key=((h.nom||'')+'|'+(h.prenom||'')).toLowerCase();
-      if(!groups[key])groups[key]={civilite:h.civilite,prenom:h.prenom,nom:h.nom,commune:h.commune,telephone:h.telephone,heure:h.heure,date:h.date,_count:0,_entries:[]};
+      /* AG-015 (C, D2) : même clé que « Usagers accompagnés » (`usagerKey`) ; les fiches sans nom ni prénom restent visibles, dans un groupe à part non compté comme usager */
+      var key=usagerKey(h);
+      if(!groups[key])groups[key]={civilite:h.civilite,prenom:h.prenom,nom:h.nom,commune:h.commune,telephone:h.telephone,heure:h.heure,date:h.date,_count:0,_entries:[],_sansIdentite:!key};
       groups[key]._count++;
       groups[key]._entries.push(h);
       if((h.date||'')>(groups[key].date||'')){groups[key].commune=h.commune;groups[key].telephone=h.telephone;groups[key].heure=h.heure;groups[key].date=h.date;}
@@ -7256,13 +7257,14 @@ function renderModal(){
   else if(S.modal==='stat-list'){
     var slCtx=S._statListCtx||{title:'',items:[]};
     box.appendChild(header(slCtx.title));
-    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:12px;"},slCtx.items.length+' usager(s)'));
+    var slSans=slCtx.items.filter(function(g){return g._sansIdentite;}).reduce(function(n,g){return n+g._count;},0);
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:12px;"},slCtx.items.filter(function(g){return !g._sansIdentite;}).length+' usager(s)'+(slSans?' · '+slSans+' fiche(s) sans nom ni prénom':'')));
     var slList=el('div',{class:'gx-scroll',style:"display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;"});
     if(!slCtx.items.length)slList.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;"},'Aucun élément.'));
     slCtx.items.forEach(function(h){
       var hasDetail=h._entries&&h._entries.length>1;
       var row=el('div',{style:"background:var(--c-hover);border:1px solid var(--c-border);border-radius:10px;padding:10px 12px;"+(hasDetail?'cursor:pointer;':'')});
-      var name=[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'—';
+      var name=h._sansIdentite?'Nom et prénom non renseignés':[h.civilite,h.prenom,h.nom].filter(Boolean).join(' ')||'—';
       var dateRdv=(h.date||'').split('-').reverse().join('/');
       var nameRow=el('div',{style:"display:flex;align-items:center;gap:7px;"});
       nameRow.appendChild(el('div',{style:"font-weight:800;font-size:13px;color:var(--c-text);"},name));
