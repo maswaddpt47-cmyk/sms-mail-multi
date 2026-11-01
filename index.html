@@ -3658,6 +3658,85 @@ function renderArchiveAg017(wrap,arc){
   wrap.appendChild(ex);
   wrap.appendChild(note('L’export de contrôle ne contient ni identifiant, ni nom de CMS ou de démarche : il permet de recalculer les taux, pas de recompter les dossiers. Les sauvegardes complètes (« Données ») restent privées et contiennent l’archive entière.'));
 }
+/* ============================== AG-018 — activité par CMS sur 12 mois (priorité 2, premier lot, 01/11/2026) ==============================
+   Définition stabilisée et confirmée par Codex (3015f72). Deux séries INDÉPENDANTES, aucun taux entre elles :
+   « Demandes enregistrées (orientations présentes) » au mois de la date de demande (tous états), « RDV réalisés » au mois du RDV.
+   Colonnes CMS = secteurs (valeurs des fiches). Rien n'est deviné : dates inconnues, CMS non reconnus ou ambigus comptés à part. */
+/* (A) date de demande d'une orientation : numéro de série Excel seulement pour une cellule NUMÉRIQUE ; texte ISO AAAA-MM-JJ ou
+   français JJ/MM/AAAA lu strictement ; date impossible ou autre texte → date vide, texte d'origine rendu à part. */
+function lireDateOrientation(valeur,estNombre){
+  var s=String(valeur==null?'':valeur).trim();if(!s)return {date:'',brute:''};
+  function iso(y,m,d){var v=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');return preparationDayUTC(v)!==null?v:'';}
+  var r='';
+  if(estNombre){if(/^\d+(\.\d+)?$/.test(s)){var n=Math.floor(parseFloat(s));if(n>=1&&n<=2958465){var t=new Date((n-25569)*86400000);r=iso(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate());}}}
+  else{var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s),f=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+    if(m)r=iso(+m[1],+m[2],+m[3]);else if(f)r=iso(+f[3],+f[2],+f[1]);}
+  return r?{date:r,brute:''}:{date:'',brute:s};
+}
+/* fenêtre commune : du 1er jour du mois M−11 au jour courant de Paris inclus */
+function fenetreActivite(aujourdhui){
+  var y=+aujourdhui.slice(0,4),m=+aujourdhui.slice(5,7),mois=[];
+  for(var k=11;k>=0;k--){var mm=m-k,yy=y;while(mm<1){mm+=12;yy--;}mois.push(yy+'-'+String(mm).padStart(2,'0'));}
+  return {du:mois[0]+'-01',au:aujourdhui,mois:mois};
+}
+function activiteParCms(orientations,history,stats,aujourdhui,secteurs){
+  var f=fenetreActivite(aujourdhui),cms=(secteurs||[]).filter(function(c){return String(c||'').trim();}),cles=cms.map(cmsKey);
+  function zeros(){var o={};f.mois.forEach(function(m){o[m]=0;});return o;}
+  var r={fenetre:f,cms:cms,demandes:{},rdv:{},anomalies:{dateInconnue:0,cmsNonReconnu:0,cmsAmbigu:0,rdvSansCms:0,rdvHorsListe:0},archives:{}};
+  cms.forEach(function(c){r.demandes[c]=zeros();r.rdv[c]=zeros();});
+  (orientations||[]).forEach(function(o){
+    if(!o||typeof o!=='object')return;
+    var d=preparationDayUTC(o.date)!==null?o.date:'';
+    if(!d){r.anomalies.dateInconnue++;return;}   /* période non attribuable : compté sur tout le profil */
+    if(d<f.du||d>f.au)return;
+    var t=cms.filter(function(c){return cmsNomDansTexte(c,o.commune);});
+    if(!t.length){r.anomalies.cmsNonReconnu++;return;}
+    if(t.length>1){r.anomalies.cmsAmbigu++;return;}
+    r.demandes[t[0]][d.slice(0,7)]++;
+  });
+  (history||[]).forEach(function(h){
+    if(!h||h.msgType==='indispo'||h.statut!=='realise'||preparationDayUTC(h.date)===null||h.date<f.du||h.date>f.au)return;
+    if(stats&&Object.prototype.hasOwnProperty.call(stats,h.date.slice(0,4)))return;   /* année archivée : couverture partielle, voir r.archives */
+    var c=String(h.commune||'').trim();if(!c){r.anomalies.rdvSansCms++;return;}
+    var i=cles.indexOf(cmsKey(c));if(i===-1){r.anomalies.rdvHorsListe++;return;}
+    r.rdv[cms[i]][h.date.slice(0,7)]++;
+  });
+  f.mois.forEach(function(m){
+    var a=stats&&stats[m.slice(0,4)];if(!a)return;
+    r.archives[m]=lectureArchive(a)==='ag017-v1'?{realisesTousCms:(a.rdv.parMois[m]||{realise:0}).realise}:{realisesTousCms:null};
+  });
+  return r;
+}
+function carteActiviteParCms(){
+  var r=activiteParCms(S.orientations,S.history,S.yearlyStats,jourParis(),S.secteurs),f=r.fenetre;
+  var card=el('section',{class:'ui-stats-section ui-activite-cms'});
+  card.appendChild(el('h3',{class:'ui-stats-section-title'},'Activité par CMS — 12 derniers mois'));
+  function note(t){return el('p',{class:'ui-chart-description'},t);}
+  function moisCourt(m){return new Date(m+'-15T12:00:00').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});}
+  card.appendChild(note('Du '+f.du.split('-').reverse().join('/')+' au '+f.au.split('-').reverse().join('/')+' (mois en cours arrêté à aujourd’hui). Deux séries à des calendriers différents : ne pas les comparer ligne à ligne comme un taux.'));
+  function tableau(titre,serie,estRdv){
+    card.appendChild(el('h4',{class:'ui-stats-group-title'},titre));
+    var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
+    hd.appendChild(el('th',{},'CMS'));f.mois.forEach(function(m){hd.appendChild(el('th',{},moisCourt(m)+(estRdv&&r.archives[m]?' *':'')));});hd.appendChild(el('th',{},'Total'));
+    t.appendChild(el('thead',{},[hd]));var tb=el('tbody'),tot={};
+    r.cms.forEach(function(c){
+      var tr=el('tr'),s=0;tr.appendChild(el('th',{},c));
+      f.mois.forEach(function(m){if(estRdv&&r.archives[m]){tr.appendChild(el('td',{title:'Année archivée : détail par CMS indisponible'},'—'));return;}var v=serie[c][m];s+=v;tot[m]=(tot[m]||0)+v;tr.appendChild(el('td',{},String(v)));});
+      tr.appendChild(el('td',{},String(s)+(estRdv&&Object.keys(r.archives).length?' (partiel)':'')));tb.appendChild(tr);
+    });
+    var tt=el('tr'),g=0;tt.appendChild(el('th',{},'Total (CMS reconnus seulement)'));
+    f.mois.forEach(function(m){if(estRdv&&r.archives[m]){tt.appendChild(el('td',{},'—'));return;}g+=tot[m]||0;tt.appendChild(el('td',{},String(tot[m]||0)));});
+    tt.appendChild(el('td',{},String(g)+(estRdv&&Object.keys(r.archives).length?' (partiel)':'')));tb.appendChild(tt);
+    t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
+  }
+  tableau('Demandes enregistrées (orientations présentes)',r.demandes,false);
+  var a=r.anomalies;
+  card.appendChild(note('Au mois de la « Date de la demande », tous états confondus. Couverture non certifiée : une orientation effacée (« Vider », import JSON) ou jamais importée n’est pas comptée ; des lignes réimportées peuvent être comptées deux fois. Hors tableau : '+a.dateInconnue+' date inconnue (période non attribuable, toutes périodes), '+a.cmsNonReconnu+' CMS non reconnu, '+a.cmsAmbigu+' CMS ambigu (dans la période).'));
+  tableau('RDV réalisés',r.rdv,true);
+  var ar=Object.keys(r.archives).sort();
+  card.appendChild(note('Au mois du RDV, statut « Réalisé ». Hors tableau : '+a.rdvSansCms+' sans CMS, '+a.rdvHorsListe+' CMS hors liste (dans la période).'+(ar.length?' * Couverture partielle — année archivée : détail par CMS indisponible ('+ar.map(function(m){var v=r.archives[m].realisesTousCms;return moisCourt(m)+' : '+(v===null?'archive d’ancienne méthode, indisponible':v+' réalisés tous CMS selon l’archive');}).join(' ; ')+').':'')));
+  return card;
+}
 /* Statistiques de RDV : lecture seule du profil actif, au jour du rendez-vous.
    Les fiches suivent l'unité existante de l'historique (addHistory remplace la
    même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
@@ -4751,6 +4830,7 @@ function renderStats(){
     wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
   })();
 
+  wrap.appendChild(carteActiviteParCms());   /* AG-018 : activité par CMS sur 12 mois (données courantes seulement) */
   pane.appendChild(wrap);
 
   animerGraphesStats(wrap);
@@ -6896,19 +6976,20 @@ function parseXlsxOrientationsAsync(arrayBuffer){
         var t=xmlAttr(attrs,'t');var vm=inner.match(/<v>([^<]*)<\/v>/);if(!vm)return '';
         var v=vm[1];return t==='s'?(ss[parseInt(v)]||''):v;
       }
+      /* AG-018 (A) : une cellule est un NOMBRE seulement sans type texte (pas de t="s", "str" ni "inlineStr") */
+      function cellNombre(attrs){var t=xmlAttr(attrs,'t');return !t||t==='n';}
       var rows=[];var rowRe=/<row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g;var rm;
       while((rm=rowRe.exec(xml))!==null){
-        var rn=parseInt(rm[1]);var rowXml=rm[2];var cells={};
+        var rn=parseInt(rm[1]);var rowXml=rm[2];var cells={},nombres={};
         var cellRe=/<c\s([^>]*)>([\s\S]*?)<\/c>/g;var cm;
         while((cm=cellRe.exec(rowXml))!==null){
           var ref=xmlAttr(cm[1],'r');var col=ref.replace(/[0-9]/g,'');
-          cells[col]=cellVal(cm[1],cm[2]);
+          cells[col]=cellVal(cm[1],cm[2]);nombres[col]=cellNombre(cm[1]);
         }
-        rows.push({r:rn,cells:cells});
+        rows.push({r:rn,cells:cells,nombres:nombres});
       }
       return rows;
     }
-    function excelDate(v){var n=parseFloat(v);if(isNaN(n))return v;return new Date((n-25569)*86400000).toISOString().slice(0,10);}
     function findCol(hdr,kws){for(var col in hdr){var v=(hdr[col]||'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').toLowerCase();for(var k=0;k<kws.length;k++){if(v.indexOf(kws[k])!==-1)return col;}}return null;}
     /* split "NOM Prénom" → {nom, prenom} : uppercase words = nom, first mixed-case word onwards = prenom */
     function splitNomPrenom(full){
@@ -6940,8 +7021,7 @@ function parseXlsxOrientationsAsync(arrayBuffer){
       var colCommune=findCol(hdr,['commune']);
       var colStructure=findCol(hdr,['structure']);
       var colMotif=findCol(hdr,['motif']);
-      var colDate=findCol(hdr,['date de la demande','date demande']);
-      if(!colDate)colDate=findCol(hdr,['date']);
+      var colDate=findCol(hdr,['date de la demande','date demande']);   /* AG-018 (A) : plus de repli silencieux sur une autre colonne « date » */
       var colEtat=findCol(hdr,['etat de la demande','état de la demande','etat','état','statut']);
       var colOrienteur=findCol(hdr,['prénom de l\'orient','orienteur','orient']);
       var colTel=findCol(hdr,['tel bénéficiaire','téléphone','telephone','tel']);
@@ -6961,7 +7041,7 @@ function parseXlsxOrientationsAsync(arrayBuffer){
           var sp=splitNomPrenom(nomPrenom);nom=sp.nom;prenom=sp.prenom;
         }
         if(!nom&&!prenom)continue;
-        var dateRaw=colDate?c[colDate]||'':'';
+        var lu=colDate?lireDateOrientation(c[colDate],rows[ri].nombres[colDate]):{date:'',brute:''};
         results.push({
           id:String(Date.now())+'_'+ri,
           nom:nom,prenom:prenom,
@@ -6970,10 +7050,11 @@ function parseXlsxOrientationsAsync(arrayBuffer){
           structure:structure,
           motif:(colMotif?c[colMotif]||'':'').trim(),
           orienteur:(colOrienteur?c[colOrienteur]||'':'').trim(),
-          date:dateRaw?excelDate(dateRaw):'',
+          date:lu.date,dateBrute:lu.brute,
           etat:(colEtat?c[colEtat]||'':'').trim()
         });
       }
+      results.sansColonneDate=!colDate;
       resolve(results);
     }).catch(function(ex){reject(ex);});
   });
@@ -6994,6 +7075,7 @@ function confirmOrientImport(){
   rows.filter(function(r){return r.include;}).forEach(function(r){
     if(!r.targetProfile){skipped++;return;}
     var obj={id:r.id,nom:r.nom,prenom:r.prenom,telephone:r.telephone||'',commune:r.structure||'',communeBenef:r.communeBenef,motif:r.motif,orienteur:r.orienteur,date:r.date,etat:r.etat,done:false};
+    if(r.dateBrute)obj.dateBrute=r.dateBrute;   /* AG-018 (A) : texte de date illisible conservé à part, jamais converti */
     (byProfile[r.targetProfile]=byProfile[r.targetProfile]||[]).push(obj);
   });
   var totalAdded=0;
@@ -7066,6 +7148,7 @@ function renderOrientations(){
           showToast('⏳ Lecture du fichier…','ok');
           parseXlsxOrientationsAsync(e.target.result).then(function(result){
             if(result.length===0){showToast('⚠️ Aucune ligne exploitable trouvée dans le fichier','warn');return;}
+            if(result.sansColonneDate)showToast('⚠️ Colonne « Date de la demande » introuvable : la date de ces orientations restera inconnue','warn');
             /* écran de prévisualisation : le CONUM choisit à qui attribuer chaque ligne (aucune présélection) */
             S.orientImportRows=result.map(function(r){
               return Object.assign({},r,{include:false,targetProfile:''});

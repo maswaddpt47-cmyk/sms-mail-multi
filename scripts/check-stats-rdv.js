@@ -426,8 +426,7 @@ console.log('Fiches préparées OK.');
   assert.equal(c.isDepasse({statut:'en_attente',dateDemande:'pas une date'}),false);
   // plus aucune date du jour en UTC ni à l'heure de l'appareil ; seule exception : la conversion d'une date Excel
   const code=html.replace(/\/\*[\s\S]*?\*\//g,'');
-  assert.equal((code.match(/toISOString\(\)\.slice\(0,10\)/g)||[]).length,1,'date du jour en UTC (seule excelDate est admise)');
-  assert(/excelDate\(v\)\{[^}]*toISOString\(\)\.slice\(0,10\)/.test(code));
+  assert.equal((code.match(/toISOString\(\)\.slice\(0,10\)/g)||[]).length,0,'date du jour en UTC (excelDate retirée par AG-018 : plus aucune exception)');
   assert.equal((code.match(/toLocalDateStr\(new Date\(\)\)/g)||[]).length,0,'date du jour à l\'heure de l\'appareil');
   assert.equal((code.match(/new Date\(\)\.getFullYear\(\)|now\.getFullYear\(\)/g)||[]).length,0,'année à l\'heure de l\'appareil');
   assert.equal((code.match(/setHours\(0,0,0,0\)/g)||[]).length,0,'minuit de l\'appareil');
