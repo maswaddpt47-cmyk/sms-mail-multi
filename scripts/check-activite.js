@@ -105,10 +105,24 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
    assert.equal(r.archives['2026-03'].realisesTousCms,1,'note tous CMS de l\'archive');assert.equal(r.rdv.Fumel['2026-03'],0,'fiche vivante d\'une année archivée non ajoutée');
    assert.equal(r.rdv.Fumel['2027-01'],1);
    const r2=J(c.activiteParCms([],[],{2026:{year:2026,total:3}},'2027-01-15',SECTEURS));assert.equal(r2.archives['2026-03'].realisesTousCms,null,'ancienne archive : indisponible, pas zéro');
-   const src=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* Statistiques de RDV : lecture seule'));
+   const src=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* ============================== AG-019'));
    assert(src.includes("'—'")&&src.includes('(partiel)')&&src.includes('indisponible'),'affichage : tiret et mentions partielles, jamais zéro');
    assert(!/%|\/\s*demandes|taux/i.test(src.replace(/comme un taux/,'')),'aucun taux entre les deux séries');
    assert(src.includes('Total (CMS reconnus seulement)')&&src.includes('Couverture non certifiée'),'libellés de couverture');
    assert(/wrap\.appendChild\(carteActiviteParCms\(\)\)/.test(code),'carte branchée dans Statistiques');}
   console.log('Années archivées (partiel, note séparée, jamais zéro), aucun taux, libellés OK.');
 })().catch(e=>{console.error(e);process.exit(1);});
+
+/* ── AG-019 : délai d'attente par CMS ── */
+{const c=charger('2027-01-15T10:00:00Z');
+ const f=(o)=>Object.assign({msgType:'confirmation',statut:'realise',commune:'Fumel',heure:'09:30'},o);
+ const r=J(c.delaiAttenteParCms([f({date:'2026-10-20',dateReception:'2026-10-10'}),f({date:'2026-10-31',dateReception:'2026-10-01'}),f({date:'2026-11-02',dateReception:'2026-10-31'}),
+   f({date:'2026-10-20',dateDemande:'2026-10-01'}),f({date:'2026-10-20',dateReception:''}),f({date:'2026-10-20',dateReception:'2026-10-25'}),f({date:'2026-10-20',dateReception:'2026-10-20',commune:'fumel '}),
+   f({date:'2026-10-20',dateReception:'2026-10-14',commune:'Marmande',statut:'lapin'}),f({date:'2026-10-20',dateReception:'2026-10-01',msgType:'indispo'})]));
+ assert.equal(r.parCms.fumel.mesurables,4);assert.equal(r.parCms.fumel.mediane,6,'médiane de 0, 2, 10, 30 = 6');
+ assert.equal(r.parCms.fumel.sansReception,2,'ancien dateDemande et réception vide : non mesurables, jamais repris');
+ assert.equal(r.parCms.fumel.incoherente,1,'réception après le RDV');assert.equal(r.parCms.marmande.mediane,6,'tous les RDV de la période (Lapin compris)');
+ assert.equal(r.global.mesurables,5);assert.equal(r.global.mediane,6);
+ assert.equal(c.medianeNombres([3,1,2]),2);assert.equal(c.medianeNombres([]),null);
+ assert(/wrap\.appendChild\(carteDelaiAttente\(rdv\.entries\)\)/.test(code),'carte branchée sur les RDV filtrés de la page');}
+console.log('AG-019 délai d\'attente (médiane, mesurables, exclusions, jamais l\'ancienne date du message) OK.');
