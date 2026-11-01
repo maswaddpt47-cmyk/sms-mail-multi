@@ -4350,17 +4350,17 @@ function monthlyReportSupplementHtml(d){
     [pct(r.lapins,r.total),'Taux de lapin',r.lapins+' créneaux avec lapin / '+r.total+' créneaux attribués'],
     [pct(r.total,r.places),'Taux de remplissage',r.total+' créneaux / '+r.places+' places ('+r.jours+' journées, dont '+r.joursDemi+' demi-journées à 3 places)'],
     [pct(r.occupes,r.places),'Remplissage net',r.occupes+' créneaux non libérés / '+r.places+' places']
-  ])+'<p class="unit">Un créneau = date + CMS + heure ; plusieurs fiches peuvent partager un créneau. Réalisé et lapin peuvent se cumuler. Base : 6 places par journée, 3 par demi-journée. '+r.sansHeure+' RDV sans heure exclus des taux ; journées sans RDV non comptées. Le remplissage peut dépasser 100 %.</p>');
+  ])+'<p class="unit">Un créneau = date + CMS + heure ; plusieurs dossiers peuvent partager un créneau. Réalisé et lapin peuvent se cumuler. Base : 6 places par journée, 3 par demi-journée. '+r.sansHeure+' RDV sans heure exclus des taux ; journées sans RDV non comptées. Le remplissage peut dépasser 100 %.</p>');
   var keys=['realise','confirme','en_attente','excuse','annule','lapin','pas_de_retour','a_verifier'];
   var labels=['Réalisé','Confirmé','En attente','Excusé','Annulé','Lapin','Pas de retour','Statut à vérifier'];
   h+=section('Rendez-vous par mois',table(['Mois'].concat(labels),Object.keys(s.rdvMonths).sort().map(function(m){return [m].concat(keys.map(function(k){return s.rdvMonths[m][k]||0;}));})));
   h+=section('Lapins par permanence',table(['Date','CMS','Créneaux avec lapin','Créneaux attribués','Part'],s.lapinDays.map(function(x){return [x.date,x.commune,x.lapins,x.total,pct(x.lapins,x.total)];}))+'<p class="unit">Toutes les journées du mois comportant un lapin, sans tronquer à dix.</p>');
-  h+=section('Fiches par date du message',
-    '<p>Une fiche = un dossier au jour de son dernier message enregistré, anciennes fiches comprises. Une régénération peut changer son mois. Ce total ne compte pas les envois. Mois du message, indépendant du mois du rendez-vous.</p>'+kpis([
-      [f.total,'Fiches avec message daté'],[f.canaux.sms,'SMS'],[f.canaux.mail,'Mails'],[f.canaux.inconnu,'Canal inconnu'],[f.personnes,'Usagers','nom + prénom ; pas une identification certaine']
-    ])+'<p class="unit">'+f.nonMesurables+' fiches sans date du message lisible, hors total et hors graphique ; période inconnue, comptées pour le CMS choisi quelle que soit la période.</p>');
-  h+=section('Réception → dernier message enregistré',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' fiches calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
-    '<p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.</p>');
+  h+=section('Dossiers',
+    '<p>Comptés au mois du dernier message préparé ; une personne peut avoir plusieurs dossiers. Anciens dossiers compris. Une régénération peut changer son mois. Ce total ne compte pas les envois. Mois du message, indépendant du mois du rendez-vous.</p>'+kpis([
+      [f.total,'Dossiers'],[f.canaux.sms,'SMS'],[f.canaux.mail,'Mails'],[f.canaux.inconnu,'Canal inconnu'],[f.personnes,'Usagers','nom + prénom ; pas une identification certaine']
+    ])+'<p class="unit">'+f.nonMesurables+' dossiers sans date du message lisible, hors total et hors graphique ; période inconnue, comptés pour le CMS choisi quelle que soit la période.</p>');
+  h+=section('Réactivité',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' dossiers calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
+    '<p>Part des dossiers dont le dernier message préparé date du jour de réception de la demande.</p><p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : un dossier régénéré compte plus long.</p>');
   return h;
 }
 
@@ -4423,7 +4423,7 @@ function monthlyReportHtml(d,meta){
     h+='</table></section>';
   }
   h+='<section><h2>Sources et limites</h2><ul>'
-    +(d.stats?'<li>Rapport enrichi : rendez-vous au mois du RDV ; fiches et réactivité au mois du dernier message. Chaque section indique sa population. Aucune archive annuelle agrégée n’est reprise dans ce bilan.</li>':'')
+    +(d.stats?'<li>Rapport enrichi : rendez-vous au mois du RDV ; dossiers et réactivité au mois du dernier message. Chaque section indique sa population. Aucune archive annuelle agrégée n’est reprise dans ce bilan.</li>':'')
     +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', indisponibilités exclues. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
     +'<li>Les décomptes de rendez-vous portent sur les <b>rendez-vous enregistrés</b> : un rendez-vous annulé, excusé ou lapin puis remplacé par une autre personne reste compté.</li>'
     +'<li>Une relance renseignée correspond à une date ou un type de relance enregistré, sans confirmation de l’envoi du message. Certaines anciennes dates ajoutées automatiquement peuvent être présentes et ne sont pas distinguées des relances réelles.</li>'
@@ -4776,20 +4776,20 @@ function renderStats(){
     var dashboard=el('section',{class:'ui-stats-overview'});
     dashboard.appendChild(el('h3',{class:'ui-stats-group-title'},'Le suivi des rendez-vous'));
     /* Unités (25/10) : les volumes comptent des fiches, les taux des créneaux (décision du 23/10). */
-    dashboard.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Les nombres comptent des fiches ; les taux et les places comptent des créneaux (un créneau réattribué ne vaut qu’un rendez-vous).'));
+    dashboard.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Les nombres comptent des dossiers ; les taux et les places comptent des créneaux (un créneau réattribué ne vaut qu’un rendez-vous).'));
     var grid=el('div',{class:'ui-stats-metric-band ui-stats-dashboard-band'});
     function openLapinList(){
       openStatList('🐇 Lapin — usagers ne s\'étant pas présentés',rdv.lapins);
     }
     [
-      [realiseN,"RDV réalisés",'Unité : fiches au statut Réalisé, datées au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);},'fiches'],
-      [rdv.entries.length,"RDV sur la période",'Unité : fiches de rendez-vous datées, tous statuts, hors créneaux bloqués. Un créneau réattribué peut porter plusieurs fiches.',null,'fiches · tous statuts'],
-      [rdv.accompaniedN,"Personnes accompagnées",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes · nom + prénom, pas une identification certaine'],
+      [realiseN,"RDV réalisés",'Unité : dossiers au statut Réalisé, datés au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);},'dossiers'],
+      [rdv.entries.length,"RDV sur la période",'Unité : dossiers de rendez-vous datés, tous statuts, hors créneaux bloqués. Un créneau réattribué peut porter plusieurs dossiers.',null,'dossiers · tous statuts'],
+      [rdv.accompaniedN,"Personnes accompagnées",'Unité : personnes distinctes (nom et prénom) parmi les dossiers Réalisé de la période.',null,'personnes distinctes · nom + prénom, pas une identification certaine'],
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
       [concretStr,"Taux de concrétisation","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')+(sansHeureN?' · '+sansHeureN+' RDV sans heure exclu'+(sansHeureN>1?'s':'')+' du taux':'')],
       [fillStr,'Taux de remplissage','Unité : créneaux attribués sur une base de 6 places par journée de permanence, 3 pour une demi-journée (base théorique fixe : elle ne suit pas la grille de l\'Agenda, un créneau masqué par un RDV hors grille ne réduit pas les 6 ; une journée sans permanence enregistrée compte 6). Une journée de permanence = une date et un CMS avec au moins un rendez-vous enregistré et daté d\'une heure, échue à ce jour ; une journée ouverte sans aucun rendez-vous ne compte pas, Tous statuts confondus (lapin, excusé, annulé inclus, comme pour les taux ci-dessus) ; le taux peut dépasser 100 % si une journée déborde.',null,fillSub],
-      [netStr,'Remplissage net','Unité : créneaux non libérés sur la même base fixe de 6 places par journée de permanence, 3 pour une demi-journée. Un créneau est libéré quand toutes ses fiches sont Lapin, Excusé, Annulé ou Pas de retour ; une fiche en attente, confirmée ou réalisée le garde occupé. Sert à lire le remplissage réel, sans les places perdues.',null,netSub]
+      [netStr,'Remplissage net','Unité : créneaux non libérés sur la même base fixe de 6 places par journée de permanence, 3 pour une demi-journée. Un créneau est libéré quand toutes ses dossiers sont Lapin, Excusé, Annulé ou Pas de retour ; un dossier en attente, confirmée ou réalisée le garde occupé. Sert à lire le remplissage réel, sans les places perdues.',null,netSub]
     ].forEach(function(kpi){
       var tile=el('div',{class:'ui-stats-metric'+(kpi[3]?' ui-stats-metric-action':''),role:kpi[3]?'button':null,tabindex:kpi[3]?'0':null});
       if(kpi[3]){
@@ -4923,7 +4923,7 @@ function renderStats(){
   }
 
   var priorityCharts=el('div',{class:'ui-stats-charts ui-stats-priority'});
-  priorityCharts.appendChild(monthlyChart('Rendez-vous par mois','Fiches de rendez-vous, tous statuts · mois du rendez-vous',Object.keys(rdv.byMonth).sort(),rdv.byMonth,[
+  priorityCharts.appendChild(monthlyChart('Rendez-vous par mois','Dossiers de rendez-vous, tous statuts · mois du rendez-vous',Object.keys(rdv.byMonth).sort(),rdv.byMonth,[
     {key:'realise',label:'Réalisé',color:'var(--chart-sms)'},{key:'confirme',label:'Confirmé',color:'var(--chart-mail)'},
     {key:'en_attente',label:'En attente',color:'var(--chart-attente)'},{key:'annule',label:'Annulé',color:'var(--chart-annule)'},
     {key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},
@@ -4956,11 +4956,11 @@ function renderStats(){
   /* ── KPI ── */
   var canaux=prep.canaux;
   /* « Délai moy. RDV » (dernier message → RDV) retiré : décision 5 du 31/10 (AG-015 B). La préparation moyenne horodatée reste. */
-  wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Fiches par date du message'));
-  wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Une fiche = un dossier, compté au jour de son dernier message enregistré, anciennes fiches comprises. Une régénération peut changer son mois. SMS / Mails : canal du dernier message.'
-    +(prep.nonMesurables?' '+prep.nonMesurables+' fiche'+(prep.nonMesurables>1?'s':'')+' sans date lisible du dernier message : non rattachable'+(prep.nonMesurables>1?'s':'')+' à une période, comptée'+(prep.nonMesurables>1?'s':'')+' à part pour le CMS choisi.':'')));
+  wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Dossiers'));
+  wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Comptés au mois du dernier message préparé ; une personne peut avoir plusieurs dossiers. Anciens dossiers compris. Une régénération peut changer son mois. SMS / Mails : canal du dernier message.'
+    +(prep.nonMesurables?' '+prep.nonMesurables+' dossier'+(prep.nonMesurables>1?'s':'')+' sans date lisible du dernier message : non rattachable'+(prep.nonMesurables>1?'s':'')+' à une période, compté'+(prep.nonMesurables>1?'s':'')+' à part pour le CMS choisi.':'')));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
-  [{val:canaux.total,lbl:'Fiches avec message daté'},{val:canaux.sms,lbl:'SMS'},{val:canaux.mail,lbl:'Mails'}]
+  [{val:canaux.total,lbl:'Dossiers'},{val:canaux.sms,lbl:'SMS'},{val:canaux.mail,lbl:'Mails'}]
   .concat(canaux.inconnu?[{val:canaux.inconnu,lbl:'Canal inconnu'}]:[])
   .concat([{val:prep.personnes,lbl:'Usagers',note:'nom + prénom : pas une identification certaine'}]).forEach(function(k){
     var c=el('div',{class:'ui-stats-metric'});
@@ -4977,18 +4977,19 @@ function renderStats(){
   var dmC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
   /* 01/11/2026 (décision de l'utilisateur) : la part traitée le même jour civil en chiffre principal, la moyenne en note */
   dmC.appendChild(el('div',{class:'ui-stats-number'},dm.n?Math.round(dm.memeJour/dm.n*100)+' %':'—'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-label'},'Le même jour — réception → dernier message enregistré'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},(dm.n?'Moyenne : '+dm.moyenne.toLocaleString('fr-FR')+' j ouvré'+(dm.moyenne>1?'s':'')+' (week-ends et fériés nationaux exclus) · ':'')+dm.n+' fiche'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+' · même jour = même date civile'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-label'},'Réactivité'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Part des dossiers dont le dernier message préparé date du jour de réception de la demande.'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},(dm.n?'Moyenne : '+dm.moyenne.toLocaleString('fr-FR')+' j ouvré'+(dm.moyenne>1?'s':'')+' (week-ends et fériés nationaux exclus) · ':'')+dm.n+' dossier'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+' · même jour = même date civile'));
   var dmEx=Object.keys(MOTIFS_DERNIER_MESSAGE).filter(function(k){return dm.exclus[k];}).map(function(k){return dm.exclus[k]+' '+MOTIFS_DERNIER_MESSAGE[k];});
-  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},dm.nExclus?'Exclues ('+dm.nExclus+') : '+dmEx.join(' · ')+(dm.horsPeriodeInconnue?' — dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptée'+(dm.horsPeriodeInconnue>1?'s':'')+' quelle que soit la période':'')+'.':'Aucune fiche exclue.'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},dm.nExclus?'Exclues ('+dm.nExclus+') : '+dmEx.join(' · ')+(dm.horsPeriodeInconnue?' — dont '+dm.horsPeriodeInconnue+' sans date du message lisible, compté'+(dm.horsPeriodeInconnue>1?'s':'')+' quelle que soit la période':'')+'.':'Aucun dossier exclu.'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : un dossier régénéré compte plus long.'));
   kpiRow.appendChild(dmC);
   wrap.appendChild(kpiRow);
 
   /* ── Graphe mensuel SVG ── */
   var monthMap=prep.byMonth,months=Object.keys(monthMap).sort();
   var charts=el('div',{class:'ui-stats-charts ui-stats-messages'});
-  charts.appendChild(monthlyChart('Fiches par mois du message','Fiches · mois du dernier message enregistré · canal du dernier message · anciennes fiches comprises'+(prep.nonMesurables?' ('+prep.nonMesurables+' sans date de message lisible, hors graphique)':''),months,monthMap,[
+  charts.appendChild(monthlyChart('Dossiers par mois du message','Dossiers · mois du dernier message enregistré · canal du dernier message · anciens dossiers compris'+(prep.nonMesurables?' ('+prep.nonMesurables+' sans date de message lisible, hors graphique)':''),months,monthMap,[
     {key:'sms',label:'SMS',color:'var(--chart-sms)'},{key:'mail',label:'E-mail',color:'var(--chart-mail)'}
   ].concat(canaux.inconnu?[{key:'inconnu',label:'Canal inconnu',color:'var(--chart-averifier)'}]:[])));   /* D1 : le canal inconnu n'est plus compté en SMS */
 
@@ -5002,7 +5003,7 @@ function renderStats(){
   var demList=Object.keys(demMap).map(function(k){return{nom:k,n:demMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,10);
   if(rdv.sansDemarche)demList.push({nom:'Démarche non renseignée',n:rdv.sansDemarche});   /* comme le bilan mensuel (audit 30/10, pt 7) */
   var demCard=card("Démarches accompagnées (top 10)");
-  demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches au statut Réalisé sur la période sélectionnée.'));
+  demCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de dossiers au statut Réalisé sur la période sélectionnée.'));
   if(demList.length){
     var maxD=demList.reduce(function(m,d){return Math.max(m,d.n);},0);
     var dw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -5016,7 +5017,7 @@ function renderStats(){
 
   var statutMap=Object.assign({},rdv.byStatut);
   var statutCard=card("Statuts des RDV de la période");
-  statutCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches par statut ; un créneau réattribué peut en porter plusieurs.'));
+  statutCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de dossiers par statut ; un créneau réattribué peut en porter plusieurs.'));
   var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour","a_verifier"];
   var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
   var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -5039,7 +5040,7 @@ function renderStats(){
   var typeMap=prep.types;
   var relanceN=rdv.entries.filter(aRelanceRenseignee).length;   /* M1 (01/11) : relances au mois du RDV, comme le bilan */
   var typeCard=card("Répartition par type");
-  typeCard.appendChild(el('p',{class:'ui-chart-description'},'Fiches datées au dernier message de la période · type du dernier message. Relances : rendez-vous de la période.'));
+  typeCard.appendChild(el('p',{class:'ui-chart-description'},'Dossiers datés au dernier message de la période · type du dernier message. Relances : rendez-vous de la période.'));
   var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -5049,7 +5050,7 @@ function renderStats(){
   col2.appendChild(typeCard);
 
   var cmsList2=prep.byCms.slice().sort(function(a,b){return b.n-a.n;});
-  var cmsCard=card("Fiches avec message daté par CMS / commune");
+  var cmsCard=card("Dossiers avec message daté par CMS / commune");
   if(cmsList2.length){
     var maxC=cmsList2[0].n;
     var cw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -5159,7 +5160,7 @@ function renderStats(){
       c.appendChild(el('div',{class:'ui-stats-number'},String(k[0].length)));c.appendChild(el('div',{class:'ui-stats-metric-label'},k[2]+' '+k[1]));band.appendChild(c);
     });
     card.appendChild(band);
-    card.appendChild(el('p',{class:'ui-chart-description'},'Fiches de la période et du CMS choisis, au jour du RDV ; « à pointer » = confirmé dont la date est passée sans statut final. Cliquez pour voir les personnes. Une personne déjà recontactée depuis reste comptée ici : vérifiez dans l’Historique avant de relancer.'));
+    card.appendChild(el('p',{class:'ui-chart-description'},'Dossiers de la période et du CMS choisis, au jour du RDV ; « à pointer » = confirmé dont la date est passée sans statut final. Cliquez pour voir les personnes. Une personne déjà recontactée depuis reste compté ici : vérifiez dans l’Historique avant de relancer.'));
     wrap.appendChild(card);
   })();
   wrap.appendChild(carteDelaiAttente(rdv.entries,(rdv.start?'du '+rdv.start.split('-').reverse().join('/')+' au '+rdv.today.split('-').reverse().join('/'):'toutes dates')+' · '+(S.statsCMS||'tous les CMS')));   /* AG-019 : délai d'attente, mêmes filtres que la page ; AG-021 : libellé des listes */

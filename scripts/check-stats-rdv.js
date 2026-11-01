@@ -444,11 +444,11 @@ console.log('Fiches préparées OK.');
   const rc=vm.createContext({prep:m,wrap:nd('div'),el:nd,canaux:m.canaux});
   const deb=html.indexOf('  var canaux=prep.canaux;'),fin=html.indexOf('  var dm=reactiviteDernierMessage',deb);
   assert(deb>0&&fin>deb);vm.runInContext(html.slice(deb,fin),rc);
-  const rendu=txt(rc.wrap)+'|'+txt(rc.kpiRow);assert.match(rendu,/Fiches par date du message/);assert.match(rendu,/4\|Fiches avec message daté/);
+  const rendu=txt(rc.wrap)+'|'+txt(rc.kpiRow);assert.match(rendu,/Dossiers/);assert.match(rendu,/4\|Dossiers/);
   assert.doesNotMatch(rendu,/sans date de première préparation|depuis le 22\/10|Fiches préparées/);
-  assert.match(rendu,/2 fiches sans date lisible du dernier message/);
+  assert.match(rendu,/2 dossiers sans date lisible du dernier message/);
   const gd=html.indexOf('  var monthMap=prep.byMonth'),gf=html.indexOf('  wrap.appendChild(charts);',gd);
-  rc.monthlyChart=(title,desc,months,map,series)=>{assert.equal(title,'Fiches par mois du message');assert.match(desc,/dernier message enregistré/);assert.deepEqual([...months],['2026-07']);assert.equal(map,m.byMonth);assert.equal(series.length,3);return nd('div');};
+  rc.monthlyChart=(title,desc,months,map,series)=>{assert.equal(title,'Dossiers par mois du message');assert.match(desc,/dernier message enregistré/);assert.deepEqual([...months],['2026-07']);assert.equal(map,m.byMonth);assert.equal(series.length,3);return nd('div');};
   vm.runInContext(html.slice(gd,gf),rc);
   assert.match(section('function renderStats(){','  function groupByUsager('),/var prep=fichesMessagesModel\(S.history,rdv.start,rdv.today,S.statsCMS\)/,'raccordement réel de Statistiques');
 }

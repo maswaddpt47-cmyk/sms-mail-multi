@@ -2,6 +2,10 @@
 
 État au **01/11/2026**, base `main` `1f12de9` + cette livraison AG-027. **AG-026 ouvert** : activité des fiches datée au dernier message enregistré, sur demande explicite de l'utilisateur ; anciennes fiches comprises sans inventer de première préparation. Déploiement suivi par le workflow Pages de `main`. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
+## Libellés validés le 01/11/2026
+
+« Dossiers » remplace « Fiches » dans les Statistiques et le bilan ; « Réactivité » remplace le titre « Réception → dernier message enregistré ». Précisions conservées sous les titres : dossiers au mois du dernier message préparé, plusieurs dossiers possibles par personne ; réactivité = même date civile que la réception. Calculs et données inchangés.
+
 ## Bilan mensuel complet — demande du 01/11/2026
 
 Dernière consigne utilisateur : le bilan s’arrête après « Réception → dernier message enregistré » (pourcentage du même jour et moyenne conservés ; tableau Exclusion et récapitulatif retirés), écran et PDF. Tous les blocs suivants sont retirés du rapport ; les Statistiques restent inchangées. Sources et limites déplacées avant les compléments pour garder Réception en dernier.
