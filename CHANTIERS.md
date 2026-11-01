@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 17:26**, base `main` `4954773` + livraison AG-022 (même session). Avant de pousser : lancer **tous** les `scripts/check-*.js` du déploiement (9 depuis AG-022), pas seulement ceux du calcul touché. **Pause demandée par l'utilisateur** : il teste en conditions réelles avant tout nouveau développement. **Deux blocs AGORA ouverts : AG-021** (confirmé par Codex `1e6c74a`, décision de l'utilisateur attendue) et **AG-022** (livré, vérification Codex à obtenir une fois).
+État au **01/11/2026 à 17:28**, base `main` `3077309`, **en ligne (Pages ✅)**. **Pause : l'utilisateur change de compte.** Deux blocs AGORA ouverts : **AG-021** (confirmé par Codex `1e6c74a`, décision de l'utilisateur attendue sur ses trois choix) et **AG-022** (livré `808841e`, vérification Codex à obtenir : prompt donné à l'utilisateur le 01/11 ; ses quatre choix restent à trancher). Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## ⏩ Passation du 01/11/2026 à 16:23 (fin de session) — À LIRE EN PREMIER
 
