@@ -35,23 +35,26 @@ du CMS choisi, dont **la date du RDV** est dans la période (« Tout » : toutes
 | Lapins par permanence | créneaux avec Lapin / créneaux de la journée | RDV passés | 10 journées les plus récentes affichées | `lapinDays` |
 | Activité annuelle (heatmap) | créneaux de RDV par jour, **depuis le 1er juillet** de l'année scolaire en cours | RDV | **ne suit pas le filtre de période** (toutes les fiches du CMS choisi) ; blocages exclus ; Excusé et Annulé comptés | 4022-4040 |
 
-## Statistiques — « Messages et usagers »
+## Statistiques — « Fiches préparées » (ex-« Messages et usagers », depuis le 01/11/2026, AG-015)
 
-Population (`hist`, 3653) : fiches hors blocages du CMS choisi dont **la date de génération du
-message** (`ts`, texte « JJ/MM/AAAA », sinon les 10 premiers caractères, sinon la date du RDV ;
-3575-3579) est dans la période.
+Population (`fichesPrepareesModel`) : fiches hors blocages du CMS choisi dont **le jour de première préparation**
+(`premierePreparationAt`, jour à Paris) est dans la période (« Tout » : toutes les premières préparations connues).
+Une régénération ne déplace plus une fiche. **Fiches sans première préparation connue** (antérieures au 22/10/2026,
+imports) : **non mesurables**, leur nombre est affiché à part, sans mois inventé ni repli sur `ts` ou la date du RDV.
 
 | Indicateur | Ce qu'il compte | Date de référence | Exclusions / inconnus | Code |
 |---|---|---|---|---|
-| Total / SMS / Mails | fiches ; par canal `sms` / `mail` | génération du dernier message | canal inconnu : dans Total, ni SMS ni Mails | 3869-3871 |
-| Usagers | usagers distincts parmi ces fiches | génération | nom et prénom vides : non comptés | 3872 |
-| Messages par mois | fiches par canal | mois de génération | canal inconnu compté SMS | 3940-3947 |
-| Répartition par type | fiches par type de message | génération | — | 3995 |
-| Relances | fiches avec date de relance ou type relance | génération (pas la date de relance) | anciennes dates automatiques non distinguées | 3996 |
-| Messages par CMS / commune | fiches par CMS | génération | **fiches sans CMS exclues** (non regroupées) | `comptageParCms`, 3193 |
-| Préparation moy. (lun.–ven.) | jours ouvrés réception → première préparation | **population propre** (`preparationCohort`, 2856 ; 3873) : fiches hors blocages du CMS choisi dont le jour de première préparation — à défaut la date du message — est dans la période ; ce n'est pas la population « Messages » ci-dessus | fiches sans horodatage exclues de la moyenne (compteur affiché) | `preparationStats`, 2827 |
-| Traitées le jour même (estimation) | part des anciennes fiches préparées le jour de la réception | même population que la préparation moyenne (3875) | estimation : `ts` est réécrit à chaque régénération | 2840 |
-| Délai moy. RDV (par CMS) | jours civils génération → RDV | génération | RDV antérieur au message ou date invalide : exclu | `delaiRdvJours`, 3177 |
+| Fiches préparées / SMS / Mails | fiches ; par canal **du dernier message** (seul conservé, M2) | première préparation | canal inconnu : tuile « Canal inconnu » affichée s'il y en a, jamais compté SMS ni Mail | `compterCanaux` |
+| Usagers | personnes distinctes parmi ces fiches (nom + prénom, limite écrite) | première préparation | nom et prénom vides : non comptés | `personnesDistinctes` |
+| Fiches préparées par mois | fiches par canal (SMS, E-mail, Canal inconnu s'il y en a) | mois de première préparation | non mesurables absentes du graphe | `fichesPrepareesModel` |
+| Répartition par type | fiches préparées par type **du dernier message** (M3) | première préparation | — | `fichesPrepareesModel` |
+| Relances | RDV de la période avec date de relance ou type relance (M1, comme le bilan) | **date du RDV** | anciennes dates automatiques non distinguées | `aRelanceRenseignee` |
+| Fiches préparées par CMS / commune | fiches préparées par CMS | première préparation | fiches sans CMS exclues | `comptageParCms` |
+| Préparation moy. (lun.–ven.) | jours ouvrés réception → première préparation | **population propre** (`preparationCohort`) : jour de première préparation, à défaut date du message pour situer les exclusions | fiches sans horodatage exclues de la moyenne (compteur affiché) | `preparationStats` |
+| Traitées le jour même (estimation) | part des anciennes fiches préparées le jour de la réception | même population que la préparation moyenne | estimation ; relances exclues | `legacyPreparationEstimate` |
+
+« Délai moy. RDV » (dernier message → RDV) : **retiré le 01/11/2026** (décision 5). Il subsiste seulement dans les
+anciennes archives (`avgRdv`, étape 6).
 
 ## Bilan mensuel imprimable
 
@@ -87,16 +90,16 @@ avant le 23/10).
 
 ## Décisions de l'utilisateur du 31/10/2026 — cible future, non appliquée
 
-Les sections ci-dessus décrivent **les calculs actuels** (les décisions 2 et 3 sont appliquées depuis le 01/11/2026, voir ci-dessous). Les décisions ci-dessous sont la
+Les sections ci-dessus décrivent **les calculs actuels** (les décisions 2 et 3 sont appliquées depuis le 01/11/2026, les décisions 1, 4 et 5 dans Statistiques et le bilan le même jour, voir ci-dessous). Les décisions ci-dessous sont la
 **cible** : les autres ne changent encore aucun calcul ni aucune donnée. Leur mise en œuvre suivra les
 étapes d'AG-013 (4 : règles métier ; 5 : calculs partagés ; 6 : archives), avec les blocs AGORA
 nécessaires (critère 7, contradicteur Codex) et un test pour chacune.
 
 | # | Sujet | Aujourd'hui | Cible décidée |
 |---|---|---|---|
-| 1 | Personnes | nom + prénom (`usagerKey`) | **Garder provisoirement** le rapprochement nom + prénom, avec sa limite écrite à côté du chiffre : ce n'est pas une identification certaine des personnes. |
+| 1 | Personnes | nom + prénom (`usagerKey`) | **Garder provisoirement** le rapprochement nom + prénom, avec sa limite écrite à côté du chiffre : ce n'est pas une identification certaine des personnes. **Appliqué le 01/11/2026** (AG-015) : Usagers accompagnés, Usagers des fiches préparées, Personnes accompagnées du bilan (imprimé compris). |
 | 2 | Statut vide ou inconnu | compté « en attente » (`statutAffiche`) | Le RDV **reste dans les totaux** mais s'affiche **« Statut à vérifier »**, sans être assimilé à « En attente ». | **Appliqué le 01/11/2026** (étape 4, AG-014 B) : répartitions, graphe mensuel (série affichée seulement s'il y en a), bilan (ligne masquée à zéro), nouvelles archives (clé additive `a_verifier`), audit de sauvegarde. Anciennes archives non recalculées. |
 | 3 | RDV sans heure | comptés dans les nombres, exclus des taux par créneau, sans compteur | **Comptés dans les volumes, exclus des taux par créneau, et le nombre d'exclus est affiché.**  **Appliqué le 01/11/2026** (étape 4, AG-014 C) dans Statistiques : note « N RDV sans heure exclus du taux » sous les taux de concrétisation et de lapin, même population (période, CMS, au plus tard aujourd'hui) ; le bilan n'a pas de taux par créneau ; les archives ne conservent pas ce nombre (étape 6). |
-| 4 | « Messages » | fiches au jour du dernier message généré (`ts`, réécrit à chaque régénération) | **Remplacé par « Fiches préparées »**, comptées à leur **première préparation connue** ; une régénération ne déplace plus l'activité d'un mois passé ; les anciennes fiches sans date fiable restent **non mesurables** pour cet indicateur, **sans date reconstruite**. |
-| 5 | Délai depuis le message | « Délai moy. RDV » mesuré depuis le dernier message (`delaiRdvJours`) | **Retiré.** La préparation moyenne horodatée est conservée : elle mesure une durée différente. |
+| 4 | « Messages » | fiches au jour du dernier message généré (`ts`, réécrit à chaque régénération) | **Remplacé par « Fiches préparées »**, comptées à leur **première préparation connue** ; une régénération ne déplace plus l'activité d'un mois passé ; les anciennes fiches sans date fiable restent **non mesurables** pour cet indicateur, **sans date reconstruite**. **Appliqué le 01/11/2026** (AG-015 B) dans Statistiques ; archives : étape 6. |
+| 5 | Délai depuis le message | « Délai moy. RDV » mesuré depuis le dernier message (`delaiRdvJours`) | **Retiré.** La préparation moyenne horodatée est conservée : elle mesure une durée différente. **Appliqué le 01/11/2026** (AG-015 B) dans Statistiques ; anciennes archives inchangées. |
 | 6 | Archives annuelles | année du RDV, mais « messages par mois » sur la date de génération | **Chaque indicateur suit sa propre date** : mois du RDV pour les rendez-vous, mois de première préparation pour les fiches préparées. **Les anciennes archives gardent leur méthode historique.** |
