@@ -1,7 +1,7 @@
 /* Vérification ciblée du modèle statistique, données exclusivement fictives.
    Exécuter : node scripts/check-stats-rdv.js */
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+const html=fs.readFileSync(process.env.INDEX_HTML||require('node:path').join(__dirname,'../index.html'),'utf8');
 function section(from,to){const start=html.indexOf(from);assert(start>=0,from);return html.slice(start,html.indexOf(to,start));}
 const ctx=vm.createContext({Date});
 vm.runInContext(section('function toLocalDateStr(d){','\n')+'\n'+section('var DUREE_CRENEAU=60;','function hasConflict(')+section('function statsRdvModel(','/* ============================== RENDER: STATS'),ctx);
@@ -309,3 +309,29 @@ assert.equal(full.marks.join(','),'booked,booked,booked,booked,booked,booked'); 
 const offGrid=ctx.statsRdvModel([row('o1','2026-10-30','confirme','14:00','A')],[lp0],'1m','A',new Date(2026,9,25,12)).days[0];
 assert.equal(offGrid.marks.length,5);assert.equal(offGrid.total,5);assert.equal(offGrid.marks.indexOf('booked'),3);   // RDV hors grille à 14:00 : 13:30 et 14:30 masqués (chevauchement), capacité 5 (28/10)
 console.log('Statistiques RDV et planification : périodes/CMS, six places, annulation remplacée, blocage, dépassement, idempotence et lecture seule OK.');
+
+/* ── Étape 4 d'AG-013 (AG-014) : une seule table des statuts, aucun jeu local qui diverge ── */
+{
+  // table de vérité figée (anciens jeux écrits en dur) : la table doit rendre exactement les mêmes réponses
+  const anciensLiberes=['pas_de_retour','lapin','excuse','annule'];
+  const valeurs=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour','','libre',undefined,null,'toString','constructor','__proto__','inconnu'];
+  valeurs.forEach(v=>assert.equal(ctx.estLibere(v),anciensLiberes.includes(v),'estLibere('+String(v)+')'));
+  assert.deepEqual(Object.keys(ctx.STATUTS_LIBERES).sort(),anciensLiberes.slice().sort());
+  assert.deepEqual([...ctx.STATUTS_CONNUS],['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'],'ordre des statuts connus inchangé');
+  assert.equal(ctx.STATUTS.length,7);ctx.STATUTS.forEach(s=>assert.equal(typeof s[1],'string','libellé de '+s[0]));
+  // garde contre la dérive : tout littéral (tableau ou objet) qui énumère des statuts « libérés » sans aucun autre statut les cite tous les quatre
+  const sansCommentaires=html.replace(/\/\*[\s\S]*?\*\//g,'');
+  const ECART_ASSUME=new Set(["{lapin:0,excuse:0,pas_de_retour:0}"]);   // tendance mensuelle des absences : Annulé absent, arbitrage de l'utilisateur en attente (AG-014, point 2)
+  const trouves=[];
+  for(const m of sansCommentaires.matchAll(/[\[{]([^\[\]{}]{0,400})[\]}]/g)){
+    const cles=new Set([...m[1].matchAll(/['"]?(en_attente|confirme|realise|excuse|annule|lapin|pas_de_retour)['"]?(?=\s*(?:[,:]|$))/g)].map(x=>x[1]));
+    const libres=anciensLiberes.filter(k=>cles.has(k)),autres=[...cles].filter(k=>!anciensLiberes.includes(k));
+    if(libres.length>=3&&!autres.length){trouves.push(m[0]);
+      if(!ECART_ASSUME.has(m[0].replace(/\s/g,'')))assert.equal(libres.length,4,'jeu de statuts libérés incomplet : '+m[0].slice(0,100));}
+  }
+  assert(trouves.length>=6,'le garde voit bien les littéraux locaux ('+trouves.length+')');
+  assert(trouves.some(t=>ECART_ASSUME.has(t.replace(/\s/g,''))),'l\'écart assumé est toujours là (sinon le retirer de la liste)');
+  // plus aucune copie en dur du prédicat « libère la place »
+  assert.equal((sansCommentaires.match(/\.statut!=='pas_de_retour'&&/g)||[]).length,0,'copie en dur du prédicat de libération');
+}
+console.log('Table des statuts OK.');
