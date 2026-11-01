@@ -122,6 +122,13 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-020 — RDV sans suite (piste secondaire) — ouvert et livré le 01/11/2026
+**Auteur** : session 0199YP2J — livré en **`5659644`** (déployé, CI verte), avant contradiction (consigne « accélérer », règle « ne jamais bloquer »).
+**Critère** : 7. Contradicteur : **Codex**.
+**Définition** : sur `rdv.entries` (RDV de la période et du CMS choisis, au jour du RDV), hors blocages, trois catégories exclusives en **fiches** : Lapin (`lapin`), Pas de retour (`pas_de_retour`), RDV à pointer (`confirme` et date **antérieure** au jour de Paris, règle d'`isAPointer`). Aucun taux, aucune déduction de suite (une personne recontactée depuis reste comptée, message à l'écran). Clic → liste existante `openStatList` (regroupement par usager déjà en place).
+**Tests** : `check-activite.js` (bornes du jour, blocage exclu, branchement) ; 3 mutations rejetées ; Chromium 1280/390 px (valeurs lues après fin d'animation).
+**Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, vérifie AG-020 (`5659644`), limité au périmètre livré ; ajoute seulement ta réponse dans `AGORA.md` »
+
 ---
 
 # Vérification des étapes d'AG-013
