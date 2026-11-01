@@ -412,7 +412,7 @@ console.log('Fiches préparées OK.');
   const A=section('function parisDayStr(','function cmsKey(');
   const RealDate=Date;
   function horloge(iso){const fixe=new RealDate(iso).getTime();class D extends RealDate{constructor(...a){a.length?super(...a):super(fixe);}static now(){return fixe;}}return D;}
-  function charger(iso){const c=vm.createContext({Date:horloge(iso),Intl,S:{relanceDelai:3}});vm.runInContext('function toLocalDateStr(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}\n'+A+section('function isDepasse(','\n}\n')+'\n}',c);return c;}
+  function charger(iso){const c=vm.createContext({Date:horloge(iso),Intl,S:{relanceDelai:3}});vm.runInContext('function toLocalDateStr(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}\n'+A+section('function isDepasse(','\n}\n')+'\n}'+section('function prochainJourOuvre(','\n}\n')+'\n}'+section('function todayFR(','\n\n/* P07')+'\n',c);return c;}
   const cas=[['2026-11-01T23:30:00Z','2026-11-02'],['2026-11-01T22:59:59Z','2026-11-01'],['2026-12-31T23:00:00Z','2027-01-01'],['2026-12-31T22:59:00Z','2026-12-31'],
     ['2026-10-24T22:30:00Z','2026-10-25'],['2026-03-28T23:30:00Z','2026-03-29'],['2026-06-30T22:00:00Z','2026-07-01']];   // minuit, fin d'année, changements d'heure, 1er juillet (heatmap)
   for(const [iso,jour] of cas){const c=charger(iso);assert.equal(c.jourParis(),jour,iso);assert.equal(c.anneeParis(),Number(jour.slice(0,4)),iso);}
@@ -432,6 +432,19 @@ console.log('Fiches préparées OK.');
   assert.equal((code.match(/new Date\(\)\.getFullYear\(\)|now\.getFullYear\(\)/g)||[]).length,0,'année à l\'heure de l\'appareil');
   assert.equal((code.match(/setHours\(0,0,0,0\)/g)||[]).length,0,'minuit de l\'appareil');
   assert(!/todayN/.test(code),'D1 : code mort de la pastille Historique retiré');
+  // (A) suite, revue Codex de AG-016 : prochain jour ouvré, mandat, nom de sauvegarde, dernière connexion au jour de Paris
+  assert.equal(charger('2026-11-01T23:30:00Z').prochainJourOuvre(),'2026-11-03');   // lundi 02/11 00:30 à Paris → mardi 03/11
+  assert.equal(charger('2026-11-01T22:30:00Z').prochainJourOuvre(),'2026-11-02');   // dimanche 01/11 23:30 à Paris → lundi 02/11
+  assert.equal(charger('2026-12-31T23:30:00Z').todayFR(),'1 janvier 2027');        // date du mandat : le 1er janvier à Paris
+  const sv=vm.createContext({Date:horloge('2026-11-01T23:30:00Z'),Intl,S:{activeProfile:'p'},GH_BACKUP_DIR:'bk'});
+  vm.runInContext(A+section('function ghBackupDir(','/* déclenche un backup'),sv);
+  assert.equal(vm.runInContext('ghNowFile("p")',sv),'bk/p/backup-2026-11-02-0030.json');   // nom des sauvegardes en heure de Paris
+  // écritures ts en français : heure de Paris quel que soit l'appareil, relues par le lecteur unique à l'instant exact
+  const ecrit=vm.runInContext('new Date().toLocaleString("fr-FR",{timeZone:"Europe/Paris"})',charger('2026-11-02T12:00:00Z'));
+  assert.equal(ecrit,'02/11/2026 13:00:00');
+  assert.equal(charger('2026-11-02T12:00:00Z').lireTs(ecrit).instant,Date.UTC(2026,10,2,12));
+  assert.equal((code.match(/new Date\(\)\.toLocaleString\('fr-FR'\)/g)||[]).length,0,'écriture ts à l\'heure de l\'appareil');
+  assert(/'ess-'\+id\+'-lastLogin',new Date\(\)\.toLocaleDateString\('fr-FR',\{timeZone:'Europe\/Paris'\}\)/.test(code),'dernière connexion à l\'heure de l\'appareil');
 }
 console.log('Date du jour à Paris OK.');
 

@@ -1321,7 +1321,7 @@ function reglagesAPersister(now){
     ['ess-custom-tpl',S.customTemplates],['ess-vars',S.customVars],['ess-hidden',S.hiddenBuiltinKeys],['ess-fav-demarches',S.favDemarches||[]],['ess-lastSave',now]];   /* P06 : favoris enregistrés */
 }
 function persist(){
-  var now=new Date().toLocaleString('fr-FR');
+  var now=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'});
   var reglages=reglagesAPersister(now);
   if(!ecrireTout(reglages)){
     realignerDepuisStockage(reglages.map(function(p){return p[0];}));   /* mémoire = stockage : la modification refusée n'est pas gardée */
@@ -1346,10 +1346,10 @@ function ghToken(){return localStorage.getItem('ess-gh-token')||'';}
 function ghHeaders(token){return{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};}
 /* dossier de backup cloisonné par profil : backups/<profil>/ */
 function ghBackupDir(pid){return GH_BACKUP_DIR+'/'+(pid||S.activeProfile);}
+/* heure de Paris « HHMM » (AG-016 A) : nom des sauvegardes, comparé à la minute, jamais l'heure de l'appareil */
+function parisHeureHHMM(d){return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d).replace(':','');}
 function ghNowFile(pid){
-  var n=new Date();
-  var d=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
-  var h=String(n.getHours()).padStart(2,'0')+String(n.getMinutes()).padStart(2,'0');
+  var d=jourParis(),h=parisHeureHHMM(new Date());
   return ghBackupDir(pid)+'/backup-'+d+'-'+h+'.json';
 }
 /* déclenche un backup throttlé (2 min) pour un profil donné — utilisé lors d'écritures cross-profil */
@@ -1384,7 +1384,7 @@ function githubPush(silent,onSuccess,pid){
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():null;})
     .then(function(existing){
-      var body={message:'backup: '+new Date().toLocaleString('fr-FR'),content:content,branch:GH_BRANCH};
+      var body={message:'backup: '+new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'}),content:content,branch:GH_BRANCH};
       if(existing&&existing.sha)body.sha=existing.sha;
       return fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file,{method:'PUT',headers:ghHeaders(token),body:JSON.stringify(body)});
     })
@@ -1515,7 +1515,7 @@ function ghCheckOnStartup(){
     if(lastLocal){
       var d=new Date(lastLocal);
       if(!isNaN(d.getTime())){
-        localKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+        localKey=parisDayStr(d)+'-'+parisHeureHHMM(d);   /* même référence que le nom de fichier (AG-016 A) */
       }
     }
     if(ghKey>localKey){
@@ -1696,7 +1696,7 @@ function handleGenerate(){
   }
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
-  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR')},true);
+  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})},true);
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
   if(enregistre)showToast("✓ Message généré et enregistré");
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
@@ -1840,7 +1840,7 @@ function enregistrerCopie(text,fige){
     if(text&&!dejaEnregistre){
       if(F.cmsTrouve&&F.dem){
         if(isDuplicate(F.nom,F.dem.nom,F.date))showToast('⚠️ Doublon détecté : '+F.nom+' / '+F.dem.nom+' déjà dans l\'historique','warn');
-        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:new Date().toLocaleString('fr-FR')},true))throw new Error('message refusé');
+        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})},true))throw new Error('message refusé');
       }
     }
   });
@@ -2142,7 +2142,7 @@ function lunchBreakEntry(perm,history,todayStr){
   if((perm.debut||'')>='13:00'||((perm.fin||'')&&perm.fin<'13:00'))return null;
   var slot=getSlots(perm.commune,perm.exceptDate,history,perm).find(function(x){return x.heure==='12:30';});
   if(!slot||(slot.taken&&!slot.freeAgain))return null;
-  return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:new Date().toLocaleString('fr-FR')};
+  return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})};
 }
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&!estLibere(h.statut);});
@@ -2207,7 +2207,7 @@ function blockSlotBrut(commune,dateStr,heure,motif){
   /* la journée vient peut-être de recevoir sa pause déjeuner : on en met le motif à jour au lieu d'empiler un doublon */
   var already=S.history.find(function(h){return h.msgType==='indispo'&&h.date===dateStr&&h.commune===commune&&h.heure===heure;});
   if(already){already.nom=motif||'Indisponible';lsSet(pk('history'),S.history);return;}
-  S.history.push({channel:'sms',msgType:'indispo',commune:commune,date:dateStr,heure:heure,nom:motif||'Indisponible',ts:new Date().toLocaleString('fr-FR')});
+  S.history.push({channel:'sms',msgType:'indispo',commune:commune,date:dateStr,heure:heure,nom:motif||'Indisponible',ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})});
   lsSet(pk('history'),S.history);
 }
 /* libère un créneau bloqué */
@@ -2313,7 +2313,7 @@ function doImport(){
     if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
   }catch(e){S.importError="❌ Sauvegarde illisible. Aucune donnée modifiée.";renderModal();return false;}
   /* réglages communs dans la même écriture : plus aucun enregistrement hors transaction après l'import */
-  var now=new Date().toLocaleString('fr-FR'),appliques=Object.assign({},S,neuf);
+  var now=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'}),appliques=Object.assign({},S,neuf);
   [['ess-templates',appliques.templates],['ess-hidden',appliques.hiddenBuiltinKeys],['ess-lastSave',now]].forEach(function(p){paires.push(p);});
   if(!ecrireTout(paires)){S.importError=ecrireTout.incoherent?MSG_INCOHERENT:"❌ Enregistrement impossible (stockage plein ?) : import annulé, aucune donnée modifiée.";renderModal();return false;}
   Object.keys(neuf).forEach(function(k){S[k]=neuf[k];});
@@ -4535,7 +4535,7 @@ function importICSText(text){
     /* éviter doublons */
     var dup=S.history.find(function(h){return h.date===dateStr&&h.heure===heureStr&&(h.commune===location||!location);});
     if(dup)return;
-    if(!addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR')}))throw new Error('RDV refusé');
+    if(!addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})}))throw new Error('RDV refusé');
     added++;
   });});
   importICSText.incoherent=!!r.incoherent;
@@ -4584,7 +4584,7 @@ function importPlanningJson(){
    doublons : même personne, même jour, même commune, au moins deux fiches actives — deux cas
    réels (23/09 et 05/10) découverts seulement quand un créneau refusait de se libérer. */
 function prochainJourOuvre(){
-  var d=new Date();d.setHours(12,0,0,0);
+  var d=new Date(jourParis()+'T12:00:00');   /* midi du jour de Paris (AG-016 A) */
   do{d.setDate(d.getDate()+1);}while(d.getDay()===0||d.getDay()===6);
   return toLocalDateStr(d);
 }
@@ -6086,7 +6086,7 @@ function renderConfig(){
 }
 
 /* ============================== MANDAT ============================== */
-function todayFR(){return new Date().toLocaleDateString("fr-FR",{year:"numeric",month:"long",day:"numeric"});}
+function todayFR(){return new Date().toLocaleDateString("fr-FR",{timeZone:"Europe/Paris",year:"numeric",month:"long",day:"numeric"});}
 
 /* P07 (vérification de clôture de Codex) : un numéro de mandat appartient à un bénéficiaire (prénom + nom) ; en changer
    en alloue un nouveau au prochain document, au lieu de réutiliser celui du précédent. */
@@ -6438,7 +6438,7 @@ function archiveMandat(){
     civilite:S.mandatCivilite,prenom:S.mandatPrenom,nom:S.mandatNom,
     commune:S.mandatCommune,num:S.mandatNum,
     structure:STRUCTURE,duree:DUREE,
-    date:todayFR(),ts:new Date().toLocaleString('fr-FR')
+    date:todayFR(),ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})
   };
   S.mandats=[item].concat(S.mandats);
   lsSet('ess-mandats',S.mandats);
@@ -7778,7 +7778,7 @@ function enterApp(){
 function activateProfile(id){
   S.activeProfile=id;
   localStorage.setItem('ess-active-profile',id);
-  localStorage.setItem('ess-'+id+'-lastLogin',new Date().toLocaleDateString('fr-FR'));
+  localStorage.setItem('ess-'+id+'-lastLogin',new Date().toLocaleDateString('fr-FR',{timeZone:'Europe/Paris'}));
   enterApp();
 }
 /* une relance franchit les 3 h pendant que l'appli reste ouverte : badge et tuiles se mettent à jour sans rechargement */
