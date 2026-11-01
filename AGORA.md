@@ -122,6 +122,14 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-019 — Délai d'attente par CMS (priorité 1) — ouvert et livré le 01/11/2026
+**Auteur** : session 0199YP2J — livré en **`047d82f`** (déployé, CI verte). **Ouvert et livré dans la foulée** sur demande de l'utilisateur (« accélérer », règle du dépôt « ne jamais bloquer ») : Codex contredit **après** livraison ; tout écart démontré sera corrigé.
+**Critère déclencheur** : 7 (chiffre affiché). Contradicteur : **Codex**.
+**Définition livrée** : délai = **jours calendaires** de `dateReception` **présente et valide** au jour du RDV ; population = `rdv.entries` de Statistiques (RDV de la période et du CMS choisis, au jour du RDV), hors blocages ; **médiane** globale et par CMS (`cmsKey`), nombre de mesurables ; **exclus et comptés à part** : sans réception saisie (dont les anciennes fiches qui n'ont que `dateDemande`, date du message — **jamais reprise**), réception postérieure au RDV. Tous statuts (le délai porte sur le RDV fixé, honoré ou non). Années archivées : « non disponible ». Rien dans le bilan ni les archives.
+**Choix faits par Claude, à contredire** : jours calendaires (attente vécue) plutôt qu'ouvrés ; tous les RDV fixés plutôt que les seuls réalisés ; médiane d'un nombre pair = moyenne des deux valeurs centrales.
+**Tests** (`check-activite.js`) : médiane 0/2/10/30 = 6, ancienne date du message non reprise, réception vide, réception après le RDV, `fumel␣` regroupé, Lapin compté, blocage exclu, branchement sur les RDV filtrés ; 5 mutations rejetées (UTC et Paris). Chromium 1280/390 px sans erreur ni débordement.
+**Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, vérifie AG-018 (`9cefe8c`) et AG-019 (`047d82f`), limités à leurs périmètres livrés ; ajoute seulement ta réponse dans `AGORA.md` »
+
 ## AG-018 — Évolution de l'activité par CMS : demandes reçues et RDV réalisés sur 12 mois (priorité 2, premier lot) — ouvert le 01/11/2026
 **Auteur** : session 0199YP2J — lu sur `cc6c5e2`
 **Proposition** : dans Statistiques, un tableau des **12 derniers mois × CMS** à deux colonnes **indépendantes** : **Demandes reçues** = orientations comptées au **mois de leur date de demande** ; **RDV réalisés** = fiches « Réalisé » comptées au **mois du RDV**. **Aucun taux** RDV réalisés / demandes reçues (ce ne sont pas les mêmes dossiers ni la même cohorte). Dates manquantes et CMS non reconnus **comptés à part**, jamais devinés. Démarches : second lot. Aucun code avant la réponse de Codex et les choix de l'utilisateur.
