@@ -8,7 +8,8 @@ const from=html.indexOf(begin),to=html.indexOf(end,from);
 assert(from>=0&&to>from,'Bloc PREPARATION METRICS absent ou incomplet.');
 const context=vm.createContext({Date,Intl});
 vm.runInContext(html.slice(from,to),context);
-vm.runInContext(html.match(/function cmsKey\(c\)\{[^\n]*\}/)[0],context);   // utilisé par preparationCohort (audit 30/10, pt 2)
+vm.runInContext(html.match(/function cmsKey\(c\)\{[^\n]*\}/)[0],context);
+{const i=html.indexOf('function parisDayStr(');vm.runInContext(html.slice(i,html.indexOf('function cmsKey(',i)),context);}   // AG-016 : lireTs, jourParis (lecteur unique de ts)   // utilisé par preparationCohort (audit 30/10, pt 2)
 assert.equal(typeof context.businessDaysBetween,'function');
 assert.equal(typeof context.preparationStats,'function');
 

@@ -434,3 +434,35 @@ console.log('Fiches préparées OK.');
   assert(!/todayN/.test(code),'D1 : code mort de la pastille Historique retiré');
 }
 console.log('Date du jour à Paris OK.');
+
+/* AG-016 (B) : un seul lecteur de ts, texte français ET ISO avec fuseau ; même jour à Paris pour un même instant. */
+{
+  const c=vm.createContext({Date,Intl});
+  vm.runInContext(section('function parisDayStr(','function cmsKey(')+section('function timeAgo(','var _toastId'),c);
+  // [instant UTC, texte français tel qu'écrit en France, jour de Paris attendu]
+  const cas=[['2026-11-01T23:30:00.000Z','02/11/2026 00:30:00','2026-11-02'],['2026-11-01T22:59:00.000Z','01/11/2026 23:59:00','2026-11-01'],
+    ['2026-12-31T23:05:00.000Z','01/01/2027 00:05:00','2027-01-01'],['2026-09-30T22:10:00.000Z','01/10/2026 00:10:00','2026-10-01'],
+    ['2026-10-25T00:30:00.000Z','25/10/2026 02:30:00','2026-10-25'],['2026-10-25T01:30:00.000Z','25/10/2026 02:30:00','2026-10-25'],   // heure répétée au passage à l'heure d'hiver
+    ['2026-03-29T01:30:00.000Z','29/03/2026 03:30:00','2026-03-29']];
+  for(const [iso,fr,jour] of cas){
+    const a=c.lireTs(iso),b=c.lireTs(fr),z=c.lireTs(iso.replace('.000Z','+00:00'));
+    assert.equal(a.jour,jour,iso);assert.equal(b.jour,jour,fr);assert.equal(z.jour,jour);assert.equal(a.instant,Date.parse(iso));
+    if(iso!=='2026-10-25T00:30:00.000Z')assert.equal(b.instant,a.instant,fr);   // l'heure répétée est ambiguë en texte : une des deux seulement
+    assert.equal(c.afficherTs(fr),fr);   // texte français : affiché tel quel
+    assert.equal(c.lireTs(c.afficherTs(iso)).jour,jour);   // ISO affiché en heure de Paris, relu au même jour
+    if(iso!=='2026-10-25T00:30:00.000Z')assert.equal(c.afficherTs(iso),fr,'ISO affiché comme le texte français du même instant');
+  }
+  assert.equal(c.lireTs('01/11/2026, 10:00:00').jour,'2026-11-01');   // séparateur virgule de certains navigateurs
+  assert.equal(c.lireTs('01/11/2026').instant,null);assert.equal(c.lireTs('01/11/2026').jour,'2026-11-01');
+  for(const x of ['',null,undefined,'x','2026-11-01','2026-11-01T10:00:00','2026-02-31T10:00:00Z',{},[]])assert.equal(c.lireTs(x),null,String(x));   // ISO sans fuseau ou impossible : illisible
+  assert.equal(c.afficherTs(''),'');assert.equal(c.afficherTs('x'),'x');
+  // timeAgo : même résultat pour l'ISO et le texte français d'un même instant
+  const R=Date,f=R.parse('2026-11-02T09:00:00Z');class D extends R{constructor(...a){a.length?super(...a):super(f);}static now(){return f;}}
+  const t=vm.createContext({Date:D,Intl});vm.runInContext(section('function parisDayStr(','function cmsKey(')+section('function timeAgo(','var _toastId'),t);
+  assert.equal(t.timeAgo('02/11/2026 09:30:00'),'il y a 30 min');assert.equal(t.timeAgo('2026-11-02T08:30:00.000Z'),'il y a 30 min');assert.equal(t.timeAgo('02/11/2026'),'');
+  // plus aucun lecteur de ts en dehors de lireTs / afficherTs
+  const code=html.replace(/\/\*[\s\S]*?\*\//g,'');
+  assert.equal((code.match(/\(\\d\{2\}\)\\\/\(\\d\{2\}\)\\\/\(\\d\{4\}\)/g)||[]).length,1,'motif JJ/MM/AAAA hors de lireTs');
+  assert(!/return\[h\.ts,|\(h\.ts\|\|'Date non renseignée'\)|\+\(h\.ts\|\|""\)|'Message envoyé le '\+h\.ts/.test(code),'ts affiché ou exporté sans afficherTs (Historique, mandats, CSV)');
+}
+console.log('Lecteur de ts OK.');
