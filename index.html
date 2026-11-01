@@ -1183,12 +1183,15 @@ function lsSet(k,v){
   var conflit=false;
   try{if(_clesIllisibles[k]||(_chargementEchoue&&cleSuivie(k)))throw new Error('illisible au chargement');
     if(Object.prototype.hasOwnProperty.call(_versionLue,k)&&localStorage.getItem(k)!==_versionLue[k]){conflit=true;throw new Error('modifié dans un autre onglet');}
-    var txt=JSON.stringify(v);localStorage.setItem(k,txt);if(localStorage.getItem(k)!==txt)throw new Error('relecture');noterVersion(k,txt);return true;}
+    var txt=JSON.stringify(v);localStorage.setItem(k,txt);_tentative[k]=txt;if(localStorage.getItem(k)!==txt)throw new Error('relecture');noterVersion(k,txt);return true;}
   catch(e){
-    _echecsEcriture++;_stockageEnEchec=true;
+    _echecsEcriture++;
+    /* R2 : un conflit entre onglets n'est pas une panne de stockage : la mémoire est réalignée juste après, les sauvegardes
+       automatiques restent permises (seule une panne réelle ou une donnée illisible les suspend). */
+    if(!conflit)_stockageEnEchec=true;
     if(!_echecEcritureRecent){_echecEcritureRecent=true;setTimeout(function(){_echecEcritureRecent=false;},0);}
     realignerDepuisStockage([k]);
-    S.saveStatus='⚠️ Enregistrement impossible : rechargez la page et exportez vos données';try{renderHeader();}catch(e2){}
+    S.saveStatus=conflit?'⚠️ Modifié dans un autre onglet : affichage mis à jour, refaites votre action':'⚠️ Enregistrement impossible : rechargez la page et exportez vos données';try{renderHeader();}catch(e2){}
     showToast(_chargementEchoue&&!conflit?'⚠️ Chargement du profil interrompu : rien n\'a été enregistré. Rechargez la page.':conflit?'⚠️ Ces données ont été modifiées dans un autre onglet : rien n\'a été écrasé, l\'affichage est à jour. Refaites votre dernière action.':_clesIllisibles[k]?'⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.':'⚠️ Stockage plein. Exportez vos données !','warn');
     return false;
   }
@@ -1198,9 +1201,17 @@ function lsSet(k,v){
    Amendement Codex (31/10) : une valeur d'avant illisible annule tout avant la première écriture ; le retour arrière est
    relu, et s'il échoue, ecrireTout.incoherent passe à true (le message ne doit plus dire « aucune donnée modifiée »). */
 var _ecrituresGroupees=0;
+/* R1 (vérification des corrections de Codex, 01/11) : le retour arrière ne remet l'état d'avant QUE si la valeur actuelle est
+   soit cet état d'avant, soit la dernière valeur que cet onglet a réellement écrite (_tentative, posée après le setItem), pour les données suivies (cleSuivie ; les compteurs
+   écrits en direct comme since-export sont toujours remis). Toute autre valeur vient d'un autre onglet :
+   la remettre à l'état d'avant l'effacerait, on la laisse et la mémoire est réalignée dessus par l'appelant. */
+var _tentative={};
 function restaurerCles(cles,brut){
   var ok=true;
-  for(var j=cles.length-1;j>=0;j--){try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;else noterVersion(cles[j],brut[j]);}catch(e){ok=false;}}
+  for(var j=cles.length-1;j>=0;j--){
+    var cur;try{cur=localStorage.getItem(cles[j]);}catch(e){cur=undefined;}
+    if(cleSuivie(cles[j])&&cur!==undefined&&cur!==brut[j]&&cur!==_tentative[cles[j]]){noterVersion(cles[j],cur);continue;}   /* écriture d'un autre onglet : conservée */
+    try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;else{noterVersion(cles[j],brut[j]);_tentative[cles[j]]=brut[j];}}catch(e){ok=false;}}   /* ce retour arrière est lui-même une écriture de cet onglet (opérations imbriquées) */
   return ok;
 }
 function ecrireTout(paires){
@@ -1231,7 +1242,7 @@ function operationHistorique(fn,pid){
   try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return {ok:false,incoherent:false};}
   var histAvant=actif?JSON.parse(JSON.stringify(S.history)):null,permAvant=actif?JSON.parse(JSON.stringify(S.permanences||[])):null,valeur,ok=false,echecsAvant=_echecsEcriture;
   _ecrituresGroupees++;
-  try{valeur=fn();ok=(!actif||(lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)))&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}
+  try{valeur=fn();ok=_echecsEcriture===echecsAvant&&(!actif||(lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)))&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}   /* R1 : une opération déjà en échec n'écrit plus rien (la mémoire remise à l'état d'avant, avec la version d'un autre onglet, écraserait ses données) */
   finally{_ecrituresGroupees--;}
   if(ok){maybeAutoBackupProfile(pid);return {ok:true,incoherent:false,valeur:valeur};}
   if(actif){S.history=histAvant;S.permanences=permAvant;}
