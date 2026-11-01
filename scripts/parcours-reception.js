@@ -64,6 +64,12 @@ const H=[
   ok(await p.locator('.ui-reception-reprise').count()===1,'Générer : mention « à confirmer » et bouton');
   const copie=await p.evaluate(()=>{var c=S.cmsList.find(x=>cmsKey(x.nom)==='marmande');if(c)S.selectedCMS=String(c.id);if(S.demarches&&S.demarches[0])S.selectedDemarche=String(S.demarches[0].id);regen();var r=enregistrerCopie('Message fictif R2 bis');return r.ok&&!!compute().dem&&!!c;});
   s=await stock('R2');ok(copie&&!own(s,'dateReception')&&s.body==='Message fictif R2 bis','Générer : copie enregistrée, reprise toujours à confirmer');
+  // D bis. Amendement de Codex (R1/R2) : « Générer » sur une reprise, copie sur une réception invalide, champ non touché
+  const gen=await p.evaluate(()=>{var h=S.history.find(x=>x.id==='F1');openHistInGen(h);var c=S.cmsList.find(x=>cmsKey(x.nom)==='fumel');if(c)S.selectedCMS=String(c.id);if(S.demarches&&S.demarches[0])S.selectedDemarche=String(S.demarches[0].id);S.civilite=S.civilite||'Madame';regen();
+    var n=S.history.length,pret=canGenerate();handleGenerate();return pret&&!!c&&S.history.length===n&&S.history.find(x=>x.id==='F1').body!=='Message fictif F1';});
+  s=await stock('F1');ok(gen&&!own(s,'dateReception'),'R1 : « Générer » sans toucher la réception, reprise toujours à confirmer');
+  const cpI=await p.evaluate(()=>{var h=S.history.find(x=>x.id==='I1');openHistInGen(h);var c=S.cmsList.find(x=>cmsKey(x.nom)==='marmande');if(c)S.selectedCMS=String(c.id);if(S.demarches&&S.demarches[0])S.selectedDemarche=String(S.demarches[0].id);regen();return enregistrerCopie('Message fictif I1 bis').ok;});
+  s=await stock('I1');ok(cpI&&s.dateReception==='xx'&&s.body==='Message fictif I1 bis','R2 : copie sur réception invalide, valeur brute conservée');
 
   // E. Liste « À confirmer » : confirmation, reclassement, recalcul
   bd=await stats('1m','Marmande');ok(bd==='Mesurables=2 À confirmer=1 Absente ou invalide=2 Après le RDV=1','après Agenda : '+bd);
