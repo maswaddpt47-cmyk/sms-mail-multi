@@ -238,18 +238,18 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
 
 /* ── AG-022 : réception — une modification sans rapport ne confirme ni ne vide rien ; confirmation explicite seule ; panne = rien ── */
 {const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
- const prepH=(extra)=>{const e=charger();e.S.history=[Object.assign(rdv('h1','2026-10-20','09:30','FICTIF','Reprise'),{dateDemande:'2026-10-02',body:'b',notes:'',premierePreparationAt:'2026-10-03T08:00:00+02:00'},extra||{})];
+ const prepH=(extra)=>{const e=charger();e.S.history=[Object.assign(rdv('h1','2026-10-20','09:30','FICTIF','Reprise'),{dateDemande:'2026-10-24',body:'b',notes:'',premierePreparationAt:'2026-10-03T08:00:00+02:00'},extra||{})];
    e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));return e;};
  const ouvrir=(e)=>{const h=e.S.history[0];Object.assign(e.S,{editHistIdx:0,editHistBody:h.body||'',editHistNotes:h.notes||'',editHistDateDemande:h.dateDemande||'',editHistDateReception:e.ctx.receptionChampInitial(h),editHistReceptionInit:e.ctx.receptionChampInitial(h),editHistReprise:e.ctx.etatReception(h).reprise,editHistTel:h.telephone||''});};
  // reprise : champ non prérempli, modification des notes seule → aucune réception écrite
- {const e=prepH();ouvrir(e);assert.equal(e.S.editHistDateReception,'','reprise jamais préremplie');assert.equal(e.S.editHistReprise,'2026-10-02');
+ {const e=prepH();ouvrir(e);assert.equal(e.S.editHistDateReception,'','reprise jamais préremplie');assert.equal(e.S.editHistReprise,'2026-10-24');
   e.S.editHistNotes='note sans rapport';assert.equal(e.ctx.saveHistItem(0),true);
   const f=JSON.parse(e.st.getItem(e.ctx.pk('history')))[0];assert.equal(own(f,'dateReception'),false,'notes seules : réception non confirmée');assert.equal(f.notes,'note sans rapport');
   assert.equal(e.ctx.etatReception(f).etat,'reprise');assert.equal(f.premierePreparationAt,'2026-10-03T08:00:00+02:00');}
  // confirmation explicite (bouton « Confirmer cette date » = champ rempli avec la reprise)
  {const e=prepH();ouvrir(e);e.S.editHistDateReception=e.S.editHistReprise;assert.equal(e.ctx.saveHistItem(0),true);
-  const f=JSON.parse(e.st.getItem(e.ctx.pk('history')))[0];assert.equal(f.dateReception,'2026-10-02');assert.equal(e.ctx.etatReception(f).etat,'enregistree');
-  assert.equal(f.dateDemande,'2026-10-02','date du message inchangée');assert.equal(f.premierePreparationAt,'2026-10-03T08:00:00+02:00','première préparation inchangée');assert.equal(own(f,'premierePreparationAt'),true);}
+  const f=JSON.parse(e.st.getItem(e.ctx.pk('history')))[0];assert.equal(f.dateReception,'2026-10-24');assert.equal(e.ctx.etatReception(f).etat,'enregistree');
+  assert.equal(f.dateDemande,'2026-10-24','date du message inchangée');assert.equal(f.premierePreparationAt,'2026-10-03T08:00:00+02:00','première préparation inchangée');assert.equal(own(f,'premierePreparationAt'),true);}
  // autre date saisie
  {const e=prepH();ouvrir(e);e.S.editHistDateReception='2026-10-05';e.ctx.saveHistItem(0);assert.equal(e.S.history[0].dateReception,'2026-10-05');}
  // échec d'enregistrement : rien ne change, l'édition reste ouverte
@@ -261,49 +261,49 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
  {const e=prepH({dateReception:'xx'});ouvrir(e);assert.equal(e.S.editHistReprise,'','invalide : pas de reprise proposée');e.S.editHistNotes='x';e.ctx.saveHistItem(0);
   assert.equal(e.S.history[0].dateReception,'xx','valeur illisible non normalisée');assert.equal(e.ctx.etatReception(e.S.history[0]).invalide,true);}
  // réception enregistrée effacée volontairement : écrite vide
- {const e=prepH({dateReception:'2026-10-01'});ouvrir(e);assert.equal(e.S.editHistDateReception,'2026-10-01');e.S.editHistDateReception='';e.ctx.saveHistItem(0);assert.equal(e.S.history[0].dateReception,'');}
+ {const e=prepH({dateReception:'2026-10-23'});ouvrir(e);assert.equal(e.S.editHistDateReception,'2026-10-23');e.S.editHistDateReception='';e.ctx.saveHistItem(0);assert.equal(e.S.history[0].dateReception,'');}
  // enregistrerReception (listes du délai d'attente) : succès, panne, date invalide, fiche introuvable
- {const e=prepH(),h=e.S.history[0];assert.equal(e.ctx.enregistrerReception(h,'2026-10-02').ok,true);assert.equal(e.S.history[0].dateReception,'2026-10-02');
-  assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history')))[0].dateReception,'2026-10-02');assert.equal(e.S.history[0].premierePreparationAt,'2026-10-03T08:00:00+02:00');}
- {const e=prepH(),h=e.S.history[0],avant=e.st.etat();e.st.panne=()=>true;const r=e.ctx.enregistrerReception(h,'2026-10-02');
+ {const e=prepH(),h=e.S.history[0];assert.equal(e.ctx.enregistrerReception(h,'2026-10-24').ok,true);assert.equal(e.S.history[0].dateReception,'2026-10-24');
+  assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history')))[0].dateReception,'2026-10-24');assert.equal(e.S.history[0].premierePreparationAt,'2026-10-03T08:00:00+02:00');}
+ {const e=prepH(),h=e.S.history[0],avant=e.st.etat();e.st.panne=()=>true;const r=e.ctx.enregistrerReception(h,'2026-10-24');
   assert.equal(r.ok,false);assert.equal(e.st.etat(),avant);assert.equal(JSON.stringify(e.S.history[0]),JSON.stringify(h));assert.equal(own(e.S.history[0],'dateReception'),false,'panne : fiche toujours à confirmer');}
  {const e=prepH(),h=e.S.history[0];assert.equal(e.ctx.enregistrerReception(h,'2026-02-30').ok,false);assert.equal(e.ctx.enregistrerReception(h,'').ok,false);
-  assert.equal(e.ctx.enregistrerReception(Object.assign({},h),'2026-10-02').ok,false,'copie hors historique : refusée');assert.equal(own(e.S.history[0],'dateReception'),false);}
+  assert.equal(e.ctx.enregistrerReception(Object.assign({},h),'2026-10-24').ok,false,'copie hors historique : refusée');assert.equal(own(e.S.history[0],'dateReception'),false);}
  // copie d'un message ouvert depuis l'Historique sur une fiche reprise : ni confirmation implicite ni « vide » posé
- const prepC=(S2)=>{const e=charger();Object.assign(e.S,{date:'2026-10-20',heure:'09:30',commune:'Fumel',nom:'FICTIF',prenom:'Reprise',dateDemande:'2026-10-02',selectedCMS:1,channel:'sms',msgType:'confirmation'},S2);
-   e.S.history=[Object.assign(rdv('c1','2026-10-20','09:30','FICTIF','Reprise'),{dateDemande:'2026-10-02',body:'ancien'})];e.S.permanences=[];
+ const prepC=(S2)=>{const e=charger();Object.assign(e.S,{date:'2026-10-20',heure:'09:30',commune:'Fumel',nom:'FICTIF',prenom:'Reprise',dateDemande:'2026-10-24',selectedCMS:1,channel:'sms',msgType:'confirmation'},S2);
+   e.S.history=[Object.assign(rdv('c1','2026-10-20','09:30','FICTIF','Reprise'),{dateDemande:'2026-10-24',body:'ancien'})];e.S.permanences=[];
    e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem(e.ctx.pk('permanences'),'[]');return e;};
- {const e=prepC({dateReception:'',receptionReprise:'2026-10-02'});assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
+ {const e=prepC({dateReception:'',receptionReprise:'2026-10-24'});assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
   const f=e.S.history.find(h=>h.id==='c1');assert.equal(f.body,'nouveau');assert.equal(own(f,'dateReception'),false,'copie sans confirmation : reprise intacte');}
- {const e=prepC({dateReception:'2026-10-02',receptionReprise:'2026-10-02'});assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
-  assert.equal(e.S.history.find(h=>h.id==='c1').dateReception,'2026-10-02','confirmation explicite enregistrée avec la copie');}
- {const e=prepC({dateReception:'2026-10-02',receptionReprise:'2026-10-02'});assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);   /* même texte : pas de nouvelle fiche, la confirmation passe quand même */
-  assert.equal(e.S.history.find(h=>h.id==='c1').dateReception,'2026-10-02');}
+ {const e=prepC({dateReception:'2026-10-24',receptionReprise:'2026-10-24'});assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
+  assert.equal(e.S.history.find(h=>h.id==='c1').dateReception,'2026-10-24','confirmation explicite enregistrée avec la copie');}
+ {const e=prepC({dateReception:'2026-10-24',receptionReprise:'2026-10-24'});assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);   /* même texte : pas de nouvelle fiche, la confirmation passe quand même */
+  assert.equal(e.S.history.find(h=>h.id==='c1').dateReception,'2026-10-24');}
  {const e=prepC({dateReception:'',receptionReprise:''});assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
   assert.equal(own(e.S.history.find(h=>h.id==='c1'),'dateReception'),false,'formulaire vide sur une fiche sans réception : rien posé');}
  {const e=prepC({dateReception:'',receptionReprise:''});e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
   assert.equal(e.S.history[0].dateReception,'','nouvelle fiche : réception vide explicite, comme avant');}
- {const e=prepC({dateReception:'',receptionReprise:'2026-10-02'});e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
+ {const e=prepC({dateReception:'',receptionReprise:'2026-10-24'});e.S.history=[];e.st.setItem(e.ctx.pk('history'),'[]');assert.equal(e.ctx.enregistrerCopie('nouveau').ok,true);
   assert.equal(own(e.S.history[0],'dateReception'),false,'reprise non confirmée copiée vers une nouvelle fiche : toujours à confirmer');assert.equal(e.ctx.etatReception(e.S.history[0]).etat,'reprise');}
  /* Amendement de Codex (R1/R2, 01/11/2026) : fiche ouverte par le vrai openHistInGen, champ Réception non touché.
     R1 : « Générer » ; R2 : copie avec réception invalide, nouveau texte et texte identique sur une fiche plus ancienne. */
  const prepO=(extra,avant)=>{const e=charger();e.ctx.showActivePane=()=>{};if(typeof e.ctx.jourParis!=='function')e.ctx.jourParis=()=>'2026-11-01';
-   const f=Object.assign(rdv('o1','2026-10-20','09:30','FICTIF','Ouverte'),{selectedCMS:'1',dateDemande:'2026-10-01',body:'ancien',premierePreparationAt:'2026-10-02T08:00:00+02:00',statut:'confirme'},extra);
+   const f=Object.assign(rdv('o1','2026-10-20','09:30','FICTIF','Ouverte'),{selectedCMS:'1',dateDemande:'2026-10-23',body:'ancien',premierePreparationAt:'2026-10-02T08:00:00+02:00',statut:'confirme'},extra);
    e.S.history=(avant||[]).concat([f]);e.S.permanences=[];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem(e.ctx.pk('permanences'),'[]');
    e.ctx.openHistInGen(e.S.history.find(h=>h.id==='o1'));return e;};
  const o1=e=>e.S.history.find(h=>h.id==='o1');
  // R1 : reprise, « Générer » sans toucher la réception → reprise intacte, préparation lisible comme avant
- {const e=prepO();assert.equal(e.S.dateReception,'','reprise jamais préremplie');assert.equal(e.S.receptionReprise,'2026-10-01');
-  assert.equal(e.ctx.receptionDateFor(o1(e)),'2026-10-01');e.ctx.handleGenerate();const f=o1(e);
+ {const e=prepO();assert.equal(e.S.dateReception,'','reprise jamais préremplie');assert.equal(e.S.receptionReprise,'2026-10-23');
+  assert.equal(e.ctx.receptionDateFor(o1(e)),'2026-10-23');e.ctx.handleGenerate();const f=o1(e);
   assert.equal(own(f,'dateReception'),false,'R1 : aucune réception vide posée');assert.equal(e.ctx.etatReception(f).etat,'reprise');
-  assert.equal(e.ctx.receptionDateFor(f),'2026-10-01','R1 : la préparation lit toujours la même date');assert.equal(f.premierePreparationAt,'2026-10-02T08:00:00+02:00');
+  assert.equal(e.ctx.receptionDateFor(f),'2026-10-23','R1 : la préparation lit toujours la même date');assert.equal(f.premierePreparationAt,'2026-10-02T08:00:00+02:00');
   assert.equal(own(JSON.parse(e.st.getItem(e.ctx.pk('history'))).find(h=>h.id==='o1'),'dateReception'),false,'R1 : stockage sans réception vide');}
  // R1 : même formulaire, autre jour → nouvelle fiche, reprise toujours à confirmer
  {const e=prepO();e.S.date='2026-10-27';e.ctx.handleGenerate();const n=e.S.history.find(h=>h.date==='2026-10-27');
   assert.ok(n,'nouvelle fiche créée');assert.equal(own(n,'dateReception'),false);assert.equal(e.ctx.etatReception(n).etat,'reprise','R1 : nouvelle fiche à confirmer');
   assert.equal(own(o1(e),'dateReception'),false,'fiche d\'origine intacte');}
  // R1 : confirmation explicite → réception enregistrée
- {const e=prepO();e.S.dateReception=e.S.receptionReprise;e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-01');assert.equal(e.ctx.etatReception(o1(e)).etat,'enregistree');}
+ {const e=prepO();e.S.dateReception=e.S.receptionReprise;e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-23');assert.equal(e.ctx.etatReception(o1(e)).etat,'enregistree');}
  // R1 : réception invalide non touchée → valeur brute conservée ; date saisie → enregistrée
  {const e=prepO({dateReception:'pas une date'});assert.equal(e.S.dateReception,'');e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'pas une date','R1 : invalide non normalisée');}
  {const e=prepO({dateReception:'pas une date'});e.S.dateReception='2026-10-05';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-05');}
@@ -319,8 +319,8 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
   assert.equal(o1(e).dateReception,'pas une date','R2 : texte identique, invalide conservée');
   assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history'))).find(h=>h.id==='o1').dateReception,'pas une date');}
  // R2 : reprise non touchée, copie → toujours à confirmer ; puis confirmation → enregistrée
- {const e=prepO();assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,true);assert.equal(own(o1(e),'dateReception'),false);assert.equal(e.ctx.receptionDateFor(o1(e)),'2026-10-01');}
- {const e=prepO();e.S.dateReception=e.S.receptionReprise;assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,true);assert.equal(o1(e).dateReception,'2026-10-01');}
+ {const e=prepO();assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,true);assert.equal(own(o1(e),'dateReception'),false);assert.equal(e.ctx.receptionDateFor(o1(e)),'2026-10-23');}
+ {const e=prepO();e.S.dateReception=e.S.receptionReprise;assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,true);assert.equal(o1(e).dateReception,'2026-10-23');}
  // formulaire neuf (aucune fiche chargée) : comportement inchangé, réception vide explicite
  {const e=charger();e.ctx.showActivePane=()=>{};Object.assign(e.S,{date:'2026-10-28',heure:'09:30',commune:'Fumel',nom:'NEUF',prenom:'F',dateReception:'',receptionReprise:'',receptionSource:null,selectedCMS:1});
   e.ctx.handleGenerate();assert.equal(e.S.history[0].dateReception,'','formulaire neuf : vide explicite, comme avant');}
@@ -345,6 +345,14 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
  // NR1 : copie du texte identique (seule la réception est écrite), puis effacement
  {const e=prepO();assert.equal(e.S.history[0].id,'o1');e.S.dateReception='2026-10-03';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);assert.equal(o1(e).dateReception,'2026-10-03');
   e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);assert.equal(o1(e).dateReception,'','NR1 texte identique : effacement écrit');}
+ /* AG-023 : réception saisie avant le 22/10 (dateDemande, champ dateReception absent) — préremplie, jamais écrite sans modification */
+ {const e=prepO({dateDemande:'2026-10-05'});assert.equal(e.S.dateReception,'2026-10-05','Générer : préremplie');assert.equal(e.S.receptionReprise,'','aucune mention « à confirmer »');
+  e.ctx.handleGenerate();assert.equal(own(o1(e),'dateReception'),false,'Générer intact : rien écrit');assert.equal(e.ctx.etatReception(o1(e)).etat,'ancienne');}
+ {const e=prepO({dateDemande:'2026-10-05'});assert.equal(e.ctx.enregistrerCopie('texte fictif').ok,true);assert.equal(own(o1(e),'dateReception'),false,'copie intacte : rien écrit');}
+ {const e=prepO({dateDemande:'2026-10-05'});e.S.dateReception='2026-10-07';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-07','date modifiée : écrite');}
+ {const e=prepO({dateDemande:'2026-10-05'});e.S.dateReception='';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'','effacement volontaire : écrit');}
+ {const e=prepH({dateDemande:'2026-10-05'});ouvrir(e);assert.equal(e.S.editHistDateReception,'2026-10-05','Historique : préremplie');e.S.editHistNotes='x';assert.equal(e.ctx.saveHistItem(0),true);
+  assert.equal(own(e.S.history[0],'dateReception'),false,'Historique intact : rien écrit');}
  console.log('AG-022 NR1 : effacement après un enregistrement réussi, sans réouverture (Générer et copie), panne sans recalage OK.');
  console.log('AG-022 R1/R2 : « Générer » et copie depuis une fiche ouverte — reprise, invalide et réception enregistrée conservées si le champ est intact OK.');
  console.log('AG-022 : réception — modification sans rapport neutre, confirmation explicite, panne sans effet, copie sans confirmation implicite OK.');}

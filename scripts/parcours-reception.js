@@ -5,15 +5,17 @@ const {chromium}=require('playwright'),path=require('node:path');
 const URL='file://'+path.resolve(process.env.INDEX_HTML||path.join(__dirname,'../index.html'));
 const out=[];const ok=(c,m)=>{out.push((c?'OK   ':'ÉCHEC ')+m);};
 function jour(n){const d=new Date(Date.now()-n*86400000);return d.toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});}
+/* AG-023 : une « reprise à confirmer » a une date du message après le 22/10/2026 ; fixée pour ne pas dépendre du jour d'exécution */
+const apres=d=>d>'2026-10-22'?d:'2026-10-23';
 const rec=(id,o)=>Object.assign({id,nom:'FICTIF '+id,prenom:'Exemple',commune:'Marmande',msgType:'confirmation',statut:'realise',channel:'sms',demarche:'Démarche fictive',body:'Message fictif '+id,ts:new Date(Date.now()-40*86400000).toISOString()},o);
 const H=[
-  rec('R1',{date:jour(5),heure:'09:30',dateDemande:jour(20),premierePreparationAt:new Date(Date.now()-19*86400000).toISOString()}),
-  rec('R2',{date:jour(6),heure:'10:30',dateDemande:jour(21)}),
-  rec('V1',{date:jour(7),heure:'09:30',dateReception:'',dateDemande:jour(22)}),
+  rec('R1',{date:jour(5),heure:'09:30',dateDemande:apres(jour(20)),premierePreparationAt:new Date(Date.now()-19*86400000).toISOString()}),
+  rec('R2',{date:jour(6),heure:'10:30',dateDemande:apres(jour(21))}),
+  rec('V1',{date:jour(7),heure:'09:30',dateReception:'',dateDemande:apres(jour(22))}),
   rec('I1',{date:jour(8),heure:'09:30',dateReception:'xx'}),
   rec('P1',{date:jour(9),heure:'09:30',dateReception:jour(2)}),
   rec('M1',{date:jour(4),heure:'09:30',dateReception:jour(15)}),
-  rec('F1',{date:jour(5),heure:'09:30',dateDemande:jour(25),commune:'Fumel'}),
+  rec('F1',{date:jour(5),heure:'09:30',dateDemande:apres(jour(25)),commune:'Fumel'}),
 ];
 (async()=>{
   const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:820}});
@@ -100,6 +102,21 @@ const H=[
   bd=await stats('1m','');
   await p.locator('.ui-delai-attente tbody tr',{hasText:'Fumel'}).locator('button').nth(1).click();await p.waitForTimeout(150);
   const rows=await p.locator('[role=dialog] tbody tr').allInnerTexts();ok(rows.length===1&&rows[0].includes('FICTIF F1'),'ligne Fumel « À confirmer » : F1 seule');
+  await p.evaluate(()=>{S.modal=null;renderModal();});
+  // H. AG-023 : réception saisie avant le 22/10 dans l'ancien champ → mesurable, préremplie, marquée ; rien d'écrit
+  await p.evaluate(d=>{S.history.unshift({id:'A1',nom:'FICTIF A1',prenom:'Exemple',commune:'Marmande',msgType:'confirmation',statut:'realise',channel:'sms',demarche:'Démarche fictive',body:'Message fictif A1',date:d,heure:'14:30',dateDemande:'2026-10-10'});lsSet(pk('history'),S.history);},jour(3));
+  bd=await stats('1m','Marmande');ok(bd==='Mesurables=4 À confirmer=0 Absente ou invalide=2 Après le RDV=1','AG-023 : fiche d\'avant le 22/10 mesurable : '+bd);
+  const noteA=await p.evaluate(()=>document.querySelector('.ui-delai-attente').innerText);ok(noteA.includes('Dont 1 réception saisie avant le 22/10/2026'),'AG-023 : nombre écrit sous la médiane');
+  await p.locator('.ui-delai-attente .ui-stats-metric-band:not(.ui-delai-mediane) .ui-stats-metric',{hasText:'Mesurables'}).click();await p.waitForTimeout(150);
+  ok((await p.locator('[role=dialog] tbody tr',{hasText:'FICTIF A1'}).innerText()).includes('10/10/2026 (avant le 22/10)'),'AG-023 : liste des mesurables, origine marquée');
+  await p.evaluate(()=>{S.modal=null;renderModal();S.activeTab='history';showActivePane();renderTabs();renderHistory();});await p.waitForTimeout(150);
+  const carteA1=p.locator('article.ui-record-row',{hasText:'FICTIF A1'}).first();
+  ok(await carteA1.locator('text=Réception à confirmer').count()===0,'AG-023 : pas de pastille « à confirmer »');
+  await carteA1.locator('button',{hasText:'Modifier'}).click();await p.waitForTimeout(100);
+  ok(await p.locator('input[id^="ui-record-reception-"]').inputValue()==='2026-10-10','AG-023 : Historique, réception préremplie');
+  await p.locator('article.ui-record-row',{hasText:'FICTIF A1'}).first().locator('button',{hasText:'Enregistrer'}).click();await p.waitForTimeout(150);
+  ok(!own(await stock('A1'),'dateReception'),'AG-023 : enregistrement sans modification, rien écrit');
+  await p.evaluate(()=>{S.activeTab='stats';showActivePane();renderTabs();renderStats();});await p.waitForTimeout(150);
   const debord=await p.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);ok(debord<=0,'390 px : aucun débordement de page ('+debord+')');
   ok(errs.length===0,'erreurs JS : '+(errs.join(' | ')||'aucune'));
   console.log(out.join('\n'));await b.close();

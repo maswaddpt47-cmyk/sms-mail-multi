@@ -118,7 +118,7 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
 {const c=charger('2027-01-15T10:00:00Z');
  const f=(o)=>Object.assign({msgType:'confirmation',statut:'realise',commune:'Fumel',heure:'09:30'},o);
  const r=J(c.delaiAttenteParCms([f({date:'2026-10-20',dateReception:'2026-10-10'}),f({date:'2026-10-31',dateReception:'2026-10-01'}),f({date:'2026-11-02',dateReception:'2026-10-31'}),
-   f({date:'2026-10-20',dateDemande:'2026-10-01'}),f({date:'2026-10-20',dateReception:''}),f({date:'2026-10-20',dateReception:'2026-10-25'}),f({date:'2026-10-20',dateReception:'2026-10-20',commune:'fumel '}),
+   f({date:'2026-10-20',dateDemande:'2026-10-25'}),f({date:'2026-10-20',dateReception:''}),f({date:'2026-10-20',dateReception:'2026-10-25'}),f({date:'2026-10-20',dateReception:'2026-10-20',commune:'fumel '}),
    f({date:'2026-10-20',dateReception:'2026-10-14',commune:'Marmande',statut:'lapin'}),f({date:'2026-10-20',dateReception:'2026-10-01',msgType:'indispo'})]));
  assert.equal(r.parCms.fumel.mesurables,4);assert.equal(r.parCms.fumel.mediane,6,'médiane de 0, 2, 10, 30 = 6');
  assert.equal(r.parCms.fumel.sansReception,1,'réception vide : absente, non mesurable');assert.equal(r.parCms.fumel.reprise,1,'ancien dateDemande : à confirmer, non mesurable, jamais repris (AG-022)');

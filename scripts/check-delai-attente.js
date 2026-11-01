@@ -30,7 +30,7 @@ const entries=[
   row('A7','Marmande','FICTIF Golf','2026-10-14','xx'),              /* exclu : réception illisible = absente */
   row('A8','Marmande','FICTIF Hotel','2026-10-15','2026-10-01',{msgType:'indispo'}),   /* hors population */
   row('A9','Marmande','FICTIF India','2026-02-30','2026-02-01'),      /* date de RDV inexistante : hors population */
-  row('B1','Marmande','FICTIF Juliet','2026-10-16',undefined,{dateDemande:'2026-10-02'}),   /* AG-022 : ancienne date reprise, à confirmer */
+  row('B1','Marmande','FICTIF Juliet','2026-10-16',undefined,{dateDemande:'2026-10-25'}),   /* AG-022/AG-023 : date du message après le 22/10, à confirmer */
 ];
 const before=JSON.stringify(entries);
 const r=ctx.delaiAttenteParCms(entries);
@@ -58,7 +58,7 @@ assert.deepEqual(x.filter(e=>e.motif==='apres_rdv').map(e=>[e.personne,e.rec,e.r
 // Les listes respectent exactement l'effectif affiché.
 assert.equal(m.length,r.global.mesurables);
 assert.equal(x.length,r.global.reprise+r.global.sansReception+r.global.incoherente);
-assert.deepEqual(x.filter(e=>e.motif==='reprise').map(e=>[e.personne,e.rec]),[['Exemple FICTIF Juliet','2026-10-02']]);
+assert.deepEqual(x.filter(e=>e.motif==='reprise').map(e=>[e.personne,e.rec]),[['Exemple FICTIF Juliet','2026-10-25']]);
 assert.equal(r.parCms[ctx.cmsKey('Marmande')].sansReception,2);
 
 // Premiers RDV : même diagnostic qu'avant (effectifs seulement affichés).
@@ -105,4 +105,25 @@ const vide=texte(rc.carteDelaiAttente([row('Z1','Fumel','FICTIF Zoulou','2026-10
 assert.ok(vide.includes('—|Médiane, sur 0 fiche mesurable'),'sans mesurable : tiret');assert.equal(/\b0 j\b/.test(vide),false);
 assert.ok(/openDelaiList\(/.test(card),'listes non reliées');
 
-console.log('Délai d’attente : effectifs, listes triées, motifs d’exclusion et médiane affichée (globale, par CMS, premiers RDV) conformes.');
+// AG-023 : réception saisie avant le 22/10/2026 dans l'ancien champ (dateDemande, dateReception absent) = mesurée.
+const anc=[
+  row('N1','Marmande','FICTIF Ancienne1','2026-10-15',undefined,{dateDemande:'2026-10-05'}),   /* 10 j */
+  row('N2','Marmande','FICTIF Ancienne2','2026-10-24',undefined,{dateDemande:'2026-10-22'}),   /* borne incluse : 2 j */
+  row('N3','Marmande','FICTIF Message','2026-10-28',undefined,{dateDemande:'2026-10-23'}),     /* après le 22/10 : date du message, à confirmer */
+  row('N4','Marmande','FICTIF Apres','2026-10-18',undefined,{dateDemande:'2026-10-20'}),       /* postérieure au RDV */
+  row('N5','Fumel','FICTIF Vide','2026-10-20','',{dateDemande:'2026-10-05'}),                 /* champ présent vide : absente, jamais l'ancien champ */
+  row('N6','Fumel','FICTIF Saisie','2026-10-20','2026-10-08',{dateDemande:'2026-10-05'}),     /* réception enregistrée prime : 12 j */
+];
+assert.deepEqual(JSON.parse(JSON.stringify(ctx.etatReception(anc[0]))),{etat:'ancienne',date:'2026-10-05',reprise:''});
+assert.equal(ctx.etatReception(anc[1]).etat,'ancienne','22/10 inclus');assert.equal(ctx.etatReception(anc[2]).etat,'reprise','23/10 : date du message');
+const ra=ctx.delaiAttenteParCms(anc);
+assert.deepEqual([ra.global.mesurables,ra.global.anciennes,ra.global.reprise,ra.global.incoherente,ra.global.sansReception],[3,2,1,1,1]);
+assert.equal(ra.global.mediane,10,'médiane de 10, 2, 12');assert.equal(ra.parCms[ctx.cmsKey('Marmande')].anciennes,2);assert.equal(ra.parCms[ctx.cmsKey('Fumel')].anciennes,0);
+assert.deepEqual(JSON.parse(JSON.stringify(ra.liste.mesures)).map(x=>[x.personne,x.d,x.ancienne]),[['Exemple FICTIF Ancienne2',2,true],['Exemple FICTIF Ancienne1',10,true],['Exemple FICTIF Saisie',12,false]]);
+assert.deepEqual(JSON.parse(JSON.stringify(ra.liste.exclus)).filter(x=>x.motif==='apres_rdv').map(x=>[x.personne,x.rec]),[['Exemple FICTIF Apres','2026-10-20']]);
+const ta=texte(rc.carteDelaiAttente(anc,''));
+assert.ok(ta.includes('Dont 2 réceptions saisies avant le 22/10/2026'),'nombre de réceptions anciennes écrit');
+assert.equal(texte(rc.carteDelaiAttente(entries.filter(e=>e.id!=='B1'),'')).includes('avant le 22/10'),false,'aucune mention sans réception ancienne');
+
+
+console.log('Délai d’attente : effectifs, listes triées, motifs d’exclusion, médiane affichée et réceptions saisies avant le 22/10 (AG-023) conformes.');
