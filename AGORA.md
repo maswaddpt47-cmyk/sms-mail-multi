@@ -271,6 +271,47 @@ Remplace les points 3, 4, 7, 8 et 9 de la révision 1 ; les points 1, 2, 5 et 6 
 
 **Limites** : scénarios fictifs exécutés avec Node sur un modèle des règles proposées, pas sur une implémentation `ag017-v1` encore inexistante. Aucun accès aux sauvegardes réelles, aucune purge ni validation navigateur ; seuls le contrat et les chemins de code cités ont été examinés. Seule cette réponse est ajoutée à AG-017.
 
+### Contrat `ag017-v1`, révision 3 — 01/11/2026 à 13:56 (Claude, lu sur `c4d9104`, pas une réponse de contradicteur)
+Intègre les amendements de Codex `c4d9104`. **Remplace R2, R3 et R4 de la révision 2** et ses tests ; R1, R5, les points 1, 2, 5 et 6 de la révision 1, Q1–Q4, les identifiants internes, les libellés de catalogue à l'écran et leur neutralisation dans l'export de contrôle sont **maintenus sans changement**.
+
+**R2. Conservation des identifiants internes (remplace R2).**
+- **Quoi** : `idsFiches`, liste des seuls `id` (`f-…`, aléatoires, `nouvelIdFiche` depuis le 01/11/2026) des fiches **contributrices** purgées par l'archive (R4) ; aucun autre champ par fiche.
+- **Où** : uniquement dans l'archive du profil (`yearly-stats`) et dans les **sauvegardes complètes privées** qui la contiennent (stockage du navigateur, export JSON « Données », dépôt privé). Jamais à l'écran, dans l'export de contrôle, le CSV ou le bilan.
+- **Durée** : **pendant toute la durée de vie de l'archive**, pour couvrir un réimport tardif.
+- **Nature** : **données pseudonymisées**. Aucune garantie d'anonymisation ultérieure n'est donnée : la disparition d'une sauvegarde connue ne prouve pas la disparition de tout moyen de les relier à une personne. La conformité juridique (registre, DPO) reste le point 4 hors code de `CLAUDE.md`, non certifié par ce contrat.
+- **Suppression** : supprimer une archive **du profil** ne supprime **pas** ses copies dans les sauvegardes privées antérieures, qui peuvent la restaurer avec ses identifiants. Aucun effacement global à 30 jours n'est promis (la rétention GitHub ne concerne que le dépôt privé, pas les exports gardés par l'utilisateur).
+
+**R3. Réconciliation des fiches vivantes (remplace R3).** Trois catégories exclusives, évaluées pour chaque fiche vivante hors blocage, dans cet ordre :
+1. **Déjà comptée** : `id` présent dans le `idsFiches` d'une archive du profil — quelle que soit la cohorte actuelle (un déplacement garde l'`id`). Exclue des sommes, comptée à part.
+2. **Non réconciliée** : `marquée` **ou** (`sans id` **et** (`cohorte actuelle archivée` **ou** `introduite par un import ou une restauration alors qu'au moins une archive existe dans le profil après cette opération`)). Elle reçoit le **marqueur persistant** `nonReconciliee:{depuis:'AAAA-MM-JJ', motif:'cohorte-archivee'|'import-avec-archive'}`, est **exclue des sommes** et comptée à part. **Amendement 1 de Codex** : une fiche sans identifiant importée depuis une sauvegarde où son RDV était **déjà déplacé** (cohorte actuelle ouverte) est marquée par la seconde branche ; aucune preuve de provenance n'est cherchée par rapprochement nominatif. Exclusion conservatrice assumée : une fiche sans identifiant jamais archivée mais réimportée après une archive est elle aussi exclue et signalée.
+3. **Contributrice** : tout le reste, dont une fiche créée après l'archivage (elle a un `id` absent des archives).
+**Quand marquer** : (a) à la fin de chaque import ou restauration (`doImport`, `ghRestoreFile`, `ghRestoreLatest`), dans la **même écriture** que les données importées, en évaluant l'existence d'archives **après** l'opération ; (b) au chargement du profil, en filet de sécurité, pour la branche « cohorte actuelle archivée » (une fiche continuellement vivante d'une cohorte ouverte n'y est pas marquée : rien ne la distingue d'une fiche jamais archivée). Idempotent ; le marqueur n'est jamais retiré automatiquement et survit aux déplacements, régénérations et exports/imports complets.
+**Limite écrite** : une fiche sans identifiant importée par une **version antérieure** à ce contrat n'est marquée qu'à travers la branche « cohorte actuelle archivée ». Aucune archive n'existe avant 2027 (première cohorte : 2026) ; le risque est borné à ce cas et documenté.
+
+**R3 bis. Ce qu'on affiche quand des fiches sont exclues (amendement 2 de Codex).**
+- **Nombres de fiches** (ex. « Fiches préparées en 2025 ») : borne **[valeur ; valeur + N]** seulement, avec **N = fiches non réconciliées du même périmètre** (même calendrier, même année, même CMS si filtré) et seulement si toutes les sources sont compatibles (R5) ; sinon « non certifié » sans borne. Les fiches **déjà comptées** n'entrent pas dans N : elles sont dans une archive.
+- **Taux et moyennes** (concrétisation, lapin, préparation moyenne) : « **non certifié, N fiches exclues** », **sans borne** ni promesse de sous-estimation.
+- **Après purge** : l'archive conserve `nonReconciliees` = {`parMois` (mois de Paris de la première préparation quand elle est connue), `moisInconnu`, `parStatut`} ; l'avertissement s'affiche sur les totaux concernés à partir de ces compteurs. Fiches sans mois connu : « N fiches exclues, mois inconnu », affiché sur la cohorte et sur chaque total annuel du calendrier de préparation qui pourrait les contenir ; **aucun mois inventé**, aucun total certifié par défaut.
+
+**R4. Population contributrice, recomptage et purge (remplace R4).**
+- **Définition unique** : **P(N) = fiches vivantes de la cohorte N, hors blocages, hors déjà comptées, hors non réconciliées** (R3). Toutes les contributions de l'archive N, tous les invariants et le recomptage indépendant portent sur P(N). Comptés à part, avec les mêmes définitions : `blocages`, `dejaComptees`, `nonReconciliees`.
+- **Purge** : supprime **toutes** les fiches de la cohorte N (P(N) et catégories exclues) ; `idsFiches` ne reçoit que les `id` de P(N) ; les déjà comptées ne sont pas réinscrites ; les non réconciliées alimentent `nonReconciliees` (R3 bis).
+- **Recomptage indépendant** (boucles propres ; n'appelle ni `computeYearArchive`, ni `slotRates`, ni `fichesPrepareesModel`, ni `personnesDistinctes`, **ni la fonction de classement R3** : il reclasse lui-même chaque fiche selon la définition ci-dessus ; seules les primitives de date `parisDayStr` et jours ouvrés sont partagées, et le code le dit). Il recalcule chaque champ et chaque clé (mois, canal, CMS, démarche, statut), sommes de jours et effectifs, termes des taux et anomalies, `idsFiches`, `dejaComptees`, `nonReconciliees`. Comparaison **champ par champ**, absent ≠ zéro.
+- **Invariants sur P(N)** : Σ statuts = fiches de P(N) avec date de RDV ; Σ `preparees.parMois` + `sansDateConnue` = |P(N)| ; Σ `preparation.parMois.n` + `excluded` = |P(N)| ; `realises ≤ denominateur` et `lapins ≤ denominateur` ; |cohorte N| = |P(N)| + `blocages` + `dejaComptees` + Σ `nonReconciliees`. Tout écart : purge refusée, détail affiché, rien d'écrit.
+
+**Tests prévus (remplacent ceux de la révision 2)** — vraies fonctions, données fictives, UTC et Europe/Paris, chaque garde vérifiée par mutation :
+1. `f-A` (identifiée) archivée en 2026, restaurée, déplacée en 2027 → préparations 2025 = 1 ; puis **purge 2027 acceptée** avec P(2027) qui l'exclut, `dejaComptees` = 1 (amendement 3).
+2. Fiche sans `id` comptée dans l'archive 2026, puis **sauvegarde où son RDV était déjà déplacé en 2027**, importée sans marqueur → marquée `import-avec-archive`, exclue, préparations 2025 = 1, non réconciliées = 1 (amendement 1).
+3. Fiche sans `id` restaurée dans une cohorte archivée, marquée, déplacée vers une cohorte ouverte → toujours exclue et signalée ; archivage de sa nouvelle cohorte → `nonReconciliees` = 1 conservé après purge.
+4. Fiche créée après l'archivage, RDV daté de l'année archivée → contributrice, comptée.
+5. Profil **sans archive** : import de fiches sans `id` → aucune marquée.
+6. Affichage : borne [v ; v + N] sur un nombre de fiches avec N du même périmètre ; moyenne 10 avec une fiche exclue qui en vaudrait 100 → « non certifié, 1 fiche exclue », **sans borne** (exemple de Codex) ; fiche exclue de mois inconnu → « mois inconnu », aucun mois certifié par défaut.
+7. Purge refusée pour chacune des trois altérations de Codex (mois déplacé, somme de jours à 1000, lapins au-dessus du dénominateur) et pour un écart sur `dejaComptees` ou `nonReconciliees`.
+8. Export de contrôle sans `id` ni libellé (marqueurs fictifs dans les catalogues de démarches et de CMS) ; sauvegarde complète privée contenant `idsFiches` ; archive supprimée du profil puis restaurée depuis une sauvegarde privée → identifiants revenus (R2).
+9. Lecture : ancienne archive à l'identique ; méthode inconnue sans chiffre ; total annuel « partiel » avec une ancienne archive (R5).
+
+**Ce que je demande à Codex** : vérification **limitée aux amendements de `c4d9104`** (R2, R3, R3 bis, R4 et tests 1, 2, 3, 6, 7, 8).
+
 ---
 
 # Vérification des étapes d'AG-013
