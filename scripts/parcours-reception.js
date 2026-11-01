@@ -22,14 +22,17 @@ const H=[
   await p.goto(URL,{waitUntil:'load'});await p.waitForTimeout(500);
   const stock=id=>p.evaluate(id=>JSON.parse(localStorage.getItem('ess-michel-history')).find(h=>h.id===id),id);
   const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
-  const bande=async()=>{await p.evaluate(()=>window.dispatchEvent(new Event('beforeprint')));await p.waitForTimeout(1000);return p.evaluate(()=>[...document.querySelectorAll('.ui-delai-attente .ui-stats-metric')].map(x=>x.querySelector('.ui-stats-metric-label').textContent+'='+x.querySelector('.ui-stats-number').textContent).join(' '));};
+  const bande=async()=>{await p.evaluate(()=>window.dispatchEvent(new Event('beforeprint')));await p.waitForTimeout(1000);return p.evaluate(()=>[...document.querySelectorAll('.ui-delai-attente .ui-stats-metric-band:not(.ui-delai-mediane) .ui-stats-metric')].map(x=>x.querySelector('.ui-stats-metric-label').textContent+'='+x.querySelector('.ui-stats-number').textContent).join(' '));};
   async function stats(period,cms){await p.evaluate(([a,c])=>{S.statsPeriod=a;S.statsCMS=c;S.activeTab='stats';showActivePane();renderTabs();renderStats();},[period,cms]);await p.waitForTimeout(200);return bande();}
 
   // A. Statistiques : quatre catégories, filtres
   let bd=await stats('1m','');ok(bd==='Mesurables=1 À confirmer=3 Absente ou invalide=2 Après le RDV=1','tous CMS : '+bd);
   bd=await stats('1m','Marmande');ok(bd==='Mesurables=1 À confirmer=2 Absente ou invalide=2 Après le RDV=1','Marmande : '+bd);
   const txt=await p.evaluate(()=>document.querySelector('.ui-delai-attente').innerText);
-  ok(txt.includes('Couverture insuffisamment établie pour interpréter le délai d’attente')&&!/\d+(,\d)? j\b/.test(txt)&&!/moyenne/i.test(txt),'médiane masquée, aucune moyenne');
+  const med=await p.evaluate(()=>{var t=document.querySelector('.ui-delai-attente .ui-delai-mediane');return t?t.innerText.replace(/\s+/g,' ').trim():'';});
+  ok(med==='11 j Médiane, sur 1 fiche mesurable'&&!txt.includes('Couverture insuffisamment')&&!/moyenne/i.test(txt),'médiane affichée (AG-021 tranché ; M1 : réception J-15, RDV J-4 = 11 j), aucune moyenne : '+med);
+  const lar=await p.evaluate(()=>{var c=document.querySelector('.ui-delai-attente'),sc=c.querySelector('.ui-stats-scroll');return [document.documentElement.scrollWidth-document.documentElement.clientWidth,c.scrollWidth-c.clientWidth,sc?sc.scrollWidth-sc.clientWidth:-1];});
+  ok(lar[0]<=0&&lar[1]<=0,'390 px : carte sans débordement (page '+lar[0]+', carte '+lar[1]+', tableau défilant '+lar[2]+')');
 
   // B. Historique : R1 marqué, Modifier sans préremplir, enregistrement sans rapport
   await p.evaluate(()=>{S.activeTab='history';showActivePane();renderTabs();renderHistory();});await p.waitForTimeout(200);

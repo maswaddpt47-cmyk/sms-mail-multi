@@ -70,7 +70,8 @@ assert.equal(S.history[1].dateDemande,jours(20),'date du message conservée');
 assert.equal(ctx.enregistrerReception(S.history[2],jours(12)).ok,true);
 assert.equal(ctx.enregistrerReception(S.history[3],jours(1)).ok,true);
 r=compter('1m','Marmande');assert.deepEqual([r.global.mesurables,r.global.reprise,r.global.sansReception,r.global.incoherente],[3,0,0,2]);
-// 5. Médiane : calculée dans le modèle, jamais affichée (AG-021 conservé), aucune moyenne.
+// 5. Médiane (affichée depuis AG-021 tranché, 01/11/2026) : sur les seules mesurables, une reprise confirmée y entre ; aucune moyenne.
 const card=section('function carteDelaiAttente(','/* ============================== AG-020');
-assert.equal(/\.mediane\b|medianePremiers|medianeNombres|moyenne/i.test(card.replace(/Médiane masquée/g,'')),false,'carte sans médiane ni moyenne');
+assert.equal(/moyenne/i.test(card),false,'carte sans moyenne');
+assert.equal(r.global.mediane,ctx.medianeNombres(ctx.delaiListeLignes('mesures',null).map(x=>x.d)),'médiane = celle des fiches de la liste « Mesurables »');
 console.log('AG-022 : origine de la réception (4 cas), filtres période/CMS, listes recalculées, reclassement après confirmation, préparation inchangée OK.');
