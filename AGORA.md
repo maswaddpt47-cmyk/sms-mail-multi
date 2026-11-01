@@ -122,7 +122,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun. AG-025 tranché le 01/11/2026 ; textes intégraux : `git log -p AGORA.md`.
+## AG-026 — Activité des fiches au dernier message enregistré — ouvert le 01/11/2026
+**Auteur** : Codex — lu sur `6d401eb` ; mise en œuvre demandée par l'utilisateur (« Oui fait le »), après constat de 162 anciennes fiches écartées du total faute de première préparation horodatée.
+**Proposition** : dans les Statistiques courantes, remplacer le total et le graphique des « Fiches préparées » par les fiches datées au **dernier message enregistré** (`ts`, jour de Paris). Les anciennes fiches datées comptent sans `premierePreparationAt` ; aucune première préparation n'est reconstituée. Total, canaux, types et répartition CMS suivent la même population.
+**Critère déclencheur** : 7 (chiffres affichés) et 5 (remplace à l'écran la définition première préparation d'AG-015, sur instruction explicite de l'utilisateur).
+**Décision de l'utilisateur** : utiliser les dates de message déjà présentes pour compter l'activité ; distinguer ce décompte de la toute première préparation. Une fiche compte une fois, une régénération peut changer son mois. Ce n'est pas un nombre d'envois.
+**Ce que ça engage** : calcul d'affichage et libellés seulement, aucun champ ni format nouveau ; archives, bilan, délai d'attente et réactivité inchangés. `fichesPrepareesModel` et l'horodatage technique restent conservés.
+**Livraison** : `fichesMessagesModel` lit `ts` par `lireTs`, valide le jour civil, filtre période/CMS et exclut les créneaux bloqués. Dates absentes/illisibles : effectif distinct pour le CMS choisi, sans mois inventé. Aucun repli sur date RDV/réception ni remplissage rétroactif.
+**Vérification** : données fictives exclusivement ; jeu de 162 anciennes fiches datées + 13 horodatées = 175 comptées, 0 date de message manquante. Formats français/ISO, minuit Paris, bornes, CMS, canal inconnu, date impossible, régénération, lecture seule et cohérence total/graphique contrôlés par `check-stats-rdv.js`, avec vrais fragments de rendu. Les tests historiques de première préparation restent distincts.
+**Non vérifié par l'auteur** : aucune donnée réelle lue ; le total réel dépend des dates du dernier message lisibles sur l'appareil. Une date de dernier message n'est pas une preuve du premier envoi ni du mois de première préparation. Pas de nouvelle mesure Chromium sur téléphone dans cette session.
+**Si personne ne répond, je fais quoi ?** Publier la modification demandée et testée ; contradiction externe unique après livraison, sans nouvelle négociation du choix déjà fait. Ne pas s'auto-répondre.
+**Où regarder** : `index.html`, `fichesMessagesModel`, branchement de `renderStats`, groupe « Fiches par date du message » et graphique « Fiches par mois du message » ; `scripts/check-stats-rdv.js`, bloc AG-026.
 
 ---
 

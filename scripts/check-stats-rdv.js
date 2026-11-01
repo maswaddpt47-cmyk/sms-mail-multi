@@ -407,6 +407,53 @@ console.log('Liste des usagers OK.');
 }
 console.log('Fiches préparées OK.');
 
+/* AG-026 : activité datée au dernier message ; les anciennes fiches datées ne sont plus exclues faute de première préparation. */
+{
+  vm.runInContext(section('function preparationDayUTC(','function preparationParisDay('),ctx);
+  const f=(id,ts,extra)=>Object.assign({id,nom:'FICTIF '+id,prenom:'X',commune:'A',channel:'sms',msgType:'confirmation',date:'2027-02-01',ts},extra);
+  const jeu=[
+    f('ancienne','05/07/2026 10:00'),
+    f('minuit','2026-07-31T22:30:00Z',{channel:'mail'}), // 01/08 à Paris, hors juillet
+    f('regeneree','2026-07-10T09:00:00+02:00',{premierePreparationAt:'2026-10-25T08:00:00Z'}),
+    f('canal-inconnu','11/07/2026 10:00',{channel:'fax',msgType:'relance'}),
+    f('sans-message',''),f('date-impossible','31/02/2026 10:00'),
+    f('autre-cms','05/07/2026 10:00',{commune:'B'}),
+    f('blocage','05/07/2026 10:00',{msgType:'indispo'}),
+    f('hors-periode','03/08/2026 10:00'),
+    f('borne','2026-07-01T00:00:00+02:00',{channel:'mail'})
+  ];
+  const before=JSON.stringify(jeu),m=ctx.fichesMessagesModel(jeu,'2026-07-01','2026-07-31',' a ');
+  assert.deepEqual([...m.fiches.map(h=>h.id)],['ancienne','regeneree','canal-inconnu','borne']);
+  assert.deepEqual({...m.canaux},{total:4,sms:2,mail:1,inconnu:1});assert.equal(m.nonMesurables,2);
+  assert.deepEqual(JSON.parse(JSON.stringify(m.byMonth)),{'2026-07':{sms:2,mail:1,inconnu:1}});
+  assert.equal(m.personnes,4);assert.equal(m.types.relance,1);assert.equal(m.types.confirmation,3);
+  assert.deepEqual(JSON.parse(JSON.stringify(m.byCms.map(c=>[c.nom,c.n]))),[['A',4]]);
+  const tout=ctx.fichesMessagesModel(jeu,null,'2026-07-31','');assert.equal(tout.canaux.total,7);
+  assert.equal(tout.nonMesurables,2);assert.equal(tout.byMonth['2026-08'].mail,1);
+  assert.equal(JSON.stringify(jeu),before,'aucune date ni première préparation écrite');
+  assert.equal(JSON.stringify(ctx.fichesMessagesModel(jeu,'2026-07-01','2026-07-31','A')),JSON.stringify(m),'idempotence');
+  const anciennes=Array.from({length:162},(_,i)=>f('ancienne-'+i,'05/10/2026 10:00'));
+  const recentes=Array.from({length:13},(_,i)=>f('recente-'+i,'25/10/2026 10:00',{premierePreparationAt:'2026-10-25T08:00:00Z'}));
+  const toutes=ctx.fichesMessagesModel(anciennes.concat(recentes),null,'2026-11-01','');
+  assert.equal(toutes.canaux.total,175,'162 anciennes datées + 13 horodatées = 175 fiches, pas 13');
+  assert.equal(toutes.nonMesurables,0);assert.equal(toutes.byMonth['2026-10'].sms,175);
+
+  // Vrais fragments de rendu : le total et le graphique utilisent la même population, sans prétendre dater la première préparation.
+  const nd=(tag,attrs,kids)=>{const n={tag,attrs:attrs||{},kids:[],appendChild(k){this.kids.push(k);return k;}};if(kids!=null)n.kids=Array.isArray(kids)?kids:[kids];return n;};
+  const txt=n=>typeof n==='object'?n.kids.map(txt).join('|'):String(n);
+  const rc=vm.createContext({prep:m,wrap:nd('div'),el:nd,canaux:m.canaux});
+  const deb=html.indexOf('  var canaux=prep.canaux;'),fin=html.indexOf('  var dm=reactiviteDernierMessage',deb);
+  assert(deb>0&&fin>deb);vm.runInContext(html.slice(deb,fin),rc);
+  const rendu=txt(rc.wrap)+'|'+txt(rc.kpiRow);assert.match(rendu,/Fiches par date du message/);assert.match(rendu,/4\|Fiches avec message daté/);
+  assert.doesNotMatch(rendu,/sans date de première préparation|depuis le 22\/10|Fiches préparées/);
+  assert.match(rendu,/2 fiches sans date lisible du dernier message/);
+  const gd=html.indexOf('  var monthMap=prep.byMonth'),gf=html.indexOf('  wrap.appendChild(charts);',gd);
+  rc.monthlyChart=(title,desc,months,map,series)=>{assert.equal(title,'Fiches par mois du message');assert.match(desc,/dernier message enregistré/);assert.deepEqual([...months],['2026-07']);assert.equal(map,m.byMonth);assert.equal(series.length,3);return nd('div');};
+  vm.runInContext(html.slice(gd,gf),rc);
+  assert.match(section('function renderStats(){','  function groupByUsager('),/var prep=fichesMessagesModel\(S.history,rdv.start,rdv.today,S.statsCMS\)/,'raccordement réel de Statistiques');
+}
+console.log('Activité au dernier message : anciennes fiches, formats, filtres, totaux et graphique cohérents OK.');
+
 /* AG-016 (A), étape 3 d'AG-013 : la date du jour est la date civile à Paris, quel que soit le fuseau de l'appareil. Horloge simulée. */
 {
   const A=section('function parisDayStr(','function cmsKey(');

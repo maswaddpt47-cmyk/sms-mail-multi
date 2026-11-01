@@ -4175,6 +4175,26 @@ function fichesPrepareesModel(history,start,end,cms){
   r.byCms=comptageParCms(r.fiches);
   return r;
 }
+/* AG-026 — décision de l'utilisateur du 01/11/2026 : l'activité des fiches est datée au DERNIER message enregistré.
+   ts français/ISO lu par lireTs, jour de Paris validé ; aucune première préparation n'est déduite ni écrite.
+   Une fiche compte une fois, même si elle a été régénérée ; une régénération peut donc changer son mois.
+   fichesPrepareesModel et les archives conservent leur définition au jour de première préparation. */
+function fichesMessagesModel(history,start,end,cms){
+  var r={fiches:[],nonMesurables:0,byMonth:{}};
+  history.forEach(function(h){
+    if(h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return;
+    var lu=lireTs(h.ts),day=lu&&preparationDayUTC(lu.jour)!==null?lu.jour:null;
+    if(!day){r.nonMesurables++;return;}
+    if(start&&(day<start||day>end))return;
+    r.fiches.push(h);
+    var k=day.slice(0,7),m=r.byMonth[k]||(r.byMonth[k]={sms:0,mail:0,inconnu:0});
+    m[h.channel==='sms'?'sms':h.channel==='mail'?'mail':'inconnu']++;
+  });
+  r.canaux=compterCanaux(r.fiches);r.personnes=personnesDistinctes(r.fiches);
+  r.types=comptageTypes(r.fiches,['proposition','confirmation','sans_appel','relance']);
+  r.byCms=comptageParCms(r.fiches);
+  return r;
+}
 /* Jours calendaires du message (ts « JJ/MM/AAAA… ») au RDV (« AAAA-MM-JJ ») : deux dates civiles converties de la même façon,
    sans fuseau d'appareil. Zéro inclus (RDV le jour du message), RDV antérieur ou date invalide : null. */
 function delaiRdvJours(ts,date){
@@ -4658,7 +4678,7 @@ function renderStats(){
   }
 
   var rdv=statsRdvModel(S.history,S.permanences||[],S.statsPeriod,S.statsCMS,now);
-  var prep=fichesPrepareesModel(S.history,rdv.start,rdv.today,S.statsCMS);   /* AG-015 (B) : remplace la population « date du dernier message » */
+  var prep=fichesMessagesModel(S.history,rdv.start,rdv.today,S.statsCMS);   /* AG-026 : activité au dernier message, anciennes fiches comprises */
 
   function groupByUsager(entries){
     var groups={};
@@ -4880,11 +4900,11 @@ function renderStats(){
   /* ── KPI ── */
   var canaux=prep.canaux;
   /* « Délai moy. RDV » (dernier message → RDV) retiré : décision 5 du 31/10 (AG-015 B). La préparation moyenne horodatée reste. */
-  wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Fiches préparées'));
-  wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Une fiche = un dossier, compté au jour de sa première préparation (une régénération ne la déplace pas). SMS / Mails : canal du dernier message.'
-    +(prep.nonMesurables?' '+prep.nonMesurables+' fiche'+(prep.nonMesurables>1?'s':'')+' sans date de première préparation (antérieures au 22/10/2026 ou importées) : non comptée'+(prep.nonMesurables>1?'s':'')+' ici, quelle que soit la période.':'')));
+  wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Fiches par date du message'));
+  wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Une fiche = un dossier, compté au jour de son dernier message enregistré, anciennes fiches comprises. Une régénération peut changer son mois. SMS / Mails : canal du dernier message.'
+    +(prep.nonMesurables?' '+prep.nonMesurables+' fiche'+(prep.nonMesurables>1?'s':'')+' sans date lisible du dernier message : non rattachable'+(prep.nonMesurables>1?'s':'')+' à une période, comptée'+(prep.nonMesurables>1?'s':'')+' à part pour le CMS choisi.':'')));
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
-  [{val:canaux.total,lbl:'Fiches préparées'},{val:canaux.sms,lbl:'SMS'},{val:canaux.mail,lbl:'Mails'}]
+  [{val:canaux.total,lbl:'Fiches avec message daté'},{val:canaux.sms,lbl:'SMS'},{val:canaux.mail,lbl:'Mails'}]
   .concat(canaux.inconnu?[{val:canaux.inconnu,lbl:'Canal inconnu'}]:[])
   .concat([{val:prep.personnes,lbl:'Usagers',note:'nom + prénom : pas une identification certaine'}]).forEach(function(k){
     var c=el('div',{class:'ui-stats-metric'});
@@ -4894,7 +4914,7 @@ function renderStats(){
     kpiRow.appendChild(c);
   });
   /* 01/11/2026 (décision de l'utilisateur) : tuile « Préparation moy. » retirée des Statistiques — elle ne portait que sur les fiches
-     horodatées depuis le 22/10. premierePreparationAt reste enregistré (archives, export, « Fiches préparées par mois ») ; preparationStats
+     horodatées depuis le 22/10. premierePreparationAt reste enregistré (archives et export) ; preparationStats
      et preparationCohort ne sont plus appelés par l'écran (gardés et testés : à réutiliser si la tuile revient). */
   /* AG-025 : réception → dernier message enregistré, toutes fiches, exclusions avec motif (remplace l'estimation des anciennes fiches) */
   var dm=reactiviteDernierMessage(S.history,rdv.start,rdv.today,S.statsCMS);
@@ -4912,7 +4932,7 @@ function renderStats(){
   /* ── Graphe mensuel SVG ── */
   var monthMap=prep.byMonth,months=Object.keys(monthMap).sort();
   var charts=el('div',{class:'ui-stats-charts ui-stats-messages'});
-  charts.appendChild(monthlyChart('Fiches préparées par mois','Fiches · mois de la première préparation · canal du dernier message · mesure disponible depuis le 22/10/2026'+(prep.nonMesurables?' ('+prep.nonMesurables+' fiche'+(prep.nonMesurables>1?'s':'')+' plus ancienne'+(prep.nonMesurables>1?'s':'')+' sans mois)':'')+' — historique complet : « Rendez-vous par mois »',months,monthMap,[
+  charts.appendChild(monthlyChart('Fiches par mois du message','Fiches · mois du dernier message enregistré · canal du dernier message · anciennes fiches comprises'+(prep.nonMesurables?' ('+prep.nonMesurables+' sans date de message lisible, hors graphique)':''),months,monthMap,[
     {key:'sms',label:'SMS',color:'var(--chart-sms)'},{key:'mail',label:'E-mail',color:'var(--chart-mail)'}
   ].concat(canaux.inconnu?[{key:'inconnu',label:'Canal inconnu',color:'var(--chart-averifier)'}]:[])));   /* D1 : le canal inconnu n'est plus compté en SMS */
 
@@ -4963,7 +4983,7 @@ function renderStats(){
   var typeMap=prep.types;
   var relanceN=rdv.entries.filter(aRelanceRenseignee).length;   /* M1 (01/11) : relances au mois du RDV, comme le bilan */
   var typeCard=card("Répartition par type");
-  typeCard.appendChild(el('p',{class:'ui-chart-description'},'Fiches préparées de la période · type du dernier message. Relances : rendez-vous de la période.'));
+  typeCard.appendChild(el('p',{class:'ui-chart-description'},'Fiches datées au dernier message de la période · type du dernier message. Relances : rendez-vous de la période.'));
   var typeList=[{k:"proposition",lbl:"Proposition",col:"oklch(0.7 0.15 85)"},{k:"confirmation",lbl:"Confirmation",col:"oklch(0.62 0.14 155)"},{k:"sans_appel",lbl:"Sans appel",col:"oklch(0.56 0.15 264)"}];
   var typeTotal=typeList.reduce(function(s,t){return s+typeMap[t.k];},0)||1;
   var tw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
@@ -4973,7 +4993,7 @@ function renderStats(){
   col2.appendChild(typeCard);
 
   var cmsList2=prep.byCms.slice().sort(function(a,b){return b.n-a.n;});
-  var cmsCard=card("Fiches préparées par CMS / commune");
+  var cmsCard=card("Fiches avec message daté par CMS / commune");
   if(cmsList2.length){
     var maxC=cmsList2[0].n;
     var cw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
