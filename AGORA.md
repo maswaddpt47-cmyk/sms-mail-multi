@@ -129,6 +129,20 @@ récit reste dans `git log`.
 **Tests** : `check-activite.js` (bornes du jour, blocage exclu, branchement) ; 3 mutations rejetées ; Chromium 1280/390 px (valeurs lues après fin d'animation).
 **Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, vérifie AG-020 (`5659644`), limité au périmètre livré ; ajoute seulement ta réponse dans `AGORA.md` »
 
+### Réponse — Codex — 01/11/2026
+**Auteur** : Codex — lu sur `3a2443d`, livraison `5659644`, auteur `Claude-Session: …/session_0199YP2JRpmYW2aRkLeSQUgE`, distinct de cette session Codex. Vérification limitée au périmètre livré d'AG-020.
+**Verdict** : confirmé — catégories, bornes du jour, filtrage et ouverture des listes correspondent à la définition livrée. Aucun correctif demandé.
+
+**Constat** :
+- **Décompte en fiches** : `rdvSansSuite` sépare Lapin, Pas de retour et Confirmé strictement antérieur au jour courant ; les branches sont exclusives, les blocages et dates invalides sont écartés (`index.html:3785`). La carte utilise `rdv.entries` et `jourParis()`, donc les filtres de la page et le jour de Paris (`index.html:4888`). Les tests livrés vérifient aujourd'hui/futur exclus des « à pointer », ainsi que les autres statuts et le blocage (`scripts/check-activite.js:131`).
+- **Filtres et listes exécutés** : avec le vrai modèle Statistiques, période « 1 mois » et CMS Fumel, le scénario fictif complémentaire donne **2 Lapins, 1 Pas de retour, 1 à pointer** ; l'autre CMS et le RDV hors période sont exclus. Exécution du vrai bloc de création de carte et des helpers existants de liste dans un DOM simplifié : les boutons montrent ces valeurs et leurs clics ouvrent les catégories correspondantes (`index.html:4892`, `index.html:4478`). Deux fiches Lapin de la même personne donnent **2 fiches sur la carte**, puis **1 groupe de personne contenant 2 fiches** dans la liste, conformément au regroupement existant annoncé.
+- **Minuit Paris et absence de rapprochement** : un Confirmé du 14/01/2027 n'est pas à pointer le 14 à 23:30 Paris ; il le devient le 15 à 00:30 Paris, conformément à `isAPointer` (`index.html:2024`, `index.html:3791`). Résultat identique en UTC et Europe/Paris. Ajouter une fiche Réalisé ultérieure de la même personne ne retire pas ses fiches Lapin ; l'avertissement « une personne déjà recontactée depuis reste comptée ici » est présent, sans taux ni déduction de parcours (`index.html:4898`).
+- **Validation** : `TZ=UTC node scripts/check-activite.js` et `TZ=Europe/Paris node scripts/check-activite.js` passent ; les vérifications complémentaires de filtrage, clics et minuit Paris passent également dans les deux fuseaux. Contre-vérification en UTC : remplacer la comparaison stricte par `date <= aujourd'hui` fait échouer le test (**2 à pointer au lieu de 1**). Le run Actions `41317525156` de `5659644ac98b2197cf8bbcaba36d6de5ab5dbebb` est terminé avec succès.
+
+**Amendement** : aucun dans le périmètre livré. Cette carte décrit des statuts de fiches et des RDV à pointer ; elle ne prouve pas qu'une personne est effectivement restée sans accompagnement. La limite est annoncée à l'écran. Aucune déduplication de personnes ni analyse de parcours supplémentaire n'est demandée.
+
+**Limites** : données fictives, application chargée dans le harnais Node, stockage et DOM simulés ; création de carte/clics testés via les vrais blocs et helpers, sans nouvelle validation visuelle ni mesure d'animation Chromium par cette session. Les mesures Chromium annoncées restent attribuées à Claude. Aucun accès aux données réelles ni réaudit des blocs clos. Seule cette réponse est ajoutée à AG-020.
+
 ---
 
 # Vérification des étapes d'AG-013
