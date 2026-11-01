@@ -3856,7 +3856,7 @@ function delaiAttenteParCms(entries){
   mesures.forEach(function(m){var u=usagerKey(m.h),estPremier=!u||premier[u+'|'+m.rec]===m;
     if(!m.g.premiers){m.g.premiers=[];m.g.suivis=0;}
     if(estPremier){m.g.premiers.push(m.d);r.global.premiers.push(m.d);}else{m.g.suivis++;r.global.suivis++;}});
-  /* AG-021 : la médiane est toujours calculée (modèle) mais n'est plus affichée tant que la couverture n'est pas établie */
+  /* AG-021 tranché le 01/11/2026 par l'utilisateur : la médiane est de nouveau affichée (globale, par CMS, premiers RDV), sur les seules fiches mesurables */
   function fin(x){x.mediane=medianeNombres(x.delais);x.mesurables=x.delais.length;x.nPremiers=(x.premiers||[]).length;x.medianePremiers=medianeNombres(x.premiers||[]);x.suivis=x.suivis||0;delete x.delais;delete x.premiers;return x;}
   fin(r.global);r.ordre.forEach(function(k){fin(r.parCms[k]);});
   r.ordre.sort(function(a,b){return r.parCms[a].nom.localeCompare(r.parCms[b].nom,'fr');});
@@ -3887,10 +3887,15 @@ function rafraichirStatsSurPlace(){
 function carteDelaiAttente(entries,periode){
   var r=delaiAttenteParCms(entries),g=r.global;
   function plur(n,s,p){return n+' '+(n>1?p:s);}
+  function j(v){return v===null||v===undefined?'—':(Math.round(v*10)/10).toLocaleString('fr-FR')+' j';}
   var card=el('section',{class:'ui-stats-section ui-delai-attente'});
   card.appendChild(el('h3',{class:'ui-stats-section-title'},'Délai d’attente : réception de la demande → RDV'));
-  card.appendChild(el('p',{class:'ui-delai-provisoire',role:'note',style:"font-weight:700;color:oklch(0.45 0.16 45);margin:4px 0 8px;"},'Couverture insuffisamment établie pour interpréter le délai d’attente'));
-  card.appendChild(el('p',{class:'ui-chart-description'},'Médiane masquée, globale et par CMS. Les effectifs restent visibles : cliquez sur un nombre pour voir les fiches concernées.'));
+  /* AG-021 tranché (01/11/2026, décision de l'utilisateur) : médiane affichée, avec le nombre de fiches qui la portent */
+  var bandMed=el('div',{class:'ui-stats-metric-band ui-delai-mediane'});
+  var bm=el('button',{type:'button',class:'ui-stats-metric gx-press',style:'text-align:left;cursor:pointer;','aria-label':'Médiane : '+j(g.mediane)+', sur '+plur(g.mesurables,'fiche mesurable','fiches mesurables')+'. Voir les fiches.',onClick:function(){openDelaiList('Mesurables'+(periode?' — '+periode:''),'mesures',null,periode);}});
+  bm.appendChild(el('div',{class:'ui-stats-number'},j(g.mediane)));bm.appendChild(el('div',{class:'ui-stats-metric-label'},'Médiane, sur '+plur(g.mesurables,'fiche mesurable','fiches mesurables')));
+  bandMed.appendChild(bm);card.appendChild(bandMed);
+  card.appendChild(el('p',{class:'ui-chart-description'},'Calculée sur les seules fiches mesurables (réception enregistrée) ; « À confirmer », « Absente ou invalide » et « Après le RDV » n’y entrent pas. Cliquez sur un nombre pour voir les fiches concernées.'));
   var CATS=[['mesures','Mesurables','Fiches utilisées dans le calcul, triées par délai croissant'],['reprise','À confirmer','Fiches exclues : seule l’ancienne date du message existe, à confirmer comme réception'],['sans_reception','Absente ou invalide','Fiches exclues : réception vide, illisible ou inexistante'],['apres_rdv','Après le RDV','Fiches exclues : réception enregistrée postérieure au RDV']];
   function nombre(x,kind){return kind==='mesures'?x.mesurables:kind==='reprise'?x.reprise:kind==='sans_reception'?x.sansReception:x.incoherente;}
   var band=el('div',{class:'ui-stats-metric-band'});
@@ -3901,16 +3906,16 @@ function carteDelaiAttente(entries,periode){
   });
   card.appendChild(band);
   var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
-  hd.appendChild(el('th',{scope:'col'},'CMS'));CATS.forEach(function(c){hd.appendChild(el('th',{scope:'col'},c[1]));});
+  hd.appendChild(el('th',{scope:'col'},'CMS'));hd.appendChild(el('th',{scope:'col'},'Médiane'));CATS.forEach(function(c){hd.appendChild(el('th',{scope:'col'},c[1]));});
   t.appendChild(el('thead',{},[hd]));var tb=el('tbody');
-  r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{scope:'row'},x.nom));
+  r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{scope:'row'},x.nom));tr.appendChild(el('td',{class:'ui-delai-med'},j(x.mediane)));
     CATS.forEach(function(c){var n=nombre(x,c[0]);
       var b=el('button',{type:'button',class:'gx-press',style:'cursor:pointer;background:none;border:0;color:var(--ui-accent);font:inherit;font-weight:700;padding:2px 4px;','aria-label':c[1]+' — '+x.nom+' : '+n,onClick:function(){openDelaiList(c[1]+' — '+x.nom+(periode?' — '+periode:''),c[0],x.k,periode);}},String(n));
       tr.appendChild(el('td',{},[b]));
     });
     tb.appendChild(tr);});
   t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
-  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » enregistrée au jour du RDV, pour les RDV de la période et du CMS choisis. « À confirmer » : aucune réception enregistrée, seule l’ancienne date du message existe ; elle ne compte qu’une fois confirmée, fiche par fiche, dans la liste ou dans « Modifier ». Premiers RDV (un suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+plur(x.nPremiers,'premier','premiers')+(x.suivis?', '+plur(x.suivis,'suivi écarté','suivis écartés'):'');}).join(' · ')+(r.ordre.length?'':'—')+'. Années archivées : non disponible.'));
+  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » enregistrée au jour du RDV, pour les RDV de la période et du CMS choisis. « À confirmer » : aucune réception enregistrée, seule l’ancienne date du message existe ; elle ne compte qu’une fois confirmée, fiche par fiche, dans la liste ou dans « Modifier ». Premiers RDV (un suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+j(x.medianePremiers)+' sur '+plur(x.nPremiers,'premier','premiers')+(x.suivis?', '+plur(x.suivis,'suivi écarté','suivis écartés'):'');}).join(' · ')+(r.ordre.length?'':'—')+(g.nPremiers?'. Ensemble : '+j(g.medianePremiers)+' sur '+plur(g.nPremiers,'premier RDV','premiers RDV'):'')+'. Années archivées : non disponible.'));
   return card;
 }
 /* ============================== AG-020 — RDV sans suite (piste secondaire, 01/11/2026) ==============================
@@ -7908,7 +7913,7 @@ function renderModal(){
     box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',dlCtx.title);
     box.style.maxWidth='min(820px,100%)';
     box.appendChild(header(dlCtx.title));
-    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},dlRows.length+' fiche'+(dlRows.length>1?'s':'')+(dlMesure?' utilisée'+(dlRows.length>1?'s':'')+' dans le calcul · délai en jours calendaires · triées par délai croissant · médiane non affichée':' exclue'+(dlRows.length>1?'s':'')+' du calcul, avec leur motif')+(dlCtx.periode?' · '+dlCtx.periode:'')));
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},dlRows.length+' fiche'+(dlRows.length>1?'s':'')+(dlMesure?' utilisée'+(dlRows.length>1?'s':'')+' dans le calcul · délai en jours calendaires · triées par délai croissant':' exclue'+(dlRows.length>1?'s':'')+' du calcul, avec leur motif')+(dlCtx.periode?' · '+dlCtx.periode:'')));
     if(dlCtx.kind==='reprise')box.appendChild(el('p',{class:'ui-chart-description',style:'margin:0;'},'La date affichée est l’ancienne date du message : elle n’est pas une réception tant que vous ne l’avez pas confirmée. Confirmez-la seulement si une source fiable l’établit, ou saisissez la bonne date.'));
     var dlScroll=el('div',{class:'gx-scroll',style:"overflow:auto;max-height:58vh;"});
     if(!dlRows.length){
