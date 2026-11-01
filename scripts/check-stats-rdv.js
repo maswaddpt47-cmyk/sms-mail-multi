@@ -369,3 +369,40 @@ console.log('Calculs partagés OK.');
   assert(/filter\(function\(g\)\{return !g\._sansIdentite;\}\)\.length\+' usager\(s\)'/.test(entete),'en-tête de la liste : usagers sans le groupe sans identité');
 }
 console.log('Liste des usagers OK.');
+
+/* AG-015 (B) : « Fiches préparées » au jour de la première préparation (décision 4), canal inconnu à part (D1), aucun repli sur ts ni le RDV (D3). */
+{
+  const p=vm.createContext({});
+  vm.runInContext(section('function preparationDayUTC(','/* Réception exclue'),p);
+  ctx.preparationParisDay=p.preparationParisDay;
+  const f=(id,prep,extra)=>Object.assign({id,nom:'FICTIF '+id,prenom:'X',commune:'A',channel:'sms',msgType:'confirmation',date:'2026-12-01',ts:'15/10/2026 10:00:00',premierePreparationAt:prep},extra||{});
+  const jeu=[
+    f('1','2026-10-05T08:00:00.000Z'),
+    f('2','2026-09-30T22:30:00.000Z',{channel:'mail'}),            // 30/09 en UTC, 01/10 à Paris : octobre
+    f('3','2026-10-20T09:00:00.000Z',{channel:'fax',msgType:'relance'}), // canal inconnu
+    f('4',undefined),                                               // ancienne fiche : non mesurable, malgré ts et date
+    f('5','',{ts:''}),                                              // ts vide (D3) : non mesurable, jamais rattachée au RDV
+    f('6','2026-08-10T09:00:00.000Z'),                              // hors période
+    f('7','2026-10-06T09:00:00.000Z',{commune:'B'}),               // autre CMS
+    f('8','2026-10-07T09:00:00.000Z',{msgType:'indispo'}),         // blocage
+    f('9','pas une date'),
+    f('10','2026-11-02T09:00:00.000Z')                              // après la fin de période
+  ];
+  const before=JSON.stringify(jeu);
+  const m=ctx.fichesPrepareesModel(jeu,'2026-10-01','2026-10-31','A');
+  assert.deepEqual([...m.fiches.map(x=>x.id)],['1','2','3']);
+  assert.equal(m.nonMesurables,3);   // 4, 5, 9 : comptées à part, sans mois
+  assert.deepEqual({...m.canaux},{total:3,sms:1,mail:1,inconnu:1});
+  assert.deepEqual(JSON.parse(JSON.stringify(m.byMonth)),{'2026-10':{sms:1,mail:1,inconnu:1}});
+  assert.equal(m.personnes,3);assert.equal(m.types.relance,1);assert.equal(m.types.confirmation,2);
+  assert.deepEqual(JSON.parse(JSON.stringify(m.byCms.map(c=>[c.nom,c.n]))),[['A',3]]);
+  const tout=ctx.fichesPrepareesModel(jeu,null,'2026-10-31','');   // « Tout » : toutes les premières préparations connues
+  assert.deepEqual([...tout.fiches.map(x=>x.id)],['1','2','3','6','7','10']);assert.equal(tout.nonMesurables,3);
+  assert.equal(JSON.stringify(jeu),before);   // lecture seule
+  // raccordement de l'écran : plus de population « date du dernier message », plus de délai RDV
+  const rendu=section('/* ── KPI ── */','/* ── Heatmap').replace(/\/\*[\s\S]*?\*\//g,'');
+  assert(!/inPeriod|delaiRdvJours|Délai moy\. RDV|channel===["']mail["']\?["']mail["']:["']sms["']/.test(rendu),'ancien calcul Messages encore présent');
+  assert(/prep\.canaux/.test(rendu)&&/monthMap=prep\.byMonth/.test(rendu)&&/typeMap=prep\.types/.test(rendu)&&/prep\.byCms/.test(rendu),'écran non raccordé au modèle des fiches préparées');
+  assert(/relanceN=rdv\.entries\.filter\(aRelanceRenseignee\)/.test(rendu),'M1 : relances sur les RDV de la période');
+}
+console.log('Fiches préparées OK.');
