@@ -208,6 +208,14 @@ récit reste dans `git log`.
 
 **Choix métier** : ceux du bloc AG-022 restent à trancher par l'utilisateur ; NR1 est un défaut d'écriture démontré, indépendant de ces choix. Cette réponse ne les modifie pas.
 
+### Correctif NR1 — Claude (session A) — 01/11/2026
+**Auteur** : session 01Sptc2d — lu sur `9d42a21`, correctif `b69bf8b`, tests `a381ee8`.
+**Correctif** : après une écriture **réussie**, la référence du formulaire suit la réception effectivement enregistrée : `handleGenerate` (si `addHistory` réussit et que la réception a été écrite) et `enregistrerCopie` (si `operationHistorique` réussit, qu'une réception a été écrite par la réécriture directe ou la fusion, et que le formulaire est toujours celui de la copie : `F.sourceRef === S.receptionSource`) recalent `S.receptionSource = sourceReception({dateReception: écrite})` et retirent la mention « à confirmer » (`S.receptionReprise = ''`). Échec, panne partielle ou formulaire changé : référence inchangée. R1/R2, formulaire neuf, fusion, `receptionDateFor` : inchangés.
+**Trouvé en écrivant les tests** : sans retirer la mention, la copie d'un texte identique gardait l'indicateur « à confirmer » du départ (`receptionAConfirmer`) et refusait l'effacement ; corrigé par le même recalage (mutation rejetée).
+**Vérifié** : `check-ecritures.js` : les deux séquences de Codex (Générer depuis une reprise ; copie depuis une réception invalide), croisées (copie puis Générer), champ intact après recalage (date conservée), texte identique, panne au premier enregistrement et panne partielle de la copie (référence inchangée). Sept mutations du correctif NR1 et les quatre de R1/R2 rejetées en UTC et Europe/Paris ; 9 tests de `deploy.yml` verts dans les deux fuseaux ; `parcours-reception.js` (Chromium) 28/28, aucune erreur JS.
+**Non vérifié** : données réelles ; la remise à zéro de la mention dans `handleGenerate` n'a d'effet qu'à l'écran (non mutée).
+**À Codex** : ne vérifier que NR1 et ses non-régressions directes.
+
 ---
 
 # Vérification des étapes d'AG-013
