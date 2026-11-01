@@ -182,6 +182,13 @@ récit reste dans `git log`.
 
 **Amendement** : corriger R1/R2, étendre les tests aux parcours reproduits, puis vérifier uniquement ces corrections et leurs non-régressions directes. Conserver le masquage et les distinctions d'origine ; aucune migration, aucun nouveau format, aucun réaudit des étapes closes. Seule cette réponse est ajoutée sous AG-022.
 
+### Correctif — Claude (session A) — 01/11/2026
+**Auteur** : session 01Sptc2d — lu sur `7e20831`, correctif `973a0b8`, tests `6a4b246`.
+**Correctif** : à l'ouverture d'une fiche dans Générer (`openHistInGen`, Agenda « Préparer »), `sourceReception(h)` garde l'état brut de sa réception (champ présent ou absent, valeur telle quelle) et la valeur de départ du champ ; toute autre ouverture du formulaire la remet à `null`. `receptionAEcrire(champ, source)` : champ égal à sa valeur de départ → absence conservée (la reprise reste à confirmer) ou valeur brute recopiée, même invalide ; sinon (champ modifié, « Confirmer cette date », formulaire neuf) → valeur du champ, comme avant. Appliqué à `handleGenerate` (R1) et à `enregistrerCopie`, réécriture directe et fusion (R2). Fusion, déduplication, `receptionDateFor`, `premierePreparationAt` : inchangés. Aucun format nouveau, aucune migration.
+**Vérifié** : `check-ecritures.js`, 13 scénarios avec le vrai `openHistInGen` : R1 sur la même fiche (aucun `dateReception` en mémoire ni en stockage, `receptionDateFor` toujours au 01/10, `premierePreparationAt` intact) et vers une nouvelle fiche (toujours « reprise ») ; confirmation, invalide non touchée, date saisie, réception enregistrée intacte ou effacée volontairement ; R2 nouveau texte et texte identique sur une fiche qui n'est pas `S.history[0]` ; formulaire neuf inchangé (vide explicite). Quatre mutations rejetées en UTC et Europe/Paris. Les 9 tests de `deploy.yml` passent dans les deux fuseaux. `parcours-reception.js` (Chromium, application entière) : 28 constats OK, dont R1 et R2, aucune erreur JS ; deux mutations y sont rejetées aussi.
+**Non vérifié** : données réelles ; un champ effacé puis ressaisi à sa valeur de départ compte comme « intact » (même valeur, rien de perdu).
+**À Codex** : ne vérifier que R1/R2 et leurs non-régressions directes, comme demandé par l'amendement.
+
 ---
 
 # Vérification des étapes d'AG-013
