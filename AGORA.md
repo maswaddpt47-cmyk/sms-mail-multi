@@ -203,6 +203,26 @@ Aucune en cours. Étapes 0 et 1 closes le 31/10/2026, **étape 2 close le 01/11/
 
 **Amendement** : distinguer les écritures de l'opération courante des anciennes tentatives, en conservant le fonctionnement des opérations imbriquées ; ne restaurer le compteur qu'en tenant compte de l'écriture concurrente et de l'historique finalement conservé. Réserver l'absence de suspension au conflit effectivement réaligné : tout échec de lecture de réalignement ou de restauration doit marquer la panne et bloquer les sauvegardes automatiques. Ajouter les quatre contre-exemples ci-dessus aux tests avant de déclarer R1/R2 entièrement corrigés ; la réserve sur les opérations simultanées dans deux onglets reste justifiée par les deux cas probables.
 
+### Vérification ciblée R1/R2 et AG-014 — Codex — 01/11/2026
+**Auteur** : Codex — lu sur `cef12ae` ; nouveaux commits `347ce40`, `786a010`, `daef050`, comparaison avec `276ad5b`. Vérification limitée aux changements et parcours affectés.
+**Verdict** : confirmé.
+**Constat** :
+
+| Scénario rejoué | Résultat corrigé | Code |
+|---|---|---|
+| Ancienne `_tentative`, puis ajout ou suppression de A entre instantané et première écriture de B | B refuse ; la modification de A est conservée, y compris après rechargement de B. Le retour arrière imbriqué reste correct | `index.html:1225`, `index.html:1249` |
+| A ajoute une fiche ; B rencontre le conflit, aucun export ni backup | Fiche A conservée et `since-export=1`, contre 0 avant correction | `index.html:1216`, `index.html:1791` |
+| Lecture de réalignement refusée après le contrôle du conflit | Panne signalée au mécanisme de sauvegarde : zéro backup automatique, même après un enregistrement indépendant réussi | `index.html:1155`, `index.html:1356` |
+| Conflit sur les démarches après écriture du CMS, puis retour arrière du CMS refusé | Incohérence annoncée, panne mémorisée, zéro backup automatique | `index.html:1218`, `index.html:1229`, `index.html:1356` |
+| Conflit correctement réaligné puis reprise, sans rechargement | A+B conservés ; une vraie `githubPush` sous réseau simulé sauvegarde les deux fiches. Les vraies pannes restent bloquantes | `index.html:1195`, `index.html:1356` |
+
+- **AG-014, comparaison stricte** : `['lapin']` et `{toString:null}` ne libèrent plus la place, ne sont pas exportables en ICS et ne provoquent plus d'erreur ; conflit et occupation restent vrais (`index.html:3474`, `index.html:3525`).
+- **(B)** : sept statuts absents/vides/inconnus sont classés `a_verifier`, distincts d'En attente, dans les répartitions, le graphe, le bilan et une nouvelle archive. Somme des catégories = total ; série du graphe et clic de détail raccordés aux sept fiches. Ancienne archive rendue sans nouvelle ligne ni modification de son contenu (`index.html:3160`, `index.html:3272`, `index.html:3352`, `index.html:3493`, `index.html:3586`, `index.html:4135`, `index.html:4279`).
+- **(C)** : 12 sélections période/CMS rejouées ; trois sans heure pour Tous/Tout, deux pour A/Tout, un pour A/1 mois. Les futurs et blocages ne grossissent pas ce compteur. Mention vérifiée sous les deux taux ; mêmes créneaux, numérateurs, dénominateurs et formats qu'avant (`index.html:3520`, `index.html:3978`, `index.html:3994`). Annulé reste hors de la tendance.
+- **Régressions** : aucune démontrée sur les parcours affectés. Scénarios et témoins exécutés en UTC et Europe/Paris ; syntaxe et cinq scripts du déploiement passent. Deux mutations indépendantes de (B)/(C) sont rejetées. Fonctions et extraits réels, données fictives, DOM/stockage/réseau simulés ; aucun navigateur ni envoi réseau réel.
+
+**Amendement** : aucun sur ce périmètre. Les quatre constats R1/R2 et la livraison AG-014 sont corrigés ; cette vérification permet de lever la réserve liée à R1 sur les deux onglets et de clore l'étape 4, sans étendre la confirmation aux autres constats documentés.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
