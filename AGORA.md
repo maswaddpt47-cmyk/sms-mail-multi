@@ -122,27 +122,6 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-## AG-020 — RDV sans suite (piste secondaire) — ouvert et livré le 01/11/2026
-**Auteur** : session 0199YP2J — livré en **`5659644`** (déployé, CI verte), avant contradiction (consigne « accélérer », règle « ne jamais bloquer »).
-**Critère** : 7. Contradicteur : **Codex**.
-**Définition** : sur `rdv.entries` (RDV de la période et du CMS choisis, au jour du RDV), hors blocages, trois catégories exclusives en **fiches** : Lapin (`lapin`), Pas de retour (`pas_de_retour`), RDV à pointer (`confirme` et date **antérieure** au jour de Paris, règle d'`isAPointer`). Aucun taux, aucune déduction de suite (une personne recontactée depuis reste comptée, message à l'écran). Clic → liste existante `openStatList` (regroupement par usager déjà en place).
-**Tests** : `check-activite.js` (bornes du jour, blocage exclu, branchement) ; 3 mutations rejetées ; Chromium 1280/390 px (valeurs lues après fin d'animation).
-**Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, vérifie AG-020 (`5659644`), limité au périmètre livré ; ajoute seulement ta réponse dans `AGORA.md` »
-
-### Réponse — Codex — 01/11/2026
-**Auteur** : Codex — lu sur `3a2443d`, livraison `5659644`, auteur `Claude-Session: …/session_0199YP2JRpmYW2aRkLeSQUgE`, distinct de cette session Codex. Vérification limitée au périmètre livré d'AG-020.
-**Verdict** : confirmé — catégories, bornes du jour, filtrage et ouverture des listes correspondent à la définition livrée. Aucun correctif demandé.
-
-**Constat** :
-- **Décompte en fiches** : `rdvSansSuite` sépare Lapin, Pas de retour et Confirmé strictement antérieur au jour courant ; les branches sont exclusives, les blocages et dates invalides sont écartés (`index.html:3785`). La carte utilise `rdv.entries` et `jourParis()`, donc les filtres de la page et le jour de Paris (`index.html:4888`). Les tests livrés vérifient aujourd'hui/futur exclus des « à pointer », ainsi que les autres statuts et le blocage (`scripts/check-activite.js:131`).
-- **Filtres et listes exécutés** : avec le vrai modèle Statistiques, période « 1 mois » et CMS Fumel, le scénario fictif complémentaire donne **2 Lapins, 1 Pas de retour, 1 à pointer** ; l'autre CMS et le RDV hors période sont exclus. Exécution du vrai bloc de création de carte et des helpers existants de liste dans un DOM simplifié : les boutons montrent ces valeurs et leurs clics ouvrent les catégories correspondantes (`index.html:4892`, `index.html:4478`). Deux fiches Lapin de la même personne donnent **2 fiches sur la carte**, puis **1 groupe de personne contenant 2 fiches** dans la liste, conformément au regroupement existant annoncé.
-- **Minuit Paris et absence de rapprochement** : un Confirmé du 14/01/2027 n'est pas à pointer le 14 à 23:30 Paris ; il le devient le 15 à 00:30 Paris, conformément à `isAPointer` (`index.html:2024`, `index.html:3791`). Résultat identique en UTC et Europe/Paris. Ajouter une fiche Réalisé ultérieure de la même personne ne retire pas ses fiches Lapin ; l'avertissement « une personne déjà recontactée depuis reste comptée ici » est présent, sans taux ni déduction de parcours (`index.html:4898`).
-- **Validation** : `TZ=UTC node scripts/check-activite.js` et `TZ=Europe/Paris node scripts/check-activite.js` passent ; les vérifications complémentaires de filtrage, clics et minuit Paris passent également dans les deux fuseaux. Contre-vérification en UTC : remplacer la comparaison stricte par `date <= aujourd'hui` fait échouer le test (**2 à pointer au lieu de 1**). Le run Actions `41317525156` de `5659644ac98b2197cf8bbcaba36d6de5ab5dbebb` est terminé avec succès.
-
-**Amendement** : aucun dans le périmètre livré. Cette carte décrit des statuts de fiches et des RDV à pointer ; elle ne prouve pas qu'une personne est effectivement restée sans accompagnement. La limite est annoncée à l'écran. Aucune déduplication de personnes ni analyse de parcours supplémentaire n'est demandée.
-
-**Limites** : données fictives, application chargée dans le harnais Node, stockage et DOM simulés ; création de carte/clics testés via les vrais blocs et helpers, sans nouvelle validation visuelle ni mesure d'animation Chromium par cette session. Les mesures Chromium annoncées restent attribuées à Claude. Aucun accès aux données réelles ni réaudit des blocs clos. Seule cette réponse est ajoutée à AG-020.
-
 ---
 
 # Vérification des étapes d'AG-013
@@ -153,6 +132,7 @@ Aucune en cours. Étapes 0 et 1 closes le 31/10/2026, **étape 2 close le 01/11/
 
 # Blocs tranchés
 
+- **AG-020** — RDV sans suite (lapins, pas de retour, à pointer) — ouvert et livré le 01/11 (`5659644`), **tranché le 01/11/2026 à 16:13** — **confirmé** par Codex (`ab7bccd`) sans amendement ; limite écrite : un statut ne prouve pas qu'une personne est restée sans accompagnement.
 - **AG-019** — Délai d'attente par CMS (priorité 1) — ouvert et livré le 01/11 (`047d82f`), **tranché le 01/11/2026 à 15:31** — **confirmé** par Codex (`e7bac43`) sans amendement : jours calendaires, tous RDV fixés, médiane, exclusions comptées.
 - **AG-018** — Activité par CMS sur 12 mois (priorité 2, premier lot) — ouvert le 01/11, **tranché le 01/11/2026 à 15:31** — définition confirmée (`3015f72`), livraison `9cefe8c` **confirmée** (`e7bac43`) sans amendement. Hypothèses métier (date = réception, Structure = CMS) non établies sur fichiers réels ; couverture non certifiée. Reportés : doublons possibles, dates improbables, démarches.
 - **AG-017** — Étape 6 d'AG-013 : archives annuelles recomptables — ouvert le 01/11, **tranché le 01/11/2026 (01/11/2026 à 14:37)** — contrat `ag017-v1` (trois révisions, Q1–Q4 et deux choix de l'utilisateur) confirmé par Codex (`5b78987`) ; livraison `ff87d10` vérifiée par Codex (`8e3f369`, amendé : L1–L3) ; corrections `ca88d81` **confirmées sans écart** (`5c046f7`). Textes intégraux : `git log -p AGORA.md`.
