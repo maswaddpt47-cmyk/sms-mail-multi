@@ -218,6 +218,8 @@ App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests auto
 - **Pas de test Playwright par défaut**, même sur les changements de calcul/données (`getSlots`, `hasConflict`, migrations, dédup…) — ça consomme trop de temps/tokens à répétition. La vérification de syntaxe suffit dans l'immense majorité des cas.
 - **Harnais Node pour un changement de logique pure** (`getSlots`, `hasConflict`, migrations) : extraire la fonction depuis `index.html`, l'`eval` avec des globals stubbés (`S`, `lsSet`…), rejouer quelques scénarios dont une non-régression de l'ancien comportement. Moins coûteux qu'un Playwright ciblé, plus fiable qu'une vérification de syntaxe seule — porté depuis SMS-mail (AG-001 `8517269`, 7 scénarios ; priorité titulaire actif/libéré `1b910af`).
 - **Test Playwright ciblé uniquement** : si l'utilisateur le demande explicitement pour ce changement, ou en début de session pour valider l'état général de l'app après une reprise/un déploiement. Ne pas en faire un réflexe systématique.
+- **Retrait d'une variable ou d'une fonction** (règle 1, 01/11/2026) : un harnais Node ne charge pas toute l'application. Après un tel changement, ouvrir l'appli dans Chromium (aperçu démo, onglets Agenda, Historique, Statistiques, Générer) et vérifier qu'aucune erreur JS n'apparaît. Constat : l'Agenda plantait alors que les tests Node passaient (AG-016 A).
+- **Chiffres animés** (règle 2, 01/11/2026) : un compteur se lit après la fin de son animation (déclencher `beforeprint` ou attendre), sinon on lit 0 ou une valeur intermédiaire. Constat répété : AG-014 et AG-015.
 
 ## Portage entre SMS-mail et sms-mail-multi — arrêté le 20/10/2026
 
