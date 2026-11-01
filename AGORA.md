@@ -624,6 +624,35 @@ Fonctions et callbacks métier réels, chargements complets, données fictives ;
 
 Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
 
+### Vérification finale ciblée de l'étape 2 — Codex — 01/11/2026
+**Auteur** : Codex — lu sur `1df58a3`, commit `5ee7bdb` vérifié ; comparaison avec le code de `0b1a29e` précédant ce correctif.
+**Verdict** : confirmé pour **P03 et les scénarios P08 ciblés**, avec sauvegardes/export coordonnés dans une même session JavaScript. Aucune régression introduite par `5ee7bdb` n'est établie sur ces parcours.
+**Constat** :
+
+Périmètre : rejeu des scénarios P03/P08 de la vérification des corrections de clôture (`7558a5f`) et contrôle de leurs régressions. Aucun commit corrigeant R1 ou R2 n'est présent dans la plage arrivée depuis cette vérification ; leur noyau de code est inchangé. Ils ne sont donc ni rejoués ni confirmés ici. Les autres constats restent hors périmètre.
+
+| Cas | Résultat | Scénarios rejoués et preuves |
+|---|---|---|
+| **P03** | **Confirmé** | Copier pour la démarche libre A, puis la remplacer par B pendant l'attente du presse-papiers via les vrais `setField`/`regen`/`compute` : aucune fiche enregistrée, refus annoncé. L'empreinte inclut désormais démarche libre, dates, corps et sujet (`index.html:1794`) ; capture des champs (`index.html:1807`, `index.html:1811`), garde et transmission au callback (`index.html:1840`, `index.html:1843`, `index.html:1844`). |
+| **P08** | **Confirmé pour les rejeux ciblés du même onglet** | Instantané d'une fiche puis second ajout pendant le PUT : compteur final **1** ; témoin sans ajout : **0**. Deux instantanés de une puis deux fiches, troisième ajoutée entre les réponses : compteur **1** dans les deux ordres d'arrivée. Export JSON local du même onglet pendant le PUT, puis nouvel ajout : compteur **1**, la fiche absente des instantanés reste comptée (`index.html:1352`, `index.html:1362`, `index.html:1363`, `index.html:1389`, `index.html:1390`, `index.html:1391`, `index.html:1392`, `index.html:2263`). |
+
+**Contrôles de régression sur ces parcours** :
+
+- P03 : **40 combinaisons par fuseau** — SMS/mail enrichi, modèle intégré/personnalisé, témoin inchangé et changements de profil, nom, démarche libre, date du RDV, demande, réception, corps, sujet ou modèle pendant la copie. Les changements refusent l'enregistrement ; les témoins gardent le texte, le sujet et les métadonnées d'origine.
+- Les champs capturés sont effectivement utilisés : après remplacement du formulaire et des catalogues puis interdiction de rappeler `compute`, `enregistrerCopie(text,F)` conserve les champs d'origine (`index.html:1817`, `index.html:1830`). Le contrôle normal du callback garantit le profil avant cet appel.
+- Réception et message restent enregistrés ensemble. Témoin réussi et refus des permanences après les premières écritures rejoués avant/après le correctif : retour intégral à l'ancien corps et à l'ancienne réception. Mail enrichi refusé puis repli simple réussi : une seule fiche enregistrée.
+- P08 : le serveur simulé impose le SHA courant. Le PUT A est committé côté serveur, le GET B lit son SHA, puis B est committé avec ce SHA ; les réponses client sont livrées dans les deux ordres. Les deux succès sont ainsi compatibles avec le fonctionnement de GitHub.
+- Échec HTTP 500 : aucune couverture ni date de réussite ajoutée ; nouvelle tentative réussie et compteurs conformes. Nouvelle sauvegarde après export et nouveau contexte après fin des envois : compteurs conformes.
+- Sauvegarde p1 achevée après passage à p2 : compteur et bannière p2 conservés. La couverture reste rattachée au profil de l'envoi.
+
+La version précédente reproduit les mélanges de démarche P03 et les compteurs incorrects des chevauchements/export P08 ; les scénarios ci-dessus passent avec `5ee7bdb`. Aucun autre constat préexistant n'est transformé en nouveau prérequis par cette vérification limitée.
+
+**Validation** : syntaxe JavaScript et cinq suites du workflow passent en UTC et Europe/Paris. Deux mutations ciblées sont rejetées dans chacun des fuseaux : retrait de la démarche libre de l'empreinte (`scripts/check-ecritures.js:354`) et retour à l'ancienne soustraction du compteur (`scripts/check-ecritures.js:391`). Les calculs statistiques, le bilan, le calcul des archives et le noyau R1/R2 sont inchangés par ce commit.
+
+**Amendement** : aucun dans le périmètre des rejeux ciblés ci-dessus. Cette confirmation reste limitée à P03/P08 et aux conditions décrites ; elle ne vaut pas validation des autres cas documentés.
+
+Fonctions et callbacks métier réels, données fictives ; presse-papiers, stockage, réseau, DOM et téléchargements simulés. Aucun navigateur réel ni sauvegarde réelle déclenchée. Seul cet ajout à `AGORA.md` est publié ; aucun code, autre fichier ou bloc existant modifié.
+
 # Blocs tranchés
 
 - **AG-013** — Plan de fiabilisation des statistiques — ouvert le 31/10, **tranché le 31/10/2026** — verdict **amendé** (Codex, critères 7, 1 et 6) : écritures cohérentes jusqu'au stockage avec retour à l'état antérieur (archivage purgé malgré un échec, import partiel, restauration GitHub annoncée réussie sans contrôle), CMS normalisé dans la dédup provisoire du planning, tests de valeur affichée dans Statistiques **et** bilan (tuile du bilan non couverte), équivalence des dates ISO/françaises autour de minuit Paris et après réimport, table des statuts dépendante du jour et du titulaire actif. Décision de l'utilisateur : **plan validé avec les amendements, étape 0 seule d'abord**, commit soumis à Codex avant de poursuivre. Plan et suivi dans `CHANTIERS.md` (« Fiabilisation des statistiques »).
