@@ -4733,7 +4733,7 @@ function renderStats(){
   /* ── Graphe mensuel SVG ── */
   var monthMap=prep.byMonth,months=Object.keys(monthMap).sort();
   var charts=el('div',{class:'ui-stats-charts ui-stats-messages'});
-  charts.appendChild(monthlyChart('Fiches préparées par mois','Fiches · mois de la première préparation · canal du dernier message',months,monthMap,[
+  charts.appendChild(monthlyChart('Fiches préparées par mois','Fiches · mois de la première préparation · canal du dernier message · mesure disponible depuis le 22/10/2026'+(prep.nonMesurables?' ('+prep.nonMesurables+' fiche'+(prep.nonMesurables>1?'s':'')+' plus ancienne'+(prep.nonMesurables>1?'s':'')+' sans mois)':'')+' — historique complet : « Rendez-vous par mois »',months,monthMap,[
     {key:'sms',label:'SMS',color:'var(--chart-sms)'},{key:'mail',label:'E-mail',color:'var(--chart-mail)'}
   ].concat(canaux.inconnu?[{key:'inconnu',label:'Canal inconnu',color:'var(--chart-averifier)'}]:[])));   /* D1 : le canal inconnu n'est plus compté en SMS */
 
