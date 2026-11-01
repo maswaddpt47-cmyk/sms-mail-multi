@@ -339,3 +339,18 @@ console.log('Statistiques RDV et planification : périodes/CMS, six places, annu
   assert.equal((sansCommentaires.match(/\.statut!=='pas_de_retour'&&/g)||[]).length,0,'copie en dur du prédicat de libération');
 }
 console.log('Table des statuts OK.');
+
+/* Étape 5 d'AG-013 (AG-015 A) : calculs partagés. Valeurs recomptées à la main, puis aucune copie restante des trois calculs. */
+{
+  const f=(nom,prenom,channel,extra)=>Object.assign({nom,prenom,channel,msgType:'confirmation'},extra||{});
+  const jeu=[f('FICTIF','Paul','sms'),f(' fictif ','PAUL','mail'),f('','','sms'),f('EXEMPLE','Léa','',{dateRelance:'2026-10-02'}),f('ESSAI','Zoé',undefined,{msgType:'relance'}),f('ESSAI','Zoé','fax')];
+  assert.equal(ctx.personnesDistinctes(jeu),3);   // FICTIF/Paul (×2, casse et espaces), EXEMPLE/Léa, ESSAI/Zoé ; nom et prénom vides : non comptés
+  assert.deepEqual({...ctx.compterCanaux(jeu)},{total:6,sms:2,mail:1,inconnu:3});
+  assert.equal(jeu.filter(ctx.aRelanceRenseignee).length,2);
+  assert.equal(ctx.aRelanceRenseignee({dateRelance:''}),false);
+  const code=html.replace(/\/\*[\s\S]*?\*\//g,'');
+  assert.equal((code.match(/msgType==='relance'\|\|h\.dateRelance;/g)||[]).length,0,'copie du prédicat « relance renseignée »');
+  assert.equal((code.match(/usagerKey\(h\);if\(k\)/g)||[]).length,1,'copie du comptage des personnes (seule personnesDistinctes doit rester)');
+  assert.equal((code.match(/\.channel===["']sms["'];\}\)\.length/g)||[]).length,0,'copie du comptage des canaux');
+}
+console.log('Calculs partagés OK.');
