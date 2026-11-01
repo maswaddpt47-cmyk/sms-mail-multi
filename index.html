@@ -1143,13 +1143,17 @@ function champDeCle(k){
   return suf&&Object.prototype.hasOwnProperty.call(CHAMPS_STOCKES,suf)?CHAMPS_STOCKES[suf]:null;
 }
 function realignerDepuisStockage(cles){
+  var complet=true;
   cles.forEach(function(k){
     var champ=champDeCle(k);if(!champ&&!cleSuivie(k))return;
-    var brut;try{brut=localStorage.getItem(k);}catch(e){return;}   /* lecture impossible : on ne touche à rien */
+    var brut;try{brut=localStorage.getItem(k);}catch(e){complet=false;return;}   /* lecture impossible : on ne touche à rien, mais la mémoire n'est plus fiable */
     noterVersion(k,brut);if(!champ)return;   /* P01 : la mémoire suit désormais cette version */
     if(brut===null){if(!Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k))S[champ]=champ==='yearlyStats'?{}:[];return;}   /* donnée de profil absente = vide */
-    try{S[champ]=JSON.parse(brut);}catch(e){}
+    try{S[champ]=JSON.parse(brut);}catch(e){complet=false;}
   });
+  /* R2 (vérification de Codex) : un réalignement incomplet laisse la mémoire différente du stockage → panne, sauvegardes automatiques suspendues */
+  if(!complet)_stockageEnEchec=true;
+  return complet;
 }
 /* AG-013 étape 2 — balayage du chargement (après la 9e vérification de Codex) : lecture stricte des données et
    verrou des clés illisibles. Clé absente → valeur par défaut. Lecture refusée, chaîne vide, JSON illisible ou type
@@ -1202,22 +1206,23 @@ function lsSet(k,v){
    relu, et s'il échoue, ecrireTout.incoherent passe à true (le message ne doit plus dire « aucune donnée modifiée »). */
 var _ecrituresGroupees=0;
 /* R1 (vérification des corrections de Codex, 01/11) : le retour arrière ne remet l'état d'avant QUE si la valeur actuelle est
-   soit cet état d'avant, soit la dernière valeur que cet onglet a réellement écrite (_tentative, posée après le setItem), pour les données suivies (cleSuivie ; les compteurs
-   écrits en direct comme since-export sont toujours remis). Toute autre valeur vient d'un autre onglet :
+   soit cet état d'avant, soit la dernière valeur que cet onglet a réellement écrite (_tentative, posée après le setItem), pour toute clé de l'opération (le compteur d'export écrit en direct est enregistré dans _tentative à son écriture). Toute autre valeur vient d'un autre onglet :
    la remettre à l'état d'avant l'effacerait, on la laisse et la mémoire est réalignée dessus par l'appelant. */
 var _tentative={};
 function restaurerCles(cles,brut){
   var ok=true;
   for(var j=cles.length-1;j>=0;j--){
     var cur;try{cur=localStorage.getItem(cles[j]);}catch(e){cur=undefined;}
-    if(cleSuivie(cles[j])&&cur!==undefined&&cur!==brut[j]&&cur!==_tentative[cles[j]]){noterVersion(cles[j],cur);continue;}   /* écriture d'un autre onglet : conservée */
+    if(cur!==undefined&&cur!==brut[j]&&cur!==_tentative[cles[j]]){noterVersion(cles[j],cur);continue;}   /* écriture d'un autre onglet : conservée */
     try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;else{noterVersion(cles[j],brut[j]);_tentative[cles[j]]=brut[j];}}catch(e){ok=false;}}   /* ce retour arrière est lui-même une écriture de cet onglet (opérations imbriquées) */
+  if(!ok)_stockageEnEchec=true;   /* R2 : retour arrière refusé = état partiel → panne, sauvegardes automatiques suspendues */
   return ok;
 }
 function ecrireTout(paires){
   ecrireTout.incoherent=false;
   var cles=paires.map(function(p){return p[0];}),brut;
   try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return false;}   /* T02 : échec propagé à l'opération englobante */
+  if(_ecrituresGroupees===0)_tentative={};   /* R1 : seules les écritures de l'opération courante comptent, jamais d'anciennes */
   _ecrituresGroupees++;
   try{
     for(var i=0;i<paires.length;i++){
@@ -1241,6 +1246,7 @@ function operationHistorique(fn,pid){
   var cles=[pkFor(pid,'history'),pkFor(pid,'permanences'),pkFor(pid,'since-export')],brut;
   try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return {ok:false,incoherent:false};}
   var histAvant=actif?JSON.parse(JSON.stringify(S.history)):null,permAvant=actif?JSON.parse(JSON.stringify(S.permanences||[])):null,valeur,ok=false,echecsAvant=_echecsEcriture;
+  if(_ecrituresGroupees===0)_tentative={};   /* R1 */
   _ecrituresGroupees++;
   try{valeur=fn();ok=_echecsEcriture===echecsAvant&&(!actif||(lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)))&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}   /* R1 : une opération déjà en échec n'écrit plus rien (la mémoire remise à l'état d'avant, avec la version d'un autre onglet, écraserait ses données) */
   finally{_ecrituresGroupees--;}
@@ -1782,7 +1788,7 @@ function addHistoryBrut(item,prepared){
   maybeAutoBackupProfile(S.activeProfile);
   /* Rappel export tous les 5 messages */
   var since=parseInt(localStorage.getItem(pk('since-export'))||'0',10)+1;
-  localStorage.setItem(pk('since-export'),since);
+  localStorage.setItem(pk('since-export'),since);_tentative[pk('since-export')]=String(since);   /* R1 : suivi comme une écriture de l'opération (retour arrière sans effacer un compteur concurrent) */
   /* rappel seulement si la sauvegarde GitHub ne couvre pas : pas de jeton, ou dernière réussite > 24 h */
   var lastGh=Date.parse(localStorage.getItem(pk('gh-last-backup'))||'')||0;
   var ghCouvre=ghToken()&&(Date.now()-lastGh<86400000);
@@ -3462,7 +3468,8 @@ function statutTransitoireVide(statut,byStatut){return (statut==='confirme'||sta
    restent locaux (un test vérifie qu'aucun jeu local ne diverge de cette table). */
 var STATUTS=[['en_attente','En attente',0],['confirme','Confirmé',0],['realise','Réalisé',0],['excuse','Excusé',1],['annule','Annulé',1],['lapin','Lapin',1],['pas_de_retour','Pas de retour',1]];
 var STATUTS_LIBERES={};STATUTS.forEach(function(s){if(s[2])STATUTS_LIBERES[s[0]]=1;});
-function estLibere(statut){return Object.prototype.hasOwnProperty.call(STATUTS_LIBERES,statut);}
+/* Réponse de Codex à AG-014 : comparaison stricte — seul un texte égal à une clé libère la place ; un statut abîmé (tableau, objet) ne libère jamais et ne lève jamais d'erreur. */
+function estLibere(statut){return typeof statut==='string'&&Object.prototype.hasOwnProperty.call(STATUTS_LIBERES,statut);}
 /* Amendement de Codex sur AG-006 (30/10) : mêmes regroupements à l'écran et dans les nouvelles archives. CMS : `cmsKey` (variantes de casse, accents
    et espaces regroupées, libellé = première forme rencontrée) ; démarches : dictionnaire sans prototype ; types : clés propres seulement. */
 function comptageParCms(entries){
@@ -3510,7 +3517,7 @@ function slotRates(entries,perms,history){
     if(!jours[jk])jours[jk]={date:h.date,commune:h.commune};   /* journée de permanence = date + CMS portant au moins un RDV avec heure */
     var k=h.date+'|'+cmsKey(h.commune)+'|'+h.heure;
     var s=slots[k]||(slots[k]={realise:false,lapin:false,actif:false});
-    if(!Object.prototype.hasOwnProperty.call(STATUTS_LIBERES,h.statut))s.actif=true;   /* créneau non libéré : au moins une fiche ni Lapin, Excusé, Annulé ni Pas de retour */
+    if(!estLibere(h.statut))s.actif=true;   /* créneau non libéré : au moins une fiche ni Lapin, Excusé, Annulé ni Pas de retour */
     if(h.statut==='realise')s.realise=true;
     if(h.statut==='lapin')s.lapin=true;
   });

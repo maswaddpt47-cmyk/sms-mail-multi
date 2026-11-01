@@ -613,6 +613,36 @@ async function restaurer(contenu,fonction,options){
       const r2=B.ctx.addHistory(ficheR('B','10:30'));assert.equal(r2,true,'R1 '+action+' : reprise réussie');
       assert.deepEqual(JSON.parse(A.st.getItem('ess-p1-history')).map(h=>h.nom).filter(n=>n!=='Pause déjeuner').sort(),['ONGLETA','ONGLETB'],'R1 : A et B conservés après la reprise');}
   }
+  // R1 (vérification de Codex, 2e) : compteur d'export — A ajoute entre l'instantané et le premier contrôle de B ; B refusé ne remet pas le compteur de A à 0
+  {const {A,B}=deuxOnglets();let enB=false,n=0,fait=false;
+   A.st.lecturePanne=k=>{if(enB&&!fait&&k==='ess-p1-history'&&++n===2){fait=true;enB=false;A.ctx.addHistory(ficheR('A','09:30'));enB=true;}return false;};
+   enB=true;const r=B.ctx.addHistory(ficheR('B','10:30'));enB=false;A.st.lecturePanne=null;
+   assert(fait&&r===false,'R1 compteur : conflit provoqué');assert.equal(A.st.getItem('ess-p1-since-export'),'1','R1 compteur : le compteur de A n\'est pas remis à 0 par le retour arrière de B');}
+  // R1 (vérification de Codex, 3e) : ancienne tentative — B avait écrit un historique vide, A y ajoute X puis le VIDE entre l'instantané et la première écriture de B : l'état vidé par A ne ressuscite pas X
+  for(const action of ['addHistory','ecrireTout']){
+   const {A,B}=deuxOnglets();
+   assert.equal(B.ctx.lsSet('ess-p1-history',[]),true);                                   // B a déjà écrit « vide » (ancienne tentative)
+   A.ctx.loadProfileData();assert.equal(A.ctx.addHistory(ficheR('X','09:30')),true);B.ctx.loadProfileData();   // A repart de l'état de B, ajoute X, B le recharge
+   let enB=false,n=0,fait=false;
+   A.st.lecturePanne=k=>{if(enB&&!fait&&k==='ess-p1-history'&&++n===2){fait=true;enB=false;A.ctx.lsSet('ess-p1-history',[]);enB=true;}return false;};   // A vide l'historique pendant l'opération de B
+   enB=true;const r=action==='addHistory'?B.ctx.addHistory(ficheR('Y','10:30')):B.ctx.ecrireTout([['ess-p1-history',[ficheR('Y','10:30')]],['ess-p1-orientations',[]]]);enB=false;A.st.lecturePanne=null;
+   assert(fait&&r===false,'R1 ancienne tentative '+action+' : conflit provoqué');
+   assert.equal(A.st.getItem('ess-p1-history'),'[]','R1 ancienne tentative '+action+' : l\'historique vidé par A n\'est pas reconstitué par le retour arrière de B (X ressuscité)');}
+  // R2 (vérification de Codex) : conflit puis lecture de réalignement refusée → mémoire peut différer du stockage : panne, sauvegarde auto bloquée
+  {const {A,B}=deuxOnglets();assert.equal(A.ctx.addHistory(ficheR('A','09:30')),true);   // B est en retard
+   let n=0;B.st.lecturePanne=k=>k==='ess-p1-history'&&++n===2;                             // 1re lecture : contrôle du conflit ; 2e : réalignement, refusée
+   assert.equal(B.ctx.lsSet('ess-p1-history',[]),false);B.st.lecturePanne=null;
+   assert.equal(B.ctx._stockageEnEchec,true,'R2 : réalignement incomplet → panne');
+   const pushs=B.journal.pushs;B.ctx.maybeAutoBackupProfile('p1');assert.equal(B.journal.pushs,pushs,'R2 : aucune sauvegarde automatique avec une mémoire non réalignée');}
+  // R2 (vérification de Codex) : conflit puis retour arrière refusé → état partiel : panne, sauvegarde auto bloquée
+  {const {A,B}=deuxOnglets();A.st.setItem('ess-cms',JSON.stringify([{id:9,nom:'Seed'}]));A.ctx.loadProfileData();B.ctx.loadProfileData();   // catalogue présent : son retour arrière est une vraie écriture
+   assert.equal(A.ctx.lsSet('ess-demarches',[{id:'d1',nom:'D',documents:[]}]),true);   // B est en retard sur les démarches
+   const base=B.st.ecritures;B.st.panne=(k,i)=>k==='ess-cms'&&i>base+1;                       // 1re écriture du CMS acceptée, son retour arrière refusé
+   const r=B.ctx.ecrireTout([['ess-cms',[{id:1,nom:'Agen'}]],['ess-demarches',[]]]);B.st.panne=null;
+   assert.equal(r,false);assert.equal(B.ctx.ecrireTout.incoherent,true,'R2 : retour arrière refusé signalé');
+   assert.equal(B.ctx._stockageEnEchec,true,'R2 : état partiel → panne');
+   const pushs=B.journal.pushs;B.ctx.maybeAutoBackupProfile('p1');assert.equal(B.journal.pushs,pushs,'R2 : aucune sauvegarde automatique après un retour arrière refusé');
+   assert.equal(JSON.parse(A.st.getItem('ess-demarches'))[0].id,'d1','R2 : la démarche de A est intacte');}
   // R1 témoin : sans écriture concurrente, le retour arrière d'une vraie panne est inchangé (couvert par les tests de panne ci-dessus)
   // R2 : après un conflit résolu, les sauvegardes automatiques ne restent pas suspendues
   {const {A,B}=deuxOnglets();

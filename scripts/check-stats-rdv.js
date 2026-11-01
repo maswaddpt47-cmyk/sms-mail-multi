@@ -317,6 +317,9 @@ console.log('Statistiques RDV et planification : périodes/CMS, six places, annu
   const valeurs=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour','','libre',undefined,null,'toString','constructor','__proto__','inconnu'];
   valeurs.forEach(v=>assert.equal(ctx.estLibere(v),anciensLiberes.includes(v),'estLibere('+String(v)+')'));
   assert.deepEqual(Object.keys(ctx.STATUTS_LIBERES).sort(),anciensLiberes.slice().sort());
+  // statuts abîmés (Codex, AG-014) : jamais libérés, jamais d'erreur
+  [['lapin'],{lapin:1},{toString:null},{valueOf:null},[],{},0,1,true,false,NaN].forEach(v=>assert.equal(ctx.estLibere(v),false,'estLibere valeur non texte '+JSON.stringify(v)));
+  assert.equal(ctx.slotRates([{date:'2026-10-20',heure:'09:30',commune:'A',statut:['lapin']}]).occupes,1,'slotRates : un statut non texte ne libère pas');
   assert.deepEqual([...ctx.STATUTS_CONNUS],['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'],'ordre des statuts connus inchangé');
   assert.equal(ctx.STATUTS.length,7);ctx.STATUTS.forEach(s=>assert.equal(typeof s[1],'string','libellé de '+s[0]));
   // garde contre la dérive : tout littéral (tableau ou objet) qui énumère des statuts « libérés » sans aucun autre statut les cite tous les quatre
