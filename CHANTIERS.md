@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 19:45**, base `main` `4261512` (+ ce commit), **en ligne (Pages ✅ à vérifier au push)**. **Un seul bloc AGORA ouvert : AG-025** (consigne de l'utilisateur) — livré ; il porte la vérification Codex de la réactivité « réception → dernier message enregistré » et des correctifs A23/A24 ; AG-023 et AG-024 rangés. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 19:45**, base `main` `fdc9365`, **en ligne (Pages ✅)**. **Un seul bloc AGORA ouvert : AG-025** (consigne de l'utilisateur) — livré ; il porte la vérification Codex de la réactivité « réception → dernier message enregistré » et des correctifs A23/A24 ; AG-023 et AG-024 rangés. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## ⏩ Passation du 01/11/2026 à 18:20 — À LIRE EN PREMIER
 
