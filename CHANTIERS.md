@@ -1,13 +1,15 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 16:23**, base `main` `f0a1384`. **Pause demandée par l'utilisateur** : il teste en conditions réelles avant tout nouveau développement. **Aucun bloc AGORA ouvert.** Tout est en ligne (Pages ✅).
+État au **01/11/2026 à 16:44**, base `main` `c3e712f`, branche de session `claude/marmande-median-audit-simy0t` (AG-021 ouvert, `355faef`, puis livraison) — **pas encore fusionnée dans `main`**. **Pause demandée par l'utilisateur** : il teste en conditions réelles avant tout nouveau développement. **Un bloc AGORA ouvert : AG-021** (contrôle Codex à obtenir une fois). Tout est en ligne (Pages ✅).
 
 ## ⏩ Passation du 01/11/2026 à 16:23 (fin de session) — À LIRE EN PREMIER
+
+- **AG-021 (délai d'attente Marmande) — ouvert le 01/11/2026 à 16:44, branche de session.** Médiane du délai **masquée** (globale et par CMS) ; effectifs visibles avec la mention « Couverture insuffisamment établie… » ; « Mesurables », « Sans réception saisie » et « Après le RDV » ouvrent les fiches (personne, réception, RDV, délai ou motif), filtrées par période et CMS, délai croissant. **Aucune date modifiée.** Vérifié : `node scripts/check-delai-attente.js` (UTC et Europe/Paris), trois mutations rejetées, Chromium 390 px sans erreur ni débordement. **Non fait** : fusion dans `main` (`CLAUDE.md` demande `main`, la session impose sa branche : à trancher) ; contrôle Codex (une fois, `AGORA.md`) ; contrôle des 8 dossiers de Marmande par l'utilisateur.
 
 - **AG-013 (fiabilisation des statistiques) : CLOS le 01/11/2026 à 15:52** — étapes 0 à 6 confirmées par Codex, contrôle visuel de l'utilisateur validé sur 9 points. Détail : `git log -p AGORA.md` et « Blocs tranchés » d'`AGORA.md` (AG-013 à AG-017).
 - **Enrichissements livrés et confirmés par Codex le 01/11/2026** (Statistiques, données courantes) :
   - **Activité par CMS — 12 derniers mois** (AG-018, `9cefe8c` + ajustements) : demandes enregistrées (orientations, tous états) et RDV réalisés, deux séries sans taux ; dates d'import lues strictement ; CMS et mois sans activité masqués (colonnes à partir du premier mois actif, usage depuis juillet 2026) ; sans orientation sur l'appareil, une phrase remplace le tableau.
-  - **Délai d'attente par CMS** (AG-019, `047d82f`) : médiane réception saisie → RDV, jours calendaires ; diagnostic « premiers RDV seulement » (`3d9b020`) — Marmande 26,5 j inchangé : attente réelle sur 8 dossiers, pas un effet des suivis.
+  - **Délai d'attente par CMS** (AG-019, `047d82f`) : médiane réception saisie → RDV, jours calendaires ; diagnostic « premiers RDV seulement » (`3d9b020`) — Marmande 26,5 j : **non établi** (8 dossiers mesurables, 75 sans réception saisie). Médiane **masquée** par AG-021 (01/11/2026) ; « attente réelle » n'est plus une conclusion.
   - **RDV sans suite** (AG-020, `5659644`) : lapins, pas de retour, à pointer, liste des personnes au clic.
 - **Phase de tests de l'utilisateur** : ne pas relancer de développement sans sa demande. Points à surveiller pendant ses tests :
   - **Orientations par appareil** : le téléphone de l'utilisateur n'en contient aucune (constat du 01/11) ; le tableau des demandes ne vaut que sur l'appareil où elles sont importées.
@@ -119,7 +121,7 @@ dans « Points à ne pas défaire ».
 
 ## Décisions à trancher
 
-Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi. **Aucune au 01/11/2026** (AG-012 à AG-020 tranchés).
+Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi. **AG-021 ouvert le 01/11/2026** (masquage de la médiane, périmètre des listes : choix signalés dans le bloc, à trancher par l'utilisateur) ; AG-012 à AG-020 tranchés.
 
 ## Points à ne pas défaire
 
