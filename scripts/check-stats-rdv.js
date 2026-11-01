@@ -354,3 +354,18 @@ console.log('Table des statuts OK.');
   assert.equal((code.match(/\.channel===["']sms["'];\}\)\.length/g)||[]).length,0,'copie du comptage des canaux');
 }
 console.log('Calculs partagés OK.');
+
+/* AG-015 (C, D2) : la liste ouverte depuis une tuile compte les usagers comme la tuile (usagerKey) ; les fiches sans identité restent listées à part. */
+{
+  const g=vm.createContext({usagerKey:ctx.usagerKey});
+  vm.runInContext('function groupByUsager'+section('function groupByUsager','function openStatList').slice('function groupByUsager'.length),g);
+  const r=(id,nom,prenom)=>({id,date:'2026-10-05',heure:'09:30',commune:'A',statut:'realise',msgType:'confirmation',nom,prenom});
+  const jeu=[r('1','FICTIF','Paul'),r('2','FICTIF ','Paul'),r('3','',''),r('4','',''),r('5','EXEMPLE','Léa')];
+  const items=g.groupByUsager(jeu),usagers=items.filter(x=>!x._sansIdentite);
+  assert.equal(usagers.length,ctx.personnesDistinctes(jeu));assert.equal(usagers.length,2);   // même nombre que la tuile
+  assert.equal(items.filter(x=>x._sansIdentite).reduce((n,x)=>n+x._count,0),2);   // les fiches sans nom ni prénom ne disparaissent pas
+  assert.equal(items.reduce((n,x)=>n+x._count,0),jeu.length);
+  const entete=section("var slSans=","var slList=");
+  assert(/filter\(function\(g\)\{return !g\._sansIdentite;\}\)\.length\+' usager\(s\)'/.test(entete),'en-tête de la liste : usagers sans le groupe sans identité');
+}
+console.log('Liste des usagers OK.');
