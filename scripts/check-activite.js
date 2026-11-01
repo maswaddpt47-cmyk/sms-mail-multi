@@ -139,3 +139,10 @@ console.log('AG-020 RDV sans suite (lapins, pas de retour, à pointer) OK.');
 {const src=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* ============================== AG-019'));
  assert(/var cmsActifs=r\.cms\.filter\(function\(c\)\{return f\.mois\.some\(function\(m\)\{return r\.demandes\[c\]\[m\]\|\|r\.rdv\[c\]\[m\];\}\);\}\);/.test(src)&&/cmsActifs\.forEach/.test(src),'CMS sans activité masqués, mêmes lignes dans les deux tableaux');}
 console.log('Lignes de CMS sans activité masquées OK.');
+/* ── délai : premiers RDV (suivis recopiant la réception écartés du diagnostic) ── */
+{const c=charger('2027-01-15T10:00:00Z');
+ const f=(o)=>Object.assign({msgType:'confirmation',statut:'realise',commune:'Marmande',heure:'09:30',nom:'FICTIF',prenom:'A',dateReception:'2026-10-01'},o);
+ const r=J(c.delaiAttenteParCms([f({date:'2026-10-03'}),f({date:'2026-11-20'}),f({date:'2026-12-30'}),f({prenom:'B',date:'2026-10-11',dateReception:'2026-10-05'})]));
+ assert.equal(r.parCms.marmande.mediane,(50+6)/2,'médiane principale inchangée (2, 6, 50, 90)');
+ assert.equal(r.parCms.marmande.medianePremiers,4,'premiers RDV : 2 et 6');assert.equal(r.parCms.marmande.suivis,2);assert.equal(r.global.suivis,2);}
+console.log('Délai : diagnostic des premiers RDV OK.');

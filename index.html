@@ -3748,7 +3748,7 @@ function carteActiviteParCms(){
    ces fiches sont « sans réception saisie », comptées à part ; une réception postérieure au RDV est « incohérente », comptée à part. Médiane. */
 function medianeNombres(v){if(!v.length)return null;var t=v.slice().sort(function(a,b){return a-b;}),m=Math.floor(t.length/2);return t.length%2?t[m]:(t[m-1]+t[m])/2;}
 function delaiAttenteParCms(entries){
-  var r={global:{delais:[],sansReception:0,incoherente:0},parCms:{},ordre:[]};
+  var r={global:{delais:[],sansReception:0,incoherente:0},parCms:{},ordre:[]},mesures=[];
   function groupe(h){var c=String(h.commune||'').trim(),k=c?cmsKey(c):'';if(!r.parCms[k]){r.parCms[k]={nom:c||'Sans CMS',delais:[],sansReception:0,incoherente:0};r.ordre.push(k);}return r.parCms[k];}
   (entries||[]).forEach(function(h){
     if(!h||h.msgType==='indispo'||preparationDayUTC(h.date)===null)return;
@@ -3756,9 +3756,17 @@ function delaiAttenteParCms(entries){
     if(!rec){g.sansReception++;r.global.sansReception++;return;}
     var d=joursCivilsEntre(rec,h.date);
     if(!(d>=0)){g.incoherente++;r.global.incoherente++;return;}
-    g.delais.push(d);r.global.delais.push(d);
+    g.delais.push(d);r.global.delais.push(d);mesures.push({g:g,h:h,rec:rec,d:d});
   });
-  function fin(x){x.mediane=medianeNombres(x.delais);x.mesurables=x.delais.length;delete x.delais;return x;}
+  /* diagnostic (01/11/2026, question de l'utilisateur) : un RDV de suivi préparé depuis l'Agenda recopie la réception de la première
+     demande. « Premier RDV » = pour une même personne (usagerKey) et une même réception, le RDV le plus tôt ; les autres sont des suivis.
+     Calculé dans le navigateur, affiché en nombres seulement ; la médiane principale est inchangée. */
+  var premier={};mesures.forEach(function(m){var u=usagerKey(m.h);if(!u)return;var k=u+'|'+m.rec;if(!premier[k]||m.h.date<premier[k].h.date)premier[k]=m;});
+  r.global.premiers=[];r.global.suivis=0;
+  mesures.forEach(function(m){var u=usagerKey(m.h),estPremier=!u||premier[u+'|'+m.rec]===m;
+    if(!m.g.premiers){m.g.premiers=[];m.g.suivis=0;}
+    if(estPremier){m.g.premiers.push(m.d);r.global.premiers.push(m.d);}else{m.g.suivis++;r.global.suivis++;}});
+  function fin(x){x.mediane=medianeNombres(x.delais);x.mesurables=x.delais.length;x.medianePremiers=medianeNombres(x.premiers||[]);x.suivis=x.suivis||0;delete x.delais;delete x.premiers;return x;}
   fin(r.global);r.ordre.forEach(function(k){fin(r.parCms[k]);});
   r.ordre.sort(function(a,b){return r.parCms[a].nom.localeCompare(r.parCms[b].nom,'fr');});
   return r;
@@ -3776,6 +3784,7 @@ function carteDelaiAttente(entries){
   t.appendChild(el('thead',{},[hd]));var tb=el('tbody');
   r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{},x.nom));[j(x.mediane),x.mesurables,x.sansReception,x.incoherente].forEach(function(v){tr.appendChild(el('td',{},String(v)));});tb.appendChild(tr);});
   t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
+  card.appendChild(el('p',{class:'ui-chart-description'},'Premiers RDV seulement (un RDV de suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+j(x.medianePremiers)+(x.suivis?' ('+x.suivis+' suivi'+(x.suivis>1?'s':'')+' écarté'+(x.suivis>1?'s':'')+')':'');}).join(' · ')+(r.ordre.length?'':'—')+'. Ensemble : '+j(g.medianePremiers)+'.'));
   card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » saisie au jour du RDV, pour les RDV de la période et du CMS choisis. Exclus et comptés à part : '+g.sansReception+' sans réception saisie (la date du message n’est pas une réception), '+g.incoherente+' réception postérieure au RDV. Années archivées : non disponible.'));
   return card;
 }
