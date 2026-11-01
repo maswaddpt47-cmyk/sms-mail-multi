@@ -2752,11 +2752,10 @@ function renderGenerate(){
     customRow.appendChild(customTimeIn);
     hh.appendChild(customRow);
   } else {
-    var timeSlots=[];for(var h=7;h<=19;h++){timeSlots.push(String(h).padStart(2,'0')+":00");timeSlots.push(String(h).padStart(2,'0')+":30");}
-    var timeSel=el('select',{class:'gx-in',style:INPUT+"padding:11px 8px;cursor:pointer;",onChange:function(e){setFieldSave({heure:e.target.value});}});
-    timeSel.appendChild(el('option',{value:""},"— Choisir —"));
-    timeSlots.forEach(function(t){timeSel.appendChild(el('option',{value:t,selected:S.heure===t},t));});
-    hh.appendChild(timeSel);
+    /* 01/11/2026 (demande de l'utilisateur) : plus de liste d'heures « à l'aveugle » avant la date et le CMS — elle ne pouvait pas
+       savoir quels créneaux étaient pris et a permis une double réservation sans avertissement. La grille, qui grise et bloque
+       les créneaux pris, s'affiche dès que la date et le CMS sont choisis. */
+    hh.appendChild(el('p',{class:'ui-chart-description',style:'margin-top:6px;'},'Choisissez d’abord la date et le CMS : les créneaux s’afficheront ici, les créneaux déjà pris grisés.'+(S.heure?' Heure retenue : '+S.heure+' (contrôlée au choix du CMS).':'')));
   }
   row2.appendChild(hh);
   col.appendChild(row2);
