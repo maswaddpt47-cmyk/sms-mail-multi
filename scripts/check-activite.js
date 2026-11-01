@@ -125,7 +125,7 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
  assert.equal(r.parCms.fumel.incoherente,1,'réception après le RDV');assert.equal(r.parCms.marmande.mediane,6,'tous les RDV de la période (Lapin compris)');
  assert.equal(r.global.mesurables,5);assert.equal(r.global.mediane,6);
  assert.equal(c.medianeNombres([3,1,2]),2);assert.equal(c.medianeNombres([]),null);
- assert(/wrap\.appendChild\(carteDelaiAttente\(rdv\.entries\)\)/.test(code),'carte branchée sur les RDV filtrés de la page');}
+ assert(/wrap\.appendChild\(carteDelaiAttente\(rdv\.entries[,)]/.test(code),'carte branchée sur les RDV filtrés de la page');}   /* AG-021 : second argument = libellé période/CMS des listes */
 console.log('AG-019 délai d\'attente (médiane, mesurables, exclusions, jamais l\'ancienne date du message) OK.');
 
 /* ── AG-020 : RDV sans suite ── */
