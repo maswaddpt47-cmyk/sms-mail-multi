@@ -139,6 +139,8 @@ console.log('AG-019 délai d\'attente (médiane, mesurables, exclusions, jamais 
 console.log('AG-020 RDV sans suite (lapins, pas de retour, à pointer) OK.');
 {const src=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* ============================== AG-019'));
  assert(/var cmsActifs=r\.cms\.filter\(function\(c\)\{return f\.mois\.some\(function\(m\)\{return r\.demandes\[c\]\[m\]\|\|r\.rdv\[c\]\[m\];\}\);\}\);/.test(src)&&/cmsActifs\.forEach/.test(src),'CMS sans activité masqués, mêmes lignes dans les deux tableaux');}
+{const src2=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* ============================== AG-019'));
+ assert(/moisAff=debut<0\?\[\]:f\.mois\.slice\(debut\)/.test(src2)&&/moisAff\.forEach/.test(src2)&&/if\(r\.orientations\.presentes\)tableau\(/.test(src2),'mois vides de début masqués, tableau des demandes remplacé sans orientation');}
 console.log('Lignes de CMS sans activité masquées OK.');
 /* ── délai : premiers RDV (suivis recopiant la réception écartés du diagnostic) ── */
 {const c=charger('2027-01-15T10:00:00Z');
