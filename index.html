@@ -3158,6 +3158,30 @@ function businessDaysBetween(startDay,endDay){
   for(var i=1;i<=days%7;i++){var day=new Date(start+(weeks*7+i)*86400000).getUTCDay();if(day!==0&&day!==6)n++;}
   return n;
 }
+/* AG-024 (demande de l'utilisateur, 01/11/2026) : jours ouvrés hors samedis, dimanches et jours fériés NATIONAUX français
+   (11 jours : 1er janvier, lundi de Pâques, 1er mai, 8 mai, Ascension, lundi de Pentecôte, 14 juillet, 15 août, 1er novembre,
+   11 novembre, 25 décembre ; Pâques par l'algorithme grégorien anonyme ; pas de jours locaux d'Alsace-Moselle).
+   Réception exclue, préparation incluse : même jour = 0 ; vendredi → lundi = 1 ; vendredi → mardi avec lundi férié = 1.
+   Sert à la réactivité affichée ; businessDaysBetween (lun.–ven.) reste celui des archives ag017-v1 (AG-017 clos). */
+function joursFeriesFrance(y){
+  var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+      h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+      mois=Math.floor((h+l-7*m+114)/31),jour=((h+l-7*m+114)%31)+1,paques=Date.UTC(y,mois-1,jour);
+  function iso(t){var d=new Date(t);return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+('0'+d.getUTCDate()).slice(-2);}   /* minuit UTC construit ici : pas une date du jour */
+  var r={};['01-01','05-01','05-08','07-14','08-15','11-01','11-11','12-25'].forEach(function(md){r[y+'-'+md]=true;});
+  [1,39,50].forEach(function(n){r[iso(paques+n*86400000)]=true;});
+  return r;
+}
+function joursOuvresFrance(startDay,endDay){
+  var start=preparationDayUTC(startDay),end=preparationDayUTC(endDay);if(start===null||end===null||end<start)return null;
+  var n=0,feries={};
+  for(var t=start+86400000;t<=end;t+=86400000){
+    var d=new Date(t),wd=d.getUTCDay(),y=d.getUTCFullYear();if(wd===0||wd===6)continue;
+    if(!feries[y])feries[y]=joursFeriesFrance(y);
+    if(!feries[y][y+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+('0'+d.getUTCDate()).slice(-2)])n++;
+  }
+  return n;
+}
 /* Le champ historique était saisi comme réception : reprise confirmée par l'utilisateur.
    Une nouvelle réception explicitement vide reste inconnue, sans repli sur une date d'envoi. */
 function receptionDateFor(h){
@@ -3206,7 +3230,7 @@ function preparationStats(history){
   var sum=0,count=0,excluded=0;
   history.forEach(function(h){
     if(h.msgType==='indispo')return;
-    var day=preparationParisDay(h.premierePreparationAt),delay=day?businessDaysBetween(receptionDateFor(h),day):null;
+    var day=preparationParisDay(h.premierePreparationAt),delay=day?joursOuvresFrance(receptionDateFor(h),day):null;   /* AG-024 : fériés exclus */
     if(delay===null){excluded++;return;}sum+=delay;count++;
   });
   return {avg:count?Math.round(sum/count*10)/10:null,count:count,excluded:excluded};
@@ -3221,7 +3245,7 @@ function legacyPreparationEstimate(history){
     if(h.msgType==='indispo'||h.msgType==='relance'||h.dateRelance)return;
     if(preparationParisDay(h.premierePreparationAt))return;
     var lu=lireTs(h.ts);if(!lu)return;
-    var day=lu.jour,delay=businessDaysBetween(receptionDateFor(h),day);
+    var day=lu.jour,delay=joursOuvresFrance(receptionDateFor(h),day);   /* AG-024 */
     if(delay!==null){delays.push(delay);if(receptionDateFor(h)===day)sameDay++;}   /* « le jour même » = même date civile (audit 30/10, pt 5), pas zéro jour ouvré */
   });
   if(!delays.length)return {median:null,count:0,sameDay:0};
@@ -4848,12 +4872,12 @@ function renderStats(){
   reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
   /* infobulle (30/10, demande utilisateur) : ce que mesure la tuile, en mots simples ; `title` ne s'affiche pas au toucher */
   var prepLbl=el('div',{class:'ui-stats-metric-label-row'});
-  prepLbl.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (lun.–ven.)'));
-  var prepInfoTxt='Délai moyen entre la réception de la demande et la première préparation du message, en jours ouvrés (lundi–vendredi) : le jour de réception ne compte pas, le jour de préparation compte. Même jour = 0 ; vendredi puis lundi = 1. Week-ends exclus, jours fériés comptés. Seules les fiches dont la première préparation est enregistrée sont mesurées.';
+  prepLbl.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (jours ouvrés)'));
+  var prepInfoTxt='Délai moyen entre la réception de la demande et la première préparation du message (premier « Générer » ou première copie), en jours ouvrés : samedis, dimanches et jours fériés nationaux exclus. Le jour de réception ne compte pas, le jour de préparation compte. Même jour = 0 ; vendredi puis lundi = 1 ; vendredi puis mardi avec lundi férié = 1. L’envoi réel du message n’est pas enregistré par l’application : la mesure s’arrête à la première préparation. Seules les fiches dont la première préparation est enregistrée (depuis le 22/10/2026) sont mesurées.';
   var prepInfo=el('span',{class:'ui-stats-info',tabindex:'0',role:'note','aria-label':prepInfoTxt},'i');prepInfo.dataset.tip=prepInfoTxt;attachPermanenceTip(prepInfo);prepLbl.appendChild(prepInfo);
   reactC.appendChild(prepLbl);
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
-  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation. Samedis et dimanches exclus ; jours fériés inclus.'));
+  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation (l’envoi n’est pas enregistré). Week-ends et jours fériés nationaux exclus.'));
   kpiRow.appendChild(reactC);
   if(legacyPrep.median!==null){
     var legacyC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
@@ -4862,7 +4886,7 @@ function renderStats(){
     var legacyPct=Math.round(legacyPrep.sameDay/legacyPrep.count*100);
     legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPct+' %'));
     legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même (estimation)'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median===0?'le jour même':legacyPrep.median.toLocaleString('fr-FR')+' j (lun.–ven.)')));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median===0?'le jour même':legacyPrep.median.toLocaleString('fr-FR')+' j ouvré'+(legacyPrep.median>1?'s':'')+' (fériés exclus)')));
     legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Estimation, pas une mesure : elle part de la date du dernier message, une fiche régénérée compte plus long. À ne pas comparer à la préparation moyenne horodatée.'));
     kpiRow.appendChild(legacyC);
   }
