@@ -126,3 +126,13 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
  assert.equal(c.medianeNombres([3,1,2]),2);assert.equal(c.medianeNombres([]),null);
  assert(/wrap\.appendChild\(carteDelaiAttente\(rdv\.entries\)\)/.test(code),'carte branchée sur les RDV filtrés de la page');}
 console.log('AG-019 délai d\'attente (médiane, mesurables, exclusions, jamais l\'ancienne date du message) OK.');
+
+/* ── AG-020 : RDV sans suite ── */
+{const c=charger('2027-01-15T10:00:00Z');
+ const f=(date,statut,o)=>Object.assign({msgType:'confirmation',commune:'Fumel',heure:'09:30',date:date,statut:statut},o);
+ const r=J(c.rdvSansSuite([f('2027-01-10','lapin'),f('2027-01-10','pas_de_retour'),f('2027-01-14','confirme'),f('2027-01-15','confirme'),f('2027-01-20','confirme'),
+   f('2027-01-10','realise'),f('2027-01-10','excuse'),f('2027-01-10','lapin',{msgType:'indispo'}),f('','lapin')],'2027-01-15'));
+ assert.equal(r.lapin.length,1);assert.equal(r.pasDeRetour.length,1);
+ assert.equal(r.aPointer.length,1,'confirmé passé seulement (aujourd\'hui et futur exclus)');
+ assert(/rdvSansSuite\(rdv\.entries,jourParis\(\)\)/.test(code)&&/openStatList\(k\[1\]\+' sur la période',k\[0\]\)/.test(code),'carte branchée sur les RDV filtrés et la liste existante');}
+console.log('AG-020 RDV sans suite (lapins, pas de retour, à pointer) OK.');

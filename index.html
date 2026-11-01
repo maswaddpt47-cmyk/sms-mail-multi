@@ -3774,6 +3774,20 @@ function carteDelaiAttente(entries){
   card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » saisie au jour du RDV, pour les RDV de la période et du CMS choisis. Exclus et comptés à part : '+g.sansReception+' sans réception saisie (la date du message n’est pas une réception), '+g.incoherente+' réception postérieure au RDV. Années archivées : non disponible.'));
   return card;
 }
+/* ============================== AG-020 — RDV sans suite (piste secondaire, 01/11/2026) ==============================
+   Trois catégories exclusives (statut de la fiche), sur les RDV de la période et du CMS choisis : Lapin, « Pas de retour », RDV à pointer
+   (Confirmé dont la date est passée — même règle que isAPointer). En fiches, sans taux. Aucune déduction de suite : une personne
+   recontactée depuis reste comptée ici (aucun rapprochement entre fiches). */
+function rdvSansSuite(entries,aujourdhui){
+  var r={lapin:[],pasDeRetour:[],aPointer:[]};
+  (entries||[]).forEach(function(h){
+    if(!h||h.msgType==='indispo'||preparationDayUTC(h.date)===null)return;
+    if(h.statut==='lapin')r.lapin.push(h);
+    else if(h.statut==='pas_de_retour')r.pasDeRetour.push(h);
+    else if(h.statut==='confirme'&&h.date<aujourdhui)r.aPointer.push(h);
+  });
+  return r;
+}
 /* Statistiques de RDV : lecture seule du profil actif, au jour du rendez-vous.
    Les fiches suivent l'unité existante de l'historique (addHistory remplace la
    même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
@@ -4867,6 +4881,18 @@ function renderStats(){
     wrap.appendChild(el('div',{style:"margin-bottom:14px;"}));
   })();
 
+  (function(){   /* AG-020 : RDV sans suite, mêmes filtres que la page, listes par la fenêtre existante */
+    var ss=rdvSansSuite(rdv.entries,jourParis()),card=el('section',{class:'ui-stats-section ui-rdv-sans-suite'});
+    card.appendChild(el('h3',{class:'ui-stats-section-title'},'RDV sans suite — à recontacter ?'));
+    var band=el('div',{class:'ui-stats-metric-band'});
+    [[ss.lapin,'Lapins','🐇'],[ss.pasDeRetour,'Pas de retour','📵'],[ss.aPointer,'RDV à pointer','📌']].forEach(function(k){
+      var c=el('button',{type:'button',class:'ui-stats-metric gx-press',style:'text-align:left;cursor:pointer;',onClick:function(){openStatList(k[1]+' sur la période',k[0]);}});
+      c.appendChild(el('div',{class:'ui-stats-number'},String(k[0].length)));c.appendChild(el('div',{class:'ui-stats-metric-label'},k[2]+' '+k[1]));band.appendChild(c);
+    });
+    card.appendChild(band);
+    card.appendChild(el('p',{class:'ui-chart-description'},'Fiches de la période et du CMS choisis, au jour du RDV ; « à pointer » = confirmé dont la date est passée sans statut final. Cliquez pour voir les personnes. Une personne déjà recontactée depuis reste comptée ici : vérifiez dans l’Historique avant de relancer.'));
+    wrap.appendChild(card);
+  })();
   wrap.appendChild(carteDelaiAttente(rdv.entries));   /* AG-019 : délai d'attente, mêmes filtres que la page */
   wrap.appendChild(carteActiviteParCms());   /* AG-018 : activité par CMS sur 12 mois (données courantes seulement) */
   pane.appendChild(wrap);
