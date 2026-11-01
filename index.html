@@ -4879,8 +4879,6 @@ function renderStats(){
 
   /* ── KPI ── */
   var canaux=prep.canaux;
-  var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
-  var prepMetrics=preparationStats(prepCohort);
   /* « Délai moy. RDV » (dernier message → RDV) retiré : décision 5 du 31/10 (AG-015 B). La préparation moyenne horodatée reste. */
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Fiches préparées'));
   wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Une fiche = un dossier, compté au jour de sa première préparation (une régénération ne la déplace pas). SMS / Mails : canal du dernier message.'
@@ -4895,17 +4893,9 @@ function renderStats(){
     if(k.note)c.appendChild(el('div',{class:'ui-stats-metric-note'},k.note));
     kpiRow.appendChild(c);
   });
-  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
-  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg.toLocaleString('fr-FR')+' j'   /* A24 (Codex, AG-024) : 0 jour ouvré n'est pas forcément le même jour civil (veille d'un férié) */));
-  /* infobulle (30/10, demande utilisateur) : ce que mesure la tuile, en mots simples ; `title` ne s'affiche pas au toucher */
-  var prepLbl=el('div',{class:'ui-stats-metric-label-row'});
-  prepLbl.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (jours ouvrés)'));
-  var prepInfoTxt='Délai moyen entre la réception de la demande et la première préparation du message (premier « Générer » ou première copie), en jours ouvrés : samedis, dimanches et jours fériés nationaux exclus. Le jour de réception ne compte pas, le jour de préparation compte. Même jour = 0 ; vendredi puis lundi = 1 ; vendredi puis mardi avec lundi férié = 1. L’envoi réel du message n’est pas enregistré par l’application : la mesure s’arrête à la première préparation. Seules les fiches dont la première préparation est enregistrée (depuis le 22/10/2026) sont mesurées.';
-  var prepInfo=el('span',{class:'ui-stats-info',tabindex:'0',role:'note','aria-label':prepInfoTxt},'i');prepInfo.dataset.tip=prepInfoTxt;attachPermanenceTip(prepInfo);prepLbl.appendChild(prepInfo);
-  reactC.appendChild(prepLbl);
-  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
-  reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation (l’envoi n’est pas enregistré). Week-ends et jours fériés nationaux exclus.'));
-  kpiRow.appendChild(reactC);
+  /* 01/11/2026 (décision de l'utilisateur) : tuile « Préparation moy. » retirée des Statistiques — elle ne portait que sur les fiches
+     horodatées depuis le 22/10. premierePreparationAt reste enregistré (archives, export, « Fiches préparées par mois ») ; preparationStats
+     et preparationCohort ne sont plus appelés par l'écran (gardés et testés : à réutiliser si la tuile revient). */
   /* AG-025 : réception → dernier message enregistré, toutes fiches, exclusions avec motif (remplace l'estimation des anciennes fiches) */
   var dm=reactiviteDernierMessage(S.history,rdv.start,rdv.today,S.statsCMS);
   var dmC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
@@ -4915,7 +4905,7 @@ function renderStats(){
   dmC.appendChild(el('div',{class:'ui-stats-metric-note'},(dm.n?'Moyenne : '+dm.moyenne.toLocaleString('fr-FR')+' j ouvré'+(dm.moyenne>1?'s':'')+' (week-ends et fériés nationaux exclus) · ':'')+dm.n+' fiche'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+' · même jour = même date civile'));
   var dmEx=Object.keys(MOTIFS_DERNIER_MESSAGE).filter(function(k){return dm.exclus[k];}).map(function(k){return dm.exclus[k]+' '+MOTIFS_DERNIER_MESSAGE[k];});
   dmC.appendChild(el('div',{class:'ui-stats-metric-note'},dm.nExclus?'Exclues ('+dm.nExclus+') : '+dmEx.join(' · ')+(dm.horsPeriodeInconnue?' — dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptée'+(dm.horsPeriodeInconnue>1?'s':'')+' quelle que soit la période':'')+'.':'Aucune fiche exclue.'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long. Mesure distincte de la première préparation.'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.'));
   kpiRow.appendChild(dmC);
   wrap.appendChild(kpiRow);
 
