@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 19:50**, base `main` `21b5bb7` (+ ce commit), **en ligne (Pages ✅ à vérifier au push)**. **Aucun bloc AGORA ouvert**. Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 19:50**, base `main` `95b0e13`, **en ligne (Pages ✅)**. **Aucun bloc AGORA ouvert**. Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## ⏩ Passation du 01/11/2026 à 18:20 — À LIRE EN PREMIER
 
