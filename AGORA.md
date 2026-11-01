@@ -122,7 +122,24 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun. AG-021 et AG-022 tranchés le 01/11/2026 ; textes intégraux : `git log -p AGORA.md`.
+## AG-023 — Délai d'attente : réceptions saisies avant le 22/10/2026 comptées — ouvert le 01/11/2026
+**Auteur** : session 01Sptc2d — lu sur `c219e94`
+**Cause prouvée** (historique git ; reproduction fictive Chromium : fiche créée par `fe8b21d~1`, lue par `c219e94`) : du 23/07 au 22/10/2026, le seul champ de réception de Générer s'appelait « Date de réception de la demande », **prérempli au jour même**, enregistré dans `dateDemande` ; `dateReception` n'existe que depuis `20fbf4e` (22/10, 20:46 UTC). Ces fiches n'ont pas de `dateReception` : `etatReception` les classe « reprise, à confirmer » et le délai d'attente les exclut (AG-022), alors que `receptionDateFor` les lit déjà comme réception pour la préparation moyenne et l'export CSV. Aucun autre champ, aucun défaut d'écriture.
+**Décision de l'utilisateur (01/11/2026, 18:50)** : « Les compter ».
+**Proposition** : nouvel état `ancienne` de `etatReception` : champ `dateReception` **absent**, `dateDemande` valide et **≤ 2026-10-22** (jour où le champ a changé de sens). Le délai d'attente la mesure comme une réception enregistrée (jours calendaires, « Après le RDV » si postérieure) ; elle est préremplie dans les formulaires (Historique, Agenda, Générer), sans mention « à confirmer » ; un champ non modifié n'écrit toujours rien (règles R1/R2/NR1 inchangées) ; une date saisie l'écrit dans `dateReception`. `dateDemande` **postérieure** au 22/10 sans `dateReception` (ex. fiche importée préparée depuis l'Agenda) : reste « à confirmer » — c'est la date du message. Affichage : nombre de ces réceptions anciennes écrit sous la médiane ; marque « (avant le 22/10) » dans la liste des mesurables ; Agenda « Suivi » : « saisie avant le 22/10 (champ prérempli au jour du message) ».
+**Critère déclencheur** : 7 (chiffres affichés) et 5 (note datée : précision de l'utilisateur du 22/10 « la date de réception déjà saisie est le point zéro » contre AG-022). Contradicteur : **Codex**, après livraison (circuit allégé).
+**Ce que ça engage** : aucun format nouveau, aucune migration, aucune écriture : lecture seule. `receptionDateFor`, préparation moyenne, export CSV, archives : inchangés.
+**Limite écrite** : une date préremplie laissée telle quelle compte comme une réception du jour du message (indiscernable d'une réception du même jour) ; la borne du 22/10 inclut ce jour entier.
+**Si personne ne répond, je fais quoi ?** Livraison testée et en ligne ; Codex vérifie une fois ; les écarts démontrés seront corrigés.
+
+## AG-024 — Réactivité : jours fériés nationaux exclus ; première préparation, pas l'envoi — ouvert le 01/11/2026
+**Auteur** : session 01Sptc2d — lu sur `c219e94`
+**Demande de l'utilisateur (01/11/2026)** : délai réception → envoi du premier message, à partir des dates déjà renseignées, hors samedis, dimanches et jours fériés nationaux français ; même jour = 0, vendredi → lundi = 1, vendredi → mardi avec lundi férié = 1 ; ne pas confondre réception, première préparation et premier envoi ; signaler la limite si l'envoi n'est pas conservé. Délai d'attente : toujours en jours calendaires ; les deux mesures restent distinctes.
+**Champs réellement enregistrés** : réception = `dateReception` (ou, avant le 22/10, `dateDemande` lu par `receptionDateFor`) ; première préparation = `premierePreparationAt` (instant ISO, premier « Générer » ou première copie, depuis le 22/10) ; `ts` = dernier message, réécrit à chaque régénération. **Aucun champ n'enregistre l'envoi** (SMS envoyé hors de l'appli ; une copie n'est pas une confirmation d'envoi). La tuile reste donc « réception → **première préparation** », avec la limite écrite ; aucune date d'envoi inventée.
+**Proposition** : `joursOuvresFrance(début, fin)` — réception exclue, préparation incluse, samedis, dimanches et les **11 jours fériés nationaux** exclus (1er janvier, lundi de Pâques, 1er mai, 8 mai, Ascension, lundi de Pentecôte, 14 juillet, 15 août, 1er novembre, 11 novembre, 25 décembre ; Pâques calculé, pas de jours locaux d'Alsace-Moselle). Appliqué à « Préparation moy. » et à l'estimation des anciennes fiches (médiane). Libellés et infobulle : « jours ouvrés (week-ends et fériés exclus) », « l'envoi réel n'est pas enregistré ». Délai d'attente inchangé (calendaire).
+**Critère déclencheur** : 7 (chiffre affiché) et 5 (contrat du 22/10 « week-ends exclus, fériés inclus »). Contradicteur : **Codex**, après livraison.
+**Ce que ça engage** : calcul d'affichage, rien de stocké. **Archives `ag017-v1` non touchées** (AG-017 clos) : leur préparation reste en lundi–vendredi sans fériés ; aligner les archives futures serait un autre bloc.
+**Si personne ne répond, je fais quoi ?** Livraison testée et en ligne ; Codex vérifie une fois.
 
 ---
 
