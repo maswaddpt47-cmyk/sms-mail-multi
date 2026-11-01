@@ -148,6 +148,16 @@ récit reste dans `git log`.
 
 **Limites** : données exclusivement fictives, stockage et DOM simulés ; clics et rendu textuel de la vraie modale vérifiés, sans nouvelle mesure sur téléphone ou au clavier par cette session. Aucune sauvegarde réelle lue, aucune donnée utilisateur publiée, aucun réaudit des blocs clos. Seule cette réponse est ajoutée à AG-021.
 
+## AG-022 — Origine de la date de réception : reprise visible, confirmation explicite — ouvert le 01/11/2026
+**Auteur** : session 0199YP2L — lu sur `5af0fd5`
+**Proposition** : (1) un lecteur unique `etatReception(h)` distingue réception **enregistrée** (champ `dateReception` présent et valide), **ancienne date reprise à confirmer** (champ absent, `dateDemande` valide), **absente ou invalide** (champ vide ou illisible, ou rien à reprendre) ; « postérieure au RDV » reste calculée sur une réception enregistrée. (2) Délai d'attente : « Sans réception saisie » se divise en « À confirmer » et « Absente ou invalide » ; « Mesurables » et « Après le RDV » ne changent pas de définition ; médianes toujours masquées (AG-021), aucune moyenne. (3) Historique, Agenda (fiche et « Modifier ») et Générer n'affichent plus une date reprise comme une réception : champ vide et mention « ancienne date JJ/MM/AAAA, à confirmer » avec un bouton « Confirmer cette date ». (4) Confirmation fiche par fiche, aussi depuis les listes du délai d'attente (confirmer ou saisir une date), enregistrée seule puis effectifs recalculés.
+**Critère déclencheur** : 7 (effectifs affichés du délai d'attente redécoupés) ; 5 examiné : la reprise de `receptionDateFor` pour la préparation moyenne (contrat AG-002, « ne pas rouvrir ») **n'est pas touchée**.
+**Ce que ça engage** : **aucun format nouveau, aucune migration** : seul le champ existant `dateReception` est écrit, et uniquement sur une action explicite (confirmation ou date saisie). Règle d'écriture des formulaires : un champ « Réception » non modifié n'est **jamais** réécrit (ni confirmé, ni vidé, ni normalisé). `premierePreparationAt` n'est jamais écrit par ces parcours.
+**Choix faits par Claude, à trancher** : confirmer une date reprise identique laisse la préparation moyenne inchangée (même date lue) ; saisir une autre date la modifie pour cette fiche (correction voulue) ; une date de réception postérieure au RDV est acceptée et reclassée « Après le RDV », sans blocage ; l'export CSV garde sa colonne actuelle (reprise comprise) : la distinguer serait un changement de format d'export, donc un autre bloc.
+**Non vérifié par l'auteur** : les fiches réelles où une ancienne modification a déjà recopié la reprise dans `dateReception` sont indiscernables d'une saisie : elles restent « enregistrées » (aucun rattrapage possible sans inventer) ; rendu téléphone et clavier ; fiches d'un autre profil modifiées depuis l'Agenda « Tous ».
+**Si personne ne répond, je fais quoi ?** La livraison reste en ligne : elle n'écrit rien sans action explicite de l'utilisateur. Codex vérifie une fois après livraison ; les écarts démontrés seront corrigés.
+**Où regarder** : `index.html` — `etatReception`, `delaiAttenteParCms`, `enregistrerReception`, `saveHistItem`, `enregistrerCopie`, fiche RDV de l'Agenda (« Suivi des échanges », « Modifier »), champ Réception de Générer ; test `scripts/check-reception.js`.
+
 ---
 
 # Vérification des étapes d'AG-013
