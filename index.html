@@ -3259,13 +3259,14 @@ function legacyPreparationEstimate(history){
    ce n'est pas le premier envoi, qui n'est pas enregistré), en jours ouvrés français (joursOuvresFrance), pour TOUTES les fiches,
    avec ou sans première préparation. Réception : etatReception (enregistrée, ou ancien champ jusqu'au 22/10 — AG-023).
    Période : jour Paris du dernier message ; CMS par cmsKey. Chaque fiche non mesurée est comptée sous un motif. Lecture seule. */
-var MOTIFS_DERNIER_MESSAGE={ts_absent:'date du message absente',ts_illisible:'date du message illisible ou impossible',suivi:'dernier message de suivi (relance, rappel, lapin)',
+var MOTIFS_DERNIER_MESSAGE={sans_message:'fiche sans message (RDV importé)',ts_absent:'date du message absente',ts_illisible:'date du message illisible ou impossible',suivi:'dernier message de suivi (relance, rappel, lapin)',
   reception_a_confirmer:'réception à confirmer',reception_absente:'réception absente',reception_invalide:'réception invalide',inversee:'dernier message antérieur à la réception'};
 function reactiviteDernierMessage(history,start,end,cms){
-  var r={delais:[],memeJour:0,exclus:{ts_absent:0,ts_illisible:0,suivi:0,reception_a_confirmer:0,reception_absente:0,reception_invalide:0,inversee:0},horsPeriodeInconnue:0};
+  var r={delais:[],memeJour:0,exclus:{sans_message:0,ts_absent:0,ts_illisible:0,suivi:0,reception_a_confirmer:0,reception_absente:0,reception_invalide:0,inversee:0},horsPeriodeInconnue:0};
   (history||[]).forEach(function(h){
     if(!h||h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return;
     var brut=h.ts==null?'':String(h.ts).trim(),lu=brut?lireTs(brut):null,jour=lu&&preparationDayUTC(lu.jour)!==null?lu.jour:null;
+    if(ficheSansMessage(h)){if(!(jour&&start&&(jour<start||jour>end))){r.exclus.sans_message++;if(!jour&&start)r.horsPeriodeInconnue++;}return;}   /* D1 */
     if(!jour){r.exclus[brut?'ts_illisible':'ts_absent']++;if(start)r.horsPeriodeInconnue++;return;}   /* aucune période connue : comptée et dite */
     if(start&&(jour<start||jour>end))return;
     if(h.msgType==='relance'||h.msgType==='rappel_veille'||h.msgType==='lapin'||h.dateRelance){r.exclus.suivi++;return;}
@@ -4179,11 +4180,15 @@ function fichesPrepareesModel(history,start,end,cms){
    ts français/ISO lu par lireTs, jour de Paris validé ; aucune première préparation n'est déduite ni écrite.
    Une fiche compte une fois, même si elle a été régénérée ; une régénération peut donc changer son mois.
    fichesPrepareesModel et les archives conservent leur définition au jour de première préparation. */
+/* D1 (contradiction de Claude sur AG-026, 01/11/2026) : fiche SANS message = corps explicitement vide (body:''), comme l'écrivent
+   l'import ICS (msgType 'rdv', ts = heure de l'import) et l'import du planning (ts vide). Une fiche sans champ body reste comptée. */
+function ficheSansMessage(h){return !!h&&Object.prototype.hasOwnProperty.call(h,'body')&&String(h.body==null?'':h.body).trim()==='';}
 function fichesMessagesModel(history,start,end,cms){
-  var r={fiches:[],nonMesurables:0,byMonth:{}};
+  var r={fiches:[],nonMesurables:0,sansMessage:0,byMonth:{}};
   history.forEach(function(h){
     if(h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return;
     var lu=lireTs(h.ts),day=lu&&preparationDayUTC(lu.jour)!==null?lu.jour:null;
+    if(ficheSansMessage(h)){if(!(day&&start&&(day<start||day>end)))r.sansMessage++;return;}   /* D1 : hors total, compté à part (date de création si lisible) */
     if(!day){r.nonMesurables++;return;}
     if(start&&(day<start||day>end))return;
     r.fiches.push(h);
@@ -4327,7 +4332,7 @@ function monthlyReportComplete(history,month,cms,now,context){
   var heatDu=toLocalDateStr(a),heatAu=toLocalDateStr(z);
   history.forEach(function(h){if(h.msgType==='indispo'||!h.date||h.date<heatDu||h.date>heatAu||cms&&cmsKey(h.commune)!==cmsKey(cms))return;var k=h.date+'|'+cmsKey(h.commune)+'|'+(h.heure||'');if(seen[k])return;seen[k]=true;heat[h.date]=(heat[h.date]||0)+1;});
   d.stats={rates:rdv.slotRates,rdvMonths:rdv.byMonth,lapinDays:rdv.lapinDays,
-    fiches:{total:fiches.fiches.length,canaux:fiches.canaux,personnes:fiches.personnes,types:fiches.types,byCms:fiches.byCms,byMonth:fiches.byMonth,nonMesurables:fiches.nonMesurables,
+    fiches:{total:fiches.fiches.length,canaux:fiches.canaux,personnes:fiches.personnes,types:fiches.types,byCms:fiches.byCms,byMonth:fiches.byMonth,nonMesurables:fiches.nonMesurables,sansMessage:fiches.sansMessage,
       sansCms:fiches.fiches.filter(function(h){return !h.commune;}).length},reactivite:dm,
     delai:{global:delai.global,parCms:delai.ordre.map(function(k){return delai.parCms[k];})},
     sansSuite:{lapin:ss.lapin.length,pasDeRetour:ss.pasDeRetour.length,aPointer:ss.aPointer.length},
@@ -4358,7 +4363,7 @@ function monthlyReportSupplementHtml(d){
   h+=section('Dossiers',
     '<p>Comptés au mois du dernier message préparé ; une personne peut avoir plusieurs dossiers. Anciens dossiers compris. Une régénération peut changer son mois. Ce total ne compte pas les envois. Mois du message, indépendant du mois du rendez-vous.</p>'+kpis([
       [f.total,'Dossiers'],[f.canaux.sms,'SMS'],[f.canaux.mail,'Mails'],[f.canaux.inconnu,'Canal inconnu'],[f.personnes,'Usagers','nom + prénom ; pas une identification certaine']
-    ])+'<p class="unit">'+f.nonMesurables+' dossiers sans date du message lisible, hors total et hors graphique ; période inconnue, comptés pour le CMS choisi quelle que soit la période.</p>');
+    ])+'<p class="unit">'+f.nonMesurables+' dossiers sans date du message lisible, hors total et hors graphique ; période inconnue, comptés pour le CMS choisi quelle que soit la période.'+(f.sansMessage?' '+f.sansMessage+' fiche'+(f.sansMessage>1?'s':'')+' sans message (RDV importé du calendrier ou du planning), hors total.':'')+'</p>');
   h+=section('Réactivité',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' dossiers calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
     '<p>Part des dossiers dont le dernier message préparé date du jour de réception de la demande.</p><p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : un dossier régénéré compte plus long.</p>');
   return h;
@@ -4958,7 +4963,8 @@ function renderStats(){
   /* « Délai moy. RDV » (dernier message → RDV) retiré : décision 5 du 31/10 (AG-015 B). La préparation moyenne horodatée reste. */
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Dossiers'));
   wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Comptés au mois du dernier message préparé ; une personne peut avoir plusieurs dossiers. Anciens dossiers compris. Une régénération peut changer son mois. SMS / Mails : canal du dernier message.'
-    +(prep.nonMesurables?' '+prep.nonMesurables+' dossier'+(prep.nonMesurables>1?'s':'')+' sans date lisible du dernier message : non rattachable'+(prep.nonMesurables>1?'s':'')+' à une période, compté'+(prep.nonMesurables>1?'s':'')+' à part pour le CMS choisi.':'')));
+    +(prep.nonMesurables?' '+prep.nonMesurables+' dossier'+(prep.nonMesurables>1?'s':'')+' sans date lisible du dernier message : non rattachable'+(prep.nonMesurables>1?'s':'')+' à une période, compté'+(prep.nonMesurables>1?'s':'')+' à part pour le CMS choisi.':'')
+    +(prep.sansMessage?' '+prep.sansMessage+' fiche'+(prep.sansMessage>1?'s':'')+' sans message (RDV importé du calendrier ou du planning) : hors total.':'')));   /* D1 */
   var kpiRow=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
   [{val:canaux.total,lbl:'Dossiers'},{val:canaux.sms,lbl:'SMS'},{val:canaux.mail,lbl:'Mails'}]
   .concat(canaux.inconnu?[{val:canaux.inconnu,lbl:'Canal inconnu'}]:[])
