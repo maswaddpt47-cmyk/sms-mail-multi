@@ -49,6 +49,7 @@ jobs:
           node scripts/check-archives.js
           node scripts/check-activite.js
           node scripts/check-delai-attente.js
+          node scripts/check-reception.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -62,6 +63,7 @@ jobs:
           node scripts/check-archives.js
           node scripts/check-activite.js
           node scripts/check-delai-attente.js
+          node scripts/check-reception.js
 
   deploy:
     needs: tests
