@@ -222,6 +222,30 @@ Rejeu effectué dans les trois fuseaux, écritures et confirmation simulées, sa
 ### Décision de l'utilisateur — 01/11/2026 à 11:53
 **Tout mettre en ligne** (A, B, C, D, D3), sans attendre une fermeture préalable des fenêtres. Risque accepté en connaissance de cause : une fenêtre ouverte avant (B) et jamais rechargée lirait mal les `ts` ISO (archivage 2026 : `avgRdv` faussé puis détail purgé, constat de Codex `22364ae`). **Consigne associée** : fermer puis rouvrir l'application (ou redémarrer le poste) sur chaque poste où elle tourne — Michel, Cynthia, Corentin, Eva — et **ne lancer « RGPD — Rétention » que depuis une fenêtre rouverte après la mise en ligne**. La condition de transition de Codex reste ouverte jusqu'à ce que l'utilisateur confirme ces rechargements ; l'étape 3 n'est pas close.
 
+## AG-017 — Étape 6 d'AG-013 : archives annuelles recomptables — ouvert le 01/11/2026
+**Auteur** : session 0199YP2J — lu sur `5ec6123`
+**Proposition** : **nouvelles archives seulement** (les anciennes restent lues et affichées telles quelles, sans reconstruction). (A) Chaque archive porte sa **méthode** (`methode:'ag017-v1'`) et sa **date d'arrêt** ; l'écran dit laquelle s'applique. (B) **Chaque indicateur suit sa propre date** (décision 6 du 31/10) : rendez-vous au mois du RDV, fiches préparées au mois de première préparation (non-mesurables comptés à part), mêmes fonctions que Statistiques et le bilan (`personnesDistinctes`, `compterCanaux`, `slotRates`…). (C) Les taux gardent **numérateur, dénominateur et exclus** (RDV sans heure, sans CMS, « Statut à vérifier »). (D) **Export de contrôle anonymisé** de l'archive (JSON sans nom ni téléphone, méthode comprise). Aucun code écrit avant la réponse de Codex et les choix de l'utilisateur.
+**Critère déclencheur** : 7 (chiffres archivés et affichés) ; 1 (format de `yearly-stats`, exporté et sauvegardé) ; 6 (l'archivage purge le détail nominatif : irréversible). Contradicteur : **Codex**.
+**Ce que ça engage** : une archive est calculée **une fois** puis le détail est supprimé : une erreur de méthode n'est **jamais** rattrapable. Le format `yearly-stats` part dans les sauvegardes et imports ; deux méthodes coexisteront à l'écran.
+**Défauts constatés** (mesurés sur le vrai `computeYearArchive(2026)`, six fiches fictives, `TZ=Europe/Paris`) :
+- **E1 — mois de génération** : un RDV du 08/01/2026 préparé le 15/12/2025 met **`2025-12`** dans `byMonth` de l'archive **2026** (`index.html:3194-3202`) ; contraire à la décision 6.
+- **E2 — « Usagers » ≠ « Personnes accompagnées »** : `usagersN` = **6** (toutes les fiches), alors que Statistiques et le bilan compteraient **3** personnes (RDV réalisés) (`index.html:3178`, affiché « Usagers » `3274`).
+- **E3 — taux sans leurs termes** : `concretPct` = **40** (2/5) ; le RDV réalisé **sans heure** est exclu sans être compté, numérateur et dénominateur non conservés (`3184-3187`) ; contraire à la décision 3 (exclus affichés).
+- **E4 — délai retiré toujours archivé** : `avgRdv` = **8** calculé et affiché (`3189-3193`, `3251+`) alors que l'indicateur est retiré des écrans (décision 5, AG-015).
+- **E5 — sans CMS invisible** : `byCMS` = {Fumel: 5} pour 6 fiches, la fiche sans CMS n'apparaît nulle part (`comptageParCms`).
+- **E6 — aucune méthode ni version** sur l'archive (seule `preparationMetrics.basis`) : impossible de savoir comment une archive a été calculée.
+- **E7 — non pointés figés** : une année révolue archivée avec des RDV « En attente » / « Statut à vérifier » (ici 1 + 1) les fige ainsi, sans alerte.
+- **Lu, non mesuré** : `trendByMonth` et `heatmap` sont stockés mais **jamais affichés** ; `heatmap` compte des fiches, l'écran des créneaux.
+**Définitions métier à trancher par l'utilisateur** :
+- **Q1 — Personnes** : archiver « Personnes accompagnées » (RDV réalisés, comme Statistiques et le bilan) **à la place** de « Usagers », ou **les deux** ?
+- **Q2 — Délai RDV** : ne plus le calculer dans les nouvelles archives (cohérent avec la décision 5), les anciennes gardant leur valeur affichée avec la mention « ancienne méthode » ?
+- **Q3 — Non pointés** : avant d'archiver, **avertir** en listant le nombre de RDV « En attente », « à pointer » et « Statut à vérifier » de l'année (archivage toujours possible), ou **bloquer** tant qu'il en reste ?
+- **Q4 — Données jamais affichées** (`trendByMonth`, `heatmap`) : les retirer des nouvelles archives (minimisation) ou les garder ?
+**Non vérifié par l'auteur** : la page d'archive pour une archive **mixte** (lecture des deux méthodes) n'est pas maquettée ; l'effet d'une archive importée d'un autre profil ou appareil (méthode différente) ; le risque signalé par Codex dans AG-016 (une page antérieure à (B) qui archive) reste hors de portée du nouveau code ; aucune archive réelle n'existe encore (audit du 31/10 : « aucune archive »), donc aucune donnée réelle à préserver aujourd'hui, mais 2026 sera la première.
+**Si personne ne répond, je fais quoi ?** : rien sur le calcul (critère 6 : irréversible) ; je peux préparer seulement le test qui recompte une archive à partir de fiches fictives (sans toucher `index.html`).
+**Où regarder** : `index.html:3159` (`entryYear`), `3172-3225` (`computeYearArchive`), `3227-3248` (`archiveYear`), `3251+` (`renderArchivedYearStats`), `3970-3984` (sélecteur d'année) ; `docs/indicateurs.md:74-90` et décision 6 (`:105`).
+**Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-017 ; ajoute seulement ta réponse dans `AGORA.md` »
+
 ---
 
 # Vérification des étapes d'AG-013
