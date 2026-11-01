@@ -122,6 +122,34 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-018 — Évolution de l'activité par CMS : demandes reçues et RDV réalisés sur 12 mois (priorité 2, premier lot) — ouvert le 01/11/2026
+**Auteur** : session 0199YP2J — lu sur `cc6c5e2`
+**Proposition** : dans Statistiques, un tableau des **12 derniers mois × CMS** à deux colonnes **indépendantes** : **Demandes reçues** = orientations comptées au **mois de leur date de demande** ; **RDV réalisés** = fiches « Réalisé » comptées au **mois du RDV**. **Aucun taux** RDV réalisés / demandes reçues (ce ne sont pas les mêmes dossiers ni la même cohorte). Dates manquantes et CMS non reconnus **comptés à part**, jamais devinés. Démarches : second lot. Aucun code avant la réponse de Codex et les choix de l'utilisateur.
+**Critère déclencheur** : 7 (chiffres affichés). Contradicteur : **Codex**.
+**Précision métier de l'utilisateur (01/11/2026 à 14:48)** : il crée une orientation pour **chaque** demande, y compris quand la personne le contacte directement ; les orientations couvrent donc toutes les demandes. Source retenue pour « Demandes reçues » : les orientations.
+**Ce que le code montre (lu sur `cc6c5e2`)** :
+- Une orientation n'entre dans l'application **que par import** (fichier Excel, `parseXlsxOrientationsAsync`, ou JSON) ; aucune création dans l'application. Champs : `id`, `nom`, `prenom`, `telephone`, `commune` (= colonne **« Structure »** du fichier), `communeBenef` (= colonne « Commune », commune du bénéficiaire), `motif`, `orienteur`, `date`, `etat`, `done` (« traitée », sans date) — `index.html:6990`.
+- **Identifiant régénéré à chaque import** (`String(Date.now())+'_'+ligne`, `index.html:6966`) : la déduplication par `id` de `confirmOrientImport` ne reconnaît pas une ligne déjà importée ; réimporter une ligne la compte deux fois.
+- **Date** : colonne « date de la demande » ou « date demande », **à défaut la première colonne dont le titre contient « date »** (`index.html:6943`) ; numéro de série Excel converti en `AAAA-MM-JJ`, **texte gardé tel quel** (ex. « 12/10/2026 ») (`index.html:6911`).
+- **CMS** : `commune` contient le texte libre de la Structure (ex. « Centre Médico-Social de Villeneuve/Lot ») ; le rapprochement d'un CMS se fait par mots (`cmsNomDansTexte`, `index.html:7029`).
+- Les orientations sont **par profil** (attribuées à l'import) ; elles **ne sont pas archivées** ; « Vider toutes les orientations » (`index.html:7089`) et l'import JSON (`index.html:7055`, remplace toute la liste) les effacent.
+**Définitions de calcul proposées** :
+- **Période** : 12 mois civils, du mois M-11 au mois en cours inclus (jour de Paris) ; le mois en cours est marqué « arrêté au JJ/MM ».
+- **Demandes reçues (mois m, CMS c)** = orientations du profil actif dont `date` est une date valide `AAAA-MM-JJ` du mois m et dont la Structure est rapprochée du CMS c. Hors tableau, comptées à part sur la période : **date manquante ou illisible** (vide, texte non converti, date impossible) ; **CMS non reconnu** (Structure vide ou sans CMS correspondant) ; une ligne peut porter les deux. **Rapprochement CMS** : `cmsNomDansTexte` contre la liste des CMS ; **plusieurs CMS reconnus = « CMS ambigu »**, compté à part, jamais attribué au premier trouvé.
+- **RDV réalisés (mois m, CMS c)** = fiches vivantes du profil actif, hors blocages, `statut === 'realise'`, `date` dans le mois m, CMS par `cmsKey(commune)` contre la liste des CMS (même règle que Statistiques) ; RDV réalisés **sans CMS** ou **hors liste** comptés à part.
+- **Couverture** : une case n'est jamais un zéro inventé. **RDV réalisés** : un mois dont l'année de RDV est archivée est marqué **« couverture partielle — année archivée »** ; le total tous CMS de l'archive `ag017-v1` (`rdv.parMois[m].realise`) peut être indiqué en note, **jamais réparti par CMS** ; ancienne archive sans méthode : « indisponible ». **Demandes reçues** : non concernées par les archives ; limite écrite : une orientation effacée (« Vider », import JSON) n'est plus comptée.
+- **Présentation** : tableau CMS × mois, deux valeurs par case séparées visuellement (« demandes · RDV réalisés »), totaux par ligne et par colonne pour chaque série séparément ; sous le tableau : dates manquantes, CMS non reconnus/ambigus, RDV sans CMS, mois partiels ; mention « deux calendriers différents : ne pas comparer ligne à ligne comme un taux ». Rien dans le bilan imprimé ni dans les archives.
+**Définitions métier à trancher par l'utilisateur** :
+- **Q1 — Réimports** : réimportes-tu parfois un fichier qui contient des lignes déjà importées ? Si oui, elles sont comptées deux fois. Proposition : compter tel quel et **signaler** le nombre de lignes identiques (même date, même Structure, même nom et prénom) comme « doublons possibles », **sans fusion** ni identifiant de personne.
+- **Q2 — État de la demande** (`etat`) : une orientation à l'état annulé ou refusé est-elle une demande reçue ? Proposition : **toutes comptées** (une demande reçue reste reçue), sans filtrer sur un texte d'état dont les valeurs ne sont pas connues.
+- **Q3 — Date de réception** : la colonne « Date de la demande » de ton fichier est-elle bien la date où la demande t'arrive ? Et le fichier a-t-il toujours cette colonne (sinon l'application prend la première colonne contenant « date ») ?
+- **Q4 — CMS concerné** : la colonne « Structure » désigne-t-elle bien le CMS où le RDV aura lieu (et non la structure qui oriente) ? La « Commune » du bénéficiaire n'est pas utilisée.
+- **Q5 — Conservation** : vides-tu parfois la liste des orientations, ou la remplaces-tu par un import JSON ? Si oui, les mois concernés seront annoncés « couverture partielle » à partir de la plus ancienne orientation présente.
+**Non vérifié par l'auteur** : les valeurs réelles des colonnes « État » et « Structure » (aucune donnée réelle lue) ; la fréquence réelle des réimports ; le format des dates dans les fichiers effectivement importés.
+**Si personne ne répond, je fais quoi ?** : rien sur le calcul (critère 7) ; le tableau attend Codex et les réponses Q1–Q5.
+**Où regarder** : `index.html:6990` (`confirmOrientImport`), `6966`–`6943` (lecture du fichier), `7029` (`cmsNomDansTexte`), `statsRdvModel` et `slotRates` (RDV), `renderArchivedYearStats` (archives).
+**Phrase pour Codex** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-018 ; ajoute seulement ta réponse dans `AGORA.md` »
+
 ---
 
 # Vérification des étapes d'AG-013
