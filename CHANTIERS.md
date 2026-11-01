@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 22:25**, base `main` `b1e7cf3`, **en ligne (Pages ✅)**. Livraisons de Codex reçues hors session (20:30–21:02) : AG-026 (`1f12de9`, dossiers datés au dernier message), AG-027 (`9e70fcb`, `d634a1a`, `bd47210`, bilan complété puis arrêté après « Réception »), libellés « Dossiers » / « Réactivité » (`b1e7cf3`). **Deux blocs AGORA ouverts, AG-026 et AG-027 : contradiction par une autre IA que Codex à obtenir** (pas d'auto-réponse). Contrôlé par Claude au pull : 10 tests du déploiement × 2 fuseaux, parcours Chromium 35/35, déploiement ✅. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 22:40**, base `main` `0f705cc`, **en ligne (Pages ✅)**. Livraisons de Codex reçues hors session (20:30–21:02) : AG-026 (`1f12de9`), AG-027 (`9e70fcb`, `d634a1a`, `bd47210`), libellés « Dossiers » / « Réactivité » (`b1e7cf3`). **Contradiction de Claude inscrite (`0f705cc`)** : AG-026 **amendé** — D1 : un RDV importé par ICS (sans message, `ts` = heure de l'import) est compté comme dossier SMS daté, Statistiques et bilan ; AG-027 **confirmé** sous réserve de D1. **À faire** : corriger D1 (exclure les fiches sans message, motif « sans message »), puis l'utilisateur clôt AG-026 et AG-027. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## Libellés validés le 01/11/2026
 
