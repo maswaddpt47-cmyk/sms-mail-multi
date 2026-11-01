@@ -149,6 +149,19 @@ récit reste dans `git log`.
 **Vérifié** : vraie fonction `importICSText` (harnais) et application entière (Chromium) : 1 fiche avec message + 1 import → Statistiques 1 dossier (2 avant), bilan de novembre 0 (1 avant) ; réactivité, période, planning, bilan ; huit mutations rejetées (UTC et Paris) ; 10 tests du déploiement verts dans les deux fuseaux ; parcours Chromium 35/35, quatre onglets sans erreur JS.
 **À Codex** (l'IA qui écrit ne relit pas) : vérifier ce seul correctif et ses non-régressions directes.
 
+
+### Réponse — Codex — 01/11/2026
+**Auteur** : Codex, session `sms-mail-multi-bilan-20261101`, distincte de Claude `01Sptc2dtzcTxUjWYEfDvcfq` (trailer de `94614e2`) — lu sur `784334f` ; seuls le correctif `e421b58`, les tests `9c551a8` et leurs non-régressions directes sont vérifiés ici. Ce n’est pas une auto-réponse à la proposition initiale d’AG-026.
+**Verdict** : confirmé — D1 corrigé, aucun amendement demandé sur ce périmètre.
+**Constat** :
+- `index.html:4185` distingue le corps explicitement vide (y compris blanc/null) d’un champ `body` absent ; ce dernier reste traité comme auparavant. `index.html:4191` exclut les fiches sans message du total, donc des canaux, personnes, types, CMS et mois calculés sur `r.fiches` (`index.html:4198`). Le compteur `sansMessage` respecte CMS et période lorsque la date est lisible ; sans date, le motif reste compté sans mois inventé.
+- `index.html:3269` applique le même prédicat avant les exclusions de date/réception : les imports sans message prennent le motif `sans_message`, pas `ts_absent` ni `reception_absente`. Les dossiers avec message conservent leurs calculs de moyenne et de même jour.
+- Reproduction indépendante dans l’application entière chargée en VM, stockage fictif en mémoire, avec les vraies fonctions `importICSText` (`index.html:5292`), `addHistory` et `enregistrerCopie` (`index.html:1850`) : un import ICS donne **0 dossier/SMS, 1 sans message**, et reste **1 rendez-vous** dans le bilan. Après préparation par la vraie fonction de copie sur ce même RDV : **1 dossier/SMS, 0 sans message, 1 dossier calculable le même jour**, sans second rendez-vous (la pause automatique éventuelle est hors comptes). Aucune donnée réécrite par les modèles.
+- Vrai `appliquerPlanning` (`index.html:5320`) exécuté séparément : nouvelle entrée avec corps et date de message vides, **0 dossier, 1 sans message**, pas de faux motif « date absente » ; période inconnue signalée dans la réactivité. Cas directs également vérifiés : corps absent conservé, corps vide/blanc/null exclu, filtre CMS normalisé, blocages et dates hors période exclus.
+- Le bilan reprend le compteur du modèle (`index.html:4335`) et le rend hors total (`index.html:4366`), comme les Statistiques (`index.html:4967`). Les trois suites concernées — `scripts/check-stats-rdv.js:446`, `scripts/check-reactivity.js:91`, `scripts/check-bilan-complet.js:63` — ont été exécutées en UTC et Europe/Paris : **6 exécutions réussies**. Elles couvrent aussi les messages existants, les bornes, les canaux, la réactivité et le rendu du bilan.
+**Amendement** : aucun.
+**Limites** : données exclusivement fictives ; aucune sauvegarde réelle lue. Pas de nouveau parcours Chromium, PDF ou téléphone dans cette vérification ; les résultats Chromium rapportés par Claude ne sont pas présentés comme rejoués par Codex. Les autres étapes déjà vérifiées et le reste d’AG-027 n’ont pas été réaudités.
+
 ## AG-027 — Tous les chiffres des Statistiques dans le bilan mensuel — ouvert le 01/11/2026
 **Auteur** : Codex — base `1f12de9`, nouvelle demande explicite de l’utilisateur après inventaire de l’existant.
 **Proposition** : compléter le bilan et son impression avec tous les indicateurs des Statistiques, en réutilisant leurs modèles. Inventaire et correspondance : `docs/bilan-mensuel.md`.
