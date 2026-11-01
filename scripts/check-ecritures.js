@@ -22,7 +22,7 @@ const CODE=[
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
-  fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),
+  fonction('nouvelIdFiche'),fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),
   fonction('readProfileOrientations'),fonction('confirmOrientImport'),fonction('enregistrerDeplacement'),fonction('enregistrerCopie'),fonction('ensureDayOpenFor'),fonction('blockWholeDay'),
   fonction('preparationDayUTC'),fonction('receptionDateFor'),
   section('function getPermanence(','/* RDV confirmé dont la date est passée'),
@@ -758,5 +758,52 @@ async function restaurer(contenu,fonction,options){
   }
 
   console.log('Migrations du chargement (marqueur avec ses données) et handleGenerate OK.');
+
+  /* ── AG-016 D3 et (D) : anti-doublon par cmsKey, identifiant des nouvelles fiches, repli sûr des localisateurs ── */
+  {const e=charger();const fiche=(commune,body)=>({channel:'sms',msgType:'confirmation',date:'2026-11-05',heure:'09:30',commune,nom:'FICTIF',prenom:'Ana',body});
+   assert.equal(e.ctx.addHistoryBrut(fiche('Fumel','m1'),true),true);
+   const id1=e.S.history[0].id,prep1=e.S.history[0].premierePreparationAt;
+   assert(typeof id1==='string'&&/^f-/.test(id1),'(D) : nouvelle fiche identifiée');
+   assert.equal(e.ctx.addHistoryBrut(fiche('fumel ','m2'),true),true);
+   assert.equal(e.S.history.length,1,'D3 : « Fumel » puis « fumel␣ » → une seule fiche');
+   assert.equal(e.S.history[0].body,'m2');assert.equal(e.S.history[0].id,id1,'(D) : identifiant conservé à la régénération');
+   assert.equal(e.S.history[0].premierePreparationAt,prep1,'D3 : première préparation conservée');
+   assert.equal(e.S.history[0].commune,'Fumel','D3 : graphie de la fiche retrouvée conservée');
+   assert.equal(e.S.permanences.filter(p=>e.ctx.cmsKey(p.commune)==='fumel'&&p.exceptDate==='2026-11-05').length,1,'D3 : pas de deuxième journée sous une autre graphie');
+   assert.equal(e.st.getItem(e.ctx.pk('history')),JSON.stringify(e.S.history),'stockage = mémoire');
+   assert.equal(e.ctx.addHistoryBrut(Object.assign(fiche('Fumel','m3'),{prenom:'Bea'}),true),true);
+   assert.notEqual(e.S.history[0].id,id1,'(D) : deux fiches, deux identifiants');
+   assert.equal(e.ctx.addHistoryBrut(Object.assign(fiche('FUMEL','m4'),{id:'f-intrus'}),true),true);
+   assert.equal(e.S.history.find(h=>h.prenom==='Ana').id,id1,'(D) : un identifiant entrant n\'écrase jamais celui de la fiche retrouvée');
+   // ancienne fiche sans identifiant : régénérée, elle reste sans identifiant (aucune migration, Q2)
+   const anc=rdv(undefined,'2026-11-06','10:30','ANCIEN','Old');delete anc.id;e.S.history.push(anc);
+   assert.equal(e.ctx.addHistoryBrut(Object.assign({},anc,{body:'regen',commune:'FUMEL',id:'f-intrus'}),true),true);
+   const reg=e.S.history.find(h=>h.nom==='ANCIEN');assert.equal(reg.body,'regen');assert(!('id' in reg),'(D) : pas d\'identifiant donné à une ancienne fiche');
+   // planning réimporté : l'identifiant de la fiche retrouvée n'est jamais écrasé
+   e.ctx.appliquerPlanning([{date:'2026-11-05',heure:'09:30',commune:'fumel',nom:'fictif',prenom:'ana',statut:'confirme',id:'autre'}]);
+   assert.equal(e.S.history.find(h=>String(h.prenom).toLowerCase()==='ana'&&h.heure==='09:30').id,id1,'(D) : planning sans écrasement d\'identifiant');
+   // sauvegarde : l'identifiant passe la vérification d'import et survit à l'aller-retour JSON
+   assert.equal(e.ctx.verifierSauvegarde({history:JSON.parse(JSON.stringify(e.S.history))}),'');}
+  {const e=charger();let n=0;e.ctx.crypto={randomUUID:()=>['x','x','y'][n++]};
+   assert.equal(e.ctx.nouvelIdFiche([{id:'f-x'}]),'f-y','(D) : aucune collision avec l\'historique');}
+  {const e=charger();const C={date:'2026-11-07',heure:'11:30',commune:'Fumel',nom:'N',prenom:'P'};
+   const vieille=Object.assign({},C),autre=Object.assign({},C,{id:'f-autre'}),cherche=Object.assign({},C,{id:'f-perdu'});
+   assert.equal(e.ctx.findHistIdx([autre,vieille],cherche),1,'(D) : repli vers l\'unique fiche ancienne');
+   assert.equal(e.ctx.findHistIdx([autre],cherche),-1,'(D) : jamais une autre fiche identifiée');
+   assert.equal(e.ctx.findHistIdx([vieille,Object.assign({},C)],cherche),-1,'(D) : jamais un candidat ambigu');
+   assert.equal(e.ctx.findHistIdx([vieille],Object.assign({},C)),0,'témoin : fiche sans identifiant retrouvée comme avant');}
+  // locate de la fenêtre RDV de l'Agenda, extrait tel quel
+  {const src=section('  function locate(){','  function update(');let toast=0;
+   const fabrique=new Function('t','owner','readProfileHistory','showToast',src+'\nreturn locate;');
+   const C={date:'2026-11-07',heure:'11:30',commune:'Fumel',nom:'N',prenom:'P',msgType:'confirmation',channel:'sms',ts:'01/11/2026 10:00:00'};
+   const loc=(hist,t)=>fabrique(t,'p1',()=>hist,()=>{toast++;})();
+   const vieille=Object.assign({},C),autre=Object.assign({},C,{id:'f-autre'}),copie=Object.assign({},C,{id:'f-perdu'});
+   assert.equal(loc([autre,vieille],copie).index,1,'locate : repli vers l\'unique fiche ancienne (vieille sauvegarde restaurée)');
+   assert.equal(loc([autre],copie),null,'locate : jamais une autre fiche identifiée');
+   assert.equal(loc([vieille,Object.assign({},C)],copie),null,'locate : jamais un candidat ambigu');
+   assert.equal(loc([vieille],Object.assign({},C)).index,0,'locate témoin : fiche sans identifiant');
+   assert.equal(loc([autre,Object.assign({},C,{id:'f-perdu'})],copie).index,1,'locate : par identifiant');
+   assert.equal(toast,2,'« Rouvrez l\'agenda » annoncé quand rien de sûr n\'est trouvé');}
+  console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
 })().catch(e=>{console.error(e);process.exit(1);});

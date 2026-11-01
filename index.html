@@ -1310,8 +1310,12 @@ function findHistIdx(arr,item){
   if(idx!==-1)return idx;
   /* P04 (vérification de clôture de Codex) : identifiant d'abord quand la fiche en a un ; sinon le prénom fait partie de
      l'identité (deux personnes de même nom sur le même créneau ne sont pas confondues). */
-  if(item.id!=null&&item.id!==''){idx=arr.findIndex(function(h){return h.id!=null&&String(h.id)===String(item.id);});if(idx!==-1)return idx;}
-  return arr.findIndex(function(h){return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();});
+  function meme(h){return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();}
+  if(item.id!=null&&item.id!==''){idx=arr.findIndex(function(h){return h.id!=null&&String(h.id)===String(item.id);});if(idx!==-1)return idx;
+    /* AG-016 (D) : identifiant introuvable → repli seulement vers UNE fiche ancienne sans identifiant (vieille sauvegarde
+       restaurée) ; jamais une autre fiche identifiée, jamais un candidat ambigu */
+    var anc=arr.filter(function(h){return (h.id==null||h.id==='')&&meme(h);});return anc.length===1?arr.indexOf(anc[0]):-1;}
+  return arr.findIndex(meme);
 }
 var _ghLastAutoPushByProfile={};
 /* Réglages communs, en une fois (amendement Codex du 31/10) : « Sauvegardé » et la sauvegarde automatique seulement si
@@ -1748,6 +1752,14 @@ function lancerLapin(h){
   var subj=canal==="mail"?fillTemplate(subjTpl,vars):"";
   S.modal='lapin';S._lapinCtx={h:h,body:body,subj:subj,canal:canal};renderModal();
 }
+/* AG-016 (D), Q2 tranchée le 01/11/2026 : identifiant stable d'une NOUVELLE fiche seulement (aucune migration des anciennes).
+   Texte aléatoire, vérifié sans collision dans l'historique du profil ; conservé aux régénérations, copies et déplacements. */
+function nouvelIdFiche(existants){
+  var id;
+  do{id='f-'+(typeof crypto!=='undefined'&&crypto&&typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));}
+  while((existants||[]).some(function(h){return h&&h.id===id;}));
+  return id;
+}
 /* AG-013, étape 2 (3e amendement de Codex, 31/10) : une fiche, l'ouverture de sa journée, la pause déjeuner et le compteur
    d'export sont enregistrés ensemble ou pas du tout (operationHistorique). Renvoie true seulement si tout est enregistré. */
 function addHistory(item,prepared){
@@ -1764,19 +1776,25 @@ function addHistoryBrut(item,prepared){
      (le prénom est inclus pour ne pas fusionner deux personnes de même nom sur le même créneau) */
   if(item.date&&item.heure&&item.nom){
     var di=S.history.findIndex(function(h){
-      return h.date===item.date&&h.heure===item.heure&&h.commune===item.commune&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();
+      /* D3 (AG-016) : CMS comparé comme dans les statistiques (cmsKey) — « Fumel » et « fumel␣ » sont le même créneau */
+      return h.date===item.date&&h.heure===item.heure&&cmsKey(h.commune)===cmsKey(item.commune)&&(h.nom||'').toLowerCase()===(item.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(item.prenom||'').toLowerCase();
     });
     if(di!==-1){
       var previous=S.history[di],merged=Object.assign({},previous,item);
+      /* AG-016 D3/(D) : la fiche retrouvée garde son identité — son identifiant (ou son absence : aucune migration)
+         et sa graphie du CMS, donc sa journée (pas de deuxième journée sous une autre graphie) */
+      if(previous.id!=null&&previous.id!=='')merged.id=previous.id;else delete merged.id;
+      merged.commune=previous.commune;
       /* Une ancienne génération ne devient jamais une première préparation fiable.
          Une fiche purement Agenda/ICS sans message peut être préparée pour la première fois. */
       if(previous.premierePreparationAt)merged.premierePreparationAt=previous.premierePreparationAt;
       else if(prepared&&!previous.body&&(!previous.ts||previous.msgType==='rdv'))merged.premierePreparationAt=new Date().toISOString();
       else delete merged.premierePreparationAt;
       if(merged.body&&(!merged.statut||merged.statut==='libre'))merged.statut='en_attente';
-      S.history.splice(di,1,merged);if(!lsSet(pk('history'),S.history))return false;ensureDayOpen(item.commune,item.date);return true;
+      S.history.splice(di,1,merged);if(!lsSet(pk('history'),S.history))return false;ensureDayOpen(merged.commune,item.date);return true;
     }
   }
+  item.id=nouvelIdFiche(S.history);   /* AG-016 (D) : nouvelle fiche → nouvel identifiant (après la déduplication, jamais avant) */
   if(prepared&&!item.premierePreparationAt)item.premierePreparationAt=new Date().toISOString();
   if(item.body&&!item.statut)item.statut='en_attente';
   var avant=S.history,h=[item].concat(S.history);if(h.length>HISTORY_MAX)h.pop();
@@ -4553,7 +4571,8 @@ function appliquerPlanning(entries){
   var r=operationHistorique(function(){
     entries.forEach(function(entry){
       var dup=S.history.find(function(h){return memeRdvPlanning(h,entry);});
-      if(dup){S.history.splice(S.history.indexOf(dup),1,Object.assign({},dup,entry));updated++;return;}
+      if(dup){var maj=Object.assign({},dup,entry);if(dup.id!=null&&dup.id!=='')maj.id=dup.id;else delete maj.id;   /* AG-016 (D) : identité conservée */
+        S.history.splice(S.history.indexOf(dup),1,maj);updated++;return;}
       if(!addHistory(Object.assign({channel:'sms',msgType:'confirmation',body:'',subject:'',civilite:'',prenom:'',nom:'',telephone:'',demarche:'',selectedDemarche:'',demarcheAutre:'',commune:'',selectedCMS:'',date:'',heure:'',dateDemande:'',ts:''},entry,{ts:''})))throw new Error('RDV refusé');
       added++;
     });
@@ -6909,8 +6928,12 @@ function renderAgendaRdvDialog(overlay,box){
   function formatDate(value){return value?new Date(value.slice(0,10)+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'Date non renseignée';}
   function locate(){
     var history=readProfileHistory(owner),index=history.indexOf(t);
+    function memeFiche(h){return h.date===t.date&&h.heure===t.heure&&h.commune===t.commune&&(h.nom||'')===(t.nom||'')&&(h.prenom||'')===(t.prenom||'')&&h.msgType===t.msgType&&h.channel===t.channel&&(!t.ts||h.ts===t.ts)&&(!t.dateDemande||h.dateDemande===t.dateDemande);}
     if(index===-1&&t.id!=null)index=history.findIndex(function(h){return h.id===t.id;});
-    if(index===-1&&t.id==null)index=history.findIndex(function(h){return h.date===t.date&&h.heure===t.heure&&h.commune===t.commune&&(h.nom||'')===(t.nom||'')&&(h.prenom||'')===(t.prenom||'')&&h.msgType===t.msgType&&h.channel===t.channel&&(!t.ts||h.ts===t.ts)&&(!t.dateDemande||h.dateDemande===t.dateDemande);});
+    /* AG-016 (D), demande de Codex : identifiant introuvable (vieille sauvegarde restaurée entre-temps) → repli vers UNE fiche
+       ancienne sans identifiant ; jamais une autre fiche identifiée ni un candidat ambigu (sinon : « Rouvrez l'agenda ») */
+    if(index===-1&&t.id!=null){var anc=history.filter(function(h){return (h.id==null||h.id==='')&&memeFiche(h);});if(anc.length===1)index=history.indexOf(anc[0]);}
+    if(index===-1&&t.id==null)index=history.findIndex(memeFiche);
     if(index===-1){showToast('Ce rendez-vous n’est plus disponible. Rouvrez l’agenda.','warn');return null;}
     return {history:history,index:index,entry:history[index]};
   }
