@@ -1706,6 +1706,7 @@ function handleGenerate(){
 function onReset(){
   Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
   S._lastLapinDetected=false;
+  saveLast();   /* 01/11/2026 (demande de l'utilisateur) : « Effacer » oublie aussi le dernier CMS et la dernière démarche, sinon ils revenaient au rechargement */
   regen();renderGenerate();
 }
 /* calcule le message de relance directement (sans jamais passer par le formulaire Générer,

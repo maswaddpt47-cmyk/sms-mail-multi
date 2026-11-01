@@ -828,6 +828,7 @@ async function restaurer(contenu,fonction,options){
    assert(/if\(!confirmerCreneau\(v,S\.heure,S\.commune\)\)patch\.heure='';/.test(gen),'choix de la date contrôlé');
    assert(!/Créneau déjà pris/.test(section('function handleGenerate(','\nfunction ')),'plus de simple toast');
    assert(!/— Choisir —/.test(gen)&&/Choisissez d’abord la date et le CMS/.test(gen),'plus de liste d\'heures avant la date et le CMS');}
+  assert(/S\._lastLapinDetected=false;\s*saveLast\(\);/.test(section('function onReset(','\nfunction ')),'« Effacer » enregistre le formulaire vide (CMS et démarche oubliés)');
   console.log('Double réservation : confirmation explicite à la génération et au choix du CMS ou de la date OK.');
   console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
