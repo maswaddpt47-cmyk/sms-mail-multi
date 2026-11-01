@@ -592,6 +592,38 @@ async function restaurer(contenu,fonction,options){
    // symétrie : A, désormais en retard sur B, est refusé à son tour, puis réaligné
    assert.equal(A.ctx.addHistory(Object.assign(fiche('A'),{heure:'11:30'})),false,'P01 : A en retard refusé à son tour');
    assert.equal(A.S.history.length,2,'P01 : mémoire de A réalignée sur les deux fiches');}
+  /* ── R1 / R2 (vérification des corrections de Codex, 01/11) : conflit entre onglets ── */
+  function deuxOnglets(){const A=charger(),B=charger();B.ctx.localStorage=A.st;B.st=A.st;
+    for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])A.st.setItem(k,v);
+    A.ctx.loadProfileData();B.ctx.loadProfileData();return {A,B};}
+  const ficheR=(n,h)=>({date:'2026-11-05',heure:h,commune:'Fumel',nom:'ONGLET'+n,prenom:n});
+  // R1 : A écrit ENTRE l'instantané de B et sa première écriture → le retour arrière de B ne doit pas effacer A
+  for(const action of ['addHistory','ecrireTout']){
+    const {A,B}=deuxOnglets();let enB=false,lectures=0,fait=false,okA=null;
+    A.st.lecturePanne=k=>{if(enB&&!fait&&k==='ess-p1-history'&&++lectures===2){fait=true;enB=false;okA=A.ctx.addHistory(ficheR('A','09:30'));enB=true;}return false;};
+    enB=true;
+    const r=action==='addHistory'?B.ctx.addHistory(ficheR('B','10:30')):B.ctx.ecrireTout([['ess-p1-history',[ficheR('B','10:30')]],['ess-p1-orientations',[]]]);
+    enB=false;A.st.lecturePanne=null;
+    assert(fait,'R1 '+action+' : A a bien écrit entre l\'instantané et la première écriture de B');assert.equal(okA,true,'R1 '+action+' : l\'écriture de A a réussi');
+    assert.equal(r,false,'R1 '+action+' : B est refusé');
+    const noms=JSON.parse(A.st.getItem('ess-p1-history')||'[]').map(h=>h.nom);
+    assert(noms.includes('ONGLETA'),'R1 '+action+' : la fiche de A n\'est PAS effacée par le retour arrière de B ('+noms+')');
+    assert(B.S.history.some(h=>h.nom==='ONGLETA'),'R1 '+action+' : la mémoire de B suit le stockage');
+    if(action==='addHistory'){
+      const r2=B.ctx.addHistory(ficheR('B','10:30'));assert.equal(r2,true,'R1 '+action+' : reprise réussie');
+      assert.deepEqual(JSON.parse(A.st.getItem('ess-p1-history')).map(h=>h.nom).filter(n=>n!=='Pause déjeuner').sort(),['ONGLETA','ONGLETB'],'R1 : A et B conservés après la reprise');}
+  }
+  // R1 témoin : sans écriture concurrente, le retour arrière d'une vraie panne est inchangé (couvert par les tests de panne ci-dessus)
+  // R2 : après un conflit résolu, les sauvegardes automatiques ne restent pas suspendues
+  {const {A,B}=deuxOnglets();
+   assert.equal(A.ctx.addHistory(ficheR('A','09:30')),true);
+   assert.equal(B.ctx.addHistory(ficheR('B','10:30')),false,'R2 : conflit');
+   assert.equal(B.ctx._stockageEnEchec,false,'R2 : un conflit n\'est pas une panne de stockage');
+   assert.equal(B.ctx.addHistory(ficheR('B','10:30')),true,'R2 : reprise');
+   assert.equal(B.ctx._stockageEnEchec,false);assert(B.journal.pushs>=1,'R2 : sauvegarde automatique déclenchée après la reprise ('+B.journal.pushs+')');
+   assert.match(B.S.saveStatus,/^Sauvegardé|Modifié dans un autre onglet|Dernière|Données/,'R2 : pas de message « Enregistrement impossible »');}
+  // R2 témoin : une vraie panne de stockage suspend toujours les sauvegardes
+  {const e=charger();e.st.panne=()=>true;e.ctx.lsSet('ess-p1-history',[]);assert.equal(e.ctx._stockageEnEchec,true,'R2 témoin : panne réelle → suspension maintenue');}
   /* ── Balayage du chargement (après la 9e vérification de Codex) : aucune donnée illisible au chargement n'est écrasée ── */
   {
     const valeurs={'ess-cms':[{nom:'Agen',adresse:'1 rue fictive'},{nom:'Fumel'}],'ess-demarches':[{id:'d1',nom:'Démarche fictive'}],'ess-secteurs':['Secteur fictif'],
