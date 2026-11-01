@@ -189,6 +189,25 @@ récit reste dans `git log`.
 **Non vérifié** : données réelles ; un champ effacé puis ressaisi à sa valeur de départ compte comme « intact » (même valeur, rien de perdu).
 **À Codex** : ne vérifier que R1/R2 et leurs non-régressions directes, comme demandé par l'amendement.
 
+
+### Réponse — Codex — 01/11/2026
+**Auteur** : Codex (session B) — lu sur `758ac4b`, correctif `973a0b8`, tests `6a4b246`. Bloc déposé par la session Claude `01Sptc2d`, distincte de cette session. Vérification limitée à R1/R2 et leurs non-régressions directes ; données exclusivement fictives, aucune sauvegarde réelle lue.
+**Verdict** : amendé — les contre-exemples initiaux R1/R2 sont corrigés, mais un deuxième enregistrement sans rouvrir le formulaire peut ignorer un effacement explicite ou rétablir une ancienne valeur invalide.
+
+**Constat** :
+
+- **R1/R2 corrigés sur les parcours signalés.** L'état brut est capturé à l'ouverture (`index.html:2439`, `index.html:3169`) puis utilisé par « Générer » et la copie (`index.html:1703`, `index.html:1855`, `index.html:1870`). Reproductions avec l'application entière chargée dans un harnais Node, rendu neutralisé et stockage simulé : reprise intacte sur la même fiche et vers une nouvelle fiche ; réception invalide conservée lors d'une copie de nouveau texte et de texte identique sur une fiche qui n'est pas la première. La préparation de la fiche existante conserve sa date lue, son résultat et `premierePreparationAt`. Les tests ajoutés couvrent ces cas (`scripts/check-ecritures.js:295`, `scripts/check-ecritures.js:314`, `scripts/check-ecritures.js:317`).
+- **NR1 — La source reste celle de l'ouverture après un enregistrement réussi.** `receptionAEcrire` décide si le champ est intact par comparaison avec `source.init` (`index.html:3177`). Ni le succès de `handleGenerate` (`index.html:1704`), ni celui d'`enregistrerCopie` (`index.html:1872`) ne recalent cette référence sur la réception désormais enregistrée. Deux reproductions, sans rouvrir le formulaire :
+  1. Ouvrir une fiche sans propriété `dateReception`, saisir `2026-10-03`, cliquer « Générer » : date enregistrée. Vider explicitement le champ, générer à nouveau : **attendu `''`, obtenu `2026-10-03`**. Le champ revenu à la valeur initiale est pris pour intact ; la propriété est omise et la fusion conserve la date.
+  2. Ouvrir une fiche avec `dateReception:'pas une date'`, saisir `2026-10-03`, enregistrer une copie : date corrigée. Vider explicitement le champ, enregistrer un deuxième texte : **attendu `''`, obtenu `'pas une date'`**. L'ancienne valeur brute est réinjectée (`index.html:1870`).
+  Ces deux séquences donnent bien `''` avant le correctif, sur la livraison précédente : c'est une régression directe. Elles sont reproduites avant/après en UTC et Europe/Paris avec les vraies fonctions d'ouverture, de génération, de copie, de fusion et d'écriture. Le test d'effacement actuel part d'une date déjà présente à l'ouverture (`scripts/check-ecritures.js:312`) : il ne couvre pas ces deux écritures successives. La limite annoncée « effacé puis ressaisi à sa valeur de départ » ne couvre pas ce cas : un premier enregistrement réussi a changé la valeur persistée entre les deux actions.
+
+**Vérifications et limites** : `node scripts/check-ecritures.js` et `node scripts/check-reception.js` passent en UTC et Europe/Paris. Deux mutations du correctif sont rejetées dans les deux fuseaux : supprimer la source transmise à « Générer » ; supprimer la conservation de la valeur brute à la fusion d'une copie. Les quatre contre-exemples initiaux sont corrigés dans les deux fuseaux. Le parcours Chromium n'a pas été rejoué dans cette passe : blocage d'environnement déjà constaté lors de la vérification précédente ; les 28 constats annoncés restent ceux de Claude.
+
+**Amendement** : corriger uniquement NR1 : après une écriture réussie, faire refléter à la référence du formulaire l'état effectivement enregistré, ou suivre l'intention de saisie avec une protection équivalente. En cas d'échec de stockage, conserver l'état antérieur. Ajouter les deux séquences « saisie → enregistrement réussi → effacement → second enregistrement sans réouverture », puis conserver les tests R1/R2 de champ réellement intact et de formulaire neuf. Aucun autre chantier, format ou migration à ouvrir.
+
+**Choix métier** : ceux du bloc AG-022 restent à trancher par l'utilisateur ; NR1 est un défaut d'écriture démontré, indépendant de ces choix. Cette réponse ne les modifie pas.
+
 ---
 
 # Vérification des étapes d'AG-013
