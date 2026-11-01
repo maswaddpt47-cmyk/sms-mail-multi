@@ -6,6 +6,7 @@ function section(from,to){const start=html.indexOf(from);assert(start>=0,from);c
 const ctx=vm.createContext({Date});
 vm.runInContext([
   section('function preparationDayUTC(value){','function preparationParisDay('),
+  section('function etatReception(','/* valeur de départ'),
   section('function joursCivilsEntre(','\n'),
   section('function cmsKey(','\n'),
   section('function usagerKey(','\n'),
@@ -29,12 +30,13 @@ const entries=[
   row('A7','Marmande','FICTIF Golf','2026-10-14','xx'),              /* exclu : réception illisible = absente */
   row('A8','Marmande','FICTIF Hotel','2026-10-15','2026-10-01',{msgType:'indispo'}),   /* hors population */
   row('A9','Marmande','FICTIF India','2026-02-30','2026-02-01'),      /* date de RDV inexistante : hors population */
+  row('B1','Marmande','FICTIF Juliet','2026-10-16',undefined,{dateDemande:'2026-10-02'}),   /* AG-022 : ancienne date reprise, à confirmer */
 ];
 const before=JSON.stringify(entries);
 const r=ctx.delaiAttenteParCms(entries);
 
 // Effectifs (inchangés par AG-021).
-assert.equal(r.global.mesurables,4);assert.equal(r.global.sansReception,2);assert.equal(r.global.incoherente,1);
+assert.equal(r.global.mesurables,4);assert.equal(r.global.sansReception,2);assert.equal(r.global.incoherente,1);assert.equal(r.global.reprise,1);
 assert.equal(r.parCms[ctx.cmsKey('Marmande')].mesurables,3);assert.equal(r.parCms[ctx.cmsKey('Fumel')].mesurables,1);
 // La médiane reste calculée dans le modèle (non affichée) : [2, 9, 10, 10] -> 9.5.
 assert.equal(r.global.mediane,9.5);
@@ -49,13 +51,14 @@ assert.equal(m.every((x,i)=>i===0||m[i-1].d<=x.d),true);
 
 // Fiches exclues, chacune avec son motif exact ; la fiche sans réception n'utilise jamais la date du message.
 const x=JSON.parse(JSON.stringify(r.liste.exclus));
-assert.equal(x.length,3);
+assert.equal(x.length,4);
 assert.deepEqual(x.filter(e=>e.motif==='sans_reception').map(e=>e.personne),['Exemple FICTIF Delta','Exemple FICTIF Golf']);
 assert.deepEqual(x.filter(e=>e.motif==='apres_rdv').map(e=>[e.personne,e.rec,e.rdv]),[['Exemple FICTIF Echo','2026-10-30','2026-10-28']]);
 
 // Les listes respectent exactement l'effectif affiché.
 assert.equal(m.length,r.global.mesurables);
-assert.equal(x.length,r.global.sansReception+r.global.incoherente);
+assert.equal(x.length,r.global.reprise+r.global.sansReception+r.global.incoherente);
+assert.deepEqual(x.filter(e=>e.motif==='reprise').map(e=>[e.personne,e.rec]),[['Exemple FICTIF Juliet','2026-10-02']]);
 assert.equal(r.parCms[ctx.cmsKey('Marmande')].sansReception,2);
 
 // Premiers RDV : même diagnostic qu'avant (effectifs seulement affichés).

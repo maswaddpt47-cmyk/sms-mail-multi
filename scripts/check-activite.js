@@ -121,7 +121,7 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
    f({date:'2026-10-20',dateDemande:'2026-10-01'}),f({date:'2026-10-20',dateReception:''}),f({date:'2026-10-20',dateReception:'2026-10-25'}),f({date:'2026-10-20',dateReception:'2026-10-20',commune:'fumel '}),
    f({date:'2026-10-20',dateReception:'2026-10-14',commune:'Marmande',statut:'lapin'}),f({date:'2026-10-20',dateReception:'2026-10-01',msgType:'indispo'})]));
  assert.equal(r.parCms.fumel.mesurables,4);assert.equal(r.parCms.fumel.mediane,6,'médiane de 0, 2, 10, 30 = 6');
- assert.equal(r.parCms.fumel.sansReception,2,'ancien dateDemande et réception vide : non mesurables, jamais repris');
+ assert.equal(r.parCms.fumel.sansReception,1,'réception vide : absente, non mesurable');assert.equal(r.parCms.fumel.reprise,1,'ancien dateDemande : à confirmer, non mesurable, jamais repris (AG-022)');
  assert.equal(r.parCms.fumel.incoherente,1,'réception après le RDV');assert.equal(r.parCms.marmande.mediane,6,'tous les RDV de la période (Lapin compris)');
  assert.equal(r.global.mesurables,5);assert.equal(r.global.mediane,6);
  assert.equal(c.medianeNombres([3,1,2]),2);assert.equal(c.medianeNombres([]),null);
