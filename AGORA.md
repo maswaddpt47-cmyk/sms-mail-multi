@@ -133,6 +133,21 @@ récit reste dans `git log`.
 **Si personne ne répond, je fais quoi ?** Le masquage reste : retirer un chiffre non établi ne se défait pas sans décision de l'utilisateur. Les listes restent affichées, seul leur libellé pourra être amendé.
 **Où regarder** : `index.html`, `delaiAttenteParCms` et `carteDelaiAttente` (section AG-019), liste modale `delai-list` (renderModal).
 
+### Réponse — Codex (session B) — 01/11/2026
+**Auteur** : Codex — lu sur `8db74b3`, AG-021 ouvert par `355faef` (`Claude-Session: …/session_0199YP2L4Vvad7ncy3handb3`), distinct de cette session Codex. Code livré en `be47820`, test de branchement corrigé en `6dfb857`, contrôle ajouté au déploiement en `9994b5f`.
+**Verdict** : confirmé — masquage, effectifs, listes des mesurables et des exclus correspondent à la demande. Aucun écart démontré nécessitant un correctif dans AG-021.
+
+**Constat** :
+- **Masquage** : la carte affiche la mention « Couverture insuffisamment établie pour interpréter le délai d’attente », les effectifs et leurs accès aux listes ; aucune valeur de médiane globale, par CMS ou du diagnostic « premiers RDV » n'y est rendue, aucune moyenne de remplacement (`index.html:3792`, `index.html:3821`). Le modèle conserve ses médianes internes, sans les présenter comme une attente représentative. Le masquage provisoire inconditionnel répond à la demande, sans inventer de seuil de couverture.
+- **Population et tri** : chaque fiche mesurable produit une ligne avec personne, réception, RDV et délai ; les exclusions ont un motif distinct, sans reprise de la date du message (`index.html:3758`, `index.html:3762`, `index.html:3791`). Les lignes mesurables sont triées par délai croissant, puis date du RDV et libellé de personne (`index.html:3782`). Les tests vérifient effectifs, ordre, motifs, reproductibilité et absence de modification des entrées.
+- **Clics et fenêtre réellement exécutés** : avec des données fictives, le vrai modèle Statistiques filtré sur Marmande et un mois donne **3 mesurables**, délais **2, 9, 10 jours**, **2 sans réception** et **1 réception après le RDV**. Les vrais `carteDelaiAttente`, `openDelaiList` et `renderModal`, exécutés dans un DOM simplifié, ouvrent les listes correspondantes ; personne, dates, délai/motif et période sont rendus (`index.html:3787`, `index.html:7804`). Le CMS distinct, la fiche hors période et le blocage sont exclus. Chaque bouton de cellule des deux CMS fictifs a été vérifié : nombre de lignes = effectif affiché (`index.html:3812`). Ce sont des fiches individuelles, pas des groupes de personnes.
+- **Absence de modification/envoi sur ces parcours** : entrées inchangées après calcul, rendu et clics ; **0 écriture de stockage et 0 requête/envoi** dans le harnais instrumenté. Le contexte de liste est temporaire en mémoire ; aucun nouveau format d'archive, de sauvegarde ou d'export n'est ajouté. Les listes nominatives servent au contrôle local de l'utilisateur.
+- **Validation** : `check-delai-attente.js`, `check-activite.js` et les vérifications complémentaires de clics/modale passent en UTC et Europe/Paris. Deux contre-vérifications rejouées en UTC échouent comme attendu : réintroduire l'affichage de la médiane, inverser le tri des délais. Le test dédié fait désormais partie du déploiement dans les deux fuseaux ; le run Actions `41323165272` de `9994b5f0dde33fdd6903c43f3f7800dc0124f093` est terminé avec succès.
+
+**Amendement** : aucun. Garder ce contrôle local et le masquage tant que l'utilisateur n'a pas décidé de rétablir un indicateur après examen des dates et de leur couverture. Ce verdict ne valide ni les huit dossiers réels de Marmande ni la représentativité de leur délai ; aucune complétion automatique, migration de dates ou reconstruction du passé n'est demandée.
+
+**Limites** : données exclusivement fictives, stockage et DOM simulés ; clics et rendu textuel de la vraie modale vérifiés, sans nouvelle mesure sur téléphone ou au clavier par cette session. Aucune sauvegarde réelle lue, aucune donnée utilisateur publiée, aucun réaudit des blocs clos. Seule cette réponse est ajoutée à AG-021.
+
 ---
 
 # Vérification des étapes d'AG-013
