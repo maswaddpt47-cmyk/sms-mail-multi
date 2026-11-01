@@ -3255,6 +3255,32 @@ function legacyPreparationEstimate(history){
     sameDay:sameDay};
 }
 /* ts ne sert qu'à situer les exclusions anciennes, jamais à calculer leur délai. */
+/* AG-025 (demande de l'utilisateur, 01/11/2026) : réception → DERNIER message enregistré (`ts`, réécrit à chaque régénération ;
+   ce n'est pas le premier envoi, qui n'est pas enregistré), en jours ouvrés français (joursOuvresFrance), pour TOUTES les fiches,
+   avec ou sans première préparation. Réception : etatReception (enregistrée, ou ancien champ jusqu'au 22/10 — AG-023).
+   Période : jour Paris du dernier message ; CMS par cmsKey. Chaque fiche non mesurée est comptée sous un motif. Lecture seule. */
+var MOTIFS_DERNIER_MESSAGE={ts_absent:'date du message absente',ts_illisible:'date du message illisible ou impossible',suivi:'dernier message de suivi (relance, rappel, lapin)',
+  reception_a_confirmer:'réception à confirmer',reception_absente:'réception absente',reception_invalide:'réception invalide',inversee:'dernier message antérieur à la réception'};
+function reactiviteDernierMessage(history,start,end,cms){
+  var r={delais:[],memeJour:0,exclus:{ts_absent:0,ts_illisible:0,suivi:0,reception_a_confirmer:0,reception_absente:0,reception_invalide:0,inversee:0},horsPeriodeInconnue:0};
+  (history||[]).forEach(function(h){
+    if(!h||h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return;
+    var brut=h.ts==null?'':String(h.ts).trim(),lu=brut?lireTs(brut):null,jour=lu&&preparationDayUTC(lu.jour)!==null?lu.jour:null;
+    if(!jour){r.exclus[brut?'ts_illisible':'ts_absent']++;if(start)r.horsPeriodeInconnue++;return;}   /* aucune période connue : comptée et dite */
+    if(start&&(jour<start||jour>end))return;
+    if(h.msgType==='relance'||h.msgType==='rappel_veille'||h.msgType==='lapin'||h.dateRelance){r.exclus.suivi++;return;}
+    var er=etatReception(h);
+    if(er.etat==='reprise'){r.exclus.reception_a_confirmer++;return;}
+    if(er.etat!=='enregistree'&&er.etat!=='ancienne'){r.exclus[er.invalide?'reception_invalide':'reception_absente']++;return;}
+    var d=joursOuvresFrance(er.date,jour);
+    if(d===null){r.exclus.inversee++;return;}
+    r.delais.push(d);if(er.date===jour)r.memeJour++;
+  });
+  var t=r.delais.slice().sort(function(a,b){return a-b;}),n=t.length,m=Math.floor(n/2);
+  r.n=n;r.mediane=n?(n%2?t[m]:(t[m-1]+t[m])/2):null;r.nExclus=Object.keys(r.exclus).reduce(function(a,k){return a+r.exclus[k];},0);delete r.delais;
+  return r;
+}
+
 function preparationCohort(history,start,end,cms){
   return history.filter(function(h){
     if(h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return false;if(!start)return true;
@@ -4853,7 +4879,6 @@ function renderStats(){
   var canaux=prep.canaux;
   var prepCohort=preparationCohort(S.history,rdv.start,rdv.today,S.statsCMS);
   var prepMetrics=preparationStats(prepCohort);
-  var legacyPrep=legacyPreparationEstimate(prepCohort);
   /* « Délai moy. RDV » (dernier message → RDV) retiré : décision 5 du 31/10 (AG-015 B). La préparation moyenne horodatée reste. */
   wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Fiches préparées'));
   wrap.appendChild(el('p',{class:'ui-chart-description ui-stats-units'},'Une fiche = un dossier, compté au jour de sa première préparation (une régénération ne la déplace pas). SMS / Mails : canal du dernier message.'
@@ -4879,17 +4904,16 @@ function renderStats(){
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},prepMetrics.count+' dossier'+(prepMetrics.count>1?'s':'')+' mesuré'+(prepMetrics.count>1?'s':'')+' · '+prepMetrics.excluded+' non mesurable'+(prepMetrics.excluded>1?'s':'')));
   reactC.appendChild(el('div',{class:'ui-stats-metric-note'},'Mesure horodatée : réception → première préparation (l’envoi n’est pas enregistré). Week-ends et jours fériés nationaux exclus.'));
   kpiRow.appendChild(reactC);
-  if(legacyPrep.median!==null){
-    var legacyC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
-    /* Le pourcentage traité le jour même parle mieux qu'une médiane à 0 j (lue « nul ») :
-       il passe en grand, la médiane en note (demande utilisateur 22/10). */
-    var legacyPct=Math.round(legacyPrep.sameDay/legacyPrep.count*100);
-    legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPct+' %'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même (estimation)'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median.toLocaleString('fr-FR')+' j ouvré'+(legacyPrep.median>1?'s':'')+' (fériés exclus)')));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Estimation, pas une mesure : elle part de la date du dernier message, une fiche régénérée compte plus long. À ne pas comparer à la préparation moyenne horodatée.'));
-    kpiRow.appendChild(legacyC);
-  }
+  /* AG-025 : réception → dernier message enregistré, toutes fiches, exclusions avec motif (remplace l'estimation des anciennes fiches) */
+  var dm=reactiviteDernierMessage(S.history,rdv.start,rdv.today,S.statsCMS);
+  var dmC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
+  dmC.appendChild(el('div',{class:'ui-stats-number'},dm.mediane===null?'—':(Math.round(dm.mediane*10)/10).toLocaleString('fr-FR')+' j'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-label'},'Réception → dernier message enregistré'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Médiane en jours ouvrés (week-ends et fériés nationaux exclus) · '+dm.n+' fiche'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+(dm.n?' · '+Math.round(dm.memeJour/dm.n*100)+' % le même jour':'')));
+  var dmEx=Object.keys(MOTIFS_DERNIER_MESSAGE).filter(function(k){return dm.exclus[k];}).map(function(k){return dm.exclus[k]+' '+MOTIFS_DERNIER_MESSAGE[k];});
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},dm.nExclus?'Exclues ('+dm.nExclus+') : '+dmEx.join(' · ')+(dm.horsPeriodeInconnue?' — dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptée'+(dm.horsPeriodeInconnue>1?'s':'')+' quelle que soit la période':'')+'.':'Aucune fiche exclue.'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long. Mesure distincte de la première préparation.'));
+  kpiRow.appendChild(dmC);
   wrap.appendChild(kpiRow);
 
   /* ── Graphe mensuel SVG ── */
