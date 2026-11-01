@@ -57,21 +57,59 @@ assert.ok(context.joursFeriesFrance(2028)['2028-04-17'],'2028 : Pâques 16/04');
 assert.equal(context.preparationStats([{dateReception:'2026-04-03',premierePreparationAt:'2026-04-07T09:00:00+02:00'}]).avg,1,'préparation : lundi de Pâques exclu');
 // L'estimation des anciennes fiches (réception → dernier message) aussi : vendredi 03/04 → mardi 07/04 = 1 j ouvré.
 assert.equal(context.legacyPreparationEstimate([{dateReception:'2026-04-03',ts:'2026-04-07T10:00:00+02:00',msgType:'confirmation'}]).median,1,'estimation : lundi de Pâques exclu');
-// A24 (Codex) : 0 jour ouvré n'est pas « le jour même » quand la préparation tombe un férié. Vrai fragment de rendu des tuiles,
-// exécuté avec un DOM minimal : réception mercredi 13/05/2026, préparation jeudi 14/05/2026 (Ascension).
-{const deb=html.indexOf("  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});"),fin=html.indexOf('  wrap.appendChild(kpiRow);',deb);
- assert(deb>0&&fin>deb,'fragment des tuiles de réactivité introuvable');
- const n=(tag,attrs,kids)=>{const o={tag,attrs:attrs||{},kids:[],dataset:{},appendChild(c){this.kids.push(c);return c;}};if(kids!=null)(Array.isArray(kids)?kids:[kids]).forEach(k=>o.kids.push(k));return o;};
- const txt=o=>typeof o==='string'?o:o.kids.map(txt).join(' | ');
- const asc={dateReception:'2026-05-13',premierePreparationAt:'2026-05-14T10:00:00+02:00'},ascAncienne={dateReception:'2026-05-13',ts:'2026-05-14T10:00:00+02:00',msgType:'confirmation'};
- assert.equal(context.joursOuvresFrance('2026-05-13','2026-05-14'),0,'Ascension : 0 jour ouvré');
- const rc=vm.createContext({el:n,attachPermanenceTip(){},kpiRow:n('div'),prepMetrics:context.preparationStats([asc]),legacyPrep:context.legacyPreparationEstimate([ascAncienne]),Math});
- vm.runInContext(html.slice(deb,fin),rc);const t=txt(rc.kpiRow);
- assert.equal(rc.prepMetrics.avg,0);assert.equal(rc.legacyPrep.median,0);assert.equal(rc.legacyPrep.sameDay,0,'dates civiles différentes');
- assert.equal(/jour même/i.test(t.replace(/Traitées le jour même \(estimation\)/,'').replace(/0 % \| /,'')),false,'aucun « le jour même » tiré de 0 jour ouvré : '+t);
- assert.ok(t.startsWith('0 j | Préparation moy. (jours ouvrés)'),'tuile : 0 j ouvré');
- assert.ok(t.includes('0 % | Traitées le jour même (estimation)'),'estimation : pourcentage fondé sur les dates civiles');
- assert.ok(t.includes('médiane : 0 j ouvré (fériés exclus)'),'estimation : médiane en jours ouvrés');}
+// AG-025 : réception → dernier message enregistré, toutes fiches, formats anciens, exclusions avec motif.
+assert.equal(typeof context.reactiviteDernierMessage,'function');
+const fx=(o)=>Object.assign({msgType:'confirmation',commune:'Fumel',body:'x'},o);
+const DM=[
+  fx({id:'A',dateDemande:'2026-10-05',ts:'06/10/2026 10:15:00'}),                         // ancien champ + ts texte français : lun → mar = 1
+  fx({id:'B',dateReception:'2026-10-09',ts:'2026-10-13T08:00:00.000Z'}),                   // ISO Z (10 h à Paris) : ven → mar = 2
+  fx({id:'C',dateReception:'2026-11-10',ts:'2026-11-12T09:00:00+01:00',premierePreparationAt:'2026-11-12T09:00:00+01:00'}),   // 11/11 férié = 1 ; préparation présente : comptée quand même
+  fx({id:'J',dateReception:'2026-10-07',ts:'07/10/2026 15:00'}),                           // même jour = 0
+  fx({id:'D',dateReception:'2026-10-07',ts:''}),                                           // date du message absente
+  fx({id:'E1',dateReception:'2026-10-07',ts:'31/02/2026 10:00'}),                          // impossible
+  fx({id:'E2',dateReception:'2026-10-07',ts:'hier'}),                                      // illisible
+  fx({id:'F',dateReception:'2026-10-20',ts:'2026-10-15T10:00:00+02:00'}),                  // inversée
+  fx({id:'G1',dateReception:'',ts:'2026-10-15T10:00:00+02:00'}),                           // réception absente (champ vide)
+  fx({id:'G2',dateReception:'xx',ts:'2026-10-15T10:00:00+02:00'}),                         // réception invalide
+  fx({id:'G3',dateDemande:'2026-10-25',ts:'2026-10-26T10:00:00+01:00'}),                   // date du message après le 22/10 : à confirmer
+  fx({id:'H1',msgType:'relance',dateReception:'2026-10-07',ts:'2026-10-15T10:00:00+02:00'}),   // suivi
+  fx({id:'H2',dateRelance:'2026-10-14',dateReception:'2026-10-07',ts:'2026-10-15T10:00:00+02:00'}),   // suivi
+  fx({id:'I',msgType:'indispo',dateReception:'2026-10-07',ts:'2026-10-15T10:00:00+02:00'}),    // créneau bloqué : hors population
+  fx({id:'K',commune:'Marmande',dateReception:'2026-10-07',ts:'2026-10-08T10:00:00+02:00'}),   // autre CMS
+];
+const avantDM=JSON.stringify(DM);
+let q=context.reactiviteDernierMessage(DM,null,null,'Fumel');
+assert.equal(q.n,4,'A, B, C, J calculables');assert.equal(q.mediane,1,'médiane de 0, 1, 1, 2');assert.equal(q.memeJour,1);
+assert.deepEqual(JSON.parse(JSON.stringify(q.exclus)),{ts_absent:1,ts_illisible:2,suivi:2,reception_a_confirmer:1,reception_absente:1,reception_invalide:1,inversee:1});
+assert.equal(q.nExclus,9);assert.equal(q.horsPeriodeInconnue,0,'sans période : rien à signaler');
+q=context.reactiviteDernierMessage(DM,null,null,'');assert.equal(q.n,5,'tous CMS : K en plus');
+q=context.reactiviteDernierMessage(DM,'2026-11-01','2026-11-30','fumel ');
+assert.equal(q.n,1,'novembre : C seule');assert.equal(q.mediane,1);assert.equal(q.exclus.ts_absent+q.exclus.ts_illisible,3,'dates illisibles comptées quelle que soit la période');assert.equal(q.horsPeriodeInconnue,3);
+assert.equal(q.exclus.inversee,0,'F (octobre) hors période');
+assert.equal(JSON.stringify(DM),avantDM,'lecture seule');
+assert.equal(context.reactiviteDernierMessage([fx({dateReception:'2026-10-07',ts:'07/10/2026 15:00'}),fx({dateReception:'2026-10-07',ts:'08/10/2026 09:00'})],null,null,'').mediane,0.5,'médiane paire : moyenne des deux valeurs centrales (0 et 1)');
+// Texte réellement affiché : vrai fragment des tuiles avec un DOM minimal.
+const deb=html.indexOf("  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});"),fin=html.indexOf('  wrap.appendChild(kpiRow);',deb);
+assert(deb>0&&fin>deb,'fragment des tuiles de réactivité introuvable');
+const nd=(tag,attrs,kids)=>{const o={tag,attrs:attrs||{},kids:[],dataset:{},appendChild(c){this.kids.push(c);return c;}};if(kids!=null)(Array.isArray(kids)?kids:[kids]).forEach(k=>o.kids.push(k));return o;};
+const tx=o=>typeof o==='string'?o:o.kids.map(tx).join(' | ');
+function rendre(hist,prep){const rc=vm.createContext({el:nd,attachPermanenceTip(){},kpiRow:nd('div'),prepMetrics:context.preparationStats(prep),S:{history:hist,statsCMS:'Fumel'},rdv:{start:null,today:'2026-12-31'},
+  reactiviteDernierMessage:context.reactiviteDernierMessage,MOTIFS_DERNIER_MESSAGE:context.MOTIFS_DERNIER_MESSAGE,Math,Object});vm.runInContext(html.slice(deb,fin),rc);return rc.kpiRow.kids.map(tx);}
+const [tPrep,tDM]=rendre(DM,DM);
+assert.ok(tPrep.startsWith('1 j | Préparation moy. (jours ouvrés)'),'première préparation à part : '+tPrep);
+assert.ok(tPrep.includes('1 dossier mesuré'),'première préparation : seule C');
+assert.ok(tDM.startsWith('1 j | Réception → dernier message enregistré'),'tuile : '+tDM);
+assert.ok(tDM.includes('4 fiches calculables · 25 % le même jour'),'effectif calculable');
+assert.ok(tDM.includes('Exclues (9) : 1 date du message absente · 2 date du message illisible ou impossible · 2 dernier message de suivi (relance, rappel, lapin) · 1 réception à confirmer · 1 réception absente · 1 réception invalide · 1 dernier message antérieur à la réception.'),'motifs : '+tDM);
+assert.ok(tDM.includes('pas forcément le premier envoi'),'limite écrite');
+assert.equal(/premier envoi :|date d.envoi/i.test(tDM.replace('pas forcément le premier envoi (non enregistré)','')),false,'jamais présenté comme le premier envoi');
+// A24 (Codex) : 0 jour ouvré n'est pas « le jour même » : réception mercredi 13/05/2026, message jeudi 14/05 (Ascension).
+const asc={dateReception:'2026-05-13',premierePreparationAt:'2026-05-14T10:00:00+02:00',ts:'2026-05-14T10:00:00+02:00',commune:'Fumel',msgType:'confirmation'};
+assert.equal(context.joursOuvresFrance('2026-05-13','2026-05-14'),0,'Ascension : 0 jour ouvré');
+const [aPrep,aDM]=rendre([asc],[asc]);
+assert.ok(aPrep.startsWith('0 j | Préparation moy.'),'A24 tuile : '+aPrep);assert.ok(aDM.startsWith('0 j | Réception → dernier message'),'A24 dernier message : '+aDM);
+assert.ok(aDM.includes('1 fiche calculable · 0 % le même jour'),'dates civiles différentes');
+assert.equal(/jour même/i.test(aPrep+aDM),false,'aucun « jour même » tiré de 0 jour ouvré');
 // Les archives gardent lun.–ven. (AG-017 clos) : même intervalle = 2.
 assert.equal(context.businessDaysBetween('2026-04-03','2026-04-07'),2,'archives : méthode inchangée');
 
