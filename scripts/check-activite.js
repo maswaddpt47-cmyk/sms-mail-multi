@@ -83,6 +83,7 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
    assert.equal(r.demandes["Saint-Pardoux-d'Isaac"]['2026-07'],1,'Structure rapprochée par mots');
    assert.deepEqual(r.anomalies,{dateInconnue:1,dateImprobable:1,cmsNonReconnu:2,cmsAmbigu:1,rdvSansCms:1,rdvHorsListe:1},'anomalies comptées à part (1900-01-11 = date improbable)');
    assert.equal(r.demandes.Fumel['2026-06'],0,'CMS ambigu jamais attribué au premier trouvé');
+   assert.deepEqual(r.orientations,{presentes:11,avant:1,apres:1},'orientations présentes et hors période comptées');
    assert.equal(r.rdv.Fumel['2026-02'],1);assert.equal(r.rdv.Marmande['2027-01'],1);assert.equal(r.rdv.Fumel['2026-05'],1,'« fumel␣ » regroupé (cmsKey) ; Lapin et blocage exclus');
    assert.equal(Object.values(r.rdv.Fumel).reduce((a,b)=>a+b,0),2,'RDV hors fenêtre exclus');}
   console.log('Fenêtre (bornes incluses/exclues), CMS reconnus / non reconnus / ambigus, tous états, anomalies OK.');

@@ -3683,14 +3683,15 @@ function fenetreActivite(aujourdhui){
 function activiteParCms(orientations,history,stats,aujourdhui,secteurs){
   var f=fenetreActivite(aujourdhui),cms=(secteurs||[]).filter(function(c){return String(c||'').trim();}),cles=cms.map(cmsKey);
   function zeros(){var o={};f.mois.forEach(function(m){o[m]=0;});return o;}
-  var r={fenetre:f,cms:cms,demandes:{},rdv:{},anomalies:{dateInconnue:0,dateImprobable:0,cmsNonReconnu:0,cmsAmbigu:0,rdvSansCms:0,rdvHorsListe:0},archives:{}};
+  var r={fenetre:f,cms:cms,demandes:{},rdv:{},anomalies:{dateInconnue:0,dateImprobable:0,cmsNonReconnu:0,cmsAmbigu:0,rdvSansCms:0,rdvHorsListe:0},archives:{},orientations:{presentes:0,avant:0,apres:0}};
   cms.forEach(function(c){r.demandes[c]=zeros();r.rdv[c]=zeros();});
   (orientations||[]).forEach(function(o){
     if(!o||typeof o!=='object')return;
+    r.orientations.presentes++;
     var d=preparationDayUTC(o.date)!==null?o.date:'';
     if(!d){r.anomalies.dateInconnue++;return;}   /* période non attribuable : compté sur tout le profil */
     if(d<'2020-01-01'){r.anomalies.dateImprobable++;return;}   /* révision 3 d'AG-018 : probable conversion d'un import antérieur au correctif, jamais rattachée à un mois */
-    if(d<f.du||d>f.au)return;
+    if(d<f.du){r.orientations.avant++;return;}if(d>f.au){r.orientations.apres++;return;}   /* hors période, comptées pour que la note explique un tableau vide */
     var t=cms.filter(function(c){return cmsNomDansTexte(c,o.commune);});
     if(!t.length){r.anomalies.cmsNonReconnu++;return;}
     if(t.length>1){r.anomalies.cmsAmbigu++;return;}
@@ -3736,7 +3737,7 @@ function carteActiviteParCms(){
   }
   tableau('Demandes enregistrées (orientations présentes)',r.demandes,false);
   var a=r.anomalies;
-  card.appendChild(note('Au mois de la « Date de la demande », tous états confondus. Couverture non certifiée : une orientation effacée (« Vider », import JSON) ou jamais importée n’est pas comptée ; des lignes réimportées peuvent être comptées deux fois. Hors tableau : '+a.dateInconnue+' date inconnue (période non attribuable, toutes périodes), '+a.dateImprobable+' date improbable antérieure à 2020 (probablement mal lue par un import antérieur au 01/11/2026 ; à vérifier dans Orientations), '+a.cmsNonReconnu+' CMS non reconnu, '+a.cmsAmbigu+' CMS ambigu (dans la période).'));
+  card.appendChild(note(r.orientations.presentes+' orientation'+(r.orientations.presentes>1?'s':'')+' présente'+(r.orientations.presentes>1?'s':'')+' dans ce profil sur cet appareil, dont '+r.orientations.avant+' datée'+(r.orientations.avant>1?'s':'')+' avant le '+f.du.split('-').reverse().join('/')+' et '+r.orientations.apres+' datée'+(r.orientations.apres>1?'s':'')+' après aujourd’hui (hors tableau). Au mois de la « Date de la demande », tous états confondus. Couverture non certifiée : une orientation effacée (« Vider », import JSON) ou jamais importée n’est pas comptée ; des lignes réimportées peuvent être comptées deux fois. Hors tableau : '+a.dateInconnue+' date inconnue (période non attribuable, toutes périodes), '+a.dateImprobable+' date improbable antérieure à 2020 (probablement mal lue par un import antérieur au 01/11/2026 ; à vérifier dans Orientations), '+a.cmsNonReconnu+' CMS non reconnu, '+a.cmsAmbigu+' CMS ambigu (dans la période).'));
   tableau('RDV réalisés',r.rdv,true);
   var ar=Object.keys(r.archives).sort();
   card.appendChild(note('Au mois du RDV, statut « Réalisé ». Hors tableau : '+a.rdvSansCms+' sans CMS, '+a.rdvHorsListe+' CMS hors liste (dans la période).'+(ar.length?' * Couverture partielle — année archivée : détail par CMS indisponible ('+ar.map(function(m){var v=r.archives[m].realisesTousCms;return moisCourt(m)+' : '+(v===null?'archive d’ancienne méthode, indisponible':v+' réalisés tous CMS selon l’archive');}).join(' ; ')+').':'')));
