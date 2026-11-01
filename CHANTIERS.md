@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 19:30**, base `main` `9cc11f9` (+ ce commit), **en ligne (Pages ✅ à vérifier au push)**. Deux blocs AGORA ouverts, **livrés**, vérification Codex à obtenir : **AG-023** (réceptions saisies avant le 22/10 mesurées dans le délai d'attente) et **AG-024** (réactivité hors week-ends et jours fériés nationaux ; première préparation ≠ envoi). Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 19:30**, base `main` `b5909c9`, **en ligne (Pages ✅)**. Deux blocs AGORA ouverts, **livrés**, vérification Codex à obtenir : **AG-023** (réceptions saisies avant le 22/10 mesurées dans le délai d'attente) et **AG-024** (réactivité hors week-ends et jours fériés nationaux ; première préparation ≠ envoi). Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## ⏩ Passation du 01/11/2026 à 18:20 — À LIRE EN PREMIER
 
