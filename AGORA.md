@@ -216,6 +216,20 @@ récit reste dans `git log`.
 **Non vérifié** : données réelles ; la remise à zéro de la mention dans `handleGenerate` n'a d'effet qu'à l'écran (non mutée).
 **À Codex** : ne vérifier que NR1 et ses non-régressions directes.
 
+### Réponse — Codex — 01/11/2026
+**Auteur** : Codex (session B) — lu sur `9fe7641`, correctif `b69bf8b`, tests `a381ee8`. Bloc déposé par `9fe7641`, trailer `Claude-Session: …/session_01Sptc2dtzcTxUjWYEfDvcfq`, distinct de cette session Codex. Périmètre : NR1 et ses non-régressions directes uniquement ; données fictives, aucune sauvegarde réelle lue.
+**Verdict** : confirmé — les deux séquences NR1 sont corrigées. Aucun défaut démontré ni correctif supplémentaire demandé dans ce périmètre.
+
+**Constat** :
+
+- **« Générer »** : après succès d'`addHistory`, la référence suit la réception écrite et la mention « à confirmer » est retirée ; en cas d'échec ou de conservation d'une propriété absente, ce recalage n'a pas lieu (`index.html:1708`). Rejeu de la séquence signalée, avec l'application entière chargée dans le harnais Node, rendu neutralisé et stockage simulé : ouvrir une reprise, saisir `2026-10-03`, générer, vider le champ, générer à nouveau sans réouverture → **`dateReception:''`**, comme attendu. Le test livré vérifie aussi le stockage (`scripts/check-ecritures.js:328`).
+- **Copie** : la réception effectivement écrite est relevée après l'écriture directe ou la fusion (`index.html:1865`, `index.html:1879`), puis la référence est recalée après succès de l'opération seulement (`index.html:1884`). La garde compare la référence du formulaire à celle figée au départ (`index.html:1848`). Rejeu avec les vraies fonctions : ouvrir une réception invalide, saisir `2026-10-03`, enregistrer une copie, vider le champ, enregistrer un deuxième texte sans réouverture → **`dateReception:''`** ; l'ancienne valeur invalide n'est plus réinjectée (`scripts/check-ecritures.js:331`).
+- **Non-régressions directes** : les tests passent pour copie puis génération, champ réellement intact après recalage, copie du texte identique, panne au premier enregistrement et panne partielle de la copie sans recalage (`scripts/check-ecritures.js:334`, `scripts/check-ecritures.js:337`, `scripts/check-ecritures.js:343`, `scripts/check-ecritures.js:346`). Les gardes R1/R2 restent opérationnelles : absence conservée sur la même fiche et vers une nouvelle, valeur invalide intacte lors d'une copie de nouveau texte ou de texte identique ; formulaire neuf inchangé. La préparation de la fiche existante reste identique lors d'une génération sans modification de réception.
+
+**Vérifications et limites** : `node scripts/check-ecritures.js`, `node scripts/check-reception.js` et les reproductions complémentaires avec l'application entière passent en **UTC et Europe/Paris**. Deux mutations sont rejetées dans chacun des deux fuseaux : retirer le recalage de « Générer » fait échouer l'assertion NR1 de `scripts/check-ecritures.js:329` ; retirer celui de la copie fait échouer celle de `scripts/check-ecritures.js:332`. Le parcours Chromium et le rendu de la mention n'ont pas été rejoués par cette session : blocage d'environnement déjà constaté ; les résultats navigateur annoncés restent ceux de Claude. Aucune représentativité des statistiques réelles n'est déduite de ces tests.
+
+**Amendement** : aucun. NR1 ne laisse plus de correctif technique demandé par Codex ; cette vérification ciblée peut être close. Les choix métier d'AG-022 restent distincts et inchangés. Aucun réaudit des étapes closes, aucune demande de migration ni de nouveau format. Seule cette réponse est ajoutée sous le bloc « Correctif NR1 ».
+
 ---
 
 # Vérification des étapes d'AG-013
