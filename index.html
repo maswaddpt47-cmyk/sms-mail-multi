@@ -1108,7 +1108,7 @@ var S={
   activeProfile:null, agendaScope:"mine",
   channel:"sms", msgType:"proposition", selectedTemplate:"__default__", uiMessageSettingsOpen:false,
   selectedCMS:"", selectedDemarche:"", commune:"",
-  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", dateDemande:new Date().toISOString().slice(0,10),
+  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", dateDemande:jourParis(),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
   statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, relanceReponseH:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
@@ -1264,7 +1264,7 @@ function pk(suffix){return pkFor(S.activeProfile,suffix);}
 function readProfileHistory(profileId){return profileId===S.activeProfile?S.history:lireDonnee('ess-'+profileId+'-history',[]);}
 /* nombre de RDV réellement occupés aujourd'hui pour un profil (dédoublonné par créneau, hors statuts freeAgain) */
 function countTodayRdv(profileId){
-  var today=toLocalDateStr(new Date());
+  var today=jourParis();
   var groups={};
   readProfileHistory(profileId).forEach(function(h){
     if(h.date!==today)return;
@@ -1282,11 +1282,11 @@ function countTodayRdv(profileId){
 /* nombre de RDV en attente dépassant le délai de relance configuré (clé globale, pas encore chargée dans S à cet instant) */
 function countPendingRelances(profileId){
   var delai=ls('ess-relance-delai',3);
-  var t0=new Date();t0.setHours(0,0,0,0);
+  var today=jourParis();
   var count=0;
   readProfileHistory(profileId).forEach(function(h){
     if(h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return;
-    var diff=Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000);
+    var diff=joursCivilsEntre(h.dateDemande,today);   /* AG-016 (A) : jours civils à Paris */
     if(diff>delai)count++;
   });
   return count;
@@ -1706,7 +1706,7 @@ function handleGenerate(){
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",dateDemande:new Date().toISOString().slice(0,10),genNotes:"",includeLapinMention:true});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
   S._lastLapinDetected=false;
   regen();renderGenerate();
 }
@@ -1982,7 +1982,7 @@ function getPermanence(commune,dateStr,permList){
 function applyLunchBreaks(){
   /* T01 (vérification de clôture de Codex) : historique ou journées non lus → rien n'est calculé sur un repli vide */
   if(historiqueNonLu()||_clesIllisibles[pk('permanences')])return false;
-  var today=toLocalDateStr(new Date()),changed=false,added=false,hist=S.history.slice();
+  var today=jourParis(),changed=false,added=false,hist=S.history.slice();
   var perms=S.permanences.map(function(p){
     if(p.pauseAuto||!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived)return p;
     var entry=lunchBreakEntry(p,hist,today);
@@ -2009,7 +2009,7 @@ function ensureDayOpen(commune,dateStr){
 /* RDV confirmé dont la date est passée sans être marqué Réalisé (ni Lapin/Excusé…) :
    à pointer — même logique centralisée que isDepasse */
 function isAPointer(h){
-  return !!h&&h.statut==='confirme'&&h.msgType!=='indispo'&&!!h.date&&h.date<toLocalDateStr(new Date());
+  return !!h&&h.statut==='confirme'&&h.msgType!=='indispo'&&!!h.date&&h.date<jourParis();
 }
 /* RDV à pointer visibles dans l'agenda : les journées archivées (masquées) sont exclues */
 function aPointerList(){
@@ -2168,8 +2168,7 @@ function isInMyAgenda(h){
 }
 function isDepasse(h){
   if(!h||h.statut!=='en_attente'||!h.dateDemande||h.dateRelance)return false;
-  var t0=new Date();t0.setHours(0,0,0,0);
-  return Math.round((t0-new Date(h.dateDemande.slice(0,10)+'T00:00:00'))/86400000)>(S.relanceDelai||3);
+  return joursCivilsEntre(h.dateDemande,jourParis())>(S.relanceDelai||3);   /* AG-016 (A) : jours civils à Paris */
 }
 /* Relancé depuis plus de RELANCE_REPONSE_H heures et toujours « En attente » : le créneau est à libérer (demande utilisateur 26/10).
    `tsRelance` (horodatage ISO) est posé à l'enregistrement de la relance ; sans lui (relances antérieures), pas d'alerte. */
@@ -2239,7 +2238,7 @@ function savePerm(id){
    côté une journée restaurée à la main (`gardeOuverte`) pour ne pas défaire un « Restaurer ». Retourne le nombre archivé. */
 function archiveOldDaysCore(auto){
   if(historiqueNonLu()||_clesIllisibles[pk('permanences')])return 0;   /* T01 : un RDV à pointer pourrait être invisible */
-  var now=new Date(),cutoff=toLocalDateStr(new Date(now.getFullYear(),now.getMonth(),1,12));
+  var cutoff=jourParis().slice(0,7)+'-01';   /* 1er du mois courant à Paris (AG-016 A) */
   var n=0;
   S.permanences=S.permanences.map(function(p){
     if(p.archived||!p.exceptDate||p.exceptDate>=cutoff||(auto&&p.gardeOuverte))return p;
@@ -2276,7 +2275,7 @@ function sauvegardeFiable(pid){
 var MSG_SAUVEGARDE_REFUSEE='⚠️ Sauvegarde refusée : des données n\'ont pas pu être lues, elle serait incomplète. Rechargez la page.';
 function exportData(){return exportDataForProfile(S.activeProfile);}
 function openExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}S.exportText=JSON.stringify(exportData(),null,2);S.modal='export';renderModal();}
-function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);_couvert[S.activeProfile]=couvertDe(S.activeProfile)+(parseInt(localStorage.getItem(pk('since-export'))||'0',10)||0);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
+function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+jourParis()+'.json';a.click();URL.revokeObjectURL(a.href);_couvert[S.activeProfile]=couvertDe(S.activeProfile)+(parseInt(localStorage.getItem(pk('since-export'))||'0',10)||0);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
 function openImport(){S.modal='import';S.importText="";S.importError="";renderModal();}
 function closeModal(){S.modal=null;renderModal();}
@@ -2338,7 +2337,7 @@ function exportHistoryCSV(){
   var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,receptionDateFor(h),h.premierePreparationAt||""].map(esc).join(";");});
   var csv="﻿"+cols.map(esc).join(";")+"\n"+rows.join("\n");
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download="historique-ess-cms-"+new Date().toISOString().slice(0,10)+".csv";a.click();
+  a.download="historique-ess-cms-"+jourParis()+".csv";a.click();
   showToast("✓ Export CSV téléchargé");
 }
 function exportOrientationsCSV(){
@@ -2348,7 +2347,7 @@ function exportOrientationsCSV(){
   var rows=S.orientations.map(function(o){return[o.nom,o.prenom,o.telephone,o.commune,o.communeBenef,o.motif,o.orienteur,o.date,o.etat,o.done?"Oui":"Non"].map(esc).join(";");});
   var csv="﻿"+cols.map(esc).join(";")+"\n"+rows.join("\n");
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download="orientations-"+S.activeProfile+"-"+new Date().toISOString().slice(0,10)+".csv";a.click();
+  a.download="orientations-"+S.activeProfile+"-"+jourParis()+".csv";a.click();
   showToast("✓ Export CSV téléchargé");
 }
 function deleteHistItem(realIdx){var h=S.history.slice();h.splice(realIdx,1);if(lsSet(pk('history'),h))S.history=h;renderHistoryList();}
@@ -2384,7 +2383,7 @@ function openHistInGen(h){
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
   S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionDateFor(h);
-  S.dateDemande=h.dateDemande||new Date().toISOString().slice(0,10);
+  S.dateDemande=h.dateDemande||jourParis();
   S.genNotes=h.notes||"";
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
@@ -2479,11 +2478,9 @@ function renderHeader(){
 }
 function renderTabs(){
   var nav=document.getElementById('tabnav');clear(nav);
-  var today=new Date().toLocaleDateString('fr-FR');
-  var todayN=S.history.filter(function(h){return h.ts===today;}).length;
   var orientN=S.orientations.filter(function(o){return !o.done;}).length;
   var overdueN=S.history.filter(function(h){return isInMyAgenda(h)&&(isDepasse(h)||isSansReponse(h));}).length;
-  var _todayTab=toLocalDateStr(new Date());
+  var _todayTab=jourParis();
   var agTodayN=S.history.filter(function(h){
     return h.date===_todayTab&&(h.statut==='confirme'||h.statut==='realise');
   }).length;
@@ -2495,10 +2492,6 @@ function renderTabs(){
       if(key==='agenda')renderAgenda();
       if(key==='generate')renderGenerate();
     };})(d[0])},[workspaceIcon(d[2]),el('span',{class:'nav-label'},d[1])]);
-    if(d[0]==='history'&&todayN>0){
-      var badge=el('span',{style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.56 0.15 25);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(todayN));
-      btn.appendChild(badge);
-    }
     if(d[0]==='agenda'&&agTodayN>0){
       var bdgToday=el('span',{title:agTodayN+' RDV aujourd\'hui',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.50 0.16 155);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(agTodayN));
       btn.appendChild(bdgToday);
@@ -3141,7 +3134,7 @@ function entryYear(h){
 }
 /* années révolues encore présentes (non archivées) dans l'historique du profil actif */
 function yearsArchivable(){
-  var curY=new Date().getFullYear();
+  var curY=anneeParis();
   var found={};
   S.history.forEach(function(h){var y=entryYear(h);if(y&&y<curY)found[y]=(found[y]||0)+1;});
   return Object.keys(found).map(Number).sort(function(a,b){return b-a;}).map(function(y){return{year:y,count:found[y]};});
@@ -3445,6 +3438,12 @@ function parisDayStr(d){
   try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}
   catch(e){return toLocalDateStr(d);}
 }
+/* AG-016 (A), étape 3 d'AG-013 : LA date du jour est la date civile à Paris, quel que soit le fuseau de l'appareil (jamais toISOString().slice(0,10), qui donne
+   la veille entre minuit et 1 h ou 2 h à Paris ; jamais l'heure de l'appareil). Aucune donnée ancienne réécrite. */
+function jourParis(){return parisDayStr(new Date());}
+function anneeParis(){return Number(jourParis().slice(0,4));}
+/* Jours civils de a à b (« AAAA-MM-JJ »), sans fuseau ni changement d'heure ; NaN si une date est invalide. */
+function joursCivilsEntre(a,b){var x=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(a||'')),y=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(b||''));return x&&y?Math.round((Date.UTC(+y[1],+y[2]-1,+y[3])-Date.UTC(+x[1],+x[2]-1,+x[3]))/86400000):NaN;}
 function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
 /* Audit Codex du 30/10 (AG-006). Clé d'un usager : nom|prénom séparés, espaces retirés, minuscules. Nom et prénom ne
    forment pas un identifiant de personne : deux homonymes restent un seul usager. */
@@ -3898,7 +3897,7 @@ function renderStats(){
   headRow.appendChild(pills);
   var bilanBtn=el('button',{class:'gx-press ui-stats-bilan',type:'button',onClick:function(){
     var months={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))months[h.date.slice(0,7)]=true;});
-    var list=Object.keys(months).sort().reverse(),cur=toLocalDateStr(new Date()).slice(0,7);
+    var list=Object.keys(months).sort().reverse(),cur=jourParis().slice(0,7);
     S._bilan={month:list.indexOf(cur)!==-1?cur:(list[0]||cur),cms:S.statsCMS||''};
     S.modal='bilan';renderModal();}},'📄 Bilan mensuel');
   headRow.appendChild(bilanBtn);
@@ -3913,7 +3912,7 @@ function renderStats(){
       var active=String(S.statsYear)===String(val);
       return el('button',{class:'gx-press ui-stats-filter',type:'button','aria-pressed':String(active),onClick:function(){S.statsYear=val;renderStats();}},lbl);
     }
-    yearRow.appendChild(yearPill('live','📅 '+now.getFullYear()+' (en cours)'));
+    yearRow.appendChild(yearPill('live','📅 '+anneeParis()+' (en cours)'));
     archivedYears.forEach(function(y){yearRow.appendChild(yearPill(y,'📦 '+y));});
     wrap.appendChild(yearRow);
   }
@@ -4307,7 +4306,7 @@ function renderStats(){
       var k=h.date+'|'+cmsKey(h.commune)+'|'+(h.heure||'');if(seenSlot[k])return;seenSlot[k]=true;
       countByDate[h.date]=(countByDate[h.date]||0)+1;
     });
-    var todayH=new Date();todayH.setHours(0,0,0,0);
+    var todayH=new Date(jourParis()+'T00:00:00');   /* minuit local du jour de Paris (AG-016 A) */
     var endW=new Date(todayH);endW.setDate(endW.getDate()+(6-((endW.getDay()+6)%7))); /* dimanche de la semaine courante */
     /* départ fixé au 1er juillet de l'année courante (ou précédente si on est avant juillet) */
     var heatYear=todayH.getMonth()>=6?todayH.getFullYear():todayH.getFullYear()-1;
@@ -4404,7 +4403,7 @@ function loadDemoData(){
     var dem=rnd(demarches);
     var ch=rnd(channels);
     var h2=String(8+Math.floor(Math.random()*8)).padStart(2,'0')+":"+(Math.random()>.5?"00":"30");
-    entries.push({channel:ch,msgType:rnd(types),body:"Message de démonstration",subject:ch==="mail"?"RDV — "+dem:"",civilite:rnd(civilites),prenom:rnd(prenoms),nom:rnd(noms),telephone:"",demarche:dem,selectedDemarche:"10",demarcheAutre:"",commune:rnd(communes),selectedCMS:"1",date:d.toISOString().slice(0,10),heure:h2,ts:d.toLocaleDateString('fr-FR')});
+    entries.push({channel:ch,msgType:rnd(types),body:"Message de démonstration",subject:ch==="mail"?"RDV — "+dem:"",civilite:rnd(civilites),prenom:rnd(prenoms),nom:rnd(noms),telephone:"",demarche:dem,selectedDemarche:"10",demarcheAutre:"",commune:rnd(communes),selectedCMS:"1",date:toLocalDateStr(d),heure:h2,ts:d.toLocaleDateString('fr-FR')});
   }
   S.history=entries;
   persist();
@@ -4636,7 +4635,7 @@ function renderAgenda(){
   /* un onglet resté ouvert plusieurs jours garde S.agendaTimelineDate figé sur la dernière date
      consultée ; si le jour a changé depuis le dernier rendu, on revient sur « aujourd'hui »
      plutôt que de laisser l'agenda ouvert sur une vieille date sans que rien ne le signale */
-  var _agTodayNow=toLocalDateStr(new Date());
+  var _agTodayNow=jourParis();
   if(S._agendaLastKnownDay&&S._agendaLastKnownDay!==_agTodayNow){S.agendaTimelineDate='';S.agendaFocusDay=null;}
   S._agendaLastKnownDay=_agTodayNow;
   var requestedTimelineDate=S._agScrollTarget||'';
@@ -4788,8 +4787,7 @@ function renderAgenda(){
     followupBody.appendChild(banner);
   })();
 
-  var today=new Date();today.setHours(0,0,0,0);
-  var todayStr=toLocalDateStr(today);
+  var todayStr=jourParis(),today=new Date(todayStr+'T00:00:00');   /* minuit local du jour de Paris : comparé aux dates des journées (isPast) */
   if(!scopeCollegue)renderRappelsEtDoublons(followupBody,todayStr);
 
   /* calendrier « à la volée » : chaque journée est une entrée explicite (commune+date), pas
@@ -4822,7 +4820,7 @@ function renderAgenda(){
       archToggle.addEventListener('click',function(){
         var show=!S.agShowArchived;
         if(show){S.agendaArchiveReturnDate=S.agendaTimelineDate;S.agendaTimelineDate=archivedDays[archivedDays.length-1].exceptDate;}
-        else{S.agendaTimelineDate=S.agendaArchiveReturnDate||toLocalDateStr(new Date());S.agendaArchiveReturnDate=null;}
+        else{S.agendaTimelineDate=S.agendaArchiveReturnDate||jourParis();S.agendaArchiveReturnDate=null;}
         S.agShowArchived=show;S.agendaFocusDay=null;renderAgenda();
         if(show){
           var matching=Array.prototype.slice.call(pane.querySelectorAll('[data-ag-archived="1"]')).filter(function(card){return card.getAttribute('data-ag-filter-match')!=='0';});
@@ -5459,12 +5457,7 @@ function renderAgenda(){
         var _ago='';
         if(slot.taken.dateDemande){
           /* comparaison purement calendaire — pas d'ambiguïté horaire */
-          var _now=new Date();
-          var _todayISO=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
-          var _demISO=slot.taken.dateDemande.slice(0,10);
-          var _t0=new Date(_todayISO+'T00:00:00');
-          var _t1=new Date(_demISO+'T00:00:00');
-          var _diffJ=Math.round((_t0-_t1)/86400000);
+          var _diffJ=joursCivilsEntre(slot.taken.dateDemande,jourParis());   /* AG-016 (A) : jour de Paris */
           if(_diffJ<=0)_ago='aujourd\'hui';
           else if(_diffJ===1)_ago='il y a 1 j';
           else if(_diffJ<30)_ago='il y a '+_diffJ+' j';
@@ -6081,7 +6074,7 @@ function numeroMandatValable(){return !!S.mandatNum&&S.mandatNumPour===identiteM
 function generateMandatNum(){
   var counter=(parseInt(localStorage.getItem('ess-mandat-counter')||'0',10))+1;
   localStorage.setItem('ess-mandat-counter',String(counter));
-  var year=new Date().getFullYear();
+  var year=anneeParis();
   var num='MAN-'+year+'-'+String(counter).padStart(4,'0');
   return num;
 }
@@ -6189,7 +6182,7 @@ function renderMandat(){
   lieu.appendChild(lieuSel);col.appendChild(lieu);
 
   var info=el('div',{style:"display:flex;flex-direction:column;gap:8px;background:var(--c-subtle-bg);border:1px solid oklch(0.93 0.008 256);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--c-dim);"});
-  var nextNum='MAN-'+new Date().getFullYear()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0');
+  var nextNum='MAN-'+anneeParis()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0');
   info.appendChild(el('div',{html:'<b>N° Mandat :</b> <span style="font-family:monospace;color:#1B4991;">'+nextNum+'</span> <span style="font-size:11px;color:#888;">(attribué au téléchargement)</span>'}));
   info.appendChild(el('div',{html:'<b>Date :</b> '+todayFR()}));
   info.appendChild(el('div',{html:'<b>Structure :</b> '+STRUCTURE}));
@@ -6248,7 +6241,7 @@ function buildMandatDoc(){
   page.appendChild(header);
 
   // ── Numéro de mandat ──
-  var num=(numeroMandatValable()&&S.mandatNum)||('MAN-'+new Date().getFullYear()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0'));
+  var num=(numeroMandatValable()&&S.mandatNum)||('MAN-'+anneeParis()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0'));
   var numBadge=el('div',{style:"text-align:right;font-size:10.5pt;color:#1B4991;font-weight:700;margin-bottom:10px;"});
   numBadge.textContent="N° "+num+(numeroMandatValable()?"":" (sera confirmé au téléchargement)");
   page.appendChild(numBadge);
@@ -6858,7 +6851,7 @@ function renderOrientations(){
       S.demarcheAutre=matched?'':o.motif;
       S.genNotes=o.motif||(o.orienteur?'Orienté par '+o.orienteur:'');
       /* dateDemande = date d'envoi du message, toujours aujourd'hui — o.date est la date de la demande d'orientation d'origine (peut être ancienne), pas la date d'envoi du SMS/mail généré maintenant */
-      S.dateDemande=new Date().toISOString().slice(0,10);
+      S.dateDemande=jourParis();
       S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';
       S.msgType='sans_appel';
       S.activeTab='generate';
@@ -6957,7 +6950,7 @@ function renderAgendaRdvDialog(overlay,box){
     followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},receptionDateFor(t)?formatDate(receptionDateFor(t)):'Non renseignée')]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
     var primary=el('div',{class:'ui-rdv-primary-actions'});
     primary.appendChild(action('ag-rdv-generate','Préparer SMS / mail','ui-rdv-action-primary',function(){
-      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||toLocalDateStr(new Date()),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
+      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||jourParis(),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
     primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',commune:commune,date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
@@ -7201,7 +7194,7 @@ function renderModal(){
         backups.forEach(function(b){
           var m=b.name.match(/backup-(\d{4})-(\d{2})-(\d{2})(?:-(\d{2})(\d{2}))?\.json/);
           var dateStr=m?(m[3]+'/'+m[2]+'/'+m[1]+(m[4]?' à '+m[4]+'h'+m[5]:'')):'?';
-          var isToday=m&&(m[1]+'-'+m[2]+'-'+m[3])===new Date().toISOString().slice(0,10);
+          var isToday=m&&(m[1]+'-'+m[2]+'-'+m[3])===jourParis();
           var row=el('div',{style:"display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;border:1px solid var(--c-border);margin-bottom:6px;background:var(--c-card);"});
           var lbl=el('div');
           lbl.appendChild(el('div',{style:"font-size:13px;font-weight:700;color:var(--c-dim);"},'📅 '+dateStr+(isToday?' (aujourd\'hui)':'')));
@@ -7281,7 +7274,7 @@ function renderModal(){
   else if(S.modal==='bilan'){
     box.style.maxWidth='780px';box.style.maxHeight='92vh';box.style.overflowY='auto';
     box.appendChild(header('📄 Bilan mensuel'));
-    var bc=S._bilan||(S._bilan={month:toLocalDateStr(new Date()).slice(0,7),cms:''});
+    var bc=S._bilan||(S._bilan={month:jourParis().slice(0,7),cms:''});
     var bMonths={},bCms={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))bMonths[h.date.slice(0,7)]=true;if(h.commune&&h.msgType!=='indispo')bCms[h.commune]=true;});
     bMonths[bc.month]=true;
     var bCtl=el('div',{style:"display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"});
@@ -7295,7 +7288,7 @@ function renderModal(){
     bSelC.addEventListener('change',function(){bc.cms=this.value;renderModal();});
     bCtl.appendChild(bSelM);bCtl.appendChild(bSelC);box.appendChild(bCtl);
     var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date());
-    var bMeta={infobulles:true,profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:toLocalDateStr(new Date()).split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
+    var bMeta={infobulles:true,profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:jourParis().split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
     var bHtml=monthlyReportHtml(bData,bMeta);
     box.appendChild(el('style',{},BILAN_CSS));
     var bPrev=el('div',{style:"background:#fff;color:#1a1a2e;border:1px solid var(--c-border);border-radius:10px;padding:16px;"});bPrev.innerHTML=bHtml;bPrev.querySelectorAll('.bilan-info').forEach(attachPermanenceTip);box.appendChild(bPrev);
@@ -7331,7 +7324,7 @@ function renderModal(){
   else if(S.modal==='agenda-availability'){
     var availability=S.agendaAvailability||{};
     S.agendaAvailability=availability;
-    availability.dateStr=availability.dateStr||toLocalDateStr(new Date());
+    availability.dateStr=availability.dateStr||jourParis();
     var places=[];
     S.cmsList.map(function(c){return c.nom;}).concat(S.permanences.map(function(p){return p.commune;}),S.history.map(function(h){return h.commune;})).forEach(function(name){if(name&&places.indexOf(name)===-1)places.push(name);});
     if(places.indexOf(availability.commune)===-1)availability.commune=places[0]||'';
@@ -7490,7 +7483,7 @@ function renderModal(){
       doCopy(rbody).then(function(ok){
         if(!ok)return;
         if(rh){
-          var _today=new Date().toISOString().slice(0,10);
+          var _today=jourParis();
           var targetP=rh._profile||S.activeProfile;
           var arr=readProfileHistory(targetP);
           var idx=findHistIdx(arr,rh);
@@ -7528,7 +7521,7 @@ function renderModal(){
       doCopy(lbody).then(function(ok){
         if(!ok)return;
         if(lh){
-          var _today=new Date().toISOString().slice(0,10);
+          var _today=jourParis();
           var targetP=lh._profile||S.activeProfile;
           var arr=readProfileHistory(targetP);
           var idx=findHistIdx(arr,lh);
@@ -7739,7 +7732,7 @@ function bindStaticListenersOnce(){
 }
 /* rappel des RDV en attente depuis >3j au lancement, une fois par jour et par profil */
 function maybeShowOverdueReminder(){
-  var todayStr=toLocalDateStr(new Date());
+  var todayStr=jourParis();
   if(localStorage.getItem(pk('overdue-reminder-date'))===todayStr)return;
   if(historiqueNonLu())return;   /* T01 : pas de rappel « vide » marqué fait pour la journée */
   var overdue=S.history.filter(function(h){return isInMyAgenda(h)&&isDepasse(h);});
