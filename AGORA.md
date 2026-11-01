@@ -143,6 +143,7 @@ récit reste dans `git log`.
 **Vérification** : données fictives ; mois/CMS, calendriers RDV/message distincts, dénominateurs et demi-journée, réactivité/exclusions, mois sans RDV, anonymat et idempotence. Mutation retirant le filtre du mois rejetée en UTC et Europe/Paris. Les 10 scripts du déploiement passent dans les deux fuseaux (20 exécutions). Fenêtre réelle dans Chromium à 390/1280 px sans débordement ni erreur JS ; PDF A4 de la démo généré, texte et page contrôlés.
 **Non vérifié par l’auteur** : aucune sauvegarde réelle lue ; validation métier et visuelle finale par l’utilisateur. Les chiffres des captures ne constituent pas un bilan mensuel de référence.
 **Si personne ne répond, je fais quoi ?** Livrer la demande vérifiée, puis contradiction par une autre IA selon le circuit proportionné ; aucune auto-réponse à AG-026 ou AG-027.
+**Ajustement demandé par l’utilisateur le 01/11/2026** : arrêter le bilan après le tableau Réception (pourcentage du même jour, moyenne et exclusions). Tous les blocs suivants sont retirés du rendu écran/PDF ; Sources et limites remonte avant les compléments. Aucun calcul modifié, Statistiques inchangées.
 **Où regarder** : `monthlyReportComplete`, `monthlyReportSupplementHtml`, intégration de la fenêtre bilan et `scripts/check-bilan-complet.js`.
 
 ---

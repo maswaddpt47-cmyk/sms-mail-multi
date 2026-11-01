@@ -11,7 +11,11 @@ Base inspectée : `1f12de9`. Demande : reprendre tous les chiffres des Statistiq
 | CMS, total et réalisés | même population de rendez-vous |
 | Sources, inconnus, mois courant partiel | pas de données nominatives ; archives séparées |
 
-## Ajouts demandés (AG-027)
+## Périmètre final demandé
+
+Après la première livraison, l’utilisateur demande de terminer le bilan après « Réception → dernier message enregistré ». Le pourcentage du même jour, la moyenne et les exclusions sont conservés ; les blocs suivants sont retirés de l’écran et du PDF. Sources et limites précède les compléments. Les tableaux ci-dessous décrivent l’inventaire initial ; les Statistiques et leurs calculs restent inchangés.
+
+## Ajouts initiaux (AG-027)
 
 - Taux de concrétisation, lapin, remplissage et remplissage net : vrais modèles existants, unités et dénominateurs écrits ; capacité des permanences réelles, RDV sans heure exclus et comptés.
 - Fiches par dernier message enregistré : total, SMS, mails, canal inconnu, personnes, types et CMS ; mois du message indépendant du mois du RDV. Absences de dates comptées sans mois inventé. Aucune exigence de première préparation.

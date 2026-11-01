@@ -4338,7 +4338,7 @@ function monthlyReportComplete(history,month,cms,now,context){
 }
 function monthlyReportSupplementHtml(d){
   if(!d.stats)return '';
-  var s=d.stats,f=s.fiches,r=s.rates,dm=s.reactivite,c=s.contexte;
+  var s=d.stats,f=s.fiches,r=s.rates,dm=s.reactivite;
   function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function num(x){return x===null||x===undefined?'—':Number(x).toLocaleString('fr-FR');}
   function pct(n,t){return t?Math.round(n/t*100)+' %':'—';}
@@ -4361,27 +4361,6 @@ function monthlyReportSupplementHtml(d){
     ])+'<p class="unit">'+f.nonMesurables+' fiches sans date du message lisible, hors total et hors graphique ; période inconnue, comptées pour le CMS choisi quelle que soit la période.</p>');
   h+=section('Réception → dernier message enregistré',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' fiches calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
     '<p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.</p>'+table(['Exclusion','Fiches'],Object.keys(dm.exclus).map(function(k){return [MOTIFS_DERNIER_MESSAGE[k],dm.exclus[k]];}))+'<p class="unit">Exclues : '+dm.nExclus+' ; dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptées quelle que soit la période.</p>');
-  h+=section('Fiches par mois du message',table(['Mois','SMS','Mails','Canal inconnu'],Object.keys(f.byMonth).sort().map(function(m){var x=f.byMonth[m];return [m,x.sms,x.mail,x.inconnu];})));
-  var typeTotal=['proposition','confirmation','sans_appel'].reduce(function(n,k){return n+(f.types[k]||0);},0);
-  h+=section('Répartition par type du dernier message',table(['Type','Fiches','Part des trois types principaux'],[['proposition','Proposition'],['confirmation','Confirmation'],['sans_appel','Sans appel']].map(function(x){return [x[1],f.types[x[0]]||0,pct(f.types[x[0]]||0,typeTotal)];}))+'<p class="unit">Même dénominateur que les Statistiques : proposition + confirmation + sans appel. Les relances restent comptées au mois du RDV : '+d.followup.recorded+' / '+d.entries+' ('+pct(d.followup.recorded,d.entries)+'). Les autres types sont hors de ces parts.</p>');
-  h+=section('Fiches avec message daté par CMS / commune',table(['CMS','Fiches'],f.byCms.map(function(x){return [x.nom,x.n];}).concat(f.sansCms?[['CMS non renseigné',f.sansCms]]:[])));
-  h+=section('RDV sans suite — à recontacter ?',table(['Catégorie','Fiches'],[['Lapins',s.sansSuite.lapin],['Pas de retour',s.sansSuite.pasDeRetour],['RDV à pointer',s.sansSuite.aPointer]])+'<p class="unit">À pointer = confirmé dont la date est passée au jour d’édition. Une personne déjà recontactée depuis reste comptée ; ce statut ne prouve pas une absence d’accompagnement.</p>');
-  var g=s.delai.global;
-  function delaiRow(x){return [x.nom||'Tous les CMS',num(x.mediane),x.mesurables,x.reprise,x.sansReception,x.incoherente,x.anciennes,num(x.medianePremiers),x.nPremiers,x.suivis];}
-  h+=section('Délai d’attente : réception de la demande → RDV',table(['CMS','Médiane (j calendaires)','Mesurables','À confirmer','Absente ou invalide','Après le RDV','Réceptions anciennes','Médiane premiers RDV (j)','Premiers RDV','Suivis écartés'],[delaiRow(g)].concat(s.delai.parCms.map(delaiRow)))+
-    '<p class="unit">Médianes sur les seules fiches mesurables. Réceptions anciennes : saisies avant le 22/10/2026 dans l’ancien champ prérempli ; une date laissée telle quelle compte. Premier RDV : même nom + prénom et même réception, RDV le plus tôt dans la population ; diagnostic, sans identification certaine. Aucune réception reconstruite.</p>');
-  h+='<section><h2>Contexte au '+esc(c.today)+' — hors mois du bilan</h2><p>Les prévisions suivantes décrivent le jour d’édition ; elles ne reconstituent pas les places disponibles à la fin du mois sélectionné.</p>'+kpis([[num(c.free),'Places disponibles à venir',c.days.length+' permanences à venir · '+c.days.reduce(function(n,x){return n+x.total;},0)+' créneaux']])+table(['Date','CMS','Capacité','Disponibles','Réservés','Libérés ce jour','En attente','Réalisés','Bloqués','Dépassement'],c.days.map(function(x){return [x.date,x.cms,x.total,x.free,x.occupied,x.released,x.pending,x.completed,x.blocked,x.overbooked||0];}))+'</section>';
-  var heatRows=[],dates=Object.keys(c.heat).sort();for(var i=0;i<dates.length;i+=4){var row=[];for(var j=0;j<4;j++){var date=dates[i+j];row.push(date||'',date?c.heat[date]:'');}heatRows.push(row);}
-  h+=section('Activité annuelle — contexte du '+c.heatDu+' au '+c.heatAu,table(['Date','Créneaux','Date','Créneaux','Date','Créneaux','Date','Créneaux'],heatRows)+'<p class="unit">Comme la heatmap des Statistiques : créneaux distincts, hors blocages, CMS choisi ; dates non listées = 0. Hors filtre du mois.</p>');
-  var act=c.activite,months=act.fenetre.mois;
-  var active=act.cms.filter(function(cms){return months.some(function(m){return act.demandes[cms][m]||act.rdv[cms][m];});});
-  var debut=months.findIndex(function(m){return act.archives[m]||active.some(function(cms){return act.demandes[cms][m]||act.rdv[cms][m];});});
-  var rows=[];(debut<0?[]:months.slice(debut)).forEach(function(m){active.forEach(function(cms){rows.push([m,cms,act.demandes[cms][m],act.archives[m]?'— (année archivée, détail indisponible)':act.rdv[cms][m]]);});});
-  var totauxCms=active.map(function(cms){return [cms,months.reduce(function(n,m){return n+act.demandes[cms][m];},0),months.reduce(function(n,m){return n+act.rdv[cms][m];},0)+(Object.keys(act.archives).length?' (partiel)':'')];});
-  var totauxMois=(debut<0?[]:months.slice(debut)).map(function(m){return [m,active.reduce(function(n,cms){return n+act.demandes[cms][m];},0),act.archives[m]?'— (année archivée)':active.reduce(function(n,cms){return n+act.rdv[cms][m];},0)];});
-  h+=section('Activité par CMS — 12 derniers mois (contexte)', '<p>Du '+esc(act.fenetre.du)+' au '+esc(act.fenetre.au)+' ; tous les CMS reconnus, indépendamment du mois et du CMS du bilan, comme les Statistiques. Deux calendriers différents : aucun taux entre demandes et RDV.</p>'+table(['Mois','CMS','Demandes enregistrées','RDV réalisés'],rows)+table(['Total par CMS reconnu','Demandes','RDV réalisés détaillés'],totauxCms)+table(['Total par mois (CMS reconnus)','Demandes','RDV réalisés détaillés'],totauxMois)+
-    '<p class="unit">'+act.orientations.presentes+' orientations présentes sur cet appareil ; '+act.orientations.avant+' avant la fenêtre, '+act.orientations.apres+' après aujourd’hui. Couverture non certifiée : orientations effacées ou jamais importées absentes, réimports potentiellement comptés deux fois.</p>'+table(['Hors tableau','Effectif'],Object.keys(act.anomalies).map(function(k){var noms={dateInconnue:'Date inconnue (toutes périodes)',dateImprobable:'Date improbable avant 2020',cmsNonReconnu:'CMS non reconnu',cmsAmbigu:'CMS ambigu',rdvSansCms:'RDV sans CMS',rdvHorsListe:'RDV avec CMS hors liste'};return [noms[k],act.anomalies[k]];}))+
-    table(['Mois archivé','Réalisés tous CMS (archive, séparés du détail)'],Object.keys(act.archives).sort().map(function(m){return [m,num(act.archives[m].realisesTousCms)];}))+'<p class="unit">Années archivées : détail par CMS indisponible, jamais remplacé par zéro ; totaux détaillés partiels. Sans orientation présente : aucune demande à compter sur cet appareil.</p>');
   return h;
 }
 
@@ -4443,14 +4422,14 @@ function monthlyReportHtml(d,meta){
     if(d.sansCms&&!d.cms)h+='<tr><td>CMS non renseigné</td><td class="n">'+d.sansCms+'</td><td class="n">'+d.sansCmsRealised+'</td></tr>';
     h+='</table></section>';
   }
-  h+=monthlyReportSupplementHtml(d);
   h+='<section><h2>Sources et limites</h2><ul>'
-    +(d.stats?'<li>Rapport enrichi : rendez-vous au mois du RDV ; fiches et réactivité au mois du dernier message. Chaque section indique sa population. Les vues de contexte au jour d’édition sont hors mois ; les archives n’apparaissent que dans le contexte des 12 mois, séparées du détail.</li>':'')
+    +(d.stats?'<li>Rapport enrichi : rendez-vous au mois du RDV ; fiches et réactivité au mois du dernier message. Chaque section indique sa population. Aucune archive annuelle agrégée n’est reprise dans ce bilan.</li>':'')
     +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', indisponibilités exclues. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
     +'<li>Les décomptes de rendez-vous portent sur les <b>rendez-vous enregistrés</b> : un rendez-vous annulé, excusé ou lapin puis remplacé par une autre personne reste compté.</li>'
     +'<li>Une relance renseignée correspond à une date ou un type de relance enregistré, sans confirmation de l’envoi du message. Certaines anciennes dates ajoutées automatiquement peuvent être présentes et ne sont pas distinguées des relances réelles.</li>'
     +(d.nonPointes?'<li>'+d.nonPointes+' rendez-vous Confirmé passé'+(d.nonPointes>1?'s':'')+' n’'+(d.nonPointes>1?'ont':'a')+' pas été pointé'+(d.nonPointes>1?'s':'')+' (statut encore « Confirmé »).</li>':'')
-    +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles.</li></ul></section></div>';
+    +'<li>Le bilan ne reprend ni nom, ni téléphone, ni note, ni message. Les démarches saisies librement par le conseiller sont reproduites telles quelles.</li></ul></section>';
+  h+=monthlyReportSupplementHtml(d)+'</div>';
   return h.replace(/<table>/g,'<div class="tw"><table>').replace(/<\/table>/g,'</table></div>'); /* tableaux défilants sur écran étroit */
 }
 function printMonthlyReport(html,title){

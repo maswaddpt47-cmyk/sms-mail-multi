@@ -51,7 +51,9 @@ const b=ctx.monthlyReportComplete(history,'2026-10','b',now,context);assert.equa
 const messages=ctx.monthlyReportComplete([row('seul','2026-11-05','confirme')],'2026-10','A',now,context);assert.equal(messages.entries,0);assert.equal(messages.stats.fiches.total,1);assert.equal(messages.empty,false);
 assert.equal(ctx.monthlyReportComplete(history,'2026-9','',now,context),null);
 const out=ctx.monthlyReportHtml(d,{profil:'Profil fictif',date:'25/10/2026'});
-for(const label of ['Taux de concrétisation','Taux de lapin','Taux de remplissage','Remplissage net','Fiches avec message daté','SMS','Mails','Canal inconnu','Usagers','Le même jour','Moyenne en jours ouvrés','Répartition par type du dernier message','Délai d’attente','RDV sans suite','Places disponibles à venir','Activité annuelle','12 derniers mois'])assert(out.includes(label),label);
+for(const label of ['Taux de concrétisation','Taux de lapin','Taux de remplissage','Remplissage net','Fiches avec message daté','SMS','Mails','Canal inconnu','Usagers','Le même jour','Moyenne en jours ouvrés'])assert(out.includes(label),label);
+assert.doesNotMatch(out,/<h2>(?:Fiches par mois du message|Répartition par type|Fiches avec message daté par CMS|RDV sans suite|Délai d’attente|Contexte au|Activité annuelle|Activité par CMS)/);
+assert.equal([...out.matchAll(/<h2>(.*?)<\/h2>/g)].at(-1)[1],'Réception → dernier message enregistré','le bilan se termine à la réception, écran et impression');
 assert.match(out,/67 %/);assert.match(out,/17 %/);assert.match(out,/22 %/);assert.match(out,/15 %/);assert.match(out,/83 %/);
 assert.match(out,/5 \/ 6 fiches calculables/);assert.match(out,/0,2/);assert.match(out,/1 RDV sans heure exclus/);
 assert.doesNotMatch(out,/SECRET_FICTIF|0600000000|NOTE_INTERDITE|MESSAGE_INTERDIT|undefined|NaN|bilan-info/);
