@@ -3258,10 +3258,24 @@ function computeYearArchive(year){
   return arc;
 }
 /* R4 : recomptage INDÉPENDANT avant purge. Boucles propres : n'appelle ni computeYearArchive, ni slotRates, ni fichesPrepareesModel,
-   ni personnesDistinctes, ni classerFicheArchive (reclasse lui-même). Partagés, et seulement eux : primitives de date (`lireTs`,
-   `preparationParisDay`, `businessDaysBetween`, `receptionDateFor`), normalisation `cmsKey` et libellés de catalogue. */
+   ni personnesDistinctes, ni classerFicheArchive (reclasse lui-même), ni les lecteurs de catalogue ni `cmsKey`, ni `receptionDateFor`
+   (L3, vérification de Codex 8e3f369 : recomposés ici depuis les données sources). Partagés, et seulement eux : primitives de date
+   `lireTs`, `preparationParisDay`, `businessDaysBetween`. */
 function recompterCohorte(year,history,stats){
   history=history||S.history;stats=stats||S.yearlyStats||{};
+  function cle(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
+  var cmsL=S.cmsList||[],secL=S.secteurs||[],demL=S.demarches||[];
+  function nomCms(f){var c=String(f.commune||'').trim();if(!c)return '';var k=cle(c),i;
+    for(i=0;i<cmsL.length;i++)if(cle(cmsL[i].nom)===k)return cmsL[i].nom;
+    for(i=0;i<secL.length;i++)if(cle(secL[i])===k)return secL[i];
+    return 'CMS hors liste';}
+  function nomDem(f){var i;
+    if(f.selectedDemarche&&f.selectedDemarche!=='__autre__')for(i=0;i<demL.length;i++)if(String(demL[i].id)===String(f.selectedDemarche))return demL[i].nom;
+    var t=String(f.demarche||'').trim();if(!t)return '';
+    for(i=0;i<demL.length;i++)if(demL[i].nom===t)return demL[i].nom;
+    return 'Autre (texte libre)';}
+  function reception(f){var v=Object.prototype.hasOwnProperty.call(f,'dateReception')?f.dateReception:f.dateDemande,m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v||''));
+    if(!m)return '';var d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]?v:'';}
   function annee(h){if(h.date){var y=parseInt(String(h.date).slice(0,4),10);if(y)return y;}if(h.ts){var lu=lireTs(h.ts);if(lu)return parseInt(lu.jour.slice(0,4),10);}return null;}
   var ids={};for(var k in stats){var a=stats[k];if(a&&a.methode===METHODE_ARCHIVE&&a.idsFiches instanceof Array)for(var z=0;z<a.idsFiches.length;z++)ids[a.idsFiches[z]]=true;}
   function vide(v){return v===undefined||v===null||v==='';}
@@ -3285,13 +3299,13 @@ function recompterCohorte(year,history,stats){
     if(!f.date)continue;nRdv++;
     var s=STATUTS_ARCHIVE.indexOf(f.statut)!==-1?f.statut:'a_verifier';st[s]++;
     var mo=String(f.date).slice(0,7);if(!pm[mo])pm[mo]={total:0,realise:0};pm[mo].total++;if(f.statut==='realise')pm[mo].realise++;
-    var lc=libelleCmsArchive(f);if(lc)pc[lc]=(pc[lc]||0)+1;else sansCms++;
-    var ld=libelleDemarcheArchive(f);if(ld)pd[ld]=(pd[ld]||0)+1;
+    var lc=nomCms(f);if(lc)pc[lc]=(pc[lc]||0)+1;else sansCms++;
+    var ld=nomDem(f);if(ld)pd[ld]=(pd[ld]||0)+1;
     if(f.statut==='realise'){var nn=String(f.nom||'').trim().toLowerCase(),pp=String(f.prenom||'').trim().toLowerCase();if(nn||pp)pers[nn+'|'+pp]=true;}
     if(typ.hasOwnProperty(f.msgType))typ[f.msgType]++;
     if(f.msgType==='relance'||f.dateRelance)rel++;
     if(!f.heure){sansHeure++;continue;}
-    var ck=f.date+'|'+cmsKey(f.commune)+'|'+f.heure;if(!cr[ck])cr[ck]={r:false,l:false};if(f.statut==='realise')cr[ck].r=true;if(f.statut==='lapin')cr[ck].l=true;
+    var ck=f.date+'|'+cle(f.commune)+'|'+f.heure;if(!cr[ck])cr[ck]={r:false,l:false};if(f.statut==='realise')cr[ck].r=true;if(f.statut==='lapin')cr[ck].l=true;
     if(!String(f.commune||'').trim())cSansCms++;if(s==='a_verifier')cAVerif++;
   }
   var cles=Object.keys(cr);
@@ -3302,7 +3316,7 @@ function recompterCohorte(year,history,stats){
     var g=P[q];if(!vide(g.id))idl.push(String(g.id));
     var jr=preparationParisDay(g.premierePreparationAt);if(!jr){sd++;ex++;continue;}
     var mk=jr.slice(0,7);if(!prep[mk])prep[mk]={sms:0,mail:0,inconnu:0};prep[mk][g.channel==='sms'?'sms':g.channel==='mail'?'mail':'inconnu']++;
-    var dd=businessDaysBetween(receptionDateFor(g),jr);if(dd===null){ex++;continue;}
+    var dd=businessDaysBetween(reception(g),jr);if(dd===null){ex++;continue;}
     if(!dm[mk])dm[mk]={n:0,sommeJoursOuvres:0};dm[mk].n++;dm[mk].sommeJoursOuvres+=dd;
   }
   arc.preparees={parMois:prep,sansDateConnue:sd};arc.preparation={parMois:dm,excluded:ex};arc.idsFiches=idl.sort();
@@ -3349,14 +3363,33 @@ function controleAvantPurge(year,arc){
   return ecartsArchives(arc,ctrl).concat(invariantsArchive(arc));
 }
 /* Lecture d'une archive (point 9 / R5) */
+/* L1 (vérification de Codex 8e3f369) : TOUS les champs lus par le rendu, les totaux et l'export sont contrôlés (types, entiers ≥ 0,
+   clés de mois AAAA-MM, statuts connus), puis les invariants ; un champ absent n'est jamais lu comme zéro. */
 function archiveAg017Complete(a){
   function o(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
-  function n(v){return typeof v==='number'&&isFinite(v);}
-  return n(a.year)&&o(a.cohorte)&&o(a.effectifs)&&['cohorte','contributrices','blocages','dejaComptees','nonReconciliees'].every(function(k){return n(a.effectifs[k]);})&&
-    o(a.rdv)&&o(a.rdv.statuts)&&o(a.rdv.parMois)&&o(a.rdv.parCms)&&o(a.rdv.parDemarche)&&o(a.rdv.canaux)&&o(a.rdv.parType)&&n(a.rdv.fiches)&&n(a.rdv.personnesAccompagnees)&&
-    o(a.creneaux)&&['denominateur','realises','lapins','sansHeure','sansCms','statutAVerifier'].every(function(k){return n(a.creneaux[k]);})&&
-    o(a.preparees)&&o(a.preparees.parMois)&&n(a.preparees.sansDateConnue)&&o(a.preparation)&&o(a.preparation.parMois)&&n(a.preparation.excluded)&&
-    o(a.nonReconciliees)&&n(a.nonReconciliees.total)&&o(a.nonReconciliees.parMois)&&n(a.nonReconciliees.moisInconnu)&&Array.isArray(a.idsFiches);
+  function n(v){return typeof v==='number'&&Number.isInteger(v)&&v>=0;}
+  function t(v){return typeof v==='string';}
+  function champs(x,cles){return o(x)&&cles.every(function(k){return n(x[k]);});}
+  function mois(x,val){return o(x)&&Object.keys(x).every(function(k){return /^\d{4}-(0[1-9]|1[0-2])$/.test(k)&&val(x[k]);});}
+  function nombres(x){return o(x)&&Object.keys(x).every(function(k){return n(x[k]);});}
+  var connus=STATUTS_ARCHIVE.concat([STATUT_A_VERIFIER]);
+  try{
+    if(!(n(a.year)&&o(a.cohorte)&&a.cohorte.annee===a.year&&t(a.cohorte.critere)&&o(a.periodeRdv)&&a.periodeRdv.du===a.year+'-01-01'&&a.periodeRdv.au===a.year+'-12-31'&&a.fuseau==='Europe/Paris'&&o(a.unites)))return false;
+    if(a.generatedAt!=null&&!(t(a.generatedAt)&&!isNaN(Date.parse(a.generatedAt))))return false;
+    if(!champs(a.effectifs,['cohorte','contributrices','blocages','dejaComptees','nonReconciliees']))return false;
+    var r=a.rdv;
+    if(!(o(r)&&n(r.fiches)&&n(r.sansDateRdv)&&n(r.personnesAccompagnees)&&n(r.relances)&&n(r.relancesSur)&&n(r.sansCms)))return false;
+    if(!(champs(r.statuts,connus)&&Object.keys(r.statuts).every(function(k){return connus.indexOf(k)!==-1;})))return false;
+    if(!(mois(r.parMois,function(v){return champs(v,['total','realise']);})&&champs(r.canaux,['total','sms','mail','inconnu'])&&champs(r.parType,['proposition','confirmation','sans_appel'])&&nombres(r.parCms)&&nombres(r.parDemarche)))return false;
+    if(!champs(a.creneaux,['denominateur','realises','lapins','sansHeure','sansCms','statutAVerifier']))return false;
+    if(!(o(a.preparees)&&mois(a.preparees.parMois,function(v){return champs(v,['sms','mail','inconnu']);})&&n(a.preparees.sansDateConnue)))return false;
+    if(!(o(a.preparation)&&mois(a.preparation.parMois,function(v){return champs(v,['n','sommeJoursOuvres']);})&&n(a.preparation.excluded)))return false;
+    var nr=a.nonReconciliees;
+    if(!(o(nr)&&n(nr.total)&&n(nr.moisInconnu)&&mois(nr.parMois,n)&&nombres(nr.parStatut)&&Object.keys(nr.parStatut).every(function(k){return connus.indexOf(k)!==-1;})))return false;
+    if(!(Array.isArray(a.idsFiches)&&a.idsFiches.every(t)))return false;
+    if(a.controle!=null&&!(o(a.controle)&&t(a.controle.recomptage)))return false;
+    return invariantsArchive(a).length===0;
+  }catch(e){return false;}
 }
 function lectureArchive(a){
   if(!a||typeof a!=='object'||Array.isArray(a))return 'absente';
@@ -3399,19 +3432,25 @@ function texteMoyennePreparation(t){
 /* R1 : export de contrôle anonymisé, construit champ par champ — aucun identifiant, aucun libellé de catalogue, aucun texte libre */
 function construireControleArchive(a){
   if(lectureArchive(a)!=='ag017-v1')return null;
-  function nombres(o){var r={};Object.keys(o||{}).sort().forEach(function(k){var v=o[k];r[k]=typeof v==='number'?v:nombres(v);});return r;}
-  function neutre(o,prefixe,garde){var r={},k=0;Object.keys(o||{}).sort().forEach(function(c){r[c===garde?garde:prefixe+' n°'+(++k)]=o[c];});return r;}
-  var rdv=a.rdv;
+  /* L2 (vérification de Codex 8e3f369) : seuls les champs autorisés sont lus ; métadonnées reconstruites (méthode, période, unités),
+     dictionnaires réduits à leurs clés prévues — aucun champ supplémentaire d'une archive importée n'est recopié, même imbriqué. */
+  function pris(x,cles){var r={};cles.forEach(function(k){r[k]=x[k];});return r;}
+  function parMois(x,cles){var r={};Object.keys(x).sort().forEach(function(k){r[k]=cles?pris(x[k],cles):x[k];});return r;}
+  function neutre(x,prefixe,garde){var r={},k=0;Object.keys(x).sort().forEach(function(c){r[c===garde?garde:prefixe+' n°'+(++k)]=x[c];});return r;}
+  var Y=a.year,ent=enteteArchive(Y),rdv=a.rdv,connus=STATUTS_ARCHIVE.concat([STATUT_A_VERIFIER]),nrs={};
+  Object.keys(a.nonReconciliees.parStatut).sort().forEach(function(k){if(connus.indexOf(k)!==-1)nrs[k]=a.nonReconciliees.parStatut[k];});
   return {type:'controle-archive',
     avertissement:'Export de contrôle anonymisé : il permet de recalculer les ratios, pas de recompter les dossiers ni les personnes après suppression. Aucun identifiant, aucun nom de CMS ni de démarche, aucun texte libre.',
-    methode:a.methode,cohorte:{annee:a.cohorte.annee,critere:a.cohorte.critere},periodeRdv:{du:a.periodeRdv.du,au:a.periodeRdv.au},fuseau:a.fuseau,unites:Object.assign({},a.unites),
-    effectifs:nombres(a.effectifs),
-    rdv:{fiches:rdv.fiches,sansDateRdv:rdv.sansDateRdv,statuts:nombres(rdv.statuts),parMois:nombres(rdv.parMois),personnesAccompagnees:rdv.personnesAccompagnees,canaux:nombres(rdv.canaux),
-      parType:nombres(rdv.parType),relances:rdv.relances,relancesSur:rdv.relancesSur,sansCms:rdv.sansCms,parCms:neutre(rdv.parCms,'CMS','CMS hors liste'),parDemarche:neutre(rdv.parDemarche,'Démarche','Autre (texte libre)')},
-    creneaux:nombres(a.creneaux),preparees:{parMois:nombres(a.preparees.parMois),sansDateConnue:a.preparees.sansDateConnue},
-    preparation:{parMois:nombres(a.preparation.parMois),excluded:a.preparation.excluded},
-    nonReconciliees:{total:a.nonReconciliees.total,parMois:nombres(a.nonReconciliees.parMois),moisInconnu:a.nonReconciliees.moisInconnu,parStatut:nombres(a.nonReconciliees.parStatut)},
-    controle:a.controle?{recomptage:a.controle.recomptage}:null};
+    methode:METHODE_ARCHIVE,cohorte:{annee:Y,critere:ent.cohorte.critere},periodeRdv:{du:ent.periodeRdv.du,au:ent.periodeRdv.au},fuseau:ent.fuseau,unites:ent.unites,
+    effectifs:pris(a.effectifs,['cohorte','contributrices','blocages','dejaComptees','nonReconciliees']),
+    rdv:{fiches:rdv.fiches,sansDateRdv:rdv.sansDateRdv,statuts:pris(rdv.statuts,connus),parMois:parMois(rdv.parMois,['total','realise']),personnesAccompagnees:rdv.personnesAccompagnees,
+      canaux:pris(rdv.canaux,['total','sms','mail','inconnu']),parType:pris(rdv.parType,['proposition','confirmation','sans_appel']),relances:rdv.relances,relancesSur:rdv.relancesSur,sansCms:rdv.sansCms,
+      parCms:neutre(rdv.parCms,'CMS','CMS hors liste'),parDemarche:neutre(rdv.parDemarche,'Démarche','Autre (texte libre)')},
+    creneaux:pris(a.creneaux,['denominateur','realises','lapins','sansHeure','sansCms','statutAVerifier']),
+    preparees:{parMois:parMois(a.preparees.parMois,['sms','mail','inconnu']),sansDateConnue:a.preparees.sansDateConnue},
+    preparation:{parMois:parMois(a.preparation.parMois,['n','sommeJoursOuvres']),excluded:a.preparation.excluded},
+    nonReconciliees:{total:a.nonReconciliees.total,parMois:parMois(a.nonReconciliees.parMois),moisInconnu:a.nonReconciliees.moisInconnu,parStatut:nrs},
+    controle:a.controle&&a.controle.recomptage==='concordant'?{recomptage:'concordant'}:null};
 }
 function exportControleArchive(year){
   var c=construireControleArchive((S.yearlyStats||{})[year]);if(!c){showToast('Export de contrôle indisponible pour cette archive','warn');return;}

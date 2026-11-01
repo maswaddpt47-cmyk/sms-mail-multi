@@ -167,3 +167,46 @@ console.log('Test 9 (anciennes archives, méthode inconnue, total partiel) OK.')
  e.c.archiveYear(2026);assert.match(msg,/1 en attente, 1 confirmé\(s\) à pointer, 1 statut à vérifier/);assert.match(msg,/sans nom ni téléphone/);
  assert.equal(e.S.history.length,3,'refus de confirmation : rien supprimé');}
 console.log('Q3 (avertissement des non pointés) OK.');
+
+/* ── L1 (vérification de Codex 8e3f369) : vraie archive réimportée avec UN champ manquant ou faux → « incomplète », aucun chiffre ── */
+for(const [nom,abimer] of [
+  ['periodeRdv supprimée',a=>{delete a.periodeRdv;}],
+  ['mois de préparation sans sms',a=>{delete a.preparees.parMois['2025-12'].sms;}],
+  ['unités supprimées',a=>{delete a.unites;}],
+  ['canaux supprimés',a=>{delete a.rdv.canaux;}],
+  ['lapins en texte',a=>{a.creneaux.lapins='1';}],
+  ['clé de mois invalide',a=>{a.rdv.parMois['2026-13']={total:0,realise:0};}],
+  ['mois de préparation invalide, totaux intacts',a=>{a.preparees.parMois['2025-13']=a.preparees.parMois['2025-12'];delete a.preparees.parMois['2025-12'];}],
+  ['statut inconnu chez les non réconciliées',a=>{a.nonReconciliees.parStatut.inventé=0;}],
+  ['identifiant non textuel',a=>{a.idsFiches.push(42);}],
+  ['invariant cassé (somme des statuts)',a=>{a.rdv.statuts.realise++;}]]){
+  const e=charger();poser(e,[A,C]);archiver(e,2026);
+  const sauv=J(e.c.exportDataForProfile('p1'));abimer(sauv.yearlyStats[2026]);
+  assert(importer(e,sauv),nom+' : import accepté');
+  const a=e.S.yearlyStats[2026];
+  assert.equal(e.c.lectureArchive(a),'incomplete',nom+' : lue comme incomplète');
+  assert.equal(e.c.construireControleArchive(a),null,nom+' : non exportable, sans exception');
+  for(const y of [2025,2026]){const t=tot(e,y),txt=e.c.texteTotalFiches(t);assert.deepEqual(t.partiel,['2026'],nom+' : total partiel');assert(!/NaN|undefined/.test(txt+e.c.texteMoyennePreparation(t)),nom+' : ni NaN ni undefined');}
+}
+console.log('L1 (archive partiellement incomplète : aucun chiffre, total partiel, pas d\'export) OK.');
+
+/* ── L2 : champs ajoutés à une archive importée jamais recopiés dans l'export de contrôle ; la sauvegarde privée garde l'archive entière ── */
+{const e=charger();poser(e,[A,C]);archiver(e,2026);
+ const sauv=J(e.c.exportDataForProfile('p1')),a=sauv.yearlyStats[2026],M='IDENTIFIANT_FICTIF_PRIVE_f-TEST';
+ a.unites.notePrivee=M;a.effectifs.notePrivee=1;a.rdv.parMois['2026-01'].notePrivee=M;a.preparees.parMois['2025-12'].notePrivee=M;
+ a.preparation.parMois['2025-12'].notePrivee=M;a.creneaux.notePrivee=1;a.rdv.canaux.notePrivee=1;a.cohorte.notePrivee=M;a.notePrivee=M;
+ assert(importer(e,sauv));
+ assert.equal(e.c.lectureArchive(e.S.yearlyStats[2026]),'ag017-v1','champs en plus : archive toujours lisible');
+ const ctl=JSON.stringify(e.c.construireControleArchive(e.S.yearlyStats[2026]));
+ assert(!ctl.includes('notePrivee')&&!ctl.includes(M),'export de contrôle : aucun champ supplémentaire recopié');
+ assert(JSON.stringify(e.c.exportDataForProfile('p1')).includes(M),'sauvegarde complète privée : archive entière conservée');}
+console.log('L2 (export de contrôle sur le seul schéma autorisé) OK.');
+
+/* ── L3 : une erreur des lecteurs de catalogue du calcul principal est détectée par le recomptage, purge refusée ── */
+for(const lecteur of ['libelleDemarcheArchive','libelleCmsArchive']){
+  const e=charger();poser(e,[A,C]);e.c[lecteur]=()=>'MAUVAIS_LIBELLE_FICTIF';
+  const avant=e.m.get(e.c.pk('history'));e.c.archiveYear(2026);
+  assert.equal(e.S.yearlyStats[2026],undefined,lecteur+' faussé : aucune archive');assert.equal(e.m.get(e.c.pk('history')),avant);
+  assert.match(e.toasts.at(-1),/refusé/);
+}
+console.log('L3 (recomptage indépendant des lecteurs de catalogue) OK.');
