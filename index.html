@@ -605,6 +605,7 @@
 .ui-permanence-hour:hover,.ui-permanence-hour:focus-visible{border-color:var(--ui-accent);color:var(--ui-accent);background:var(--ui-accent-soft);}
 .ui-stats-svg{position:relative;}
 .ui-stats-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+@media (max-width:520px){.ui-delai-attente table{width:100%;font-size:12px;}.ui-delai-attente th,.ui-delai-attente td{padding:4px 5px!important;}.ui-delai-attente tbody th{max-width:92px;word-break:break-word;hyphens:auto;}}   /* tableau des délais tenu dans la largeur du téléphone (01/11/2026) */
 .ui-stats-archive-note{font-size:11px;line-height:1.8;padding:13px 16px;border-left:3px solid var(--ui-accent);background:var(--ui-accent-soft);color:var(--c-dim);margin-bottom:24px;}
 .ui-stats-status-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 26px;}
 .ui-stats-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--c-border);padding:11px 0;}
@@ -3771,7 +3772,7 @@ function carteDelaiAttente(entries){
   c.appendChild(el('div',{class:'ui-stats-number'},j(g.mediane)));c.appendChild(el('div',{class:'ui-stats-metric-label'},'Médiane, sur '+g.mesurables+' dossier'+(g.mesurables>1?'s':'')+' mesurable'+(g.mesurables>1?'s':'')));
   band.appendChild(c);card.appendChild(band);
   var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
-  ['CMS','Médiane','Mesurables','Sans réception saisie','Réception après le RDV'].forEach(function(x){hd.appendChild(el('th',{},x));});
+  ['CMS','Médiane','Mesurables','Sans réception','Après RDV'].forEach(function(x){hd.appendChild(el('th',{},x));});
   t.appendChild(el('thead',{},[hd]));var tb=el('tbody');
   r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{},x.nom));[j(x.mediane),x.mesurables,x.sansReception,x.incoherente].forEach(function(v){tr.appendChild(el('td',{},String(v)));});tb.appendChild(tr);});
   t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
@@ -4463,7 +4464,7 @@ function renderStats(){
   function groupByUsager(entries){
     var groups={};
     entries.forEach(function(h){
-      /* AG-015 (C, D2) : même clé que « Usagers accompagnés » (`usagerKey`) ; les fiches sans nom ni prénom restent visibles, dans un groupe à part non compté comme usager */
+      /* AG-015 (C, D2) : même clé que « Personnes accompagnées » (`usagerKey`) ; les fiches sans nom ni prénom restent visibles, dans un groupe à part non compté comme usager */
       var key=usagerKey(h);
       if(!groups[key])groups[key]={civilite:h.civilite,prenom:h.prenom,nom:h.nom,commune:h.commune,telephone:h.telephone,heure:h.heure,date:h.date,_count:0,_entries:[],_sansIdentite:!key};
       groups[key]._count++;
@@ -4508,7 +4509,7 @@ function renderStats(){
     [
       [realiseN,"RDV réalisés",'Unité : fiches au statut Réalisé, datées au plus tard de ce jour, sur la période et le CMS sélectionnés.',function(){openStatList('RDV réalisés sur la période',rdv.realised);},'fiches'],
       [rdv.entries.length,"RDV sur la période",'Unité : fiches de rendez-vous datées, tous statuts, hors créneaux bloqués. Un créneau réattribué peut porter plusieurs fiches.',null,'fiches · tous statuts'],
-      [rdv.accompaniedN,"Usagers accompagnés",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes · nom + prénom, pas une identification certaine'],
+      [rdv.accompaniedN,"Personnes accompagnées",'Unité : personnes distinctes (nom et prénom) parmi les fiches Réalisé de la période.',null,'personnes distinctes · nom + prénom, pas une identification certaine'],
       [rdv.days.length?rdv.free:'—',"Places disponibles à venir","Places libres des permanences ouvertes à partir de ce jour, pour le CMS choisi. Base de 6 créneaux par journée complète ou 3 par demi-journée, réservations actives et blocages déduits. Cette prévision reste visible quelle que soit la période historique sélectionnée. Unité : créneaux.",null,freeSub],
       [concretStr,"Taux de concrétisation","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un rendez-vous Réalisé, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois). Les RDV confirmés passés mais non pointés font baisser le taux.",null,concretSub],
       [lapinStr,"Taux de lapin 🐇","Unité : créneaux attribués (au moins un rendez-vous enregistré ; les créneaux libres et bloqués ne comptent pas). Part des créneaux de la période et du CMS ayant un Lapin, parmi les créneaux attribués datés au plus tard de ce jour (un créneau réattribué ne compte qu'une fois).",openLapinList,'sur '+concretN+' créneau'+(concretN>1?'x':'')+' attribué'+(concretN>1?'s':'')+(sansHeureN?' · '+sansHeureN+' RDV sans heure exclu'+(sansHeureN>1?'s':'')+' du taux':'')],

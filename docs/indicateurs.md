@@ -25,7 +25,7 @@ du CMS choisi, dont **la date du RDV** est dans la période (« Tout » : toutes
 |---|---|---|---|---|
 | RDV réalisés | fiches au statut Réalisé | RDV ≤ jour courant | statut vide : non réalisé | 3067, 3697 |
 | RDV sur la période | fiches, tous statuts | RDV | sans date valide : exclues | 3066, 3698 |
-| Usagers accompagnés | usagers distincts parmi les fiches Réalisé | RDV ≤ jour courant | nom et prénom vides : non comptés | 3078 |
+| Personnes accompagnées (ex-« Usagers accompagnés ») | usagers distincts parmi les fiches Réalisé | RDV ≤ jour courant | nom et prénom vides : non comptés | 3078 |
 | Places disponibles à venir | places libres des permanences ouvertes à venir (base 6, ou 3 pour une demi-journée) | jour courant et après | réservations actives et blocages déduits ; ne suit pas la période | `statsRdvModel` |
 | Taux de concrétisation | créneaux avec ≥1 fiche Réalisé / créneaux attribués | RDV ≤ jour courant | fiches sans heure exclues ; créneaux bloqués exclus | `slotRates`, 3228 |
 | Taux de lapin | créneaux avec ≥1 fiche Lapin / créneaux attribués | idem | idem | 3228 |

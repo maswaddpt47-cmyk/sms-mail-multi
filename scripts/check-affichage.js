@@ -43,7 +43,7 @@ assert.equal(Object.keys(tuiles).length,8,'les huit tuiles sont rendues');   // 
 // valeurs attendues recomptées à la main sur les données ci-dessus, indépendamment du modèle
 assert.equal(tuiles['RDV réalisés'],'3');
 assert.equal(tuiles['RDV sur la période'],'7');
-assert.equal(tuiles['Usagers accompagnés'],'2');
+assert.equal(tuiles['Personnes accompagnées'],'2');
 assert.equal(tuiles['Places disponibles à venir'],'—');
 assert.equal(tuiles['Taux de concrétisation'],'50%');   // 3 créneaux réalisés / 6 créneaux passés attribués
 assert.equal(tuiles['Taux de lapin 🐇'],'17%');         // 1 / 6
@@ -52,7 +52,7 @@ assert.equal(tuiles['Remplissage net'],'11%');          // 4 créneaux non libé
 // et cohérents avec le modèle (raccordement)
 assert.equal(tuiles['RDV réalisés'],String(rdv.realised.length));
 assert.equal(tuiles['RDV sur la période'],String(rdv.entries.length));
-assert.equal(tuiles['Usagers accompagnés'],String(rdv.accompaniedN));
+assert.equal(tuiles['Personnes accompagnées'],String(rdv.accompaniedN));
 
 /* ── Bilan mensuel : couples chiffre / libellé ── */
 const d=ctx.monthlyReportData(history,'2026-10','',now);
