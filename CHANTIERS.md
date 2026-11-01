@@ -321,5 +321,6 @@ Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée san
 **En attente** : 01/11/2026 — badge « ⚠️ 2 RDV » sur une tuile d'Agenda portant deux RDV actifs, les deux fiches listées à l'ouverture. Problème : une double réservation masque l'autre RDV. Choix recommandé : ne le faire que si une double réservation réelle réapparaît (bloc AGORA, critère 7, s'il touche « N rendez-vous »). Différé par l'utilisateur : cas rares depuis le retrait de la liste d'heures.
 
 **Écartées** (date — piste — raison)
+- 01/11/2026 — statut « Réalisé » revenu à « Confirmé » sur une fiche (signalé), hypothèse non vérifiée : restauration GitHub d'une sauvegarde plus ancienne d'un autre appareil (la restauration remplace tout l'historique) ; pistes « avertir avant restauration » / « fusion » — laissé de côté par l'utilisateur. À rouvrir si le cas se reproduit, avec l'appareil et la restauration en cause.
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
   de chaque accompagnement ; à ne reproposer que si un import (CSV/API) supprimait une saisie.
