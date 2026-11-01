@@ -46,6 +46,7 @@ jobs:
           node scripts/check-affichage.js
           node scripts/check-audit.js
           node scripts/check-ecritures.js
+          node scripts/check-archives.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -56,6 +57,7 @@ jobs:
           node scripts/check-affichage.js
           node scripts/check-audit.js
           node scripts/check-ecritures.js
+          node scripts/check-archives.js
 
   deploy:
     needs: tests

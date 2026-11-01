@@ -2339,7 +2339,8 @@ function doImport(){
     /* on n'importe pas les templates builtin — ils sont définis dans le code */
     [['cmsList','ess-cms'],['demarches','ess-demarches'],['secteurs','ess-secteurs'],['customTemplates','ess-custom-tpl'],['customVars','ess-vars'],['mandats','ess-mandats']]
       .forEach(function(c){if(data[c[0]]){neuf[c[0]]=data[c[0]];paires.push([c[1],data[c[0]]]);}});
-    if(data.history){neuf.history=data.history;paires.push([pk('history'),data.history]);}
+    /* AG-017 (R3) : fiches sans identifiant importées alors qu'une archive existe APRÈS l'opération → marquées non réconciliées, même écriture */
+    if(data.history){var mq=marquerNonReconciliees(data.history,data.yearlyStats||S.yearlyStats,true);neuf.history=mq.history;doImport.marquees=mq.marquees;paires.push([pk('history'),mq.history]);}else doImport.marquees=0;
     if(data.yearlyStats){neuf.yearlyStats=data.yearlyStats;paires.push([pk('yearly-stats'),data.yearlyStats]);}
     if(data.permanences){neuf.permanences=migratePermanences(data.permanences,neuf.history||S.history);paires.push([pk('permanences'),neuf.permanences],[pk('perm-version'),PERM_MODEL_VERSION]);}
     if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
@@ -2351,7 +2352,7 @@ function doImport(){
   Object.keys(neuf).forEach(function(k){S[k]=neuf[k];});
   S.modal=null;S.importText="";S.importError="";S.saveStatus='Sauvegardé le '+now;
   maybeAutoBackupProfile(S.activeProfile);
-  regen();renderAll();showToast("✅ Import réussi !");
+  regen();renderAll();showToast("✅ Import réussi !"+(doImport.marquees?" — "+doImport.marquees+" fiche(s) sans identifiant signalée(s) non réconciliée(s), exclue(s) des totaux d'archives":""));
   return true;
 }
 
@@ -3169,59 +3170,260 @@ function yearsArchivable(){
   return Object.keys(found).map(Number).sort(function(a,b){return b-a;}).map(function(y){return{year:y,count:found[y]};});
 }
 /* calcule l'archive agrégée et anonymisée d'une année (aucun nom/téléphone conservé) */
+/* ============================== ARCHIVES ag017-v1 — AG-017, étape 6 d'AG-013 (01/11/2026) ==============================
+   Contrat figé dans AGORA.md (AG-017 : révision 1 points 1, 2, 5, 6 ; révision 2 R1, R5 ; révision 3 R2–R4), confirmé par Codex
+   (`5b78987`). Les archives antérieures (sans `methode`) gardent leur contenu et leur lecture historique : rien n'est recalculé.
+   Purge par cohorte (année du RDV, sinon du message : `entryYear`) ; chaque contribution est rangée à SA date dans l'archive de sa
+   cohorte ; un total d'année civile = archives compatibles + fiches vivantes contributrices. */
+var METHODE_ARCHIVE='ag017-v1';
+var STATUTS_ARCHIVE=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'];
+function sansIdFiche(h){return h.id==null||h.id==='';}
+function moisPreparation(h){var d=preparationParisDay(h&&h.premierePreparationAt);return d?d.slice(0,7):'';}
+/* R2 : identifiants internes (pseudonymisés) des fiches comptées par les archives ag017-v1 du profil */
+function idsArchives(stats){
+  var ids=Object.create(null);
+  Object.keys(stats||{}).forEach(function(k){var a=stats[k];if(a&&a.methode===METHODE_ARCHIVE&&Array.isArray(a.idsFiches))a.idsFiches.forEach(function(id){ids[id]=1;});});
+  return ids;
+}
+/* R3 : trois catégories exclusives (plus les blocages), dans cet ordre. Non réconciliée = marquée OU (sans id ET cohorte actuelle archivée). */
+function classerFicheArchive(h,ids,stats){
+  if(h.msgType==='indispo')return 'blocage';
+  if(!sansIdFiche(h)&&ids[h.id])return 'dejaComptee';
+  if(h.nonReconciliee||(sansIdFiche(h)&&stats&&Object.prototype.hasOwnProperty.call(stats,String(entryYear(h)))))return 'nonReconciliee';
+  return 'contributrice';
+}
+/* R3 : pose le marqueur persistant. `apresImport` : fiches introduites par un import ou une restauration, `stats` = archives présentes
+   APRÈS l'opération. Renvoie une nouvelle liste (rien n'est écrit ici) ; idempotent ; le marqueur n'est jamais retiré. */
+function marquerNonReconciliees(history,stats,apresImport){
+  var aArchive=Object.keys(stats||{}).length>0,jour=jourParis(),n=0;
+  var out=(history||[]).map(function(h){
+    if(!h||typeof h!=='object'||h.msgType==='indispo'||h.nonReconciliee||!sansIdFiche(h))return h;
+    var motif=stats&&Object.prototype.hasOwnProperty.call(stats,String(entryYear(h)))?'cohorte-archivee':(apresImport&&aArchive?'import-avec-archive':'');
+    if(!motif)return h;
+    n++;return Object.assign({},h,{nonReconciliee:{depuis:jour,motif:motif}});
+  });
+  return {history:out,marquees:n};
+}
+/* libellés conservés à l'écran (choix de l'utilisateur), jamais de texte libre : démarche libre → « Autre (texte libre) », CMS hors liste */
+function libelleCmsArchive(h){
+  var c=String(h.commune||'').trim();if(!c)return '';var k=cmsKey(c);
+  var l=(S.cmsList||[]).find(function(x){return cmsKey(x.nom)===k;});if(l)return l.nom;
+  var t=(S.secteurs||[]).find(function(x){return cmsKey(x)===k;});return t||'CMS hors liste';
+}
+function libelleDemarcheArchive(h){
+  if(h.selectedDemarche&&h.selectedDemarche!=='__autre__'){var d=(S.demarches||[]).find(function(x){return String(x.id)===String(h.selectedDemarche);});if(d)return d.nom;}
+  var t=String(h.demarche||'').trim();if(!t)return '';
+  var n=(S.demarches||[]).find(function(x){return x.nom===t;});return n?n.nom:'Autre (texte libre)';
+}
+function enteteArchive(year){
+  return {methode:METHODE_ARCHIVE,year:year,cohorte:{annee:year,critere:'année du RDV, sinon année du message'},periodeRdv:{du:year+'-01-01',au:year+'-12-31'},
+    fuseau:'Europe/Paris',unites:{fiches:'fiches',creneaux:'créneaux (date + CMS + heure)',preparation:'jours ouvrés lun.–ven., réception exclue, préparation incluse',personnes:'nom + prénom'}};
+}
 function computeYearArchive(year){
-  var yEntries=S.history.filter(function(h){return entryYear(h)===year;});
-  var hist=yEntries.filter(function(h){return h.msgType!=='indispo';});
-  var arc={year:year,generatedAt:new Date().toISOString(),totalEntries:yEntries.length};
-  var canaux=compterCanaux(hist);
-  arc.total=canaux.total;arc.smsN=canaux.sms;arc.mailN=canaux.mail;
-  arc.usagersN=personnesDistinctes(hist);
-  var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
-  arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});arc.statuts[STATUT_A_VERIFIER]=0;   /* clé additive (AG-014 B) : absente des archives créées avant, lue comme 0 */
-  hist.forEach(function(h){arc.statuts[statutAffiche(h)]++;});
-  arc.realiseN=arc.statuts.realise||0;
-  arc.lapinN=arc.statuts.lapin||0;
-  /* taux par créneau (23/10/2026) ; realiseN/lapinN restent des nombres de fiches */
-  var rates=slotRates(hist.filter(function(h){return h.date&&h.msgType!=='indispo';}));
-  arc.concretPct=rates.total>0?Math.round(rates.realised/rates.total*100):null;
-  arc.lapinPct=rates.total>0?Math.round(rates.lapins/rates.total*100):null;
-  arc.preparationMetrics=Object.assign({basis:'reception-first-preparation-mon-fri-v1'},preparationStats(hist));
-  arc.avgReact=null; /* ancien champ conservé pour compatibilité, nouvelle unité séparée */
-  var rdvDiffs=[];hist.forEach(function(h){
-    var d=delaiRdvJours(h.ts,h.date);if(d!==null)rdvDiffs.push(d);
+  var stats=S.yearlyStats||{},ids=idsArchives(stats),cohorte=S.history.filter(function(h){return entryYear(h)===year;});
+  var arc=enteteArchive(year);arc.generatedAt=new Date().toISOString();
+  var P=[],eff={cohorte:cohorte.length,contributrices:0,blocages:0,dejaComptees:0,nonReconciliees:0},nr={total:0,parMois:{},moisInconnu:0,parStatut:{}};
+  cohorte.forEach(function(h){
+    var c=classerFicheArchive(h,ids,stats);
+    if(c==='contributrice')P.push(h);else if(c==='blocage')eff.blocages++;else if(c==='dejaComptee')eff.dejaComptees++;
+    else{eff.nonReconciliees++;nr.total++;var m=moisPreparation(h);if(m)nr.parMois[m]=(nr.parMois[m]||0)+1;else nr.moisInconnu++;var st=statutAffiche(h);nr.parStatut[st]=(nr.parStatut[st]||0)+1;}
   });
-  arc.avgRdv=rdvDiffs.length?Math.round(rdvDiffs.reduce(function(s,d){return s+d;},0)/rdvDiffs.length):null;
-  var monthMap={};
-  hist.forEach(function(h){
-    var raw=h.ts||'',lu=lireTs(raw);
-    var key=lu?lu.jour.slice(0,7):raw.substring(0,7);
-    if(!key)return;
-    if(!monthMap[key])monthMap[key]={sms:0,mail:0};
-    monthMap[key][h.channel==='mail'?'mail':'sms']++;
+  eff.contributrices=P.length;arc.effectifs=eff;arc.nonReconciliees=nr;
+  var rdvs=P.filter(function(h){return !!h.date;}),statuts={};
+  STATUTS_ARCHIVE.forEach(function(k){statuts[k]=0;});statuts[STATUT_A_VERIFIER]=0;
+  rdvs.forEach(function(h){statuts[statutAffiche(h)]++;});
+  var parMoisRdv={};rdvs.forEach(function(h){var k=String(h.date).slice(0,7),m=parMoisRdv[k]||(parMoisRdv[k]={total:0,realise:0});m.total++;if(h.statut==='realise')m.realise++;});
+  var parCms={},parDem={},sansCms=0;
+  rdvs.forEach(function(h){var c=libelleCmsArchive(h);if(c)parCms[c]=(parCms[c]||0)+1;else sansCms++;var d=libelleDemarcheArchive(h);if(d)parDem[d]=(parDem[d]||0)+1;});
+  arc.rdv={fiches:rdvs.length,sansDateRdv:P.length-rdvs.length,statuts:statuts,parMois:parMoisRdv,
+    personnesAccompagnees:personnesDistinctes(rdvs.filter(function(h){return h.statut==='realise';})),
+    canaux:compterCanaux(P),parType:comptageTypes(rdvs,['proposition','confirmation','sans_appel']),
+    relances:rdvs.filter(aRelanceRenseignee).length,relancesSur:rdvs.length,parCms:parCms,sansCms:sansCms,parDemarche:parDem};
+  var r=slotRates(rdvs),avecHeure=rdvs.filter(function(h){return !!h.heure;});
+  arc.creneaux={denominateur:r.total,realises:r.realised,lapins:r.lapins,sansHeure:r.sansHeure,
+    sansCms:avecHeure.filter(function(h){return !String(h.commune||'').trim();}).length,
+    statutAVerifier:avecHeure.filter(function(h){return statutAffiche(h)===STATUT_A_VERIFIER;}).length};
+  var prepMois={},sansDate=0,delaiMois={},exclus=0;
+  P.forEach(function(h){
+    var day=preparationParisDay(h.premierePreparationAt);
+    if(!day){sansDate++;exclus++;return;}
+    var k=day.slice(0,7),m=prepMois[k]||(prepMois[k]={sms:0,mail:0,inconnu:0});m[h.channel==='sms'?'sms':h.channel==='mail'?'mail':'inconnu']++;
+    var dl=businessDaysBetween(receptionDateFor(h),day);
+    if(dl===null){exclus++;return;}
+    var q=delaiMois[k]||(delaiMois[k]={n:0,sommeJoursOuvres:0});q.n++;q.sommeJoursOuvres+=dl;
   });
-  arc.byMonth=monthMap;
-  var trendMap={};
-  hist.forEach(function(h){
-    if(!h.date||(h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='pas_de_retour'))return;
-    var key=h.date.substring(0,7);
-    if(!trendMap[key])trendMap[key]={lapin:0,excuse:0,pas_de_retour:0};
-    trendMap[key][h.statut]++;
-  });
-  arc.trendByMonth=trendMap;
-  arc.byDemarche=comptageDemarches(hist);
-  arc.byType=comptageTypes(hist,['proposition','confirmation','sans_appel']);
-  arc.relances=hist.filter(aRelanceRenseignee).length; /* additif (AG-005) : absent des archives créées avant */
-  arc.relancesSur=hist.length;
-  var cmsMap=Object.create(null);comptageParCms(hist).forEach(function(c){cmsMap[c.nom]=c.n;});
-  arc.byCMS=cmsMap;
-  var heatMap={};
-  hist.filter(function(h){return h.date&&h.heure;}).forEach(function(h){
-    var d=new Date(h.date+'T12:00:00');if(isNaN(d.getTime()))return;
-    var k=d.getDay()+'|'+h.heure;
-    heatMap[k]=(heatMap[k]||0)+1;
-  });
-  arc.heatmap=heatMap;
+  arc.preparees={parMois:prepMois,sansDateConnue:sansDate};
+  arc.preparation={parMois:delaiMois,excluded:exclus};
+  arc.idsFiches=P.filter(function(h){return !sansIdFiche(h);}).map(function(h){return String(h.id);}).sort();
   return arc;
+}
+/* R4 : recomptage INDÉPENDANT avant purge. Boucles propres : n'appelle ni computeYearArchive, ni slotRates, ni fichesPrepareesModel,
+   ni personnesDistinctes, ni classerFicheArchive (reclasse lui-même). Partagés, et seulement eux : primitives de date (`lireTs`,
+   `preparationParisDay`, `businessDaysBetween`, `receptionDateFor`), normalisation `cmsKey` et libellés de catalogue. */
+function recompterCohorte(year,history,stats){
+  history=history||S.history;stats=stats||S.yearlyStats||{};
+  function annee(h){if(h.date){var y=parseInt(String(h.date).slice(0,4),10);if(y)return y;}if(h.ts){var lu=lireTs(h.ts);if(lu)return parseInt(lu.jour.slice(0,4),10);}return null;}
+  var ids={};for(var k in stats){var a=stats[k];if(a&&a.methode===METHODE_ARCHIVE&&a.idsFiches instanceof Array)for(var z=0;z<a.idsFiches.length;z++)ids[a.idsFiches[z]]=true;}
+  function vide(v){return v===undefined||v===null||v==='';}
+  var arc=enteteArchive(year),eff={cohorte:0,contributrices:0,blocages:0,dejaComptees:0,nonReconciliees:0},nr={total:0,parMois:{},moisInconnu:0,parStatut:{}},P=[];
+  for(var i=0;i<history.length;i++){
+    var h=history[i];if(annee(h)!==year)continue;eff.cohorte++;
+    if(h.msgType==='indispo'){eff.blocages++;continue;}
+    if(!vide(h.id)&&ids[h.id]){eff.dejaComptees++;continue;}
+    if(h.nonReconciliee||(vide(h.id)&&Object.prototype.hasOwnProperty.call(stats,String(annee(h))))){
+      eff.nonReconciliees++;nr.total++;var dp=preparationParisDay(h.premierePreparationAt);
+      if(dp)nr.parMois[dp.slice(0,7)]=(nr.parMois[dp.slice(0,7)]||0)+1;else nr.moisInconnu++;
+      var sv=STATUTS_ARCHIVE.indexOf(h.statut)!==-1?h.statut:'a_verifier';nr.parStatut[sv]=(nr.parStatut[sv]||0)+1;continue;
+    }
+    P.push(h);
+  }
+  eff.contributrices=P.length;arc.effectifs=eff;arc.nonReconciliees=nr;
+  var st={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0,a_verifier:0},pm={},pc={},pd={},sansCms=0,pers={},can={total:0,sms:0,mail:0,inconnu:0},typ={proposition:0,confirmation:0,sans_appel:0},rel=0,nRdv=0;
+  var cr={},sansHeure=0,cSansCms=0,cAVerif=0;
+  for(var j=0;j<P.length;j++){
+    var f=P[j];can.total++;if(f.channel==='sms')can.sms++;else if(f.channel==='mail')can.mail++;else can.inconnu++;
+    if(!f.date)continue;nRdv++;
+    var s=STATUTS_ARCHIVE.indexOf(f.statut)!==-1?f.statut:'a_verifier';st[s]++;
+    var mo=String(f.date).slice(0,7);if(!pm[mo])pm[mo]={total:0,realise:0};pm[mo].total++;if(f.statut==='realise')pm[mo].realise++;
+    var lc=libelleCmsArchive(f);if(lc)pc[lc]=(pc[lc]||0)+1;else sansCms++;
+    var ld=libelleDemarcheArchive(f);if(ld)pd[ld]=(pd[ld]||0)+1;
+    if(f.statut==='realise'){var nn=String(f.nom||'').trim().toLowerCase(),pp=String(f.prenom||'').trim().toLowerCase();if(nn||pp)pers[nn+'|'+pp]=true;}
+    if(typ.hasOwnProperty(f.msgType))typ[f.msgType]++;
+    if(f.msgType==='relance'||f.dateRelance)rel++;
+    if(!f.heure){sansHeure++;continue;}
+    var ck=f.date+'|'+cmsKey(f.commune)+'|'+f.heure;if(!cr[ck])cr[ck]={r:false,l:false};if(f.statut==='realise')cr[ck].r=true;if(f.statut==='lapin')cr[ck].l=true;
+    if(!String(f.commune||'').trim())cSansCms++;if(s==='a_verifier')cAVerif++;
+  }
+  var cles=Object.keys(cr);
+  arc.rdv={fiches:nRdv,sansDateRdv:P.length-nRdv,statuts:st,parMois:pm,personnesAccompagnees:Object.keys(pers).length,canaux:can,parType:typ,relances:rel,relancesSur:nRdv,parCms:pc,sansCms:sansCms,parDemarche:pd};
+  arc.creneaux={denominateur:cles.length,realises:cles.filter(function(x){return cr[x].r;}).length,lapins:cles.filter(function(x){return cr[x].l;}).length,sansHeure:sansHeure,sansCms:cSansCms,statutAVerifier:cAVerif};
+  var prep={},sd=0,dm={},ex=0,idl=[];
+  for(var q=0;q<P.length;q++){
+    var g=P[q];if(!vide(g.id))idl.push(String(g.id));
+    var jr=preparationParisDay(g.premierePreparationAt);if(!jr){sd++;ex++;continue;}
+    var mk=jr.slice(0,7);if(!prep[mk])prep[mk]={sms:0,mail:0,inconnu:0};prep[mk][g.channel==='sms'?'sms':g.channel==='mail'?'mail':'inconnu']++;
+    var dd=businessDaysBetween(receptionDateFor(g),jr);if(dd===null){ex++;continue;}
+    if(!dm[mk])dm[mk]={n:0,sommeJoursOuvres:0};dm[mk].n++;dm[mk].sommeJoursOuvres+=dd;
+  }
+  arc.preparees={parMois:prep,sansDateConnue:sd};arc.preparation={parMois:dm,excluded:ex};arc.idsFiches=idl.sort();
+  return arc;
+}
+/* R4 : comparaison champ par champ (absent ≠ zéro), hors instant de calcul et résultat du contrôle */
+function ecartsArchives(a,b){
+  var out=[];
+  function walk(x,y,chemin){
+    var ox=x!==null&&typeof x==='object',oy=y!==null&&typeof y==='object';
+    if(ox&&oy&&Array.isArray(x)===Array.isArray(y)){
+      var ks={};Object.keys(x).forEach(function(k){ks[k]=1;});Object.keys(y).forEach(function(k){ks[k]=1;});
+      Object.keys(ks).sort().forEach(function(k){
+        if(!chemin&&(k==='generatedAt'||k==='controle'))return;   /* instant de calcul et résultat du contrôle : hors comparaison */
+        if(!Object.prototype.hasOwnProperty.call(x,k)||!Object.prototype.hasOwnProperty.call(y,k)){out.push((chemin?chemin+'.':'')+k+' absent d\'un côté');return;}
+        walk(x[k],y[k],(chemin?chemin+'.':'')+k);
+      });
+    }else if(x!==y)out.push((chemin||'archive')+' : '+JSON.stringify(x)+' ≠ '+JSON.stringify(y));
+  }
+  walk(a,b,'');return out;
+}
+/* R4 : invariants sur la population contributrice P(N) */
+function invariantsArchive(a){
+  var e=[],eff=a.effectifs||{},som=function(o,f){return Object.keys(o||{}).reduce(function(t,k){return t+f(o[k]);},0);};
+  var st=som(a.rdv&&a.rdv.statuts,function(v){return v;});
+  if(st!==a.rdv.fiches)e.push('statuts '+st+' ≠ RDV '+a.rdv.fiches);
+  if(a.rdv.fiches+a.rdv.sansDateRdv!==eff.contributrices)e.push('RDV + sans date ≠ contributrices');
+  var pr=som(a.preparees.parMois,function(v){return v.sms+v.mail+v.inconnu;})+a.preparees.sansDateConnue;
+  if(pr!==eff.contributrices)e.push('fiches préparées '+pr+' ≠ contributrices '+eff.contributrices);
+  var dl=som(a.preparation.parMois,function(v){return v.n;})+a.preparation.excluded;
+  if(dl!==eff.contributrices)e.push('préparation mesurée + exclues '+dl+' ≠ contributrices '+eff.contributrices);
+  if(a.creneaux.realises>a.creneaux.denominateur)e.push('créneaux réalisés au-dessus du dénominateur');
+  if(a.creneaux.lapins>a.creneaux.denominateur)e.push('créneaux lapin au-dessus du dénominateur');
+  if(eff.nonReconciliees!==a.nonReconciliees.total)e.push('non réconciliées incohérentes');
+  if(eff.cohorte!==eff.contributrices+eff.blocages+eff.dejaComptees+a.nonReconciliees.total)e.push('partition de la cohorte incohérente');
+  var nrM=som(a.nonReconciliees.parMois,function(v){return v;})+a.nonReconciliees.moisInconnu;
+  if(nrM!==a.nonReconciliees.total)e.push('non réconciliées par mois incohérentes');
+  if(a.idsFiches.length>eff.contributrices||a.idsFiches.some(function(x,i){return a.idsFiches.indexOf(x)!==i;}))e.push('identifiants incohérents');
+  return e;
+}
+/* R4 : contrôle complet avant purge ; liste vide = purge autorisée */
+function controleAvantPurge(year,arc){
+  var ctrl=recompterCohorte(year);
+  return ecartsArchives(arc,ctrl).concat(invariantsArchive(arc));
+}
+/* Lecture d'une archive (point 9 / R5) */
+function archiveAg017Complete(a){
+  function o(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
+  function n(v){return typeof v==='number'&&isFinite(v);}
+  return n(a.year)&&o(a.cohorte)&&o(a.effectifs)&&['cohorte','contributrices','blocages','dejaComptees','nonReconciliees'].every(function(k){return n(a.effectifs[k]);})&&
+    o(a.rdv)&&o(a.rdv.statuts)&&o(a.rdv.parMois)&&o(a.rdv.parCms)&&o(a.rdv.parDemarche)&&o(a.rdv.canaux)&&o(a.rdv.parType)&&n(a.rdv.fiches)&&n(a.rdv.personnesAccompagnees)&&
+    o(a.creneaux)&&['denominateur','realises','lapins','sansHeure','sansCms','statutAVerifier'].every(function(k){return n(a.creneaux[k]);})&&
+    o(a.preparees)&&o(a.preparees.parMois)&&n(a.preparees.sansDateConnue)&&o(a.preparation)&&o(a.preparation.parMois)&&n(a.preparation.excluded)&&
+    o(a.nonReconciliees)&&n(a.nonReconciliees.total)&&o(a.nonReconciliees.parMois)&&n(a.nonReconciliees.moisInconnu)&&Array.isArray(a.idsFiches);
+}
+function lectureArchive(a){
+  if(!a||typeof a!=='object'||Array.isArray(a))return 'absente';
+  if(a.methode==null)return 'historique';
+  if(a.methode!==METHODE_ARCHIVE)return 'inconnue';
+  return archiveAg017Complete(a)?'ag017-v1':'incomplete';
+}
+/* R3 / R3 bis / R5 : préparations d'une ANNÉE CIVILE, toutes sources compatibles (archives ag017-v1 + fiches vivantes contributrices) */
+function totauxPreparationAnnee(Y,history,stats){
+  history=history||S.history;stats=stats||S.yearlyStats||{};
+  var y=String(Y),ids=idsArchives(stats),r={annee:Y,fiches:0,n:0,somme:0,partiel:[],exclues:0,moisInconnu:0};
+  Object.keys(stats).sort().forEach(function(k){
+    var a=stats[k];if(lectureArchive(a)!=='ag017-v1'){r.partiel.push(k);return;}
+    Object.keys(a.preparees.parMois).forEach(function(m){if(m.slice(0,4)===y){var v=a.preparees.parMois[m];r.fiches+=v.sms+v.mail+v.inconnu;}});
+    Object.keys(a.preparation.parMois).forEach(function(m){if(m.slice(0,4)===y){r.n+=a.preparation.parMois[m].n;r.somme+=a.preparation.parMois[m].sommeJoursOuvres;}});
+    Object.keys(a.nonReconciliees.parMois).forEach(function(m){if(m.slice(0,4)===y)r.exclues+=a.nonReconciliees.parMois[m];});
+    r.moisInconnu+=a.nonReconciliees.moisInconnu;
+  });
+  history.forEach(function(h){
+    var c=classerFicheArchive(h,ids,stats);if(c==='blocage'||c==='dejaComptee')return;
+    var day=preparationParisDay(h.premierePreparationAt);
+    if(c==='nonReconciliee'){if(!day)r.moisInconnu++;else if(day.slice(0,4)===y)r.exclues++;return;}
+    if(!day||day.slice(0,4)!==y)return;
+    r.fiches++;var dl=businessDaysBetween(receptionDateFor(h),day);if(dl!==null){r.n++;r.somme+=dl;}
+  });
+  return r;
+}
+/* R3 bis : borne [v ; v + N] pour un NOMBRE de fiches seulement ; taux et moyennes : « non certifié, N fiches exclues », sans borne */
+function texteTotalFiches(t){
+  if(t.partiel.length)return t.fiches+' — partiel : archive'+(t.partiel.length>1?'s':'')+' '+t.partiel.join(', ')+' non prise'+(t.partiel.length>1?'s':'')+' en compte (ancienne méthode ou format non pris en charge)';
+  var N=t.exclues+t.moisInconnu;
+  if(!N)return String(t.fiches);
+  return t.fiches+' — non certifié : entre '+t.fiches+' et '+(t.fiches+N)+' ('+N+' fiche'+(N>1?'s':'')+' non réconciliée'+(N>1?'s':'')+' non comptée'+(N>1?'s':'')+(t.moisInconnu?', dont '+t.moisInconnu+' de mois inconnu':'')+')';
+}
+function texteMoyennePreparation(t){
+  var v=t.n?(Math.round(t.somme/t.n*10)/10).toLocaleString('fr-FR')+' j':'—',N=t.exclues+t.moisInconnu;
+  if(t.partiel.length)return v+' — partiel : archive'+(t.partiel.length>1?'s':'')+' '+t.partiel.join(', ')+' non prise'+(t.partiel.length>1?'s':'')+' en compte';
+  return N?v+' — non certifié, '+N+' fiche'+(N>1?'s':'')+' exclue'+(N>1?'s':'')+(t.moisInconnu?' (dont '+t.moisInconnu+' de mois inconnu)':''):v;
+}
+/* R1 : export de contrôle anonymisé, construit champ par champ — aucun identifiant, aucun libellé de catalogue, aucun texte libre */
+function construireControleArchive(a){
+  if(lectureArchive(a)!=='ag017-v1')return null;
+  function nombres(o){var r={};Object.keys(o||{}).sort().forEach(function(k){var v=o[k];r[k]=typeof v==='number'?v:nombres(v);});return r;}
+  function neutre(o,prefixe,garde){var r={},k=0;Object.keys(o||{}).sort().forEach(function(c){r[c===garde?garde:prefixe+' n°'+(++k)]=o[c];});return r;}
+  var rdv=a.rdv;
+  return {type:'controle-archive',
+    avertissement:'Export de contrôle anonymisé : il permet de recalculer les ratios, pas de recompter les dossiers ni les personnes après suppression. Aucun identifiant, aucun nom de CMS ni de démarche, aucun texte libre.',
+    methode:a.methode,cohorte:{annee:a.cohorte.annee,critere:a.cohorte.critere},periodeRdv:{du:a.periodeRdv.du,au:a.periodeRdv.au},fuseau:a.fuseau,unites:Object.assign({},a.unites),
+    effectifs:nombres(a.effectifs),
+    rdv:{fiches:rdv.fiches,sansDateRdv:rdv.sansDateRdv,statuts:nombres(rdv.statuts),parMois:nombres(rdv.parMois),personnesAccompagnees:rdv.personnesAccompagnees,canaux:nombres(rdv.canaux),
+      parType:nombres(rdv.parType),relances:rdv.relances,relancesSur:rdv.relancesSur,sansCms:rdv.sansCms,parCms:neutre(rdv.parCms,'CMS','CMS hors liste'),parDemarche:neutre(rdv.parDemarche,'Démarche','Autre (texte libre)')},
+    creneaux:nombres(a.creneaux),preparees:{parMois:nombres(a.preparees.parMois),sansDateConnue:a.preparees.sansDateConnue},
+    preparation:{parMois:nombres(a.preparation.parMois),excluded:a.preparation.excluded},
+    nonReconciliees:{total:a.nonReconciliees.total,parMois:nombres(a.nonReconciliees.parMois),moisInconnu:a.nonReconciliees.moisInconnu,parStatut:nombres(a.nonReconciliees.parStatut)},
+    controle:a.controle?{recomptage:a.controle.recomptage}:null};
+}
+function exportControleArchive(year){
+  var c=construireControleArchive((S.yearlyStats||{})[year]);if(!c){showToast('Export de contrôle indisponible pour cette archive','warn');return;}
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(c,null,2)],{type:'application/json'}));
+  a.download='controle-archive-'+year+'.json';a.click();showToast('✓ Export de contrôle anonymisé téléchargé');
+}
+/* Q3 (choix de l'utilisateur) : RDV non pointés de la cohorte, signalés avant archivage (archivés tels quels) */
+function nonPointesCohorte(year){
+  var j=jourParis(),r={attente:0,aPointer:0,aVerifier:0};
+  S.history.forEach(function(h){if(entryYear(h)!==year||h.msgType==='indispo'||!h.date)return;
+    if(h.statut==='en_attente')r.attente++;else if(h.statut==='confirme'&&h.date<j)r.aPointer++;else if(statutAffiche(h)===STATUT_A_VERIFIER)r.aVerifier++;});
+  return r;
 }
 /* archive une année révolue puis purge son détail nominatif de l'historique du profil actif — irréversible, confirmation requise */
 function archiveYear(year){
@@ -3231,8 +3433,14 @@ function archiveYear(year){
      et usagers distincts ne s'additionnent pas avec de nouvelles fiches ; les fiches réapparues (import, restauration)
      restent dans l'historique, rien n'est supprimé. */
   if(S.yearlyStats&&S.yearlyStats[year]){showToast('⚠️ '+year+' est déjà archivée : les '+entries.length+' fiche(s) de '+year+' réapparues ne sont pas archivées, pour ne pas remplacer l\'archive existante. Rien n\'a été supprimé.','warn');return;}
-  if(!confirm("Archiver l'année "+year+" ?\n\n"+entries.length+" entrée(s) d'historique seront résumées en statistiques agrégées et anonymisées, puis définitivement supprimées de l'historique nominatif. Cette action est irréversible."))return;
-  var arc=computeYearArchive(year);
+  /* AG-017 (R4) : recomptage indépendant et invariants AVANT toute question ou purge ; le moindre écart refuse l'archivage */
+  var arc=computeYearArchive(year),ecarts=controleAvantPurge(year,arc);
+  if(ecarts.length){showToast('❌ Archivage de '+year+' refusé : le recomptage indépendant ne concorde pas ('+ecarts.slice(0,3).join(' ; ')+(ecarts.length>3?' ; …'+ecarts.length+' écarts':'')+'). Rien n\'a été supprimé.','err');return;}
+  var np=nonPointesCohorte(year),eff=arc.effectifs||{};
+  var avert=(np.attente||np.aPointer||np.aVerifier)?"\n\n⚠️ Non pointés, archivés tels quels : "+np.attente+" en attente, "+np.aPointer+" confirmé(s) à pointer, "+np.aVerifier+" statut à vérifier. Pointez-les d'abord si besoin.":"";
+  var exclu=(eff.dejaComptees||eff.nonReconciliees)?"\n\nℹ️ "+(eff.dejaComptees||0)+" fiche(s) déjà comptée(s) dans une autre archive et "+(eff.nonReconciliees||0)+" fiche(s) non réconciliée(s) seront supprimées sans être recomptées (signalées dans l'archive).":"";
+  if(!confirm("Archiver l'année "+year+" ?\n\n"+entries.length+" entrée(s) d'historique seront résumées en statistiques agrégées, sans nom ni téléphone (identifiants techniques conservés pour éviter les doubles comptes), puis définitivement supprimées de l'historique nominatif. Cette action est irréversible."+avert+exclu))return;
+  arc.controle={recomptage:'concordant',le:new Date().toISOString()};
   var stats=Object.assign({},S.yearlyStats);stats[year]=arc;
   var remaining=S.history.filter(function(h){return entryYear(h)!==year;});
   /* AG-013, étape 2 : l'archive est écrite et relue avant la suppression du détail ; au moindre échec, rien n'est supprimé */
@@ -3249,6 +3457,13 @@ function archiveYear(year){
 
 /* affiche les stats agrégées d'une année archivée (plus de détail nominatif disponible) */
 function renderArchivedYearStats(wrap,arc){
+  var l=lectureArchive(arc);
+  if(l==='ag017-v1'){renderArchiveAg017(wrap,arc);return;}
+  if(l==='inconnue'||l==='incomplete'){wrap.appendChild(el('div',{class:'ui-stats-archive-note'},'📦 Archive '+((arc&&arc.year)||'')+' — '+(l==='inconnue'?'méthode non prise en charge par cette version':'archive incomplète')+' : aucun chiffre affiché.'));return;}
+  renderArchiveHistorique(wrap,arc);
+}
+/* archives antérieures à AG-017 (sans `methode`) : lecture historique inchangée */
+function renderArchiveHistorique(wrap,arc){
   if(!arc){
     wrap.appendChild(el('div',{style:"text-align:center;padding:60px 20px;color:var(--c-muted);font-size:15px;"},"Aucune archive pour cette année."));
     return;
@@ -3344,12 +3559,66 @@ function renderArchivedYearStats(wrap,arc){
     var row=el('div',{style:"display:flex;gap:20px;flex-wrap:wrap;"});
     if(arc.preparationMetrics){var pm=arc.preparationMetrics;row.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;'},'Préparation moy. (lun.–ven.) : '+(pm.avg===null?'—':Number(pm.avg).toLocaleString('fr-FR')+' j')+' · '+pm.count+' dossiers mesurés, '+pm.excluded+' non mesurables'));}
     else if(arc.avgReact!=null)row.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;'},'Ancienne réactivité : '+arc.avgReact+' jours calendaires (estimation historique, première préparation non vérifiable)'));
-    if(arc.avgRdv!==null)row.appendChild(el('div',{style:"font-size:13px;color:var(--c-dim);font-weight:600;"},'📅 Délai moy. RDV : '+arc.avgRdv+'j'));
+    if(arc.avgRdv!==null)row.appendChild(el('div',{style:"font-size:13px;color:var(--c-dim);font-weight:600;"},'📅 Délai moy. RDV (ancienne méthode) : '+arc.avgRdv+'j'));
     avgCard.appendChild(row);
     wrap.appendChild(avgCard);
   }
 }
 
+/* AG-017 : affichage d'une archive ag017-v1 — libellés de catalogue conservés à l'écran (choix de l'utilisateur), taux recalculés
+   depuis leurs termes, préparations par année civile toutes sources (R3 bis, R5). Aucun repli vers les champs de l'ancienne méthode. */
+function renderArchiveAg017(wrap,arc){
+  function card(title){var c=el('section',{class:'ui-stats-section'});c.appendChild(el('h3',{class:'ui-stats-section-title'},title));return c;}
+  function barRow(label,pct,col,valStr){
+    var row=el('div',{class:'ui-stats-bar-row'});row.appendChild(el('span',{class:'ui-stats-bar-label'},label));
+    var outer=el('div',{class:'ui-stats-bar-track'});outer.appendChild(el('div',{class:'ui-stats-bar-fill',style:"background:"+col+";--w:"+pct+"%;"}));
+    row.appendChild(outer);row.appendChild(el('span',{class:'ui-stats-bar-value'},valStr));return row;
+  }
+  function note(t){return el('p',{class:'ui-chart-description'},t);}
+  var eff=arc.effectifs,rdv=arc.rdv,cr=arc.creneaux,nr=arc.nonReconciliees,Y=arc.year;
+  wrap.appendChild(el('div',{class:'ui-stats-archive-note'},'📦 Archive '+Y+' (méthode '+arc.methode+') — statistiques agrégées, sans nom ni téléphone ; identifiants techniques conservés pour éviter les doubles comptes. Détail nominatif supprimé'+(arc.generatedAt?' le '+new Date(arc.generatedAt).toLocaleDateString('fr-FR',{timeZone:'Europe/Paris'}):'')+'. Cohorte : RDV de '+Y+' (fiche sans RDV : année du message).'));
+  if(eff.dejaComptees||nr.total)wrap.appendChild(el('div',{class:'ui-stats-archive-note'},'⚠️ '+(nr.total?nr.total+' fiche'+(nr.total>1?'s':'')+' non réconciliée'+(nr.total>1?'s':'')+' exclue'+(nr.total>1?'s':'')+' de cette archive'+(nr.moisInconnu?' (dont '+nr.moisInconnu+' de mois de préparation inconnu)':'')+' : chiffres non certifiés. ':'')+(eff.dejaComptees?eff.dejaComptees+' fiche'+(eff.dejaComptees>1?'s':'')+' déjà comptée'+(eff.dejaComptees>1?'s':'')+' dans une autre archive, non recomptée'+(eff.dejaComptees>1?'s':'')+'.':'')));
+  wrap.appendChild(el('h3',{class:'ui-stats-group-title'},'Les rendez-vous de '+Y));
+  var band=el('div',{class:'ui-stats-metric-band ui-stats-activity-band'});
+  [[rdv.fiches,'RDV de l’année'],[rdv.statuts.realise||0,'RDV réalisés'],[rdv.personnesAccompagnees,'Personnes accompagnées'],[rdv.canaux.sms,'SMS'],[rdv.canaux.mail,'Mails']].forEach(function(k){
+    var c=el('div',{class:'ui-stats-metric'});c.appendChild(el('div',{class:'ui-stats-number'},String(k[0])));c.appendChild(el('div',{class:'ui-stats-metric-label'},k[1]));band.appendChild(c);});
+  wrap.appendChild(band);
+  wrap.appendChild(note('Personnes accompagnées : RDV réalisés, une personne = nom + prénom (homonymes confondus, variantes d’écriture séparées). SMS et Mails : canal des fiches de la cohorte'+(rdv.canaux.inconnu?' ; '+rdv.canaux.inconnu+' de canal inconnu':'')+'.'));
+  var rates=el('div',{class:'ui-stats-metric-band ui-stats-rate-band'});
+  [[cr.realises,'Taux de concrétisation'],[cr.lapins,'Taux de lapin 🐇']].forEach(function(r){
+    var c=el('div',{class:'ui-stats-metric'});
+    c.appendChild(el('div',{class:'ui-stats-number'},cr.denominateur?Math.round(r[0]/cr.denominateur*100)+'%':'—'));
+    c.appendChild(el('div',{class:'ui-stats-metric-label'},r[1]+' — '+r[0]+' / '+cr.denominateur+' créneaux'));rates.appendChild(c);});
+  wrap.appendChild(rates);
+  wrap.appendChild(note('Base : créneaux (date + CMS + heure) ; Annulé et Excusé au dénominateur. Exclus : '+cr.sansHeure+' RDV sans heure. Signalés, comptés dans la base : '+cr.sansCms+' sans CMS, '+cr.statutAVerifier+' statut à vérifier.'+(nr.total?' Non certifié, '+nr.total+' fiche'+(nr.total>1?'s':'')+' exclue'+(nr.total>1?'s':'')+'.':'')));
+  var statMeta=[['confirme','✓ Confirmé'],['en_attente','⏳ En attente'],['realise','✅ Réalisé'],['excuse','🙏 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],[STATUT_A_VERIFIER,'❓ Statut à vérifier']];
+  var sc=card('Répartition par statut'),sg=el('div',{class:'ui-stats-status-list'});
+  statMeta.forEach(function(m){var n=rdv.statuts[m[0]]||0;if(m[0]===STATUT_A_VERIFIER&&!n)return;var t=el('div',{class:'ui-stats-status-row'});t.appendChild(el('span',{class:'ui-stats-status-label'},m[1]));t.appendChild(el('strong',{class:'ui-stats-status-number'},String(n)));sg.appendChild(t);});
+  sc.appendChild(sg);wrap.appendChild(sc);
+  var mk=Object.keys(rdv.parMois).sort();
+  if(mk.length){var mc=card('RDV par mois du rendez-vous'),mx=Math.max.apply(null,mk.map(function(k){return rdv.parMois[k].total;}));
+    mk.forEach(function(k){var v=rdv.parMois[k];mc.appendChild(barRow(k,mx?Math.round(v.total/mx*100):0,'oklch(0.56 0.15 264)',v.total+' (réalisés : '+v.realise+')'));});wrap.appendChild(mc);}
+  var dl=Object.keys(rdv.parDemarche).map(function(k){return{nom:k,n:rdv.parDemarche[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,10),dc=card('Classement des démarches (top 10)');
+  if(dl.length)dl.forEach(function(d){dc.appendChild(barRow(d.nom,Math.round(d.n/dl[0].n*100),'oklch(0.52 0.14 266)',String(d.n)));});else dc.appendChild(note('Aucune démarche'));
+  wrap.appendChild(dc);
+  var cl=Object.keys(rdv.parCms).map(function(k){return{nom:k,n:rdv.parCms[k]};}).sort(function(a,b){return b.n-a.n;}),cc=card('RDV par CMS');
+  cl.forEach(function(c){cc.appendChild(barRow(c.nom,Math.round(c.n/cl[0].n*100),'oklch(0.62 0.12 38)',String(c.n)));});
+  if(rdv.sansCms)cc.appendChild(note(rdv.sansCms+' RDV sans CMS.'));if(!cl.length&&!rdv.sansCms)cc.appendChild(note('Aucune donnée CMS'));
+  wrap.appendChild(cc);
+  var tc=card('Répartition par type'),tt=Object.keys(rdv.parType).reduce(function(x,k){return x+rdv.parType[k];},0)||1;
+  [['proposition','Proposition'],['confirmation','Confirmation'],['sans_appel','Sans appel']].forEach(function(t){var n=rdv.parType[t[0]]||0;if(n)tc.appendChild(barRow(t[1],Math.round(n/tt*100),'oklch(0.56 0.15 264)',n+' ('+Math.round(n/tt*100)+'%)'));});
+  tc.appendChild(relanceNote(rdv.relances,rdv.relancesSur,function(l,p,c,v,t){var r=barRow(l,p,c,v);r.dataset.tip=t;r.style.cursor='help';attachPermanenceTip(r);return r;}));
+  wrap.appendChild(tc);
+  var tot=totauxPreparationAnnee(Y),pc=card('Préparations de l’année civile '+Y+' (toutes sources)');
+  pc.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;'},'Fiches préparées : '+texteTotalFiches(tot)));
+  pc.appendChild(el('div',{style:'font-size:13px;color:var(--c-dim);font-weight:600;margin-top:6px;'},'Préparation moy. (lun.–ven.) : '+texteMoyennePreparation(tot)));
+  var autres=Object.keys(arc.preparees.parMois).filter(function(m){return m.slice(0,4)!==String(Y);}).sort();
+  pc.appendChild(note('Au mois de la première préparation : cette archive et les fiches encore présentes, sans double compte.'+(autres.length?' Cette archive contribue aussi à : '+autres.map(function(m){var v=arc.preparees.parMois[m];return m+' ('+(v.sms+v.mail+v.inconnu)+')';}).join(', ')+'.':'')+(arc.preparees.sansDateConnue?' '+arc.preparees.sansDateConnue+' fiche'+(arc.preparees.sansDateConnue>1?'s':'')+' de la cohorte sans première préparation connue (aucun mois attribué).':'')));
+  wrap.appendChild(pc);
+  var ex=el('button',{class:'gx-press',type:'button',style:'margin-top:8px;',onClick:function(){exportControleArchive(Y);}},'⬇️ Export de contrôle anonymisé');
+  wrap.appendChild(ex);
+  wrap.appendChild(note('L’export de contrôle ne contient ni identifiant, ni nom de CMS ou de démarche : il permet de recalculer les taux, pas de recompter les dossiers. Les sauvegardes complètes (« Données ») restent privées et contiennent l’archive entière.'));
+}
 /* Statistiques de RDV : lecture seule du profil actif, au jour du rendez-vous.
    Les fiches suivent l'unité existante de l'historique (addHistory remplace la
    même personne au même créneau). Aucun dédoublonnage ni réécriture d'archive. */
@@ -7759,6 +8028,8 @@ function loadProfileDataCorps(){
   S.favDemarches=lireDonnee('ess-fav-demarches',[]);   /* P06 (vérification de clôture de Codex) : les favoris étaient affichés mais jamais enregistrés */
   S.history=lireDonnee(pk('history'),[]);
   S.yearlyStats=lireDonnee(pk('yearly-stats'),{});
+  /* AG-017 (R3, filet de sécurité) : fiche sans identifiant d'une cohorte archivée → marqueur persistant, avant tout déplacement */
+  if(!_clesIllisibles[pk('history')]&&!_clesIllisibles[pk('yearly-stats')]){var mqc=marquerNonReconciliees(S.history,S.yearlyStats,false);if(mqc.marquees&&lsSet(pk('history'),mqc.history))S.history=mqc.history;}
   S.mandats=lireDonnee('ess-mandats',[]);
   S.orientations=lireDonnee(pk('orientations'),[]);
   S.permanences=lireDonnee(pk('permanences'),DEFAULT_PERMANENCES);

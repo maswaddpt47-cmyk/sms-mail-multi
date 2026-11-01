@@ -51,6 +51,7 @@ function charger(){
     localStorage:st,S,confirm:()=>true,renderToast(){if(S.toast)journal.toasts.push(S.toast.msg);},renderConfig(){},renderHistory(){},renderHistoryList(){},renderOrientations(){},compute:()=>({dem:{nom:'Démarche fictive'},body:'x'}),isDuplicate:()=>false,getProfile:(pid)=>({nom:pid}),findHistIdx:(a,h)=>a.indexOf(h)>=0?a.indexOf(h):a.findIndex(x=>x.id===h.id),relanceTs:()=>NaN,renderModal(){},renderAll(){},regen(){},renderAgenda(){},renderTabs(){},renderHeader(){},
     ghToken:()=>'jeton-fictif',githubPush(){journal.pushs++;},HISTORY_MAX:99999,getSlots:()=>[],LUNCH_MOTIF:'Pause déjeuner',
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
+    controleAvantPurge:()=>[],nonPointesCohorte:()=>({attente:0,aPointer:0,aVerifier:0}),marquerNonReconciliees:(h)=>({history:h,marquees:0}),   /* AG-017 : testés pour de vrai dans check-archives.js */
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
     canGenerate:()=>true,telProblem:()=>'',renderGenerate(){},renderMandat(){},
     PROFILES:[{id:'p1'},{id:'p2'}],DEFAULT_CMS:[],DEFAULT_DEMARCHES:[],DEFAULT_SECTEURS:[],DEFAULT_TEMPLATES:{sms:'défaut v5'},DEFAULT_CUSTOM:[],DEFAULT_PERMANENCES:[],
