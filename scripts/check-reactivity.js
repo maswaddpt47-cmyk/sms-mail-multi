@@ -101,12 +101,12 @@ const tx=o=>typeof o==='string'?o:o.kids.map(tx).join(' | ');
 function rendre(hist,prep){const rc=vm.createContext({el:nd,attachPermanenceTip(){},kpiRow:nd('div'),prepMetrics:context.preparationStats(prep),S:{history:hist,statsCMS:'Fumel'},rdv:{start:null,today:'2026-12-31'},
   reactiviteDernierMessage:context.reactiviteDernierMessage,MOTIFS_DERNIER_MESSAGE:context.MOTIFS_DERNIER_MESSAGE,Math,Object});vm.runInContext(html.slice(deb,fin),rc);return rc.kpiRow.kids.map(tx);}
 const [tPrep,tDM]=rendre(DM,DM);
-{const [,tM]=rendre(MOY.map(x=>Object.assign({},x)),[]);assert.ok(tM.startsWith('2 j | Réception → dernier message enregistré | Moyenne en jours ouvrés'),'tuile : moyenne affichée : '+tM);}
-{const [,tV]=rendre([],[]);assert.ok(tV.startsWith('— | Réception → dernier message enregistré'),'sans fiche : tiret');}
+{const [,tM]=rendre(MOY.map(x=>Object.assign({},x)),[]);assert.ok(tM.startsWith('33 % | Le même jour — réception → dernier message enregistré | Moyenne : 2 j ouvrés (week-ends et fériés nationaux exclus) · 3 fiches calculables'),'tuile : pourcentage en grand, moyenne en note : '+tM);}
+{const [,tV]=rendre([],[]);assert.ok(tV.startsWith('— | Le même jour — réception → dernier message enregistré | 0 fiche calculable'),'sans fiche : tiret, sans moyenne : '+tV);}
 assert.ok(tPrep.startsWith('1 j | Préparation moy. (jours ouvrés)'),'première préparation à part : '+tPrep);
 assert.ok(tPrep.includes('1 dossier mesuré'),'première préparation : seule C');
-assert.ok(tDM.startsWith('1 j | Réception → dernier message enregistré | Moyenne'),'tuile : '+tDM);
-assert.ok(tDM.includes('4 fiches calculables · 25 % le même jour'),'effectif calculable');
+assert.ok(tDM.startsWith('25 % | Le même jour — réception → dernier message enregistré | Moyenne : 1 j ouvré (week-ends et fériés nationaux exclus) · 4 fiches calculables'),'tuile : '+tDM);
+assert.ok(tDM.includes('4 fiches calculables · même jour = même date civile'),'effectif calculable');
 assert.ok(tDM.includes('Exclues (9) : 1 date du message absente · 2 date du message illisible ou impossible · 2 dernier message de suivi (relance, rappel, lapin) · 1 réception à confirmer · 1 réception absente · 1 réception invalide · 1 dernier message antérieur à la réception.'),'motifs : '+tDM);
 assert.ok(tDM.includes('pas forcément le premier envoi'),'limite écrite');
 assert.equal(/premier envoi :|date d.envoi/i.test(tDM.replace('pas forcément le premier envoi (non enregistré)','')),false,'jamais présenté comme le premier envoi');
@@ -114,8 +114,8 @@ assert.equal(/premier envoi :|date d.envoi/i.test(tDM.replace('pas forcément le
 const asc={dateReception:'2026-05-13',premierePreparationAt:'2026-05-14T10:00:00+02:00',ts:'2026-05-14T10:00:00+02:00',commune:'Fumel',msgType:'confirmation'};
 assert.equal(context.joursOuvresFrance('2026-05-13','2026-05-14'),0,'Ascension : 0 jour ouvré');
 const [aPrep,aDM]=rendre([asc],[asc]);
-assert.ok(aPrep.startsWith('0 j | Préparation moy.'),'A24 tuile : '+aPrep);assert.ok(aDM.startsWith('0 j | Réception → dernier message'),'A24 dernier message : '+aDM);
-assert.ok(aDM.includes('1 fiche calculable · 0 % le même jour'),'dates civiles différentes');
+assert.ok(aPrep.startsWith('0 j | Préparation moy.'),'A24 tuile : '+aPrep);assert.ok(aDM.startsWith('0 % | Le même jour — réception → dernier message enregistré | Moyenne : 0 j ouvré'),'A24 dernier message : '+aDM);
+assert.ok(aDM.includes('1 fiche calculable'),'dates civiles différentes : 0 %, alors que 0 jour ouvré');
 assert.equal(/jour même/i.test(aPrep+aDM),false,'aucun « jour même » tiré de 0 jour ouvré');
 // Les archives gardent lun.–ven. (AG-017 clos) : même intervalle = 2.
 assert.equal(context.businessDaysBetween('2026-04-03','2026-04-07'),2,'archives : méthode inchangée');
