@@ -1109,7 +1109,7 @@ var S={
   activeProfile:null, agendaScope:"mine",
   channel:"sms", msgType:"proposition", selectedTemplate:"__default__", uiMessageSettingsOpen:false,
   selectedCMS:"", selectedDemarche:"", commune:"",
-  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", dateDemande:jourParis(),
+  civilite:"", prenom:"", nom:"", telephone:"", date:"", heure:"", demarcheAutre:"", dateReception:"", receptionReprise:"", dateDemande:jourParis(),
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
   statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, relanceReponseH:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
@@ -1120,7 +1120,7 @@ var S={
   editBuiltin:null, editBuiltinText:"",
   nt:{nom:"",canal:"sms",type:"proposition",sujet:"",body:""},
   nv:{nom:"",valeur:""},
-  nc:{nom:"",adresse:""}, ns:"", nd:{nom:"",docs:"",theme:""}, editTheme:null, demSearch:"", editDem:null, editHistIdx:null, editHistBody:"", editHistNotes:"", editHistDateDemande:"", editHistDateReception:"", editHistTel:"", genNotes:"",
+  nc:{nom:"",adresse:""}, ns:"", nd:{nom:"",docs:"",theme:""}, editTheme:null, demSearch:"", editDem:null, editHistIdx:null, editHistBody:"", editHistNotes:"", editHistDateDemande:"", editHistDateReception:"", editHistReceptionInit:"", editHistReprise:"", editHistTel:"", genNotes:"",
   editCms:null, editSect:null, editVar:null, editTpl:null,
   exportText:"", importText:"", importError:"",
   copied:{}, toast:null,
@@ -1705,7 +1705,7 @@ function handleGenerate(){
   renderGenerate();renderHistory();renderMandat();renderAgenda();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",receptionReprise:"",dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
   S._lastLapinDetected=false;
   saveLast();   /* 01/11/2026 (demande de l'utilisateur) : « Effacer » oublie aussi le dernier CMS et la dernière démarche, sinon ils revenaient au rechargement */
   regen();renderGenerate();
@@ -1838,14 +1838,17 @@ function figerChampsCopie(){
   var r=compute();
   return {activeProfile:S.activeProfile,channel:S.channel,msgType:S.msgType,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,
     selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,
-    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
+    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
 }
 function enregistrerCopie(text,fige){
   var F=fige||figerChampsCopie();
   /* réception et message enregistrés ensemble */
   return operationHistorique(function(){
     var receptionRecord=S.history.find(function(h){return h.date===F.date&&h.heure===F.heure&&h.commune===F.commune&&(h.nom||'').toLowerCase()===(F.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(F.prenom||'').toLowerCase();});
-    if(receptionRecord&&receptionDateFor(receptionRecord)!==(F.dateReception||'')){
+    /* AG-022 : comparaison avec la réception ENREGISTRÉE ; une reprise non confirmée, ou un champ vide sur une fiche sans réception
+       enregistrée, ne réécrit rien (ni confirmation implicite, ni « vide » qui ferait d'une reprise une absence) */
+    var garderAbsence=F.receptionAConfirmer||(!F.dateReception&&!!receptionRecord&&!Object.prototype.hasOwnProperty.call(receptionRecord,'dateReception'));
+    if(receptionRecord&&!garderAbsence&&receptionChampInitial(receptionRecord)!==(F.dateReception||'')){
       S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:F.dateReception||''});
       if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
     }
@@ -1857,7 +1860,9 @@ function enregistrerCopie(text,fige){
     if(text&&!dejaEnregistre){
       if(F.cmsTrouve&&F.dem){
         if(isDuplicate(F.nom,F.dem.nom,F.date))showToast('⚠️ Doublon détecté : '+F.nom+' / '+F.dem.nom+' déjà dans l\'historique','warn');
-        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:tsParis()},true))throw new Error('message refusé');
+        var itemCopie={channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:tsParis()};
+        if(garderAbsence)delete itemCopie.dateReception;   /* AG-022 : la fusion ne pose ni reprise confirmée d'office, ni réception vide sur une fiche qui n'en a pas */
+        if(!addHistory(itemCopie,true))throw new Error('message refusé');
       }
     }
   });
@@ -2382,14 +2387,25 @@ function exportOrientationsCSV(){
   showToast("✓ Export CSV téléchargé");
 }
 function deleteHistItem(realIdx){var h=S.history.slice();h.splice(realIdx,1);if(lsSet(pk('history'),h))S.history=h;renderHistoryList();}
-function saveHistItem(realIdx){S.history[realIdx].body=S.editHistBody;S.history[realIdx].notes=S.editHistNotes||"";S.history[realIdx].dateDemande=S.editHistDateDemande||"";S.history[realIdx].dateReception=S.editHistDateReception||"";S.history[realIdx].telephone=S.editHistTel||"";lsSet(pk('history'),S.history);S.editHistIdx=null;S.editHistBody="";S.editHistNotes="";S.editHistDateDemande="";S.editHistDateReception="";S.editHistTel="";renderHistoryList();}
+function saveHistItem(realIdx){
+  var h=S.history[realIdx];if(!h)return false;
+  var maj=Object.assign({},h,{body:S.editHistBody,notes:S.editHistNotes||"",dateDemande:S.editHistDateDemande||"",telephone:S.editHistTel||""});
+  /* AG-022 : la réception n'est écrite que si le champ a changé (date saisie, effacée ou reprise confirmée) ; un champ intact
+     n'est ni confirmé, ni vidé, ni normalisé. Écriture sur une copie : si le stockage refuse, rien n'est modifié. */
+  var rec=S.editHistDateReception||"";if(rec!==(S.editHistReceptionInit||""))maj.dateReception=rec;
+  var copie=S.history.slice();copie[realIdx]=maj;
+  if(!lsSet(pk('history'),copie)){showToast('Enregistrement refusé : rien n’a été modifié','err');return false;}
+  S.history=copie;
+  S.editHistIdx=null;S.editHistBody="";S.editHistNotes="";S.editHistDateDemande="";S.editHistDateReception="";S.editHistReceptionInit="";S.editHistReprise="";S.editHistTel="";renderHistoryList();
+  return true;
+}
 function reuseHistItem(h){
   S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
   S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date="";S.heure="";S.dateReception="";
+  S.date="";S.heure="";S.dateReception="";S.receptionReprise="";
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
   showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
@@ -2413,7 +2429,7 @@ function openHistInGen(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionDateFor(h);
+  S.date=h.date||"";S.heure=h.heure||"";S.dateReception=receptionChampInitial(h);S.receptionReprise=etatReception(h).reprise;   /* AG-022 : reprise à confirmer, jamais préremplie */
   S.dateDemande=h.dateDemande||jourParis();
   S.genNotes=h.notes||"";
   S.selectedTemplate="__default__";
@@ -2765,6 +2781,10 @@ function renderGenerate(){
 
   var reception=el('div');reception.appendChild(el('label',{'for':'message-date-reception',style:LABEL},'Réception de la demande'));
   reception.appendChild(el('input',{id:'message-date-reception',class:'gx-in',style:INPUT,type:'date',value:S.dateReception||'',onChange:function(e){S.dateReception=e.target.value;}}));
+  if(S.receptionReprise&&!S.dateReception){   /* AG-022 : ancienne date reprise, à confirmer explicitement */
+    reception.appendChild(el('p',{class:'ui-chart-description ui-reception-reprise'},'Ancienne date du message : '+S.receptionReprise.split('-').reverse().join('/')+' — à confirmer comme réception.'));
+    reception.appendChild(el('button',{type:'button',class:'gx-press ui-record-button',onClick:function(){S.dateReception=S.receptionReprise;renderGenerate();}},'Confirmer cette date'));
+  }
   reception.appendChild(el('p',{class:'ui-chart-description'},'Facultatif. Sans date de réception, ce dossier ne participe pas au délai moyen de préparation.'));
   col.appendChild(reception);
   var ddem=el('div');ddem.appendChild(el('label',{style:LABEL},'Date du message / proposition (suivi)'));
@@ -2992,13 +3012,14 @@ function renderHistoryCard(h,realIdx,container){
   badges.appendChild(el('span',{class:'ui-record-chip'},h.channel==='sms'?'SMS':'E-mail'));
   badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted'},TLABEL[h.msgType]||h.msgType||'Message'));
   if(h.statut&&STATUT_STYLES[h.statut])badges.appendChild(el('span',{class:'ui-record-chip',style:statutBadgeStyle(h.statut)},STATUT_STYLES[h.statut].label));
+  if(etatReception(h).etat==='reprise')badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted',title:'Seule l’ancienne date du message existe : à confirmer dans « Modifier »'},'Réception à confirmer'));   /* AG-022 */
   if(h.statut==='annule'&&h.annulationMotif)details.appendChild(el('div',{class:'ui-record-meta'},'Motif de l’annulation : '+h.annulationMotif));
   details.appendChild(badges);main.appendChild(details);card.appendChild(main);
   var actions=el('div',{class:'ui-record-actions'});
   if(!isEditing){
     actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-primary',onClick:function(e){e.stopPropagation();openHistInGen(h);}},'Ouvrir le dossier'));
     actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();reuseHistItem(h);}},'Réutiliser'));
-    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistDateReception=receptionDateFor(h);S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
+    actions.appendChild(el('button',{class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistIdx=realIdx;S.editHistBody=h.body||"";S.editHistNotes=h.notes||"";S.editHistDateDemande=h.dateDemande||"";S.editHistDateReception=receptionChampInitial(h);S.editHistReceptionInit=S.editHistDateReception;S.editHistReprise=etatReception(h).reprise;S.editHistTel=h.telephone||"";renderHistoryList();}},'Modifier'));
   }
   actions.appendChild(el('button',{class:'gx-press ui-record-button ui-record-button-danger',onClick:function(e){e.stopPropagation();if(confirm("Supprimer cette entrée ?"))deleteHistItem(realIdx);}},'Supprimer'));
   card.appendChild(actions);
@@ -3012,7 +3033,14 @@ function renderHistoryCard(h,realIdx,container){
     var dateField=el('div');dateField.appendChild(el('label',{'for':'ui-record-date-'+realIdx},'Date du message / proposition (suivi)'));
     var ddIn=el('input',{id:'ui-record-date-'+realIdx,class:'gx-in',type:'date',onInput:function(e){S.editHistDateDemande=e.target.value;}});ddIn.value=S.editHistDateDemande||'';dateField.appendChild(ddIn);fields.appendChild(dateField);
     var receptionField=el('div');receptionField.appendChild(el('label',{'for':'ui-record-reception-'+realIdx},'Réception de la demande'));
-    receptionField.appendChild(el('input',{id:'ui-record-reception-'+realIdx,class:'gx-in',type:'date',value:S.editHistDateReception||'',onInput:function(e){S.editHistDateReception=e.target.value;}}));fields.appendChild(receptionField);
+    receptionField.appendChild(el('input',{id:'ui-record-reception-'+realIdx,class:'gx-in',type:'date',value:S.editHistDateReception||'',onInput:function(e){S.editHistDateReception=e.target.value;}}));
+    /* AG-022 : une ancienne date reprise n'est jamais préremplie comme réception ; elle se confirme explicitement */
+    var erH=etatReception(h);
+    if(S.editHistReprise&&!S.editHistDateReception){
+      receptionField.appendChild(el('p',{class:'ui-chart-description ui-reception-reprise'},'Ancienne date du message : '+S.editHistReprise.split('-').reverse().join('/')+' — à confirmer comme réception.'));
+      receptionField.appendChild(el('button',{type:'button',class:'gx-press ui-record-button',onClick:function(e){e.stopPropagation();S.editHistDateReception=S.editHistReprise;renderHistoryList();}},'Confirmer cette date'));
+    }else if(erH.invalide&&!S.editHistDateReception)receptionField.appendChild(el('p',{class:'ui-chart-description'},'Valeur enregistrée illisible : laissée telle quelle si le champ reste vide.'));
+    fields.appendChild(receptionField);
     editing.appendChild(el('p',{class:'ui-chart-description'},'Première préparation : '+(preparationParisDay(h.premierePreparationAt)||'non connue pour ce dossier')));
     var telField=el('div');telField.appendChild(el('label',{'for':'ui-record-tel-'+realIdx},'Téléphone'));
     var telIn=el('input',{id:'ui-record-tel-'+realIdx,class:'gx-in',type:'tel',placeholder:'0600000000',onInput:function(e){S.editHistTel=e.target.value;}});telIn.value=S.editHistTel||'';telField.appendChild(telIn);fields.appendChild(telField);editing.appendChild(fields);
@@ -3117,6 +3145,27 @@ function businessDaysBetween(startDay,endDay){
 function receptionDateFor(h){
   var value=Object.prototype.hasOwnProperty.call(h,'dateReception')?h.dateReception:h.dateDemande;
   return preparationDayUTC(value)!==null?value:'';
+}
+/* AG-022 : origine de la réception, pour l'affichage et le délai d'attente (receptionDateFor reste le lecteur de la préparation, AG-002).
+   'enregistree' : champ dateReception présent et valide ; 'reprise' : champ absent, ancienne dateDemande valide — à confirmer, jamais
+   une réception certaine ; 'absente' : champ vide ou illisible (invalide:true), ou rien à reprendre. Lecture seule. */
+function etatReception(h){
+  if(h&&Object.prototype.hasOwnProperty.call(h,'dateReception'))
+    return preparationDayUTC(h.dateReception)!==null?{etat:'enregistree',date:h.dateReception,reprise:''}:{etat:'absente',date:'',reprise:'',invalide:String(h.dateReception==null?'':h.dateReception)!==''};
+  if(h&&preparationDayUTC(h.dateDemande)!==null)return {etat:'reprise',date:'',reprise:h.dateDemande};
+  return {etat:'absente',date:'',reprise:''};
+}
+/* valeur de départ d'un champ « Réception de la demande » : seulement une réception enregistrée ; une reprise n'est jamais préremplie */
+function receptionChampInitial(h){var e=etatReception(h);return e.etat==='enregistree'?e.date:'';}
+/* AG-022 : enregistre une réception confirmée ou saisie sur UNE fiche du profil actif ; rien d'autre n'est écrit (ni
+   premierePreparationAt, ni dateDemande). Écriture sur une copie : en cas de refus du stockage, l'état reste inchangé. */
+function enregistrerReception(h,date){
+  if(preparationDayUTC(date)===null)return {ok:false,msg:'Date de réception invalide'};
+  var i=S.history.indexOf(h);
+  if(i<0)return {ok:false,msg:'Fiche introuvable : rouvrez la liste'};
+  var copie=S.history.slice();copie[i]=Object.assign({},h,{dateReception:date});
+  if(!lsSet(pk('history'),copie))return {ok:false,msg:'Enregistrement refusé : aucune date modifiée'};
+  S.history=copie;return {ok:true};
 }
 function preparationStats(history){
   var sum=0,count=0,excluded=0;
@@ -3750,19 +3799,22 @@ function carteActiviteParCms(){
 /* ============================== AG-019 — délai d'attente par CMS (priorité 1, 01/11/2026) ==============================
    Délai = jours CALENDAIRES de la date de réception SAISIE (`dateReception` présente et valide) au jour du RDV. Population : RDV de la
    période et du CMS choisis dans Statistiques (`statsRdvModel`, au jour du RDV). Jamais l'ancien `dateDemande` (date du message) :
-   ces fiches sont « sans réception saisie », comptées à part ; une réception postérieure au RDV est « incohérente », comptée à part. Médiane. */
+   ces fiches sont « à confirmer » (AG-022 : champ absent, ancienne date reprise) ou « absentes ou invalides » (champ vide ou illisible), comptées à part ; une réception postérieure au RDV est « incohérente », comptée à part. Médiane. */
 function medianeNombres(v){if(!v.length)return null;var t=v.slice().sort(function(a,b){return a-b;}),m=Math.floor(t.length/2);return t.length%2?t[m]:(t[m-1]+t[m])/2;}
 function delaiAttenteParCms(entries){
-  var r={global:{delais:[],sansReception:0,incoherente:0},parCms:{},ordre:[],liste:{mesures:[],exclus:[]}},mesures=[];
-  function groupe(h){var c=String(h.commune||'').trim(),k=c?cmsKey(c):'';if(!r.parCms[k]){r.parCms[k]={k:k,nom:c||'Sans CMS',delais:[],sansReception:0,incoherente:0};r.ordre.push(k);}return r.parCms[k];}
+  var r={global:{delais:[],reprise:0,sansReception:0,incoherente:0},parCms:{},ordre:[],liste:{mesures:[],exclus:[]}},mesures=[];
+  function groupe(h){var c=String(h.commune||'').trim(),k=c?cmsKey(c):'';if(!r.parCms[k]){r.parCms[k]={k:k,nom:c||'Sans CMS',delais:[],reprise:0,sansReception:0,incoherente:0};r.ordre.push(k);}return r.parCms[k];}
   /* AG-021 : une fiche = une ligne de liste (personne, réception, RDV, délai ou motif d'exclusion), même population que les effectifs */
   function personne(h){var n=[h.prenom,h.nom].map(function(s){return String(s||'').trim();}).filter(Boolean).join(' ');return n||'Nom et prénom non renseignés';}
   (entries||[]).forEach(function(h){
     if(!h||h.msgType==='indispo'||preparationDayUTC(h.date)===null)return;
-    var g=groupe(h),rec=Object.prototype.hasOwnProperty.call(h,'dateReception')&&preparationDayUTC(h.dateReception)!==null?h.dateReception:'';
-    if(!rec){g.sansReception++;r.global.sansReception++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:'',rdv:h.date,motif:'sans_reception'});return;}
+    /* AG-022 : origine de la réception (etatReception). Une ancienne date reprise n'est jamais mesurée : « à confirmer ». `ref` = la fiche
+       elle-même, pour la confirmation depuis la liste (aucune copie de données hors de l'appli). */
+    var g=groupe(h),er=etatReception(h),rec=er.date;
+    if(er.etat==='reprise'){g.reprise++;r.global.reprise++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:er.reprise,rdv:h.date,motif:'reprise',ref:h});return;}
+    if(er.etat!=='enregistree'){g.sansReception++;r.global.sansReception++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:'',rdv:h.date,motif:'sans_reception',invalide:!!er.invalide,ref:h});return;}
     var d=joursCivilsEntre(rec,h.date);
-    if(!(d>=0)){g.incoherente++;r.global.incoherente++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:rec,rdv:h.date,motif:'apres_rdv'});return;}
+    if(!(d>=0)){g.incoherente++;r.global.incoherente++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:rec,rdv:h.date,motif:'apres_rdv',ref:h});return;}
     g.delais.push(d);r.global.delais.push(d);mesures.push({g:g,h:h,rec:rec,d:d});
     r.liste.mesures.push({k:g.k,cms:g.nom,personne:personne(h),rec:rec,rdv:h.date,d:d});
   });
@@ -3783,12 +3835,25 @@ function delaiAttenteParCms(entries){
   r.liste.exclus.sort(function(a,b){return a.cms.localeCompare(b.cms,'fr')||(a.rdv<b.rdv?-1:a.rdv>b.rdv?1:0)||a.personne.localeCompare(b.personne,'fr');});
   return r;
 }
-/* AG-021 : listes locales (aucune donnée envoyée) ; ouvre la fenêtre « delai-list » sur les fiches déjà filtrées par période et CMS. */
-function openDelaiList(title,kind,rows,periode){
-  S._delaiListCtx={title:title,kind:kind,rows:rows,periode:periode};
+/* AG-021 : listes locales (aucune donnée envoyée). AG-022 : la liste est recalculée à chaque affichage depuis S.history, avec la période
+   et le CMS de Statistiques, pour qu'une réception enregistrée reclasse aussitôt la fiche et mette les effectifs à jour. */
+function delaiListeLignes(kind,k){
+  var e=statsRdvModel(S.history,S.permanences||[],S.statsPeriod,S.statsCMS,new Date()).entries,r=delaiAttenteParCms(e);
+  var rows=kind==='mesures'?r.liste.mesures:r.liste.exclus.filter(function(x){return x.motif===kind;});
+  return k==null?rows:rows.filter(function(x){return x.k===k;});
+}
+function openDelaiList(title,kind,k,periode){
+  S._delaiListCtx={title:title,kind:kind,k:k,periode:periode};
   S.modal='delai-list';renderModal();
 }
-var MOTIFS_EXCLUS={sans_reception:'Sans réception saisie (la date du message n’est pas une réception)',apres_rdv:'Réception saisie postérieure au RDV'};
+var MOTIFS_EXCLUS={reprise:'Ancienne date du message reprise, à confirmer',sans_reception:'Réception absente',apres_rdv:'Réception saisie postérieure au RDV'};
+function motifExclusion(x){return x.motif==='sans_reception'&&x.invalide?'Réception invalide (valeur illisible)':(MOTIFS_EXCLUS[x.motif]||'');}
+/* AG-022 : après une réception enregistrée depuis une liste, la carte est recalculée sans perdre la position dans la page */
+function rafraichirStatsSurPlace(){
+  if(S.activeTab!=='stats'||typeof renderStats!=='function')return;
+  var p=document.getElementById('pane-stats'),sc=(p&&p.closest('.gx-scroll'))||document.scrollingElement,top=sc?sc.scrollTop:0;
+  renderStats();if(sc)sc.scrollTop=top;
+}
 function carteDelaiAttente(entries,periode){
   var r=delaiAttenteParCms(entries),g=r.global;
   function plur(n,s,p){return n+' '+(n>1?p:s);}
@@ -3796,29 +3861,26 @@ function carteDelaiAttente(entries,periode){
   card.appendChild(el('h3',{class:'ui-stats-section-title'},'Délai d’attente : réception de la demande → RDV'));
   card.appendChild(el('p',{class:'ui-delai-provisoire',role:'note',style:"font-weight:700;color:oklch(0.45 0.16 45);margin:4px 0 8px;"},'Couverture insuffisamment établie pour interpréter le délai d’attente'));
   card.appendChild(el('p',{class:'ui-chart-description'},'Médiane masquée, globale et par CMS. Les effectifs restent visibles : cliquez sur un nombre pour voir les fiches concernées.'));
+  var CATS=[['mesures','Mesurables','Fiches utilisées dans le calcul, triées par délai croissant'],['reprise','À confirmer','Fiches exclues : seule l’ancienne date du message existe, à confirmer comme réception'],['sans_reception','Absente ou invalide','Fiches exclues : réception vide, illisible ou inexistante'],['apres_rdv','Après le RDV','Fiches exclues : réception enregistrée postérieure au RDV']];
+  function nombre(x,kind){return kind==='mesures'?x.mesurables:kind==='reprise'?x.reprise:kind==='sans_reception'?x.sansReception:x.incoherente;}
   var band=el('div',{class:'ui-stats-metric-band'});
-  [[g.mesurables,'Mesurables','mesures','Fiches utilisées dans le calcul, triées par délai croissant'],[g.sansReception,'Sans réception saisie','sans_reception','Fiches exclues : pas de date de réception saisie'],[g.incoherente,'Après le RDV','apres_rdv','Fiches exclues : réception saisie postérieure au RDV']].forEach(function(k){
-    var c=el('button',{type:'button',class:'ui-stats-metric gx-press',style:'text-align:left;cursor:pointer;','aria-label':k[1]+' : '+k[0]+'. '+k[3]+'.',onClick:function(){
-      var rows=k[2]==='mesures'?r.liste.mesures:r.liste.exclus.filter(function(x){return x.motif===k[2];});
-      openDelaiList(k[1]+(periode?' — '+periode:''),k[2],rows,periode);
-    }});
-    c.appendChild(el('div',{class:'ui-stats-number'},String(k[0])));c.appendChild(el('div',{class:'ui-stats-metric-label'},k[1]));band.appendChild(c);
+  CATS.forEach(function(c){
+    var n=nombre(g,c[0]);
+    var b=el('button',{type:'button',class:'ui-stats-metric gx-press',style:'text-align:left;cursor:pointer;','aria-label':c[1]+' : '+n+'. '+c[2]+'.',onClick:function(){openDelaiList(c[1]+(periode?' — '+periode:''),c[0],null,periode);}});
+    b.appendChild(el('div',{class:'ui-stats-number'},String(n)));b.appendChild(el('div',{class:'ui-stats-metric-label'},c[1]));band.appendChild(b);
   });
   card.appendChild(band);
   var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
-  ['CMS','Mesurables','Sans réception saisie','Après le RDV'].forEach(function(x){hd.appendChild(el('th',{scope:'col'},x));});
+  hd.appendChild(el('th',{scope:'col'},'CMS'));CATS.forEach(function(c){hd.appendChild(el('th',{scope:'col'},c[1]));});
   t.appendChild(el('thead',{},[hd]));var tb=el('tbody');
   r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{scope:'row'},x.nom));
-    [[x.mesurables,'mesures','Mesurables',function(){return r.liste.mesures.filter(function(y){return y.k===x.k;});}],
-     [x.sansReception,'sans_reception','Sans réception saisie',function(){return r.liste.exclus.filter(function(y){return y.k===x.k&&y.motif==='sans_reception';});}],
-     [x.incoherente,'apres_rdv','Après le RDV',function(){return r.liste.exclus.filter(function(y){return y.k===x.k&&y.motif==='apres_rdv';});}]
-    ].forEach(function(c){
-      var b=el('button',{type:'button',class:'gx-press',style:'cursor:pointer;background:none;border:0;color:var(--ui-accent);font:inherit;font-weight:700;padding:2px 4px;','aria-label':c[2]+' — '+x.nom+' : '+c[0],onClick:function(){openDelaiList(c[2]+' — '+x.nom+(periode?' — '+periode:''),c[1],c[3](),periode);}},String(c[0]));
+    CATS.forEach(function(c){var n=nombre(x,c[0]);
+      var b=el('button',{type:'button',class:'gx-press',style:'cursor:pointer;background:none;border:0;color:var(--ui-accent);font:inherit;font-weight:700;padding:2px 4px;','aria-label':c[1]+' — '+x.nom+' : '+n,onClick:function(){openDelaiList(c[1]+' — '+x.nom+(periode?' — '+periode:''),c[0],x.k,periode);}},String(n));
       tr.appendChild(el('td',{},[b]));
     });
     tb.appendChild(tr);});
   t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
-  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » saisie au jour du RDV, pour les RDV de la période et du CMS choisis. Premiers RDV (un suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+plur(x.nPremiers,'premier','premiers')+(x.suivis?', '+plur(x.suivis,'suivi écarté','suivis écartés'):'');}).join(' · ')+(r.ordre.length?'':'—')+'. Années archivées : non disponible.'));
+  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » enregistrée au jour du RDV, pour les RDV de la période et du CMS choisis. « À confirmer » : aucune réception enregistrée, seule l’ancienne date du message existe ; elle ne compte qu’une fois confirmée, fiche par fiche, dans la liste ou dans « Modifier ». Premiers RDV (un suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+plur(x.nPremiers,'premier','premiers')+(x.suivis?', '+plur(x.suivis,'suivi écarté','suivis écartés'):'');}).join(' · ')+(r.ordre.length?'':'—')+'. Années archivées : non disponible.'));
   return card;
 }
 /* ============================== AG-020 — RDV sans suite (piste secondaire, 01/11/2026) ==============================
@@ -7417,7 +7479,7 @@ function renderOrientations(){
       S.genNotes=o.motif||(o.orienteur?'Orienté par '+o.orienteur:'');
       /* dateDemande = date d'envoi du message, toujours aujourd'hui — o.date est la date de la demande d'orientation d'origine (peut être ancienne), pas la date d'envoi du SMS/mail généré maintenant */
       S.dateDemande=jourParis();
-      S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';
+      S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';S.receptionReprise='';
       S.msgType='sans_appel';
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
@@ -7516,13 +7578,13 @@ function renderAgendaRdvDialog(overlay,box){
     if(t.notes)body.appendChild(el('section',{class:'ui-rdv-notes'},[el('h4',{},'Notes'),el('p',{},t.notes)]));
     var followup=el('details',{id:'ag-rdv-followup',class:'ui-rdv-followup'});
     followup.appendChild(el('summary',{},'Suivi des échanges'));
-    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},receptionDateFor(t)?formatDate(receptionDateFor(t)):'Non renseignée')]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
+    followup.appendChild(el('dl',{},[el('div',{},[el('dt',{},'Réception de la demande'),el('dd',{},(function(){var e=etatReception(t);return e.etat==='enregistree'?formatDate(e.date)+(e.date>t.date?' — postérieure au RDV':''):e.etat==='reprise'?formatDate(e.reprise)+' — ancienne date du message, à confirmer':e.invalide?'Date invalide':'Non renseignée';})())]),el('div',{},[el('dt',{},'Première préparation'),el('dd',{},preparationParisDay(t.premierePreparationAt)?formatDate(preparationParisDay(t.premierePreparationAt)):'Non connue')]),el('div',{},[el('dt',{},'Date du message (suivi)'),el('dd',{},t.dateDemande?formatDate(t.dateDemande):'Non renseignée')]),el('div',{},[el('dt',{},'Dernière relance'),el('dd',{},t.dateRelance?formatDate(t.dateRelance):'Aucune relance')])]));body.appendChild(followup);
     var primary=el('div',{class:'ui-rdv-primary-actions'});
     primary.appendChild(action('ag-rdv-generate','Préparer SMS / mail','ui-rdv-action-primary',function(){
-      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||jourParis(),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
+      Object.assign(S,messageFields(),{date:date,heure:heure,dateReception:receptionChampInitial(t),receptionReprise:etatReception(t).reprise,dateDemande:t.dateDemande||jourParis(),msgType:['proposition','confirmation','sans_appel','relance','rappel_veille','lapin'].indexOf(t.msgType)!==-1?t.msgType:'confirmation'});
       S.modal=null;renderModal();S.activeTab='generate';showActivePane();renderTabs();renderGenerate();
     }));
-    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',commune:commune,date:date,heure:heure,dateReception:receptionDateFor(t),dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
+    primary.appendChild(action('ag-rdv-edit','Modifier','',function(){ar.editing=true;ar.edit={civilite:t.civilite||'',prenom:t.prenom||'',nom:t.nom||'',telephone:t.telephone||'',commune:commune,date:date,heure:heure,dateReception:receptionChampInitial(t),dateReceptionInit:receptionChampInitial(t),receptionReprise:etatReception(t).reprise,dateDemande:t.dateDemande||'',demarche:t.demarcheAutre||t.demarche||'',notes:t.notes||''};renderModal();}));footer.appendChild(primary);
     var secondary=el('div',{class:'ui-rdv-secondary-actions'});
     secondary.appendChild(action('ag-rdv-duplicate','Dupliquer sur un autre créneau','ui-rdv-action-link',function(){
       S.agendaAvailability={dateStr:date,commune:commune,duplicate:messageFields()};S.modal='agenda-availability';renderModal();
@@ -7544,7 +7606,7 @@ function renderAgendaRdvDialog(overlay,box){
     var cmsNoms=S.secteurs.slice();if(edit.commune&&cmsNoms.indexOf(edit.commune)===-1)cmsNoms.push(edit.commune);
     cmsNoms.forEach(function(nom){cmsSel.appendChild(el('option',{value:nom},nom));});cmsSel.value=edit.commune||'';
     var cmsField=field('ag-rdv-edit-commune','CMS *',cmsSel);cmsField.classList.add('ui-rdv-field-wide');form.appendChild(cmsField);
-    editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateReception','Réception de la demande','date',true);editInput('dateDemande','Date du message / proposition (suivi)','date',true);
+    editInput('date','Date du RDV *','date');editInput('heure','Heure *','time');editInput('demarche','Démarche','text',true);editInput('dateReception','Réception de la demande','date',true);if(edit.receptionReprise&&!edit.dateReception){form.appendChild(el('p',{class:'ui-rdv-help ui-rdv-field-wide ui-reception-reprise'},'Ancienne date du message : '+formatDate(edit.receptionReprise)+' — à confirmer comme réception.'));form.appendChild(action('ag-rdv-confirm-reception','Confirmer cette date','',function(){edit.dateReception=edit.receptionReprise;renderModal();}));}   /* AG-022 */editInput('dateDemande','Date du message / proposition (suivi)','date',true);
     var notes=el('textarea',{rows:3,onInput:function(event){edit.notes=event.target.value;}});notes.value=edit.notes||'';
     var noteField=field('ag-rdv-edit-notes','Notes',notes);noteField.classList.add('ui-rdv-field-wide');form.appendChild(noteField);body.appendChild(form);
     body.appendChild(el('p',{class:'ui-rdv-help'},"Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."));
@@ -7560,6 +7622,7 @@ function renderAgendaRdvDialog(overlay,box){
       var cmsKeyNew=cmsKey(edit.commune),cmsNew=edit.commune!==commune?S.cmsList.find(function(c){var cn=cmsKey(c.nom);return cn===cmsKeyNew||cmsKeyNew.indexOf(cn)!==-1||cn.indexOf(cmsKeyNew)!==-1;}):null;
       var cmsPatch={commune:edit.commune};if(edit.commune!==commune)cmsPatch.selectedCMS=cmsNew?String(cmsNew.id):'';
       var saved=null,patch=Object.assign(cmsPatch,{civilite:edit.civilite,prenom:edit.prenom,nom:edit.nom,telephone:edit.telephone,date:edit.date,heure:edit.heure,dateDemande:edit.dateDemande,dateReception:edit.dateReception,demarche:edit.demarche,demarcheAutre:t.selectedDemarche==='__autre__'?edit.demarche:(t.demarcheAutre?edit.demarche:''),notes:edit.notes});
+      if((edit.dateReception||'')===(edit.dateReceptionInit||''))delete patch.dateReception;   /* AG-022 : champ intact = réception non réécrite (ni confirmée, ni vidée) */
       /* modification et journée cible ensemble (4e amendement de Codex, 31/10) */
       var op=enregistrerDeplacement(owner,function(){return update(patch);});saved=op.valeur;
       if(!op.ok){S.modal=null;renderModal();renderAgenda();renderTabs();if(op.incoherent)showToast(MSG_INCOHERENT,'err');return;}
@@ -7801,26 +7864,44 @@ function renderModal(){
     rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
     box.appendChild(rBtnRow);
   }
-  else if(S.modal==='delai-list'){   /* AG-021 : fiches du calcul de délai d'attente (triées par délai) ou fiches exclues avec motif. Données locales. */
-    var dlCtx=S._delaiListCtx||{title:'',kind:'mesures',rows:[],periode:''},dlMesure=dlCtx.kind==='mesures';
+  else if(S.modal==='delai-list'){   /* AG-021/AG-022 : fiches du délai d'attente, recalculées à chaque affichage ; confirmation fiche par fiche. Données locales. */
+    var dlCtx=S._delaiListCtx||{title:'',kind:'mesures',k:null,periode:''},dlMesure=dlCtx.kind==='mesures',dlAction=dlCtx.kind==='reprise'||dlCtx.kind==='sans_reception';
+    var dlRows=delaiListeLignes(dlCtx.kind,dlCtx.k);
     function dlDate(v){return v?String(v).split('-').reverse().join('/'):'—';}
+    function dlEnregistrer(x,date){
+      if(!date){showToast('Choisissez une date de réception','warn');return;}
+      if(!confirm('Enregistrer le '+dlDate(date)+' comme date de réception de la demande pour '+x.personne+' (RDV du '+dlDate(x.rdv)+') ?'))return;
+      var res=enregistrerReception(x.ref,date);
+      if(!res.ok){showToast(res.msg,'err');return;}
+      rafraichirStatsSurPlace();renderModal();showToast('Réception enregistrée — fiche reclassée');
+    }
     box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',dlCtx.title);
-    box.style.maxWidth='min(720px,100%)';
+    box.style.maxWidth='min(820px,100%)';
     box.appendChild(header(dlCtx.title));
-    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},dlCtx.rows.length+' fiche'+(dlCtx.rows.length>1?'s':'')+(dlMesure?' utilisée'+(dlCtx.rows.length>1?'s':'')+' dans le calcul · délai en jours calendaires · triées par délai croissant · médiane non affichée':' exclue'+(dlCtx.rows.length>1?'s':'')+' du calcul, avec leur motif')+(dlCtx.periode?' · '+dlCtx.periode:'')));
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},dlRows.length+' fiche'+(dlRows.length>1?'s':'')+(dlMesure?' utilisée'+(dlRows.length>1?'s':'')+' dans le calcul · délai en jours calendaires · triées par délai croissant · médiane non affichée':' exclue'+(dlRows.length>1?'s':'')+' du calcul, avec leur motif')+(dlCtx.periode?' · '+dlCtx.periode:'')));
+    if(dlCtx.kind==='reprise')box.appendChild(el('p',{class:'ui-chart-description',style:'margin:0;'},'La date affichée est l’ancienne date du message : elle n’est pas une réception tant que vous ne l’avez pas confirmée. Confirmez-la seulement si une source fiable l’établit, ou saisissez la bonne date.'));
     var dlScroll=el('div',{class:'gx-scroll',style:"overflow:auto;max-height:58vh;"});
-    if(!dlCtx.rows.length){
+    if(!dlRows.length){
       dlScroll.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;padding:8px 0;"},'Aucune fiche pour cette période et ce CMS.'));
     }else{
       var dlT=el('table',{style:"width:100%;border-collapse:collapse;font-size:12.5px;"}),dlH=el('tr');
-      (dlMesure?['CMS','Personne','Réception','RDV','Délai (j)']:['CMS','Personne','Réception','RDV','Motif d’exclusion']).forEach(function(c){
-        dlH.appendChild(el('th',{scope:'col',style:"text-align:left;padding:6px 8px;border-bottom:1px solid var(--c-border);color:var(--c-muted);font-weight:700;"},c));});
+      var cols=dlMesure?['CMS','Personne','Réception','RDV','Délai (j)']:['CMS','Personne',dlCtx.kind==='reprise'?'Ancienne date (à confirmer)':'Réception','RDV','Motif d’exclusion'];
+      if(dlAction)cols.push('Réception à enregistrer');
+      cols.forEach(function(c){dlH.appendChild(el('th',{scope:'col',style:"text-align:left;padding:6px 8px;border-bottom:1px solid var(--c-border);color:var(--c-muted);font-weight:700;"},c));});
       dlT.appendChild(el('thead',{},[dlH]));
       var dlB=el('tbody');
-      dlCtx.rows.forEach(function(x){
-        var cells=[x.cms,x.personne,x.rec?dlDate(x.rec):'—',dlDate(x.rdv),dlMesure?String(x.d):(MOTIFS_EXCLUS[x.motif]||'')];
+      dlRows.forEach(function(x){
+        var cells=[x.cms,x.personne,x.rec?dlDate(x.rec):'—',dlDate(x.rdv),dlMesure?String(x.d):motifExclusion(x)];
         var tr=el('tr');
         cells.forEach(function(v,i){tr.appendChild(el('td',{style:"padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:top;"+(dlMesure&&i===4?'font-weight:800;text-align:right;':'')},v));});
+        if(dlAction){
+          var td=el('td',{style:"padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:top;min-width:180px;"});
+          if(x.motif==='reprise')td.appendChild(el('button',{type:'button',class:'gx-press ui-record-button',style:'display:block;margin-bottom:6px;','aria-label':'Confirmer le '+dlDate(x.rec)+' comme réception pour '+x.personne,onClick:function(){dlEnregistrer(x,x.rec);}},'Confirmer le '+dlDate(x.rec)));
+          var inp=el('input',{type:'date',class:'gx-in','aria-label':'Date de réception pour '+x.personne,style:'max-width:150px;'});
+          td.appendChild(inp);
+          td.appendChild(el('button',{type:'button',class:'gx-press ui-record-button',style:'margin-top:6px;display:block;','aria-label':'Enregistrer la date saisie pour '+x.personne,onClick:function(){dlEnregistrer(x,inp.value);}},'Enregistrer cette date'));
+          tr.appendChild(td);
+        }
         dlB.appendChild(tr);
       });
       dlT.appendChild(dlB);dlScroll.appendChild(dlT);
@@ -8043,7 +8124,7 @@ function renderModal(){
     /* bouton générer */
     box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;margin-top:4px;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){
       if(!an.nom||!an.selectedCMS||!an.selectedDemarche){showToast('⚠️ Nom, CMS et démarche requis','warn');return;}
-      Object.assign(S,{dateReception:"",civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
+      Object.assign(S,{dateReception:"",receptionReprise:"",civilite:an.civilite,prenom:an.prenom,nom:an.nom,telephone:an.telephone,
         selectedCMS:an.selectedCMS,selectedDemarche:an.selectedDemarche,demarcheAutre:an.demarcheAutre||'',
         commune:an.commune,date:an.dateStr,heure:an.heure,channel:an.channel});
       S.modal=null;S.agendaNew=null;renderModal();
@@ -8249,7 +8330,7 @@ function loadProfileData(){
   finally{if(!termine){_chargementEchoue=true;_stockageEnEchec=true;S.saveStatus='⚠️ Chargement du profil interrompu : rien ne sera enregistré. Rechargez la page.';}}
 }
 function loadProfileDataCorps(){
-  S.dateReception='';
+  S.dateReception='';S.receptionReprise='';
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
   _versionLue={};   /* P01 : seules les données du profil chargé et les réglages communs sont suivies */
