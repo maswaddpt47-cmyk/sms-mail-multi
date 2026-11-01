@@ -67,6 +67,39 @@ assert(suivi,'suivi des relances introuvable');assert.equal(suivi[1],'1');
 assert.equal(kpi('Personnes accompagnées'),String(d.accompanied));
 assert.equal(kpi('RDV réalisés'),String(d.realised));
 
+/* ── AG-014 (B) et (C) : « Statut à vérifier » et RDV sans heure affichés ── */
+{
+  const h2=history.concat([
+    row('v1','2026-10-10',null,'10:30','VIDE','Sam'),row('v2','2026-10-12','bizarre','11:30','INCONNU','Sam'),   // statut absent / inconnu
+    row('s1','2026-10-11','realise','','SANS','Heure'),row('s2','2026-10-13','lapin','','SANS','Heure2'),          // deux RDV passés sans heure (CMS A)
+    {...row('s3','2026-10-14','realise','','AUTRECMS','B'),commune:'B'},                                         // un RDV passé sans heure (CMS B)
+    row('s4','2026-11-20','confirme','','FUTUR','SansHeure')                                                      // sans heure mais à venir : hors population des taux
+  ]);
+  const avant2=JSON.stringify(h2);
+  // bilan : la ligne apparaît avec son nombre, le total la contient, « En attente » ne change pas
+  const d2=ctx.monthlyReportData(h2,'2026-10','',now),b2=ctx.monthlyReportHtml(d2,{profil:'Profil fictif',date:'25/10/2026'});
+  const ligne=(html,lib)=>{const m=new RegExp('<tr><td>'+lib+'</td><td class="n">(\\d+)</td>').exec(html);return m?Number(m[1]):null;};
+  assert.equal(ligne(b2,'Statut à vérifier'),2,'bilan : deux fiches sans statut valide');
+  assert.equal(ligne(b2,'En attente'),1,'bilan : « En attente » ne reprend pas les statuts inconnus');
+  assert.equal(d2.byStatut.a_verifier,2);assert.equal(Object.values(d2.byStatut).reduce((a,b)=>a+b,0),d2.entries,'bilan : la somme des catégories = le total (rien ne sort des totaux)');
+  const somme=['Réalisé','Confirmé','En attente','Excusé','Annulé','Lapin','Pas de retour','Statut à vérifier'].reduce((n,l)=>n+(ligne(b2,l)||0),0);
+  assert.equal(somme,d2.entries,'bilan : les lignes affichées totalisent le total affiché');
+  assert.equal(ligne(bilan,'Statut à vérifier'),null,'bilan sans statut inconnu : la ligne n\'est pas affichée');
+  // Statistiques : note sous les deux taux, population période/CMS/jour courant
+  const notes=(m)=>{const w=el('div');ctx.tuilesStats(m,w);const b=w.children[0].children.find(c=>/ui-stats-metric-band/.test(c.attrs.class||''));const o={};
+    b.children.forEach(t=>{const nom=t.children[1].children[0].text;const note=t.children.map(c=>c.attrs&&/metric-note/.test(c.attrs.class||'')?(c.children[0]&&c.children[0].text||c.text):null).filter(Boolean).join('');o[nom]=note||'';});return o;};
+  const tout=notes(ctx.statsRdvModel(h2,[],'all','',now)),cmsA=notes(ctx.statsRdvModel(h2,[],'all','A',now)),cmsB=notes(ctx.statsRdvModel(h2,[],'all','B',now));
+  assert.match(tout['Taux de concrétisation'],/3 RDV sans heure exclus du taux/,'tous CMS : 3 RDV passés sans heure (le RDV à venir n\'est pas compté)');
+  assert.match(tout['Taux de lapin 🐇'],/3 RDV sans heure exclus du taux/);
+  assert.match(cmsA['Taux de concrétisation'],/2 RDV sans heure exclus du taux/,'CMS A : même population que le taux');
+  assert.match(cmsB['Taux de concrétisation'],/1 RDV sans heure exclu du taux/,'singulier');
+  assert.doesNotMatch(notes(rdv)['Taux de concrétisation'],/sans heure/,'aucun RDV sans heure : aucune mention');
+  // les taux eux-mêmes sont inchangés par l'ajout des fiches sans heure (elles n'ont jamais formé de créneau)
+  const sans=ctx.statsRdvModel(h2,[],'all','A',now).slotRates,avecSeulement=ctx.statsRdvModel(h2.filter(h=>h.heure),[],'all','A',now).slotRates;
+  assert.equal(sans.total,avecSeulement.total);assert.equal(sans.realised,avecSeulement.realised);assert.equal(sans.lapins,avecSeulement.lapins);assert.equal(sans.sansHeure,2);assert.equal(avecSeulement.sansHeure,0);
+  assert.equal(JSON.stringify(h2),avant2,'données non modifiées');
+}
+
 /* ── Compteurs animés : la valeur finale affichée est exactement la valeur calculée ── */
 Object.values(tuiles).concat(['1,5','3 / 6 (50 %)','66%']).forEach(t=>{
   assert.equal(ctx.nombresEnTexte(t,1),t,'valeur finale du compteur : '+t);
