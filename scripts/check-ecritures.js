@@ -351,6 +351,17 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
  {const e=prepO({dateDemande:'2026-10-05'});assert.equal(e.ctx.enregistrerCopie('texte fictif').ok,true);assert.equal(own(o1(e),'dateReception'),false,'copie intacte : rien écrit');}
  {const e=prepO({dateDemande:'2026-10-05'});e.S.dateReception='2026-10-07';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-07','date modifiée : écrite');}
  {const e=prepO({dateDemande:'2026-10-05'});e.S.dateReception='';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'','effacement volontaire : écrit');}
+ // A23 (Codex) : effacement volontaire d'une réception d'avant le 22/10, puis copie → vide écrit, fiche reclassée « absente »
+ {const e=prepO({dateDemande:'2026-10-01'});assert.equal(e.S.dateReception,'2026-10-01');e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,true);
+  assert.equal(o1(e).dateReception,'','A23 nouveau texte : vide écrit');assert.equal(e.ctx.etatReception(o1(e)).etat,'absente');
+  assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history'))).find(h=>h.id==='o1').dateReception,'','A23 : stockage');}
+ {const e=prepO({dateDemande:'2026-10-01'});assert.equal(e.S.history[0].id,'o1');e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);
+  assert.equal(o1(e).dateReception,'','A23 texte identique : vide écrit');}
+ {const e=prepO({dateDemande:'2026-10-01'},[Object.assign(rdv('autre','2026-10-21','10:30','AUTRE','Fiche'),{body:'autre'})]);e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);
+  assert.equal(o1(e).dateReception,'','A23 texte identique, fiche non première : vide écrit');}
+ {const e=prepO({dateDemande:'2026-10-01'});e.S.dateReception='';e.st.panne=()=>true;assert.equal(e.ctx.enregistrerCopie('nouveau texte fictif').ok,false);e.st.panne=null;
+  assert.equal(own(o1(e),'dateReception'),false,'A23 panne : rien de modifié');assert.equal(e.ctx.etatReception(o1(e)).etat,'ancienne');}
+ {const e=prepO({dateDemande:'2026-10-01'});assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);assert.equal(own(o1(e),'dateReception'),false,'A23 intact, texte identique : rien écrit');}
  {const e=prepH({dateDemande:'2026-10-05'});ouvrir(e);assert.equal(e.S.editHistDateReception,'2026-10-05','Historique : préremplie');e.S.editHistNotes='x';assert.equal(e.ctx.saveHistItem(0),true);
   assert.equal(own(e.S.history[0],'dateReception'),false,'Historique intact : rien écrit');}
  console.log('AG-022 NR1 : effacement après un enregistrement réussi, sans réouverture (Générer et copie), panne sans recalage OK.');

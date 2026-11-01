@@ -57,6 +57,21 @@ assert.ok(context.joursFeriesFrance(2028)['2028-04-17'],'2028 : Pâques 16/04');
 assert.equal(context.preparationStats([{dateReception:'2026-04-03',premierePreparationAt:'2026-04-07T09:00:00+02:00'}]).avg,1,'préparation : lundi de Pâques exclu');
 // L'estimation des anciennes fiches (réception → dernier message) aussi : vendredi 03/04 → mardi 07/04 = 1 j ouvré.
 assert.equal(context.legacyPreparationEstimate([{dateReception:'2026-04-03',ts:'2026-04-07T10:00:00+02:00',msgType:'confirmation'}]).median,1,'estimation : lundi de Pâques exclu');
+// A24 (Codex) : 0 jour ouvré n'est pas « le jour même » quand la préparation tombe un férié. Vrai fragment de rendu des tuiles,
+// exécuté avec un DOM minimal : réception mercredi 13/05/2026, préparation jeudi 14/05/2026 (Ascension).
+{const deb=html.indexOf("  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});"),fin=html.indexOf('  wrap.appendChild(kpiRow);',deb);
+ assert(deb>0&&fin>deb,'fragment des tuiles de réactivité introuvable');
+ const n=(tag,attrs,kids)=>{const o={tag,attrs:attrs||{},kids:[],dataset:{},appendChild(c){this.kids.push(c);return c;}};if(kids!=null)(Array.isArray(kids)?kids:[kids]).forEach(k=>o.kids.push(k));return o;};
+ const txt=o=>typeof o==='string'?o:o.kids.map(txt).join(' | ');
+ const asc={dateReception:'2026-05-13',premierePreparationAt:'2026-05-14T10:00:00+02:00'},ascAncienne={dateReception:'2026-05-13',ts:'2026-05-14T10:00:00+02:00',msgType:'confirmation'};
+ assert.equal(context.joursOuvresFrance('2026-05-13','2026-05-14'),0,'Ascension : 0 jour ouvré');
+ const rc=vm.createContext({el:n,attachPermanenceTip(){},kpiRow:n('div'),prepMetrics:context.preparationStats([asc]),legacyPrep:context.legacyPreparationEstimate([ascAncienne]),Math});
+ vm.runInContext(html.slice(deb,fin),rc);const t=txt(rc.kpiRow);
+ assert.equal(rc.prepMetrics.avg,0);assert.equal(rc.legacyPrep.median,0);assert.equal(rc.legacyPrep.sameDay,0,'dates civiles différentes');
+ assert.equal(/jour même/i.test(t.replace(/Traitées le jour même \(estimation\)/,'').replace(/0 % \| /,'')),false,'aucun « le jour même » tiré de 0 jour ouvré : '+t);
+ assert.ok(t.startsWith('0 j | Préparation moy. (jours ouvrés)'),'tuile : 0 j ouvré');
+ assert.ok(t.includes('0 % | Traitées le jour même (estimation)'),'estimation : pourcentage fondé sur les dates civiles');
+ assert.ok(t.includes('médiane : 0 j ouvré (fériés exclus)'),'estimation : médiane en jours ouvrés');}
 // Les archives gardent lun.–ven. (AG-017 clos) : même intervalle = 2.
 assert.equal(context.businessDaysBetween('2026-04-03','2026-04-07'),2,'archives : méthode inchangée');
 
