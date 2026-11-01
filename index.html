@@ -1700,7 +1700,7 @@ function handleGenerate(){
   }
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
-  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})},true);
+  var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:tsParis()},true);
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
   if(enregistre)showToast("✓ Message généré et enregistré");
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
@@ -1858,7 +1858,7 @@ function enregistrerCopie(text,fige){
     if(text&&!dejaEnregistre){
       if(F.cmsTrouve&&F.dem){
         if(isDuplicate(F.nom,F.dem.nom,F.date))showToast('⚠️ Doublon détecté : '+F.nom+' / '+F.dem.nom+' déjà dans l\'historique','warn');
-        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})},true))throw new Error('message refusé');
+        if(!addHistory({channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:tsParis()},true))throw new Error('message refusé');
       }
     }
   });
@@ -2160,7 +2160,7 @@ function lunchBreakEntry(perm,history,todayStr){
   if((perm.debut||'')>='13:00'||((perm.fin||'')&&perm.fin<'13:00'))return null;
   var slot=getSlots(perm.commune,perm.exceptDate,history,perm).find(function(x){return x.heure==='12:30';});
   if(!slot||(slot.taken&&!slot.freeAgain))return null;
-  return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})};
+  return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:tsParis()};
 }
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&!estLibere(h.statut);});
@@ -2225,7 +2225,7 @@ function blockSlotBrut(commune,dateStr,heure,motif){
   /* la journée vient peut-être de recevoir sa pause déjeuner : on en met le motif à jour au lieu d'empiler un doublon */
   var already=S.history.find(function(h){return h.msgType==='indispo'&&h.date===dateStr&&h.commune===commune&&h.heure===heure;});
   if(already){already.nom=motif||'Indisponible';lsSet(pk('history'),S.history);return;}
-  S.history.push({channel:'sms',msgType:'indispo',commune:commune,date:dateStr,heure:heure,nom:motif||'Indisponible',ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})});
+  S.history.push({channel:'sms',msgType:'indispo',commune:commune,date:dateStr,heure:heure,nom:motif||'Indisponible',ts:tsParis()});
   lsSet(pk('history'),S.history);
 }
 /* libère un créneau bloqué */
@@ -3466,6 +3466,15 @@ function decalageParis(t){
   try{var p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(t)),o={};
     p.forEach(function(x){o[x.type]=x.value;});return Date.UTC(+o.year,+o.month-1,+o.day,+o.hour,+o.minute,+o.second)-Math.floor(t/1000)*1000;}catch(e){return -new Date(t).getTimezoneOffset()*60000;}
 }
+/* AG-016 (C), Q1 tranchée le 01/11/2026 : le `ts` d'une NOUVELLE fiche est l'instant en ISO avec le décalage de Paris
+   (« 2027-01-01T00:30:00+01:00 »), lu par lireTs, affiché et exporté en français par afficherTs. Le début de la chaîne est la
+   date civile de Paris : une page ouverte avant (B), dont les lecteurs prennent ce début (slice/substring) faute de texte
+   français, compte le bon jour et le bon mois (protection de transition demandée par Codex). Les anciens `ts` ne sont pas réécrits. */
+function tsParis(d){
+  var t=(d||new Date()).getTime(),dec=decalageParis(t),m=new Date(Math.floor(t/1000)*1000+dec),o=Math.round(dec/60000),a=Math.abs(o);
+  function p(n){return String(n).padStart(2,'0');}
+  return m.getUTCFullYear()+'-'+p(m.getUTCMonth()+1)+'-'+p(m.getUTCDate())+'T'+p(m.getUTCHours())+':'+p(m.getUTCMinutes())+':'+p(m.getUTCSeconds())+(o<0?'-':'+')+p(Math.floor(a/60))+':'+p(a%60);
+}
 function instantParis(y,mo,d,h,mi,se){var mur=Date.UTC(y,mo-1,d,h||0,mi||0,se||0),t=mur-decalageParis(mur);return mur-decalageParis(t);}
 function lireTs(ts){
   var s=String(ts==null?'':ts),m=/(\d{2})\/(\d{2})\/(\d{4})(?:[^\d]+(\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
@@ -4553,7 +4562,7 @@ function importICSText(text){
     /* éviter doublons */
     var dup=S.history.find(function(h){return h.date===dateStr&&h.heure===heureStr&&(h.commune===location||!location);});
     if(dup)return;
-    if(!addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'})}))throw new Error('RDV refusé');
+    if(!addHistory({channel:'sms',msgType:'rdv',body:'',subject:'',civilite:'',prenom:'',nom:summary,telephone:'',demarche:'',commune:location,selectedCMS:'',date:dateStr,heure:heureStr,notes:desc,ts:tsParis()}))throw new Error('RDV refusé');
     added++;
   });});
   importICSText.incoherent=!!r.incoherent;

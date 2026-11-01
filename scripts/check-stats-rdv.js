@@ -479,3 +479,32 @@ console.log('Date du jour à Paris OK.');
   assert(!/return\[h\.ts,|\(h\.ts\|\|'Date non renseignée'\)|\+\(h\.ts\|\|""\)|'Message envoyé le '\+h\.ts/.test(code),'ts affiché ou exporté sans afficherTs (Historique, mandats, CSV)');
 }
 console.log('Lecteur de ts OK.');
+
+/* AG-016 (C), étape 3 d'AG-013 : ts des nouvelles fiches en ISO avec le décalage de Paris (Q1). Horloge simulée, vrais lireTs/afficherTs. */
+{
+  const A=section('function parisDayStr(','function cmsKey(');
+  const c=vm.createContext({Date,Intl});vm.runInContext(A,c);
+  const cas=[['2026-12-31T23:30:00Z','2027-01-01T00:30:00+01:00','01/01/2027 00:30:00'],   // nouvelle année à Paris
+    ['2026-11-01T23:30:00Z','2026-11-02T00:30:00+01:00','02/11/2026 00:30:00'],             // minuit
+    ['2026-07-01T10:00:00Z','2026-07-01T12:00:00+02:00','01/07/2026 12:00:00'],             // heure d'été
+    ['2026-10-25T00:30:00Z','2026-10-25T02:30:00+02:00','25/10/2026 02:30:00'],             // 02:30, première occurrence
+    ['2026-10-25T01:30:00Z','2026-10-25T02:30:00+01:00','25/10/2026 02:30:00'],             // 02:30, seconde occurrence : distinguée
+    ['2026-03-29T01:30:00Z','2026-03-29T03:30:00+02:00','29/03/2026 03:30:00'],             // passage à l'heure d'été
+    ['2026-02-28T23:59:59.900Z','2026-03-01T00:59:59+01:00','01/03/2026 00:59:59']];        // fin de mois, millisecondes tronquées
+  for(const [iso,attendu,fr] of cas){
+    const t=new Date(iso).getTime(),ts=c.tsParis(new Date(t));
+    assert.equal(ts,attendu,iso);
+    const lu=c.lireTs(ts);assert.equal(lu.instant,Math.floor(t/1000)*1000,'instant relu '+iso);assert.equal(lu.jour,c.parisDayStr(new Date(t)),'jour relu '+iso);
+    assert.equal(c.afficherTs(ts),fr,'affiché et exporté en français '+iso);
+    // transition (Codex) : une page antérieure à (B) lit le début de la chaîne → date et mois de Paris
+    assert.equal(ts.slice(0,10),lu.jour,'ancien lecteur slice(0,10) '+iso);assert.equal(ts.substring(0,7),lu.jour.slice(0,7),'ancien lecteur substring(0,7) '+iso);
+  }
+  // sans argument : l'instant courant
+  const avant=Math.floor(Date.now()/1000)*1000,lu=c.lireTs(c.tsParis()),apres=Date.now();assert(lu.instant>=avant&&lu.instant<=apres);
+  // écrivains : les cinq écritures d'historique en ISO ; le ts distinct des mandats reste en texte français (contrat non étendu)
+  const code=html.replace(/\/\*[\s\S]*?\*\//g,'');
+  assert.equal((code.match(/ts:tsParis\(\)/g)||[]).length,5,'écritures ts de l\'historique');
+  assert.equal((code.match(/ts:new Date\(\)\.toLocaleString/g)||[]).length,1,'seul le mandat garde un ts français');
+  assert(/date:todayFR\(\),ts:new Date\(\)\.toLocaleString\('fr-FR',\{timeZone:'Europe\/Paris'\}\)/.test(code),'mandat inchangé');
+}
+console.log('ts ISO avec décalage de Paris OK.');
