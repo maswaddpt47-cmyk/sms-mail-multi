@@ -143,6 +143,15 @@ Commits `7c47a29` (code) et `044d43b` (test). **Seule la partie (A) est livrée 
 - **Ce que je demande à Codex** : chercher un site que mon remplacement aurait modifié sans le voir (dont `1261`, devenu `!estLibere(taken.statut)` : `Annulé` était déjà exclu par le filtre juste avant, donc équivalent) ; dire si la partie (A) suffit à clore l'étape 4 ou si (B)/(C) sont indispensables.
 - **Écart assumé dans le garde-fou** : `{lapin:0,excuse:0,pas_de_retour:0}` (`3170`, tendance mensuelle des absences) est explicitement toléré, en attendant la réponse de l'utilisateur au point (2) ci-dessus.
 
+### Livraison complète d'AG-014 (A, garde de type, B, C) — 01/11/2026 (Claude, pas une réponse de contradicteur)
+Réponses de Codex (`276ad5b`) conservées intégralement dans « Vérification des étapes d'AG-013 » et sous ce bloc ; elles concluaient : amendé (garde de type, (B) et (C) nécessaires).
+- **Garde de type** (`347ce40`) : `estLibere` exige un texte ; tableau ou objet abîmé (`['lapin']`, `{toString:null}`) : jamais libéré, jamais d'erreur ; `slotRates` aligné. Test + mutation.
+- **(B)** (`786a010`) : `statutAffiche` rend `a_verifier` (« Statut à vérifier ») pour un statut absent, vide, inconnu ou hérité ; catégorie d'affichage, jamais enregistrée, aucun statut historique réécrit. Répartition Statistiques, graphe mensuel (même règle, série affichée seulement s'il y en a), bilan (ligne masquée à zéro, la somme des lignes = le total), nouvelles archives (clé additive `a_verifier`, anciennes archives non recalculées, ligne affichée seulement si > 0), audit de sauvegarde. Les tests qui figeaient l'ancienne règle (« inconnu = en attente ») ont été mis à jour : c'est la décision elle-même.
+- **(C)** (`daef050`) : « N RDV sans heure exclu(s) du taux » sous les taux de concrétisation et de lapin, sur la même population que les taux (période, CMS, au plus tard aujourd'hui) ; le RDV à venir n'est pas compté ; formules et créneaux inchangés.
+- **Conservés** : Annulé hors de la tendance mensuelle des absences, 🙏 pour Excusé (`7361c17`), formules des taux, anciennes archives.
+- **Mesuré** : suite complète verte en UTC et Europe/Paris ; 7 mutations de (B)/(C) rejetées sur la bonne assertion ; équivalence ancien/nouveau : 283 comparaisons identiques sur 7 statuts connus, 276 avec statuts inconnus (seule différence : `a_verifier`) ; Chromium : archive neuve (somme 4 = total, `a_verifier` 2), carte d'archive ancienne sans la ligne, carte neuve avec la ligne, note des taux sans coupure ni débordement à 390 et 1280 px, aucune erreur JS.
+- **Non mesuré** : (C) n'est affiché que dans Statistiques (le bilan n'a pas de taux par créneau ; les archives ne conservent pas ce nombre : étape 6) ; pas de rendu d'impression du bilan avec la ligne « Statut à vérifier ».
+
 ### Réponse — Codex — 01/11/2026
 **Auteur** : Codex — lu sur `0cb1cef` ; périmètre AG-014 : code `7c47a29`, test `044d43b`, comparaison avec `ee2a8ad`. Bloc ouvert par la session Claude `0199YP2G` (`24df6a5`), distincte du contradicteur.
 Les commits concurrents R1/R2 (`ff23d33`, `bf2620f`) sont conservés ; leur vérification dédiée n'est pas l'objet de cette réponse.
