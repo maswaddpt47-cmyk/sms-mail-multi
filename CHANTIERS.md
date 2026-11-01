@@ -280,7 +280,7 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
   `handleGenerate` ; même contrôle à l'import Orientations. Origine du numéro
   tronqué `00 76 …` jamais identifiée : à creuser au prochain cas, fichier
   source sous les yeux.
-- **Double réservation : confirmation explicite** (01/11/2026, signalé par l'utilisateur : heure choisie AVANT le CMS → aucun contrôle, simple toast à la génération, RDV existant masqué dans l'Agenda). `confirmerCreneau` au choix du CMS, au choix de la date et dans `handleGenerate` ; refus = rien d'enregistré (heure vidée au choix du CMS ou de la date). Averti, pas bloqué (règle du 02/10). **Liste d'heures « à l'aveugle » retirée** (demande de l'utilisateur, 01/11) : avant la date et le CMS, un message remplace la liste 07:00–19:30 ; ensuite la grille, qui grise et bloque les créneaux pris. **Reste ouvert** : l'Agenda n'affiche qu'une fiche par créneau (`getSlots`, priorité par type de message puis la plus récente) : une double réservation déjà enregistrée masque l'autre RDV, même confirmé — affichage à trancher par l'utilisateur (touche « N rendez-vous », critère 7).
+- **Double réservation : confirmation explicite** (01/11/2026, signalé par l'utilisateur : heure choisie AVANT le CMS → aucun contrôle, simple toast à la génération, RDV existant masqué dans l'Agenda). `confirmerCreneau` au choix du CMS, au choix de la date et dans `handleGenerate` ; refus = rien d'enregistré (heure vidée au choix du CMS ou de la date). Averti, pas bloqué (règle du 02/10). **Liste d'heures « à l'aveugle » retirée** (demande de l'utilisateur, 01/11) : avant la date et le CMS, un message remplace la liste 07:00–19:30 ; ensuite la grille, qui grise et bloque les créneaux pris. **Limite acceptée par l'utilisateur (01/11)** : l'Agenda n'affiche qu'une fiche par créneau (`getSlots`) ; les doubles réservations restantes (confirmation acceptée, modification depuis l'Agenda, imports ICS/planning, deux onglets) sont rares. `audit.html` les signale (« Deux RDV actifs sur un créneau » ; aucun sur l'export du 31/10). Badge « ⚠️ 2 RDV » : piste en attente.
 - **Formule de dépassement/relance centralisée dans `isDepasse()`** : ne pas la
   réécrire en ligne ailleurs.
 - **Migrations localStorage** : une migration non testée a déjà réduit 11 CMS à
@@ -317,7 +317,7 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
 26/10 : places libres 7 jours **faite** ; rappel RDV en attente **déjà existant** ; « Prochaines permanences » **déplacée vers Orientations** (`buildPermanencesCard`).
 
-**En attente** : aucune.
+**En attente** : 01/11/2026 — badge « ⚠️ 2 RDV » sur une tuile d'Agenda portant deux RDV actifs, les deux fiches listées à l'ouverture. Problème : une double réservation masque l'autre RDV. Choix recommandé : ne le faire que si une double réservation réelle réapparaît (bloc AGORA, critère 7, s'il touche « N rendez-vous »). Différé par l'utilisateur : cas rares depuis le retrait de la liste d'heures.
 
 **Écartées** (date — piste — raison)
 - 10/10/2026 — file « à reporter » (CR / Coop), fiche Coop et résumé CR prêts à copier — l'utilisateur les fait dans la foulée
