@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 16:44**, base `main` `4538dde` (AG-021 ouvert `355faef`, livré `be47820`, fusionné dans `main` le 01/11/2026 sur consigne « Main toujours »). **Pause demandée par l'utilisateur** : il teste en conditions réelles avant tout nouveau développement. **Un bloc AGORA ouvert : AG-021** (contrôle Codex à obtenir une fois). Tout est en ligne (Pages ✅).
+État au **01/11/2026 à 16:44**, base `main` `9994b5f`, **en ligne (Pages ✅)** (AG-021 ouvert `355faef`, livré `be47820` ; premier déploiement `bb92cbc` en échec, `check-activite.js` attendait l'ancien appel de la carte, corrigé `6dfb857` ; `check-delai-attente.js` ajouté à `deploy.yml`). Avant de pousser : lancer **tous** les `scripts/check-*.js` du déploiement, pas seulement ceux du calcul touché. **Pause demandée par l'utilisateur** : il teste en conditions réelles avant tout nouveau développement. **Un bloc AGORA ouvert : AG-021** (contrôle Codex à obtenir une fois). Tout est en ligne (Pages ✅).
 
 ## ⏩ Passation du 01/11/2026 à 16:23 (fin de session) — À LIRE EN PREMIER
 
