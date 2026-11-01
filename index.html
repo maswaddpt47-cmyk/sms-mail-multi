@@ -3753,15 +3753,18 @@ function carteActiviteParCms(){
    ces fiches sont « sans réception saisie », comptées à part ; une réception postérieure au RDV est « incohérente », comptée à part. Médiane. */
 function medianeNombres(v){if(!v.length)return null;var t=v.slice().sort(function(a,b){return a-b;}),m=Math.floor(t.length/2);return t.length%2?t[m]:(t[m-1]+t[m])/2;}
 function delaiAttenteParCms(entries){
-  var r={global:{delais:[],sansReception:0,incoherente:0},parCms:{},ordre:[]},mesures=[];
-  function groupe(h){var c=String(h.commune||'').trim(),k=c?cmsKey(c):'';if(!r.parCms[k]){r.parCms[k]={nom:c||'Sans CMS',delais:[],sansReception:0,incoherente:0};r.ordre.push(k);}return r.parCms[k];}
+  var r={global:{delais:[],sansReception:0,incoherente:0},parCms:{},ordre:[],liste:{mesures:[],exclus:[]}},mesures=[];
+  function groupe(h){var c=String(h.commune||'').trim(),k=c?cmsKey(c):'';if(!r.parCms[k]){r.parCms[k]={k:k,nom:c||'Sans CMS',delais:[],sansReception:0,incoherente:0};r.ordre.push(k);}return r.parCms[k];}
+  /* AG-021 : une fiche = une ligne de liste (personne, réception, RDV, délai ou motif d'exclusion), même population que les effectifs */
+  function personne(h){var n=[h.prenom,h.nom].map(function(s){return String(s||'').trim();}).filter(Boolean).join(' ');return n||'Nom et prénom non renseignés';}
   (entries||[]).forEach(function(h){
     if(!h||h.msgType==='indispo'||preparationDayUTC(h.date)===null)return;
     var g=groupe(h),rec=Object.prototype.hasOwnProperty.call(h,'dateReception')&&preparationDayUTC(h.dateReception)!==null?h.dateReception:'';
-    if(!rec){g.sansReception++;r.global.sansReception++;return;}
+    if(!rec){g.sansReception++;r.global.sansReception++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:'',rdv:h.date,motif:'sans_reception'});return;}
     var d=joursCivilsEntre(rec,h.date);
-    if(!(d>=0)){g.incoherente++;r.global.incoherente++;return;}
+    if(!(d>=0)){g.incoherente++;r.global.incoherente++;r.liste.exclus.push({k:g.k,cms:g.nom,personne:personne(h),rec:rec,rdv:h.date,motif:'apres_rdv'});return;}
     g.delais.push(d);r.global.delais.push(d);mesures.push({g:g,h:h,rec:rec,d:d});
+    r.liste.mesures.push({k:g.k,cms:g.nom,personne:personne(h),rec:rec,rdv:h.date,d:d});
   });
   /* diagnostic (01/11/2026, question de l'utilisateur) : un RDV de suivi préparé depuis l'Agenda recopie la réception de la première
      demande. « Premier RDV » = pour une même personne (usagerKey) et une même réception, le RDV le plus tôt ; les autres sont des suivis.
@@ -3771,26 +3774,51 @@ function delaiAttenteParCms(entries){
   mesures.forEach(function(m){var u=usagerKey(m.h),estPremier=!u||premier[u+'|'+m.rec]===m;
     if(!m.g.premiers){m.g.premiers=[];m.g.suivis=0;}
     if(estPremier){m.g.premiers.push(m.d);r.global.premiers.push(m.d);}else{m.g.suivis++;r.global.suivis++;}});
-  function fin(x){x.mediane=medianeNombres(x.delais);x.mesurables=x.delais.length;x.medianePremiers=medianeNombres(x.premiers||[]);x.suivis=x.suivis||0;delete x.delais;delete x.premiers;return x;}
+  /* AG-021 : la médiane est toujours calculée (modèle) mais n'est plus affichée tant que la couverture n'est pas établie */
+  function fin(x){x.mediane=medianeNombres(x.delais);x.mesurables=x.delais.length;x.nPremiers=(x.premiers||[]).length;x.medianePremiers=medianeNombres(x.premiers||[]);x.suivis=x.suivis||0;delete x.delais;delete x.premiers;return x;}
   fin(r.global);r.ordre.forEach(function(k){fin(r.parCms[k]);});
   r.ordre.sort(function(a,b){return r.parCms[a].nom.localeCompare(r.parCms[b].nom,'fr');});
+  /* tri par délai croissant ; départage par date du RDV puis par nom */
+  r.liste.mesures.sort(function(a,b){return a.d-b.d||(a.rdv<b.rdv?-1:a.rdv>b.rdv?1:0)||a.personne.localeCompare(b.personne,'fr');});
+  r.liste.exclus.sort(function(a,b){return a.cms.localeCompare(b.cms,'fr')||(a.rdv<b.rdv?-1:a.rdv>b.rdv?1:0)||a.personne.localeCompare(b.personne,'fr');});
   return r;
 }
-function carteDelaiAttente(entries){
+/* AG-021 : listes locales (aucune donnée envoyée) ; ouvre la fenêtre « delai-list » sur les fiches déjà filtrées par période et CMS. */
+function openDelaiList(title,kind,rows,periode){
+  S._delaiListCtx={title:title,kind:kind,rows:rows,periode:periode};
+  S.modal='delai-list';renderModal();
+}
+var MOTIFS_EXCLUS={sans_reception:'Sans réception saisie (la date du message n’est pas une réception)',apres_rdv:'Réception saisie postérieure au RDV'};
+function carteDelaiAttente(entries,periode){
   var r=delaiAttenteParCms(entries),g=r.global;
-  function j(v){return v===null?'—':(Math.round(v*10)/10).toLocaleString('fr-FR')+' j';}
+  function plur(n,s,p){return n+' '+(n>1?p:s);}
   var card=el('section',{class:'ui-stats-section ui-delai-attente'});
   card.appendChild(el('h3',{class:'ui-stats-section-title'},'Délai d’attente : réception de la demande → RDV'));
-  var band=el('div',{class:'ui-stats-metric-band'}),c=el('div',{class:'ui-stats-metric'});
-  c.appendChild(el('div',{class:'ui-stats-number'},j(g.mediane)));c.appendChild(el('div',{class:'ui-stats-metric-label'},'Médiane, sur '+g.mesurables+' dossier'+(g.mesurables>1?'s':'')+' mesurable'+(g.mesurables>1?'s':'')));
-  band.appendChild(c);card.appendChild(band);
+  card.appendChild(el('p',{class:'ui-delai-provisoire',role:'note',style:"font-weight:700;color:oklch(0.45 0.16 45);margin:4px 0 8px;"},'Couverture insuffisamment établie pour interpréter le délai d’attente'));
+  card.appendChild(el('p',{class:'ui-chart-description'},'Médiane masquée, globale et par CMS. Les effectifs restent visibles : cliquez sur un nombre pour voir les fiches concernées.'));
+  var band=el('div',{class:'ui-stats-metric-band'});
+  [[g.mesurables,'Mesurables','mesures','Fiches utilisées dans le calcul, triées par délai croissant'],[g.sansReception,'Sans réception saisie','sans_reception','Fiches exclues : pas de date de réception saisie'],[g.incoherente,'Après le RDV','apres_rdv','Fiches exclues : réception saisie postérieure au RDV']].forEach(function(k){
+    var c=el('button',{type:'button',class:'ui-stats-metric gx-press',style:'text-align:left;cursor:pointer;','aria-label':k[1]+' : '+k[0]+'. '+k[3]+'.',onClick:function(){
+      var rows=k[2]==='mesures'?r.liste.mesures:r.liste.exclus.filter(function(x){return x.motif===k[2];});
+      openDelaiList(k[1]+(periode?' — '+periode:''),k[2],rows,periode);
+    }});
+    c.appendChild(el('div',{class:'ui-stats-number'},String(k[0])));c.appendChild(el('div',{class:'ui-stats-metric-label'},k[1]));band.appendChild(c);
+  });
+  card.appendChild(band);
   var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
-  ['CMS','Médiane','Mesurables','Sans réception','Après RDV'].forEach(function(x){hd.appendChild(el('th',{},x));});
+  ['CMS','Mesurables','Sans réception saisie','Après le RDV'].forEach(function(x){hd.appendChild(el('th',{scope:'col'},x));});
   t.appendChild(el('thead',{},[hd]));var tb=el('tbody');
-  r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{},x.nom));[j(x.mediane),x.mesurables,x.sansReception,x.incoherente].forEach(function(v){tr.appendChild(el('td',{},String(v)));});tb.appendChild(tr);});
+  r.ordre.forEach(function(k){var x=r.parCms[k],tr=el('tr');tr.appendChild(el('th',{scope:'row'},x.nom));
+    [[x.mesurables,'mesures','Mesurables',function(){return r.liste.mesures.filter(function(y){return y.k===x.k;});}],
+     [x.sansReception,'sans_reception','Sans réception saisie',function(){return r.liste.exclus.filter(function(y){return y.k===x.k&&y.motif==='sans_reception';});}],
+     [x.incoherente,'apres_rdv','Après le RDV',function(){return r.liste.exclus.filter(function(y){return y.k===x.k&&y.motif==='apres_rdv';});}]
+    ].forEach(function(c){
+      var b=el('button',{type:'button',class:'gx-press',style:'cursor:pointer;background:none;border:0;color:var(--ui-accent);font:inherit;font-weight:700;padding:2px 4px;','aria-label':c[2]+' — '+x.nom+' : '+c[0],onClick:function(){openDelaiList(c[2]+' — '+x.nom+(periode?' — '+periode:''),c[1],c[3](),periode);}},String(c[0]));
+      tr.appendChild(el('td',{},[b]));
+    });
+    tb.appendChild(tr);});
   t.appendChild(tb);sc.appendChild(t);card.appendChild(sc);
-  card.appendChild(el('p',{class:'ui-chart-description'},'Premiers RDV seulement (un RDV de suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+j(x.medianePremiers)+(x.suivis?' ('+x.suivis+' suivi'+(x.suivis>1?'s':'')+' écarté'+(x.suivis>1?'s':'')+')':'');}).join(' · ')+(r.ordre.length?'':'—')+'. Ensemble : '+j(g.medianePremiers)+'.'));
-  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » saisie au jour du RDV, pour les RDV de la période et du CMS choisis. Exclus et comptés à part : '+g.sansReception+' sans réception saisie (la date du message n’est pas une réception), '+g.incoherente+' réception postérieure au RDV. Années archivées : non disponible.'));
+  card.appendChild(el('p',{class:'ui-chart-description'},'Jours calendaires de la « Réception de la demande » saisie au jour du RDV, pour les RDV de la période et du CMS choisis. Premiers RDV (un suivi recopie la réception de la première demande) : '+r.ordre.filter(function(k){return r.parCms[k].mesurables;}).map(function(k){var x=r.parCms[k];return x.nom+' '+plur(x.nPremiers,'premier','premiers')+(x.suivis?', '+plur(x.suivis,'suivi écarté','suivis écartés'):'');}).join(' · ')+(r.ordre.length?'':'—')+'. Années archivées : non disponible.'));
   return card;
 }
 /* ============================== AG-020 — RDV sans suite (piste secondaire, 01/11/2026) ==============================
@@ -4912,7 +4940,7 @@ function renderStats(){
     card.appendChild(el('p',{class:'ui-chart-description'},'Fiches de la période et du CMS choisis, au jour du RDV ; « à pointer » = confirmé dont la date est passée sans statut final. Cliquez pour voir les personnes. Une personne déjà recontactée depuis reste comptée ici : vérifiez dans l’Historique avant de relancer.'));
     wrap.appendChild(card);
   })();
-  wrap.appendChild(carteDelaiAttente(rdv.entries));   /* AG-019 : délai d'attente, mêmes filtres que la page */
+  wrap.appendChild(carteDelaiAttente(rdv.entries,(rdv.start?'du '+rdv.start.split('-').reverse().join('/')+' au '+rdv.today.split('-').reverse().join('/'):'toutes dates')+' · '+(S.statsCMS||'tous les CMS')));   /* AG-019 : délai d'attente, mêmes filtres que la page ; AG-021 : libellé des listes */
   wrap.appendChild(carteActiviteParCms());   /* AG-018 : activité par CMS sur 12 mois (données courantes seulement) */
   pane.appendChild(wrap);
 
@@ -7772,6 +7800,32 @@ function renderModal(){
     }},'Voir dans l\'agenda'));
     rBtnRow.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;flex:1;border:1px solid var(--c-border);background:var(--c-hover);color:var(--c-dim);font-weight:600;font-size:13px;padding:10px;border-radius:12px;",onClick:closeModal},'Fermer'));
     box.appendChild(rBtnRow);
+  }
+  else if(S.modal==='delai-list'){   /* AG-021 : fiches du calcul de délai d'attente (triées par délai) ou fiches exclues avec motif. Données locales. */
+    var dlCtx=S._delaiListCtx||{title:'',kind:'mesures',rows:[],periode:''},dlMesure=dlCtx.kind==='mesures';
+    function dlDate(v){return v?String(v).split('-').reverse().join('/'):'—';}
+    box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',dlCtx.title);
+    box.style.maxWidth='min(720px,100%)';
+    box.appendChild(header(dlCtx.title));
+    box.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);line-height:1.5;"},dlCtx.rows.length+' fiche'+(dlCtx.rows.length>1?'s':'')+(dlMesure?' utilisée'+(dlCtx.rows.length>1?'s':'')+' dans le calcul · délai en jours calendaires · triées par délai croissant · médiane non affichée':' exclue'+(dlCtx.rows.length>1?'s':'')+' du calcul, avec leur motif')+(dlCtx.periode?' · '+dlCtx.periode:'')));
+    var dlScroll=el('div',{class:'gx-scroll',style:"overflow:auto;max-height:58vh;"});
+    if(!dlCtx.rows.length){
+      dlScroll.appendChild(el('div',{style:"color:var(--c-muted);font-size:13px;padding:8px 0;"},'Aucune fiche pour cette période et ce CMS.'));
+    }else{
+      var dlT=el('table',{style:"width:100%;border-collapse:collapse;font-size:12.5px;"}),dlH=el('tr');
+      (dlMesure?['CMS','Personne','Réception','RDV','Délai (j)']:['CMS','Personne','Réception','RDV','Motif d’exclusion']).forEach(function(c){
+        dlH.appendChild(el('th',{scope:'col',style:"text-align:left;padding:6px 8px;border-bottom:1px solid var(--c-border);color:var(--c-muted);font-weight:700;"},c));});
+      dlT.appendChild(el('thead',{},[dlH]));
+      var dlB=el('tbody');
+      dlCtx.rows.forEach(function(x){
+        var cells=[x.cms,x.personne,x.rec?dlDate(x.rec):'—',dlDate(x.rdv),dlMesure?String(x.d):(MOTIFS_EXCLUS[x.motif]||'')];
+        var tr=el('tr');
+        cells.forEach(function(v,i){tr.appendChild(el('td',{style:"padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:top;"+(dlMesure&&i===4?'font-weight:800;text-align:right;':'')},v));});
+        dlB.appendChild(tr);
+      });
+      dlT.appendChild(dlB);dlScroll.appendChild(dlT);
+    }
+    box.appendChild(dlScroll);
   }
   else if(S.modal==='stat-list'){
     var slCtx=S._statListCtx||{title:'',items:[]};
