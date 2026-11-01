@@ -1702,6 +1702,10 @@ function handleGenerate(){
   /* AG-022 R1 (amendement de Codex) : un champ Réception non modifié ne remplace jamais une reprise ni une valeur brute par un vide */
   var rec=receptionAEcrire(S.dateReception,S.receptionSource);if(rec.garder)delete itemGen.dateReception;else itemGen.dateReception=rec.valeur;
   var enregistre=addHistory(itemGen,true);
+  /* NR1 (vérification de Codex du correctif R1/R2) : après une écriture réussie, la référence du champ devient la réception
+     effectivement enregistrée — un effacement ou une saisie suivante, sans rouvrir la fiche, est alors une vraie modification.
+     Échec : référence inchangée. Formulaire neuf (source nulle) : comportement inchangé. */
+  if(enregistre&&S.receptionSource&&!rec.garder){S.receptionSource=sourceReception({dateReception:rec.valeur});S.receptionReprise='';}
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
   if(enregistre)showToast("✓ Message généré et enregistré");
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
@@ -1841,12 +1845,13 @@ function figerChampsCopie(){
   var r=compute();
   return {activeProfile:S.activeProfile,channel:S.channel,msgType:S.msgType,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,
     selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,
-    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,receptionSource:S.receptionSource?Object.assign({},S.receptionSource):null,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
+    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,receptionSource:S.receptionSource?Object.assign({},S.receptionSource):null,sourceRef:S.receptionSource,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
 }
 function enregistrerCopie(text,fige){
   var F=fige||figerChampsCopie();
   /* réception et message enregistrés ensemble */
-  return operationHistorique(function(){
+  var ecrite;   /* NR1 : réception effectivement écrite par cette copie (undefined : aucune) */
+  var r=operationHistorique(function(){
     var receptionRecord=S.history.find(function(h){return h.date===F.date&&h.heure===F.heure&&h.commune===F.commune&&(h.nom||'').toLowerCase()===(F.nom||'').toLowerCase()&&(h.prenom||'').toLowerCase()===(F.prenom||'').toLowerCase();});
     /* AG-022 : comparaison avec la réception ENREGISTRÉE ; une reprise non confirmée, ou un champ vide sur une fiche sans réception
        enregistrée, ne réécrit rien (ni confirmation implicite, ni « vide » qui ferait d'une reprise une absence) */
@@ -1857,6 +1862,7 @@ function enregistrerCopie(text,fige){
     if(receptionRecord&&!rec.intacte&&!garderAbsence&&receptionChampInitial(receptionRecord)!==(F.dateReception||'')){
       S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:F.dateReception||''});
       if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
+      ecrite=F.dateReception||'';
     }
     /* P05 (vérification de clôture de Codex) : une copie répétée du même message pour la même personne et le même créneau
        n'est pas réenregistrée ; un même texte pour un autre dossier l'est (modèles génériques). */
@@ -1870,9 +1876,13 @@ function enregistrerCopie(text,fige){
         if(rec.intacte&&!rec.garder)itemCopie.dateReception=rec.valeur;
         if(garderAbsence)delete itemCopie.dateReception;   /* AG-022 : la fusion ne pose ni reprise confirmée d'office, ni réception vide sur une fiche qui n'en a pas */
         if(!addHistory(itemCopie,true))throw new Error('message refusé');
+        if(Object.prototype.hasOwnProperty.call(itemCopie,'dateReception'))ecrite=itemCopie.dateReception;
       }
     }
   });
+  /* NR1 : référence recalée sur la réception enregistrée, seulement après succès et si le formulaire est toujours celui de la copie */
+  if(r&&r.ok&&ecrite!==undefined&&F.sourceRef&&S.receptionSource===F.sourceRef){S.receptionSource=sourceReception({dateReception:ecrite});S.receptionReprise='';}   /* la mention « à confirmer » tombe aussi : la fiche porte désormais une réception écrite */
+  return r;
 }
 function copyBody(){
   var text=S.channel==='sms'?compactSmsText(S.generatedBody):S.generatedBody;
