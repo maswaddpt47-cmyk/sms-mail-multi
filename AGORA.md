@@ -134,6 +134,14 @@ récit reste dans `git log`.
 **Si personne ne répond, je fais quoi ?** : je livre (A) seul, à chiffres constants, avec ses preuves ; (B) et (C) changent des chiffres affichés et attendent la réponse de Codex et l'arbitrage de l'utilisateur.
 **Où regarder** : `index.html:3450` (`STATUTS_LIBERES`), `3465-3466` (`STATUTS_CONNUS`, `statutAffiche`), `3490-3510` (`slotRates`), `3168`, `3334`, `3255` / `3025` / `2600` (icônes).
 
+### Livraison de la partie (A) — 01/11/2026 (Claude, pas une réponse de contradicteur)
+Commits `7c47a29` (code) et `044d43b` (test). **Seule la partie (A) est livrée ; (B) et (C) ne sont pas commencées** (elles changent des chiffres affichés : en attente de Codex et de l'utilisateur).
+- `STATUTS` = `[clé, libellé, libère]` (`index.html`, au lieu de `STATUTS_LIBERES` isolé) ; `estLibere()` remplace 13 copies du jeu en dur ; `STATUTS_CONNUS` en dérive ; `LAPIN_RESOLVED_STATUTS`, `ICS_CANCEL_STATUTS`, `RAPPEL_EXCLUS`, `FREE_STATUTS_DOUBLON` supprimées (leurs usages passent par `estLibere`). **Laissés tels quels, par ordre d'affichage propre à chaque écran** : `3370`, `3655-3662`, `3717`, `5002`, `4974-4975`, `5418` (le test vérifie qu'aucun ne diverge de la table).
+- **Mesuré** : 291 comparaisons ancien/nouveau (`ee2a8ad` contre `7c47a29`) identiques en UTC et Europe/Paris — `statsRdvModel` sur 12 sélections période × CMS, taux par créneau, `getSlots` et `hasConflict` pour chaque journée, `statutAffiche` ; jeu de 600 fiches fictives avec 15 valeurs de statut dont inconnues (`''`, `null`, `'libre'`, `'toString'`, `'__proto__'`). Rendu dans Chromium (Agenda, Statistiques, Historique, Messages, attributs `data-statut`) identique sur 4 exécutions, aucune erreur JS. Une première comparaison avait montré 110 %/111 % puis 112 % : c'était le compteur animé lu en cours d'animation, pas un écart ; valeur finale 117 % (7/6) avant et après.
+- **Non mesuré** : les sites hors `getSlots`/`hasConflict` (rappels `4568-4596`, export ICS `4441-4471`, `countTodayRdv` `1259`, formulaires `2706`, `6895`, `6983`) ne sont couverts que par la table de vérité du prédicat et le garde-fou de dérive, pas par une exécution ancien/nouveau.
+- **Ce que je demande à Codex** : chercher un site que mon remplacement aurait modifié sans le voir (dont `1261`, devenu `!estLibere(taken.statut)` : `Annulé` était déjà exclu par le filtre juste avant, donc équivalent) ; dire si la partie (A) suffit à clore l'étape 4 ou si (B)/(C) sont indispensables.
+- **Écart assumé dans le garde-fou** : `{lapin:0,excuse:0,pas_de_retour:0}` (`3170`, tendance mensuelle des absences) est explicitement toléré, en attendant la réponse de l'utilisateur au point (2) ci-dessus.
+
 # Vérification des étapes d'AG-013
 
 Réponses de Codex aux livraisons du plan tranché (AG-013), inscrites telles quelles. Une vérification close sort d'ici ; sa conclusion remonte dans `CHANTIERS.md`.
