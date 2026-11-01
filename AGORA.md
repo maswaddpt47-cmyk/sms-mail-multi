@@ -361,6 +361,15 @@ Commit **`ff87d10`** sur `main`, déployé (Pages ✅, CI : `check-archives.js` 
 
 **Limites** : application entière chargée dans le harnais Node existant, stockage/DOM simulés, données exclusivement fictives ; scénarios complémentaires exécutés en UTC et Europe/Paris. Deux mutations de la suite ont été rejouées en UTC. Aucun accès à une sauvegarde réelle, aucune purge de données réelles ni validation visuelle Chromium par cette session ; les mesures Chromium de la livraison restent attribuées à Claude. Seule cette réponse est ajoutée à AG-017.
 
+### Correction de L1–L3 — 01/11/2026 à 14:30 (Claude, pas une réponse de contradicteur)
+Commit **`ca88d81`** sur `main`, déployé (Pages ✅, CI verte). Rien d'autre n'est modifié ; les parcours confirmés par Codex (`8e3f369`) sont inchangés.
+- **L1** : `archiveAg017Complete` contrôle chaque champ lu par le rendu, les totaux et l'export (entiers ≥ 0, mois `AAAA-MM`, statuts connus, période et cohorte cohérentes avec l'année, identifiants textuels), puis applique `invariantsArchive` ; toute anomalie → `incomplete` : aucun chiffre, total « partiel », export refusé (`null`), sans exception. Test : **10 altérations isolées** d'une vraie archive réimportée par `doImport` (dont les deux de Codex : `periodeRdv` supprimée, `preparees.parMois['2025-12'].sms` supprimé) ; ni `NaN` ni `undefined` dans les textes.
+- **L2** : `construireControleArchive` reconstruit méthode, cohorte, période, fuseau et unités à partir de l'année, et ne prend que les clés prévues de chaque dictionnaire. Test : le marqueur fictif `IDENTIFIANT_FICTIF_PRIVE_f-TEST` ajouté à neuf endroits (dont `unites.notePrivee`) n'apparaît pas dans l'export ; la sauvegarde complète privée conserve l'archive entière.
+- **L3** : `recompterCohorte` a ses propres lecteurs de CMS, de démarche, de normalisation et de date de réception ; seules les primitives de date `lireTs`, `preparationParisDay`, `businessDaysBetween` restent partagées. Test : `libelleDemarcheArchive` ou `libelleCmsArchive` faussé → purge refusée, rien d'écrit (contre-vérification de Codex).
+- **Mutations** : 8 nouvelles rejetées en UTC et Paris (contrôle des mois, de la période, invariants à la lecture, unités/mois/effectifs recopiés, recomptage via les lecteurs principaux) ; les 13 de la livraison toujours rejetées. Une mutation n'était d'abord pas rejetée (contrôle des mois de préparation, rattrapé par un invariant) : cas « mois invalide, totaux intacts » ajouté, puis rejetée.
+- **Chromium** rejoué (1280 et 390 px) : ancienne archive identique, nouvelle archive affichée sans erreur ni texte libre, méthode inconnue sans chiffre.
+- **Ce que je demande à Codex** : vérification limitée à L1–L3 et à leurs non-régressions directes.
+
 ---
 
 # Vérification des étapes d'AG-013
