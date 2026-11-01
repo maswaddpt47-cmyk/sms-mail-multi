@@ -3682,12 +3682,13 @@ function fenetreActivite(aujourdhui){
 function activiteParCms(orientations,history,stats,aujourdhui,secteurs){
   var f=fenetreActivite(aujourdhui),cms=(secteurs||[]).filter(function(c){return String(c||'').trim();}),cles=cms.map(cmsKey);
   function zeros(){var o={};f.mois.forEach(function(m){o[m]=0;});return o;}
-  var r={fenetre:f,cms:cms,demandes:{},rdv:{},anomalies:{dateInconnue:0,cmsNonReconnu:0,cmsAmbigu:0,rdvSansCms:0,rdvHorsListe:0},archives:{}};
+  var r={fenetre:f,cms:cms,demandes:{},rdv:{},anomalies:{dateInconnue:0,dateImprobable:0,cmsNonReconnu:0,cmsAmbigu:0,rdvSansCms:0,rdvHorsListe:0},archives:{}};
   cms.forEach(function(c){r.demandes[c]=zeros();r.rdv[c]=zeros();});
   (orientations||[]).forEach(function(o){
     if(!o||typeof o!=='object')return;
     var d=preparationDayUTC(o.date)!==null?o.date:'';
     if(!d){r.anomalies.dateInconnue++;return;}   /* période non attribuable : compté sur tout le profil */
+    if(d<'2020-01-01'){r.anomalies.dateImprobable++;return;}   /* révision 3 d'AG-018 : probable conversion d'un import antérieur au correctif, jamais rattachée à un mois */
     if(d<f.du||d>f.au)return;
     var t=cms.filter(function(c){return cmsNomDansTexte(c,o.commune);});
     if(!t.length){r.anomalies.cmsNonReconnu++;return;}
@@ -3709,6 +3710,8 @@ function activiteParCms(orientations,history,stats,aujourdhui,secteurs){
 }
 function carteActiviteParCms(){
   var r=activiteParCms(S.orientations,S.history,S.yearlyStats,jourParis(),S.secteurs),f=r.fenetre;
+  /* demande de l'utilisateur (01/11/2026) : seuls les CMS ayant au moins une demande ou un RDV réalisé sur la fenêtre, mêmes lignes dans les deux tableaux (sommes inchangées) */
+  var cmsActifs=r.cms.filter(function(c){return f.mois.some(function(m){return r.demandes[c][m]||r.rdv[c][m];});});
   var card=el('section',{class:'ui-stats-section ui-activite-cms'});
   card.appendChild(el('h3',{class:'ui-stats-section-title'},'Activité par CMS — 12 derniers mois'));
   function note(t){return el('p',{class:'ui-chart-description'},t);}
@@ -3719,7 +3722,8 @@ function carteActiviteParCms(){
     var sc=el('div',{class:'ui-stats-scroll'}),t=el('table'),hd=el('tr');
     hd.appendChild(el('th',{},'CMS'));f.mois.forEach(function(m){hd.appendChild(el('th',{},moisCourt(m)+(estRdv&&r.archives[m]?' *':'')));});hd.appendChild(el('th',{},'Total'));
     t.appendChild(el('thead',{},[hd]));var tb=el('tbody'),tot={};
-    r.cms.forEach(function(c){
+    if(!cmsActifs.length)tb.appendChild(el('tr',{},[el('td',{colspan:String(f.mois.length+2)},'Aucune activité sur un CMS reconnu pendant ces 12 mois.')]));
+    cmsActifs.forEach(function(c){
       var tr=el('tr'),s=0;tr.appendChild(el('th',{},c));
       f.mois.forEach(function(m){if(estRdv&&r.archives[m]){tr.appendChild(el('td',{title:'Année archivée : détail par CMS indisponible'},'—'));return;}var v=serie[c][m];s+=v;tot[m]=(tot[m]||0)+v;tr.appendChild(el('td',{},String(v)));});
       tr.appendChild(el('td',{},String(s)+(estRdv&&Object.keys(r.archives).length?' (partiel)':'')));tb.appendChild(tr);
@@ -3731,7 +3735,7 @@ function carteActiviteParCms(){
   }
   tableau('Demandes enregistrées (orientations présentes)',r.demandes,false);
   var a=r.anomalies;
-  card.appendChild(note('Au mois de la « Date de la demande », tous états confondus. Couverture non certifiée : une orientation effacée (« Vider », import JSON) ou jamais importée n’est pas comptée ; des lignes réimportées peuvent être comptées deux fois. Hors tableau : '+a.dateInconnue+' date inconnue (période non attribuable, toutes périodes), '+a.cmsNonReconnu+' CMS non reconnu, '+a.cmsAmbigu+' CMS ambigu (dans la période).'));
+  card.appendChild(note('Au mois de la « Date de la demande », tous états confondus. Couverture non certifiée : une orientation effacée (« Vider », import JSON) ou jamais importée n’est pas comptée ; des lignes réimportées peuvent être comptées deux fois. Hors tableau : '+a.dateInconnue+' date inconnue (période non attribuable, toutes périodes), '+a.dateImprobable+' date improbable antérieure à 2020 (probablement mal lue par un import antérieur au 01/11/2026 ; à vérifier dans Orientations), '+a.cmsNonReconnu+' CMS non reconnu, '+a.cmsAmbigu+' CMS ambigu (dans la période).'));
   tableau('RDV réalisés',r.rdv,true);
   var ar=Object.keys(r.archives).sort();
   card.appendChild(note('Au mois du RDV, statut « Réalisé ». Hors tableau : '+a.rdvSansCms+' sans CMS, '+a.rdvHorsListe+' CMS hors liste (dans la période).'+(ar.length?' * Couverture partielle — année archivée : détail par CMS indisponible ('+ar.map(function(m){var v=r.archives[m].realisesTousCms;return moisCourt(m)+' : '+(v===null?'archive d’ancienne méthode, indisponible':v+' réalisés tous CMS selon l’archive');}).join(' ; ')+').':'')));

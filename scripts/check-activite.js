@@ -81,7 +81,7 @@ const serie=(y,m,d)=>RealDate.UTC(y,m-1,d)/86400000+25569;   // numéro de séri
    assert.equal(r.demandes.Fumel['2026-02'],1,'1er jour de M−11 inclus');assert.equal(r.demandes.Marmande['2027-01'],1,'jour courant inclus');
    assert.equal(Object.values(r.demandes.Fumel).reduce((a,b)=>a+b,0),2,'veille de la fenêtre et lendemain exclus ; état Annulée et « traitée » comptés');
    assert.equal(r.demandes["Saint-Pardoux-d'Isaac"]['2026-07'],1,'Structure rapprochée par mots');
-   assert.deepEqual(r.anomalies,{dateInconnue:1,cmsNonReconnu:2,cmsAmbigu:1,rdvSansCms:1,rdvHorsListe:1},'anomalies comptées à part');
+   assert.deepEqual(r.anomalies,{dateInconnue:1,dateImprobable:1,cmsNonReconnu:2,cmsAmbigu:1,rdvSansCms:1,rdvHorsListe:1},'anomalies comptées à part (1900-01-11 = date improbable)');
    assert.equal(r.demandes.Fumel['2026-06'],0,'CMS ambigu jamais attribué au premier trouvé');
    assert.equal(r.rdv.Fumel['2026-02'],1);assert.equal(r.rdv.Marmande['2027-01'],1);assert.equal(r.rdv.Fumel['2026-05'],1,'« fumel␣ » regroupé (cmsKey) ; Lapin et blocage exclus');
    assert.equal(Object.values(r.rdv.Fumel).reduce((a,b)=>a+b,0),2,'RDV hors fenêtre exclus');}
@@ -136,3 +136,6 @@ console.log('AG-019 délai d\'attente (médiane, mesurables, exclusions, jamais 
  assert.equal(r.aPointer.length,1,'confirmé passé seulement (aujourd\'hui et futur exclus)');
  assert(/rdvSansSuite\(rdv\.entries,jourParis\(\)\)/.test(code)&&/openStatList\(k\[1\]\+' sur la période',k\[0\]\)/.test(code),'carte branchée sur les RDV filtrés et la liste existante');}
 console.log('AG-020 RDV sans suite (lapins, pas de retour, à pointer) OK.');
+{const src=code.slice(code.indexOf('function carteActiviteParCms('),code.indexOf('/* ============================== AG-019'));
+ assert(/var cmsActifs=r\.cms\.filter\(function\(c\)\{return f\.mois\.some\(function\(m\)\{return r\.demandes\[c\]\[m\]\|\|r\.rdv\[c\]\[m\];\}\);\}\);/.test(src)&&/cmsActifs\.forEach/.test(src),'CMS sans activité masqués, mêmes lignes dans les deux tableaux');}
+console.log('Lignes de CMS sans activité masquées OK.');
