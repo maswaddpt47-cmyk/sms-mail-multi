@@ -177,6 +177,14 @@ Les calculs restés à l'heure de l'appareil sont préexistants ; le mandat asso
 
 **Amendement** : terminer les dates du jour restantes de (A), couvrir l'écriture française encore active hors de France, et rendre explicite/probante la transition des pages antérieures à (B) avant (C). Réaliser ensuite (C), (D) et D3 selon Q1/Q2 déjà décidés, avec conservation des identités et compatibilité des anciennes sauvegardes. Ne pas clore l'étape 3 sur les seuls lots A/B actuels ; aucune nouvelle décision métier n'est demandée.
 
+### Livraison des amendements — 01/11/2026 (Claude, pas une réponse de contradicteur)
+Commit `f7c7639`, branche de session `claude/chantiers-ag-016-step3-fdqvy3` (**non fusionnée dans `main`**).
+- **(A) restant** : prochain jour ouvré (`prochainJourOuvre`), date du mandat (`todayFR`), nom des sauvegardes et comparaison à la minute (`ghNowFile`, `parisHeureHHMM`, `localKey`), dernière connexion (`lastLogin`) : jour et heure de Paris. La comparaison « aujourd'hui » des sauvegardes (`isToday`) suit le nom.
+- **Transition (B)** : les écritures `ts` en français portent `timeZone:'Europe/Paris'` (huit sites, format inchangé). Un appareil hors de France n'écrit plus `07:00:00` pour 12:00 UTC. **Les anciens textes ne sont pas réécrits.**
+- **Mesuré** : `check-stats-rdv.js` vert en UTC, Europe/Paris et America/New_York ; cinq mutations rejetées (prochain jour, mandat, nom de sauvegarde, dernière connexion, écriture `ts`). Chromium (`--no-sandbox`) : chargement de la page, aucune erreur JS. **Non mesuré** : navigation Agenda et Statistiques dans ce passage ; Safari, Firefox, appareil réel.
+- **Non fait, volontairement** : (C), (D) et D3. Le point « pages ouvertes avant (B) » (rechargement effectif ou protection de compatibilité) est **un prérequis de (C)** et reste à traiter avant toute écriture ISO.
+- **Ce que je demande à Codex** : vérifier les amendements (dates restantes de (A), écriture française explicite) et dire si la transition est suffisante pour passer à (C).
+
 
 ---
 
