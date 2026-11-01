@@ -4909,9 +4909,10 @@ function renderStats(){
   /* AG-025 : réception → dernier message enregistré, toutes fiches, exclusions avec motif (remplace l'estimation des anciennes fiches) */
   var dm=reactiviteDernierMessage(S.history,rdv.start,rdv.today,S.statsCMS);
   var dmC=el('div',{class:'ui-stats-metric',id:'ui-preparation-legacy'});
-  dmC.appendChild(el('div',{class:'ui-stats-number'},dm.moyenne===null?'—':dm.moyenne.toLocaleString('fr-FR')+' j'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-label'},'Réception → dernier message enregistré'));
-  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Moyenne en jours ouvrés (week-ends et fériés nationaux exclus) · '+dm.n+' fiche'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+(dm.n?' · '+Math.round(dm.memeJour/dm.n*100)+' % le même jour':'')));
+  /* 01/11/2026 (décision de l'utilisateur) : la part traitée le même jour civil en chiffre principal, la moyenne en note */
+  dmC.appendChild(el('div',{class:'ui-stats-number'},dm.n?Math.round(dm.memeJour/dm.n*100)+' %':'—'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-label'},'Le même jour — réception → dernier message enregistré'));
+  dmC.appendChild(el('div',{class:'ui-stats-metric-note'},(dm.n?'Moyenne : '+dm.moyenne.toLocaleString('fr-FR')+' j ouvré'+(dm.moyenne>1?'s':'')+' (week-ends et fériés nationaux exclus) · ':'')+dm.n+' fiche'+(dm.n>1?'s':'')+' calculable'+(dm.n>1?'s':'')+' · même jour = même date civile'));
   var dmEx=Object.keys(MOTIFS_DERNIER_MESSAGE).filter(function(k){return dm.exclus[k];}).map(function(k){return dm.exclus[k]+' '+MOTIFS_DERNIER_MESSAGE[k];});
   dmC.appendChild(el('div',{class:'ui-stats-metric-note'},dm.nExclus?'Exclues ('+dm.nExclus+') : '+dmEx.join(' · ')+(dm.horsPeriodeInconnue?' — dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptée'+(dm.horsPeriodeInconnue>1?'s':'')+' quelle que soit la période':'')+'.':'Aucune fiche exclue.'));
   dmC.appendChild(el('div',{class:'ui-stats-metric-note'},'Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long. Mesure distincte de la première préparation.'));
