@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 22:50**, base `main` `94614e2`, **en ligne (Pages ✅)**. Livraisons de Codex reçues hors session : AG-026 (`1f12de9`), AG-027 (`9e70fcb`, `d634a1a`, `bd47210`), libellés (`b1e7cf3`). Contradiction de Claude (`0f705cc`) : AG-026 amendé (D1), AG-027 confirmé sous réserve de D1. **D1 corrigé par Claude** (`e421b58`, tests `9c551a8`) : un RDV importé sans message (ICS, planning) n'est plus un dossier, compté à part « sans message ». **Reste** : relecture de ce correctif par Codex, puis clôture d'AG-026 et AG-027 par l'utilisateur. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 22:55**, base `main` `419310f` (+ ce commit), **en ligne (Pages ✅)**. AG-026 : défaut D1 relevé par Claude (`0f705cc`), corrigé (`e421b58`, tests `9c551a8`), **confirmé par Codex** (`419310f`, aucun amendement). AG-027 confirmé par Claude sous réserve de D1, désormais levée. **Reste** : clôture d'AG-026 et AG-027 par l'utilisateur. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## Libellés validés le 01/11/2026
 
