@@ -53,6 +53,7 @@ assert.equal(ctx.monthlyReportComplete(history,'2026-9','',now,context),null);
 const out=ctx.monthlyReportHtml(d,{profil:'Profil fictif',date:'25/10/2026'});
 for(const label of ['Taux de concrétisation','Taux de lapin','Taux de remplissage','Remplissage net','Fiches avec message daté','SMS','Mails','Canal inconnu','Usagers','Le même jour','Moyenne en jours ouvrés'])assert(out.includes(label),label);
 assert.doesNotMatch(out,/<h2>(?:Fiches par mois du message|Répartition par type|Fiches avec message daté par CMS|RDV sans suite|Délai d’attente|Contexte au|Activité annuelle|Activité par CMS)/);
+assert.doesNotMatch(out,/<th>Exclusion<\/th>|Exclues :/,'tableau Exclusion et récapitulatif retirés du bilan');
 assert.equal([...out.matchAll(/<h2>(.*?)<\/h2>/g)].at(-1)[1],'Réception → dernier message enregistré','le bilan se termine à la réception, écran et impression');
 assert.match(out,/67 %/);assert.match(out,/17 %/);assert.match(out,/22 %/);assert.match(out,/15 %/);assert.match(out,/83 %/);
 assert.match(out,/5 \/ 6 fiches calculables/);assert.match(out,/0,2/);assert.match(out,/1 RDV sans heure exclus/);

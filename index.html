@@ -4360,7 +4360,7 @@ function monthlyReportSupplementHtml(d){
       [f.total,'Fiches avec message daté'],[f.canaux.sms,'SMS'],[f.canaux.mail,'Mails'],[f.canaux.inconnu,'Canal inconnu'],[f.personnes,'Usagers','nom + prénom ; pas une identification certaine']
     ])+'<p class="unit">'+f.nonMesurables+' fiches sans date du message lisible, hors total et hors graphique ; période inconnue, comptées pour le CMS choisi quelle que soit la période.</p>');
   h+=section('Réception → dernier message enregistré',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' fiches calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
-    '<p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.</p>'+table(['Exclusion','Fiches'],Object.keys(dm.exclus).map(function(k){return [MOTIFS_DERNIER_MESSAGE[k],dm.exclus[k]];}))+'<p class="unit">Exclues : '+dm.nExclus+' ; dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptées quelle que soit la période.</p>');
+    '<p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.</p>');
   return h;
 }
 

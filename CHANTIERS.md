@@ -4,7 +4,7 @@
 
 ## Bilan mensuel complet — demande du 01/11/2026
 
-Dernière consigne utilisateur : le bilan s’arrête après « Réception → dernier message enregistré » (pourcentage du même jour, moyenne et exclusions conservés), écran et PDF. Tous les blocs suivants sont retirés du rapport ; les Statistiques restent inchangées. Sources et limites déplacées avant les compléments pour garder Réception en dernier.
+Dernière consigne utilisateur : le bilan s’arrête après « Réception → dernier message enregistré » (pourcentage du même jour et moyenne conservés ; tableau Exclusion et récapitulatif retirés), écran et PDF. Tous les blocs suivants sont retirés du rapport ; les Statistiques restent inchangées. Sources et limites déplacées avant les compléments pour garder Réception en dernier.
 
 AG-027 ouvert, inventaire `docs/bilan-mensuel.md`. Tous les indicateurs des Statistiques sont repris dans le bilan et l’impression, sans modifier les données. Mois du RDV et du dernier message distincts ; prévisions et vues annuelles datées hors mois. Les taux sont de nouveau inclus sur demande explicite, remplaçant la limitation d’AG-011. Vérifié : 10 scripts en UTC et Europe/Paris (20 exécutions), mutation sans filtre de mois rejetée dans les deux fuseaux ; vraie fenêtre dans Chromium à 390/1280 px (aucun débordement ni erreur JS), PDF A4 de la démo généré et contrôlé. Publication sur main en cours ; contradiction externe après livraison. AG-026 inchangé, aucune auto-réponse.
 
