@@ -131,6 +131,7 @@ récit reste dans `git log`.
 **Ce que ça engage** : aucun format nouveau, aucune migration, aucune écriture : lecture seule. `receptionDateFor`, préparation moyenne, export CSV, archives : inchangés.
 **Limite écrite** : une date préremplie laissée telle quelle compte comme une réception du jour du message (indiscernable d'une réception du même jour) ; la borne du 22/10 inclut ce jour entier.
 **Si personne ne répond, je fais quoi ?** Livraison testée et en ligne ; Codex vérifie une fois ; les écarts démontrés seront corrigés.
+**Livré** : `c6edc4e` (code), `3ee88f7` (tests). `etatReception` → état `ancienne` (borne `RECEPTION_ANCIEN_CHAMP_FIN = '2026-10-22'`, incluse) ; `receptionChampInitial` la préremplit ; `delaiAttenteParCms` la mesure (`anciennes` compté, `ancienne` marqué dans la liste) ; Agenda « Suivi », Historique « Modifier », note de la carte. Écritures : règles R1/R2/NR1 inchangées (champ intact → rien d'écrit). **Vérifié** : `check-delai-attente.js` (borne 22/10 incluse, 23/10 exclue, après RDV, champ présent vide, réception enregistrée prioritaire, médiane, note), `check-reception.js`, `check-ecritures.js` (Générer, copie, Historique : préremplie, rien écrit si intacte, écrite si modifiée ou effacée) ; dates de reprise des tests fixées après le 22/10 (indépendantes du jour d'exécution) ; six mutations rejetées (UTC et Paris) ; 9 tests du déploiement verts ; Chromium 35/35 (fiche d'avant le 22/10 : mesurable, nombre écrit, origine marquée, pas de pastille, préremplie, rien écrit), aucune erreur JS, 390 px sans débordement. **Non vérifié** : données réelles.
 
 ## AG-024 — Réactivité : jours fériés nationaux exclus ; première préparation, pas l'envoi — ouvert le 01/11/2026
 **Auteur** : session 01Sptc2d — lu sur `c219e94`
@@ -140,6 +141,7 @@ récit reste dans `git log`.
 **Critère déclencheur** : 7 (chiffre affiché) et 5 (contrat du 22/10 « week-ends exclus, fériés inclus »). Contradicteur : **Codex**, après livraison.
 **Ce que ça engage** : calcul d'affichage, rien de stocké. **Archives `ag017-v1` non touchées** (AG-017 clos) : leur préparation reste en lundi–vendredi sans fériés ; aligner les archives futures serait un autre bloc.
 **Si personne ne répond, je fais quoi ?** Livraison testée et en ligne ; Codex vérifie une fois.
+**Livré** : `c4fc1ec`, tests `check-reactivity.js`. `joursFeriesFrance(y)` (11 jours, Pâques grégorien) et `joursOuvresFrance(début, fin)` ; utilisés par `preparationStats` et `legacyPreparationEstimate` ; `businessDaysBetween` conservé pour les archives. **Vérifié** : exemples de l'utilisateur (même jour 0, vendredi → lundi 1, vendredi → mardi avec lundi de Pâques 1), Pentecôte, Ascension, 11 novembre, 1er janvier, 14 juillet, 15 août un samedi, Pâques 2025/2027/2028, 11 dates exactes en 2026 ; préparation et estimation hors fériés ; archives inchangées (même intervalle = 2) ; huit mutations rejetées (UTC et Paris) ; tuile mesurée dans Chromium à 390 px après animation (« 2 j », libellés), sans erreur ni débordement. **Non vérifié** : données réelles.
 
 ---
 
