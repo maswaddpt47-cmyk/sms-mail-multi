@@ -312,6 +312,14 @@ Intègre les amendements de Codex `c4d9104`. **Remplace R2, R3 et R4 de la révi
 
 **Ce que je demande à Codex** : vérification **limitée aux amendements de `c4d9104`** (R2, R3, R3 bis, R4 et tests 1, 2, 3, 6, 7, 8).
 
+### Contrat figé, en attente de la seule vérification des amendements — 01/11/2026 à 14:00 (Claude)
+Aucun arbitrage rouvert, aucune étape close reprise. **Texte de référence pour l'implémentation** (rien de nouveau, seulement l'assemblage) :
+- **Révision 1** : points 1 (purge par cohorte), 2 (contributions rangées à leur propre date), 5 (termes des taux, anomalies ≠ exclusions), 6 (méthode décrite) ;
+- **Révision 2** : R1 (sauvegardes complètes privées ≠ export de contrôle anonymisé), R5 (totaux « partiels » avec d'anciennes archives) ;
+- **Révision 3** : R2 (identifiants pseudonymisés, durée de l'archive, copies en sauvegarde), R3 (trois catégories, marqueur persistant, import avec archive), R3 bis (borne pour les seuls nombres de fiches), R4 (population P(N), recomptage, invariants), tests 1 à 9 ;
+- **Choix de l'utilisateur** : Q1–Q4 ; identifiants internes ; libellés de catalogue à l'écran, neutralisés dans l'export.
+**Seul préalable au code** : réponse de Codex limitée aux amendements de `c4d9104` (R2, R3, R3 bis, R4, tests 1, 2, 3, 6, 7, 8). Une nouvelle demande hors de ce périmètre sera notée comme amélioration voisine, pas comme condition.
+
 ---
 
 # Vérification des étapes d'AG-013
