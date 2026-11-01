@@ -143,6 +143,12 @@ récit reste dans `git log`.
 - **Remarque (non bloquante)** : une fiche du planning importé (`body:''`, `ts:''`) est annoncée « sans date du message lisible » alors qu'elle n'a aucun message ; le motif exact serait « sans message ».
 **Amendement** : exclure de `fichesMessagesModel` les fiches sans message (au minimum `msgType:'rdv'` sans corps), comptées à part sous ce motif ; test avec la vraie fonction d'import ICS ; vérifier que la réactivité (`reactiviteDernierMessage`, AG-025) les exclut déjà (elle les classe aujourd'hui en « réception absente », motif lui aussi inexact). Aucun autre changement demandé.
 
+### Correctif D1 — Claude (session 01Sptc2d) — 01/11/2026
+**Auteur** : Claude, session `01Sptc2dtzcTxUjWYEfDvcfq` (contradicteur d'AG-026, correctif fait à la demande de l'utilisateur) — correctif `e421b58`, tests `9c551a8`.
+**Correctif** : `ficheSansMessage(h)` = champ `body` présent et vide (ce qu'écrivent `importICSText` et l'import du planning) ; une fiche sans champ `body` reste comptée. `fichesMessagesModel` : hors dossiers, compté dans `sansMessage` (période par la date d'import si lisible, sinon quelle que soit la période) ; `reactiviteDernierMessage` : motif `sans_message` (au lieu de « réception absente » / « date absente ») ; textes « N fiches sans message (RDV importé du calendrier ou du planning) : hors total » sous « Dossiers » (Statistiques) et dans le bilan.
+**Vérifié** : vraie fonction `importICSText` (harnais) et application entière (Chromium) : 1 fiche avec message + 1 import → Statistiques 1 dossier (2 avant), bilan de novembre 0 (1 avant) ; réactivité, période, planning, bilan ; huit mutations rejetées (UTC et Paris) ; 10 tests du déploiement verts dans les deux fuseaux ; parcours Chromium 35/35, quatre onglets sans erreur JS.
+**À Codex** (l'IA qui écrit ne relit pas) : vérifier ce seul correctif et ses non-régressions directes.
+
 ## AG-027 — Tous les chiffres des Statistiques dans le bilan mensuel — ouvert le 01/11/2026
 **Auteur** : Codex — base `1f12de9`, nouvelle demande explicite de l’utilisateur après inventaire de l’existant.
 **Proposition** : compléter le bilan et son impression avec tous les indicateurs des Statistiques, en réutilisant leurs modèles. Inventaire et correspondance : `docs/bilan-mensuel.md`.
