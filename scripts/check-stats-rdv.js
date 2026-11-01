@@ -105,10 +105,11 @@ assert.equal(ctx.statsRdvModel([],[],'1m','',new Date(Date.UTC(2026,8,30,22,30))
 // Pt 4 : clé usager avec séparateur ; homonymes = un seul usager (limite connue).
 assert.notEqual(ctx.usagerKey({nom:'AB',prenom:'C'}),ctx.usagerKey({nom:'A',prenom:'BC'}));
 assert.equal(ctx.usagerKey({nom:' Dupont ',prenom:'Ana'}),ctx.usagerKey({nom:'DUPONT',prenom:'ana'}));assert.equal(ctx.usagerKey({}),'');
-// Pt 7 : statut vide, inconnu ou propriété héritée = « en attente » ; démarche nommée « constructor » comptée, absente signalée.
-assert.equal(ctx.statutAffiche({statut:'toString'}),'en_attente');assert.equal(ctx.statutAffiche({statut:''}),'en_attente');assert.equal(ctx.statutAffiche({}),'en_attente');assert.equal(ctx.statutAffiche({statut:'lapin'}),'lapin');
+// Pt 7 : statut vide, inconnu ou propriété héritée = « Statut à vérifier » (AG-014 B, décision du 31/10) ; démarche nommée « constructor » comptée, absente signalée.
+assert.equal(ctx.statutAffiche({statut:'toString'}),'a_verifier');assert.equal(ctx.statutAffiche({statut:''}),'a_verifier');assert.equal(ctx.statutAffiche({}),'a_verifier');assert.equal(ctx.statutAffiche({statut:'en_attente'}),'en_attente');assert.equal(ctx.statutAffiche(null),'a_verifier');   // AG-014 B : plus assimilé à « En attente »assert.equal(ctx.statutAffiche({statut:'lapin'}),'lapin');
 const p7=ctx.statsRdvModel([row('p1',todayStr,'toString','09:30'),row('p2',todayStr,'inconnu','10:30'),row('p3',todayStr,null,'11:30'),{...row('p4',todayStr,'realise','14:30'),demarche:'constructor'},{...row('p5',todayStr,'realise','15:30'),demarche:''},{...row('p6',todayStr,'realise','16:30'),demarche:'__proto__'}],[],'all','A',today);
-assert.equal(p7.byStatut.en_attente,3);assert.equal(p7.byStatut.realise,3);assert.equal(Object.values(p7.byStatut).reduce((a,b)=>a+b,0),p7.entries.length);   // somme des sept statuts = fiches
+assert.equal(p7.byStatut.en_attente,0,'AG-014 B : statut vide/inconnu/hérité non assimilé à En attente');assert.equal(p7.byStatut.a_verifier,3);assert.equal(p7.byStatut.realise,3);assert.equal(Object.values(p7.byStatut).reduce((a,b)=>a+b,0),p7.entries.length);   // somme des huit catégories = fiches : rien ne sort des totaux
+assert.equal(Object.values(p7.byMonth).reduce((n,m)=>n+m.a_verifier,0),3,'graphe mensuel : même règle');assert.equal(Object.values(p7.byMonth).reduce((n,m)=>n+m.en_attente,0),0)
 assert.equal(p7.byDemarche.constructor,1);assert.equal(p7.byDemarche['__proto__'],1);assert.equal(p7.sansDemarche,1);
 // Amendement Codex sur AG-006 : mêmes regroupements à l'écran et dans les nouvelles archives (CMS par cmsKey, démarches sans prototype, types en clés propres).
 const parCms=ctx.comptageParCms([{commune:'Fumel'},{commune:'FUMEL '},{commune:''},{commune:'Agen'},{commune:'fumel'},{commune:'constructor'}]);
@@ -278,9 +279,9 @@ assert.match(ctx.monthlyReportHtml(noC,{profil:'P',date:'d'}),/CMS non renseign�
 // Heure absente : ni créneau ni taux, signalée
 const noH=q([qr('h1','','realise','A','X'),qr('h2','','lapin','A','X')]);
 assert.equal(noH.entries,2);assert.equal(noH.realised,1);   // sans heure : toujours des rendez-vous enregistrés
-// Statut absent : classé « en attente » partout, la répartition retrouve le total
+// Statut absent : classé « Statut à vérifier » partout (AG-014 B), la répartition retrouve le total
 const noS=q([qr('s1','09:30',null,'A','X'),qr('s2','10:30','realise','A','X')]);
-assert.equal(Object.values(noS.byStatut).reduce((a,b)=>a+b,0),noS.entries);assert.equal(noS.byStatut.en_attente,1);
+assert.equal(Object.values(noS.byStatut).reduce((a,b)=>a+b,0),noS.entries);assert.equal(noS.byStatut.a_verifier,1);assert.equal(noS.byStatut.en_attente,0);
 // Démarche absente : comptée et nommée, plus de « Aucun accompagnement » contradictoire
 const noD=q([qr('d1','09:30','realise','A','')]);
 assert.equal(noD.realised+'|'+noD.sansDemarche,'1|1');const hd=ctx.monthlyReportHtml(noD,{profil:'P',date:'d'});assert.match(hd,/Démarche non renseignée/);assert.doesNotMatch(hd,/Aucun accompagnement réalisé/);

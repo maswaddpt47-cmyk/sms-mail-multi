@@ -55,7 +55,8 @@ assert.equal(tous.fiches,18);        // fiches datées d'octobre jusqu'au 25 (20
 assert.equal(tous.realisees,9);
 assert.equal(tous.personnes,8);      // Paul deux fois ; AUTRE Marc et AUTRE Zoé distincts
 assert.equal(tous.relances,3);
-assert.equal(tous.statuts.en_attente,3);   // en_attente + vide + inconnu
+assert.equal(tous.statuts.en_attente,1);   // un seul vrai « en attente »
+assert.equal(tous.statuts.a_verifier,2);   // statut vide + statut inconnu : « Statut à vérifier », plus assimilés à « en attente » (AG-014 B)
 
 // comparaison avec le vrai calcul de l'application : aucun écart
 const noms={};sauvegarde.history.forEach(h=>{if(h.commune&&!noms[A.cle(h.commune)])noms[A.cle(h.commune)]=h.commune.trim();});

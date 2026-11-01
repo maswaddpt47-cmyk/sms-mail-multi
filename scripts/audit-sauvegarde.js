@@ -66,8 +66,8 @@
       if(blocage)return;
       if(!h.heure)signaler('Heure absente','info',i,h,'comptée dans les nombres, exclue des taux par créneau');
       else if(!heureValide(h.heure))signaler('Heure mal écrite','attention',i,h);
-      if(h.statut==null||h.statut==='')signaler('Statut vide','attention',i,h,'compté « en attente »');
-      else if(STATUTS.indexOf(h.statut)===-1)signaler('Statut inconnu','attention',i,h,'compté « en attente »');
+      if(h.statut==null||h.statut==='')signaler('Statut vide','attention',i,h,'compté « Statut à vérifier »');
+      else if(STATUTS.indexOf(h.statut)===-1)signaler('Statut inconnu','attention',i,h,'compté « Statut à vérifier »');
       if(h.channel!=null&&CANAUX.indexOf(h.channel)===-1)signaler('Canal inconnu','attention',i,h);
       if(!String(h.commune||'').trim())signaler('CMS vide','attention',i,h,'compté seulement dans « Tous les CMS »');
       else{
@@ -115,7 +115,7 @@
     historique.forEach(function(h){
       if(!h||typeof h!=='object'||h.msgType==='indispo'||!/^\d{4}-\d{2}-\d{2}$/.test(String(h.date||'')))return;
       if(h.date>aujourdhui)return;   /* le bilan ne compte rien après le jour courant */
-      var mois=h.date.slice(0,7),statut=STATUTS.indexOf(h.statut)!==-1?h.statut:'en_attente';
+      var mois=h.date.slice(0,7),statut=STATUTS.indexOf(h.statut)!==-1?h.statut:'a_verifier';   /* AG-014 B (décision du 31/10) : statut vide ou inconnu = « Statut à vérifier » */
       [ligne(mois,'','(tous)'),String(h.commune||'').trim()?ligne(mois,cle(h.commune),libelleCms(h.commune)):null].forEach(function(l){
         if(!l)return;
         l.fiches++;l.statuts[statut]=(l.statuts[statut]||0)+1;
@@ -155,7 +155,7 @@
       ajouter(l,'Rendez-vous',d.entries,l.fiches);ajouter(l,'Réalisés',d.realised,l.realisees);
       ajouter(l,'Personnes accompagnées',d.accompanied,l.personnes);ajouter(l,'Relances renseignées',d.followup&&d.followup.recorded,l.relances);
       var bs=d.byStatut&&typeof d.byStatut==='object'?d.byStatut:null;
-      STATUTS.forEach(function(s){ajouter(l,'Statut '+s,bs&&Object.prototype.hasOwnProperty.call(bs,s)?bs[s]:undefined,l.statuts[s]||0);});   /* l'application fournit les sept compteurs : un absent n'est pas un zéro */
+      STATUTS.concat(['a_verifier']).forEach(function(s){ajouter(l,'Statut '+s,bs&&Object.prototype.hasOwnProperty.call(bs,s)?bs[s]:undefined,l.statuts[s]||0);});   /* l'application fournit les sept compteurs : un absent n'est pas un zéro */
       var top=Array.isArray(d.demarches)?d.demarches:null,noms=Object.keys(l.demarches);
       if(!top){ajouter(l,'Démarches',undefined,noms.length);return;}
       var vus=Object.create(null);

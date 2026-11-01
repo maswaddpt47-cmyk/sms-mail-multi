@@ -576,8 +576,8 @@
 [data-theme="dark"] .ui-stats-charts{--chart-sms:#50c9a1;--chart-mail:#91a4ff;--chart-lapin:#ff9559;--chart-excuse:#e8bd4d;--chart-retour:#abb9d0;}
 @media(max-width:1100px){.ui-stats-charts{grid-template-columns:minmax(0,1fr);}}
 
-.ui-stats-charts{--chart-annule:#dc323e;--chart-attente:#9b7ab8;}
-[data-theme="dark"] .ui-stats-charts{--chart-annule:#ff7581;--chart-attente:#c3a1e3;}
+.ui-stats-charts{--chart-averifier:#8a94a6;--chart-annule:#dc323e;--chart-attente:#9b7ab8;}
+[data-theme="dark"] .ui-stats-charts{--chart-averifier:#b7c0cf;--chart-annule:#ff7581;--chart-attente:#c3a1e3;}
 .ui-stats-messages{grid-template-columns:minmax(0,1fr);}
 .ui-stats-priority .ui-chart-legend{min-height:68px;}
 .ui-stats-priority .ui-stats-section{margin-bottom:0;}
@@ -2408,6 +2408,7 @@ function typeBadgeStyle(t){return badge(t==="proposition"?'oklch(0.95 0.05 85)':
 var TLABEL={proposition:"Proposition",confirmation:"Confirmation",sans_appel:"Sans appel",relance:"Relance"};
 /* couleurs + libellés par statut de RDV, partagés entre l'agenda (tuiles) et les stats */
 var STATUT_STYLES={
+  a_verifier:{border:'oklch(0.7 0.02 264)',bg:'oklch(0.94 0.01 264)',text:'oklch(0.4 0.03 264)',label:'❓ Statut à vérifier'},
   confirme:{border:'oklch(0.48 0.2 266)',bg:'oklch(0.82 0.14 266)',text:'oklch(0.2 0.15 266)',label:'✓ Confirmé'},
   en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
   realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
@@ -3156,7 +3157,7 @@ function computeYearArchive(year){
   var usagers={};hist.forEach(function(h){var k=usagerKey(h);if(k)usagers[k]=1;});
   arc.usagersN=Object.keys(usagers).length;
   var statutKeys=['confirme','en_attente','realise','excuse','annule','lapin','pas_de_retour'];
-  arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});
+  arc.statuts={};statutKeys.forEach(function(k){arc.statuts[k]=0;});arc.statuts[STATUT_A_VERIFIER]=0;   /* clé additive (AG-014 B) : absente des archives créées avant, lue comme 0 */
   hist.forEach(function(h){arc.statuts[statutAffiche(h)]++;});
   arc.realiseN=arc.statuts.realise||0;
   arc.lapinN=arc.statuts.lapin||0;
@@ -3268,11 +3269,12 @@ function renderArchivedYearStats(wrap,arc){
   });
   wrap.appendChild(rateRow);
 
-  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙏'],['annule','Annulé','✕'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵']];
+  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙏'],['annule','Annulé','✕'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵'],['a_verifier','Statut à vérifier','❓']];
   var statCard=card('Répartition par statut');
   var statGrid=el('div',{class:'ui-stats-status-list'});
   statMeta.forEach(function(s){
     var n=(arc.statuts&&arc.statuts[s[0]])||0;
+    if(s[0]==='a_verifier'&&!n)return;   /* affiché seulement s'il y en a */
     var tile=el('div',{class:'ui-stats-status-row'});
     tile.appendChild(el('span',{class:'ui-stats-status-label'},s[2]+' '+s[1]));
     tile.appendChild(el('strong',{class:'ui-stats-status-number'},String(n)));
@@ -3345,17 +3347,17 @@ function statsRdvModel(history,permanences,period,cms,now,capaPerms){
   var past=entries.filter(function(h){return h.date<=today;}),realised=past.filter(function(h){return h.statut==='realise';});
   var lapins=past.filter(function(h){return h.statut==='lapin';});
   var byMonth={},byDemarche=Object.create(null);   /* sans prototype : une démarche nommée « constructor » ou « __proto__ » reste une démarche */
-  var keys=['realise','confirme','en_attente','annule','excuse','lapin','pas_de_retour'];
+  var keys=['realise','confirme','en_attente','annule','excuse','lapin','pas_de_retour',STATUT_A_VERIFIER];
   entries.forEach(function(h){var key=h.date.slice(0,7);if(!byMonth[key]){byMonth[key]={};keys.forEach(function(k){byMonth[key][k]=0;});}
-    byMonth[key][keys.indexOf(h.statut)!==-1?h.statut:'en_attente']++;
+    byMonth[key][statutAffiche(h)]++;   /* AG-014 B : même règle que les répartitions (plus de repli vers « en attente » ici) */
   });
   var sansDemarche=0;
   realised.forEach(function(h){if(h.demarche)byDemarche[h.demarche]=(byDemarche[h.demarche]||0)+1;else sansDemarche++;});
   /* usagers accompagnés (personnes distinctes parmi les fiches Réalisé) et fiches par statut : calculés
      ici pour que l'écran et le bilan mensuel partagent la même population (25/10) */
   var accompanied={};realised.forEach(function(h){var key=usagerKey(h);if(key)accompanied[key]=true;});
-  var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0};
-  /* statut vide ou inconnu = « en attente », comme le graphe mensuel et `computeYearArchive` */
+  var byStatut={en_attente:0,confirme:0,realise:0,excuse:0,annule:0,lapin:0,pas_de_retour:0,a_verifier:0};
+  /* statut vide ou inconnu = « Statut à vérifier » (AG-014 B, décision du 31/10), comme le graphe mensuel et `computeYearArchive` */
   entries.forEach(function(h){byStatut[statutAffiche(h)]++;});
   /* Trois places par demi-journée, six par journée complète. Les blocages de
      fermeture de l'autre moitié ne sont pas des places bloquées sur la moitié ouverte. */
@@ -3462,7 +3464,7 @@ function delaiRdvJours(ts,date){
 }
 /* 30/10, demande utilisateur : « Confirmé » et « En attente » sont des statuts transitoires, vides sur un mois clos ; une ligne à zéro n'est pas affichée.
    Affichage seul : aucun total ni taux ne change. Les autres statuts s'affichent toujours, même à zéro. */
-function statutTransitoireVide(statut,byStatut){return (statut==='confirme'||statut==='en_attente')&&!byStatut[statut];}
+function statutTransitoireVide(statut,byStatut){return (statut==='confirme'||statut==='en_attente'||statut===STATUT_A_VERIFIER)&&!byStatut[statut];}   /* « Statut à vérifier » : affiché seulement s'il y en a (AG-014 B) */
 /* Étape 4 d'AG-013 (AG-014) : UNE table des statuts. [clé, libellé, libère la place]. Les jeux « Lapin · Excusé · Annulé ·
    Pas de retour » écrits en dur ailleurs sont remplacés par estLibere() ; les ordres d'affichage propres à chaque écran
    restent locaux (un test vérifie qu'aucun jeu local ne diverge de cette table). */
@@ -3485,7 +3487,10 @@ function comptageTypes(entries,types){
 }
 /* Audit Codex du 30/10, pt 7 : liste fermée des statuts ; vide, inconnu ou propriété héritée (`toString`) = « en attente », partout. */
 var STATUTS_CONNUS=STATUTS.map(function(s){return s[0];});
-function statutAffiche(h){return STATUTS_CONNUS.indexOf(h&&h.statut)!==-1?h.statut:'en_attente';}
+/* AG-014 (B), décision de l'utilisateur du 31/10 : un statut vide ou inconnu n'est plus assimilé à « En attente » ; il reste dans
+   les totaux sous « Statut à vérifier ». Catégorie d'affichage seulement : jamais enregistrée sur une fiche, aucun statut historique réécrit. */
+var STATUT_A_VERIFIER='a_verifier';
+function statutAffiche(h){return STATUTS_CONNUS.indexOf(h&&h.statut)!==-1?h.statut:STATUT_A_VERIFIER;}
 var PLACES_PAR_JOURNEE=6;
 /* Places d'une journée de permanence passée (30/10, demande utilisateur : Saint-Pardoux n'a que 3 créneaux) : même règle que les
    « Places disponibles » (`assignedHalfOf`) : 3 pour une demi-journée, 6 sinon. Sans permanence enregistrée : 6, signalé (`connue`). */
@@ -3578,7 +3583,7 @@ function monthlyReportHtml(d,meta){
   function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   var mm=/^(\d{4})-(\d{2})$/.exec(d.month),title=NAMES[Number(mm[2])-1]+' '+mm[1];
-  var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour']];
+  var STAT=[['realise','Réalisé'],['confirme','Confirmé'],['en_attente','En attente'],['excuse','Excusé'],['annule','Annulé'],['lapin','Lapin'],['pas_de_retour','Pas de retour'],['a_verifier','Statut à vérifier']];
   function pc(n,total){return total?n+' / '+total+' · '+Math.round(n/total*100)+' %':'—';}
   /* Infobulles (30/10) : seulement dans l'aperçu à l'écran (`meta.infobulles`), jamais dans le document imprimé ; des mots simples, pas de vocabulaire technique. */
   var INFOS={
@@ -4124,7 +4129,7 @@ function renderStats(){
     {key:'en_attente',label:'En attente',color:'var(--chart-attente)'},{key:'annule',label:'Annulé',color:'var(--chart-annule)'},
     {key:'excuse',label:'Excusé',color:'var(--chart-excuse)'},{key:'lapin',label:'Lapin',color:'var(--chart-lapin)'},
     {key:'pas_de_retour',label:'Pas de retour',color:'var(--chart-retour)'}
-  ],true));
+  ].concat(Object.keys(rdv.byMonth).some(function(m){return rdv.byMonth[m].a_verifier;})?[{key:'a_verifier',label:'Statut à vérifier',color:'var(--chart-averifier)'}]:[]),true));   /* AG-014 B : série affichée seulement s'il y en a */
   priorityCharts.style.gridTemplateColumns='minmax(0,1fr)'; /* le graphique mensuel reste seul depuis le départ de « Prochaines permanences » */
   wrap.appendChild(priorityCharts);
   /* Lapins par permanence passée : repère les journées où des rendez-vous n'ont pas eu lieu. */
@@ -4257,7 +4262,7 @@ function renderStats(){
   var statutMap=Object.assign({},rdv.byStatut);
   var statutCard=card("Statuts des RDV de la période");
   statutCard.appendChild(el('p',{class:'ui-chart-description'},'Nombre de fiches par statut ; un créneau réattribué peut en porter plusieurs.'));
-  var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour"];
+  var statutKeys=["en_attente","confirme","realise","excuse","annule","lapin","pas_de_retour","a_verifier"];
   var statutTotal=statutKeys.reduce(function(s,k){return s+statutMap[k];},0)||1;
   var stw=el('div',{style:"display:flex;flex-direction:column;gap:7px;"});
   var anyStatut=false;
