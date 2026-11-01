@@ -1256,9 +1256,9 @@ function countTodayRdv(profileId){
   });
   var count=0;
   Object.keys(groups).forEach(function(key){
-    var arr=groups[key].filter(function(h){return ['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
+    var arr=groups[key].filter(function(h){return !estLibere(h.statut);});
     var taken=arr.filter(function(x){return x.msgType==='confirmation';})[0]||arr.filter(function(x){return x.msgType==='proposition';})[0]||arr.filter(function(x){return x.msgType==='sans_appel';})[0]||null;
-    if(taken&&taken.statut!=='pas_de_retour'&&taken.statut!=='lapin'&&taken.statut!=='excuse')count++;
+    if(taken&&!estLibere(taken.statut))count++;
   });
   return count;
 }
@@ -1609,12 +1609,11 @@ function buildCalLink(){
 function normTel(t){return (t||'').replace(/\D/g,'');}
 /* vrai seulement si le RDV résolu le plus récent (nom + téléphone, pas nom seul) est un lapin —
    un lapin honoré ensuite ne doit plus déclencher l'alerte */
-var LAPIN_RESOLVED_STATUTS=['realise','lapin','excuse','pas_de_retour','annule'];
 function lastRdvIsLapin(nom,telephone){
   var v=(nom||'').trim().toLowerCase();
   var t=normTel(telephone);
   if(!v||!t)return false;
-  var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v&&normTel(h.telephone)===t&&LAPIN_RESOLVED_STATUTS.indexOf(h.statut)!==-1;});
+  var matches=S.history.filter(function(h){return (h.nom||'').toLowerCase()===v&&normTel(h.telephone)===t&&(h.statut==='realise'||estLibere(h.statut));});
   if(!matches.length)return false;
   matches.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   return matches[0].statut==='lapin';
@@ -1676,7 +1675,7 @@ function handleGenerate(){
   var telPb=telProblem(S.telephone);
   if(telPb&&!confirm('⚠️ '+telPb+' : '+S.telephone+'\n\nGénérer quand même ?'))return;
   if(hasConflict(S.date,S.heure,S.commune)){
-    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
+    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&!estLibere(h.statut);});
     var conf=matches.filter(function(x){return x.msgType==='confirmation';})[0]||matches.filter(function(x){return x.msgType==='proposition';})[0]||matches.filter(function(x){return x.msgType==='sans_appel';})[0]||matches[0];
     var who=conf?[conf.civilite,conf.prenom,conf.nom].filter(Boolean).join(' '):'';
     showToast('⚠️ Créneau déjà pris'+(who?' — '+who:''),'warn');
@@ -2063,7 +2062,7 @@ function getSlots(commune,dateStr,historyList,permOverride){
   function buildSlot(heure){
     if(seenHeures[heure])return;seenHeures[heure]=true;
     var matches=historyList.filter(function(x){return x.date===dateStr&&x.heure===heure&&(x.commune===commune||!x.commune);});
-    var isFreed=function(x){return x.statut==='pas_de_retour'||x.statut==='lapin'||x.statut==='excuse'||x.statut==='annule';};
+    var isFreed=function(x){return estLibere(x.statut);};
     /* une réservation libérée (excusé/lapin/pas de retour) ne doit jamais l'emporter face à une
        nouvelle réservation active sur le même créneau, quel que soit son type de message — sinon
        une relance (priorité basse) reste masquée derrière l'ancienne excusée (ex: proposition) */
@@ -2132,7 +2131,7 @@ function lunchBreakEntry(perm,history,todayStr){
   return {channel:'sms',msgType:'indispo',commune:perm.commune,date:perm.exceptDate,heure:'12:30',nom:LUNCH_MOTIF,ts:new Date().toLocaleString('fr-FR')};
 }
 function hasConflict(date,heure,commune){
-  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
+  return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&!estLibere(h.statut);});
 }
 /* même chose pour un profil qui n'est pas forcément le profil actif (RDV d'un collègue
    modifié depuis l'agenda partagé) */
@@ -2703,7 +2702,7 @@ function renderGenerate(){
          sans aucun avertissement. Averti mais pas bloqué : parfois le chevauchement est
          volontaire (double-réservation assumée, correction d'une erreur de saisie…). */
       if(S.commune&&hasConflict(S.date,v,S.commune)){
-        var occ=S.history.find(function(h){return h.date===S.date&&h.heure===v&&(h.commune===S.commune||!h.commune)&&h.statut!=='pas_de_retour'&&h.statut!=='lapin'&&h.statut!=='excuse'&&h.statut!=='annule';});
+        var occ=S.history.find(function(h){return h.date===S.date&&h.heure===v&&(h.commune===S.commune||!h.commune)&&!estLibere(h.statut);});
         var occName=occ?([occ.civilite,occ.prenom,occ.nom].filter(Boolean).join(' ')||'quelqu\'un'):'quelqu\'un';
         if(!confirm('⚠️ '+v+' est déjà pris par '+occName+'.\n\nRéserver quand même ce créneau ?')){
           e.target.value=S.heure||'';renderGenerate();return;
@@ -3447,7 +3446,12 @@ function delaiRdvJours(ts,date){
 /* 30/10, demande utilisateur : « Confirmé » et « En attente » sont des statuts transitoires, vides sur un mois clos ; une ligne à zéro n'est pas affichée.
    Affichage seul : aucun total ni taux ne change. Les autres statuts s'affichent toujours, même à zéro. */
 function statutTransitoireVide(statut,byStatut){return (statut==='confirme'||statut==='en_attente')&&!byStatut[statut];}
-var STATUTS_LIBERES={lapin:1,excuse:1,annule:1,pas_de_retour:1};
+/* Étape 4 d'AG-013 (AG-014) : UNE table des statuts. [clé, libellé, libère la place]. Les jeux « Lapin · Excusé · Annulé ·
+   Pas de retour » écrits en dur ailleurs sont remplacés par estLibere() ; les ordres d'affichage propres à chaque écran
+   restent locaux (un test vérifie qu'aucun jeu local ne diverge de cette table). */
+var STATUTS=[['en_attente','En attente',0],['confirme','Confirmé',0],['realise','Réalisé',0],['excuse','Excusé',1],['annule','Annulé',1],['lapin','Lapin',1],['pas_de_retour','Pas de retour',1]];
+var STATUTS_LIBERES={};STATUTS.forEach(function(s){if(s[2])STATUTS_LIBERES[s[0]]=1;});
+function estLibere(statut){return Object.prototype.hasOwnProperty.call(STATUTS_LIBERES,statut);}
 /* Amendement de Codex sur AG-006 (30/10) : mêmes regroupements à l'écran et dans les nouvelles archives. CMS : `cmsKey` (variantes de casse, accents
    et espaces regroupées, libellé = première forme rencontrée) ; démarches : dictionnaire sans prototype ; types : clés propres seulement. */
 function comptageParCms(entries){
@@ -3462,7 +3466,7 @@ function comptageTypes(entries,types){
   return m;
 }
 /* Audit Codex du 30/10, pt 7 : liste fermée des statuts ; vide, inconnu ou propriété héritée (`toString`) = « en attente », partout. */
-var STATUTS_CONNUS=['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'];
+var STATUTS_CONNUS=STATUTS.map(function(s){return s[0];});
 function statutAffiche(h){return STATUTS_CONNUS.indexOf(h&&h.statut)!==-1?h.statut:'en_attente';}
 var PLACES_PAR_JOURNEE=6;
 /* Places d'une journée de permanence passée (30/10, demande utilisateur : Saint-Pardoux n'a que 3 créneaux) : même règle que les
@@ -3685,7 +3689,7 @@ function buildPermanencesCard(rdv,rerender){
       if(original){releaseSlot(original);rerender();showToast('✓ Créneau libéré');}
       return;
     }
-    var freed=['lapin','excuse','annule','pas_de_retour'].indexOf(t.statut)!==-1;
+    var freed=estLibere(t.statut);
     S.modal='agenda-rdv';
     S.agendaRdv={slot:{heure:info.heure,taken:Object.assign({},t,{_profile:S.activeProfile}),freeAgain:freed,multiPropo:false,allPropo:[],replaced:[]},
       day:{dateStr:day.date,perm:{commune:day.commune},profile:S.activeProfile,date:new Date(day.date+'T12:00:00')}};
@@ -4438,7 +4442,7 @@ function buildICS(rdvs){
     lines.push('DTSTART;TZID=Europe/Paris:'+dtStart);
     lines.push('DTEND;TZID=Europe/Paris:'+dtEnd);
     lines.push('SUMMARY:'+summary);
-    if(ICS_CANCEL_STATUTS.indexOf(h.statut)!==-1)lines.push('STATUS:CANCELLED');
+    if(estLibere(h.statut))lines.push('STATUS:CANCELLED');
     else if(h.statut==='realise')lines.push('STATUS:CONFIRMED');
     lines.push('COLOR:'+icsColorFor(h));
     if(desc)lines.push('DESCRIPTION:'+desc);
@@ -4460,7 +4464,6 @@ function downloadICS(icsText,filename){
 /* statuts qui annulent un RDV auparavant confirmé — exportés en STATUS:CANCELLED
    plutôt qu'omis, pour que la ré-importation dans Google Agenda retire l'événement
    déjà présent (confirmé par un test réel d'import sur SMS-mail) */
-var ICS_CANCEL_STATUTS=['excuse','lapin','pas_de_retour','annule'];
 /* seuls les RDV confirmés (à venir), réalisés (passés) ou annulés après coup
    (excusé/lapin/pas de retour, exportés en CANCELLED) ont vocation à apparaître
    sur un calendrier externe — les propositions encore en attente ne sont pas
@@ -4468,7 +4471,7 @@ var ICS_CANCEL_STATUTS=['excuse','lapin','pas_de_retour','annule'];
    de RDV mais du temps réellement indisponible. */
 /* les blocages internes (indispo) ne sont pas exportés — libellés génériques quasi identiques
    au même horaire, ça perturbait visiblement l'import de gros lots dans Google Agenda */
-function icsExportable(h){return h.msgType!=='indispo'&&(h.statut==='confirme'||h.statut==='realise'||ICS_CANCEL_STATUTS.indexOf(h.statut)!==-1);}
+function icsExportable(h){return h.msgType!=='indispo'&&(h.statut==='confirme'||h.statut==='realise'||estLibere(h.statut));}
 function exportICS(){
   var rdvs=S.history.filter(function(h){return h.date&&h.heure&&icsExportable(h);});
   if(!rdvs.length){showToast('Aucun RDV confirmé à exporter','warn');return;}
@@ -4549,7 +4552,6 @@ function importPlanningJson(){
    prêt à copier ; « envoyé » se note sur la fiche (h.rappelVeille = date du RDV).
    doublons : même personne, même jour, même commune, au moins deux fiches actives — deux cas
    réels (23/09 et 05/10) découverts seulement quand un créneau refusait de se libérer. */
-var RAPPEL_EXCLUS=['pas_de_retour','lapin','excuse','annule','realise'];
 function prochainJourOuvre(){
   var d=new Date();d.setHours(12,0,0,0);
   do{d.setDate(d.getDate()+1);}while(d.getDay()===0||d.getDay()===6);
@@ -4565,13 +4567,12 @@ function doublonsDeFiche(todayStr){
   var depuis=toLocalDateStr(new Date(new Date(todayStr+'T12:00:00').getTime()-30*86400000));
   var groups={};
   S.history.forEach(function(h){
-    if(!h.date||h.date<depuis||!h.nom||h.msgType==='indispo'||FREE_STATUTS_DOUBLON.indexOf(h.statut)!==-1)return;
+    if(!h.date||h.date<depuis||!h.nom||h.msgType==='indispo'||estLibere(h.statut))return;
     var k=h.date+'|'+(h.commune||'')+'|'+(h.nom||'').trim().toLowerCase()+'|'+(h.prenom||'').trim().toLowerCase();
     (groups[k]=groups[k]||[]).push(h);
   });
   return Object.keys(groups).filter(function(k){return groups[k].length>1;}).map(function(k){return groups[k];}).sort(function(a,b){return a[0].date<b[0].date?-1:1;});
 }
-var FREE_STATUTS_DOUBLON=['pas_de_retour','lapin','excuse','annule'];
 function renderRappelsEtDoublons(wrap,todayStr){
   var fmtD=function(d){return d.split('-').reverse().slice(0,2).join('/');};
   var BTN="cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-dim);white-space:nowrap;";
@@ -4593,7 +4594,7 @@ function renderRappelsEtDoublons(wrap,todayStr){
   }
   /* rappels de la veille */
   var cible=prochainJourOuvre();
-  var liste=S.history.filter(function(h){return h.date===cible&&h.heure&&h.nom&&h.msgType!=='indispo'&&RAPPEL_EXCLUS.indexOf(h.statut)===-1;}).sort(function(a,b){return (a.heure||'').localeCompare(b.heure||'');});
+  var liste=S.history.filter(function(h){return h.date===cible&&h.heure&&h.nom&&h.msgType!=='indispo'&&h.statut!=='realise'&&!estLibere(h.statut);}).sort(function(a,b){return (a.heure||'').localeCompare(b.heure||'');});
   if(!liste.length)return;
   var aFaire=liste.filter(function(h){return h.rappelVeille!==h.date;}).length;
   var jour=JOURS_FR[new Date(cible+'T12:00:00').getDay()].toLowerCase()+' '+fmtD(cible);
@@ -6892,7 +6893,7 @@ function renderAgendaRdvDialog(overlay,box){
     var found=locate();if(!found)return null;
     Object.assign(found.entry,patch);if(!writeProfileHistory(owner,found.history))return null;
     t=Object.assign({},found.entry,{_profile:owner});
-    ar.slot=Object.assign({},ar.slot,{taken:t,heure:t.heure,freeAgain:['excuse','lapin','pas_de_retour','annule'].indexOf(t.statut)!==-1});
+    ar.slot=Object.assign({},ar.slot,{taken:t,heure:t.heure,freeAgain:estLibere(t.statut)});
     ar.day=Object.assign({},ar.day,{profile:owner,dateStr:t.date,perm:Object.assign({},(ar.day||{}).perm,{commune:t.commune||commune})});
     return t;
   }
@@ -6980,7 +6981,7 @@ function renderAgendaRdvDialog(overlay,box){
       if(!String(edit.nom||'').trim()||!edit.date||!edit.heure||!edit.commune){showToast('Nom, CMS, date et heure requis','warn');return;}
       var found=locate();if(!found)return;
       if(t.statut!=='annule'&&(edit.date!==t.date||edit.heure!==t.heure||edit.commune!==commune)){
-        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===edit.commune||!h.commune||!edit.commune)&&['pas_de_retour','lapin','excuse','annule'].indexOf(h.statut)===-1;});
+        var occupied=found.history.find(function(h,index){return index!==found.index&&h.date===edit.date&&h.heure===edit.heure&&(h.commune===edit.commune||!h.commune||!edit.commune)&&!estLibere(h.statut);});
         if(occupied&&!confirm('Créneau déjà pris le '+edit.date.split('-').reverse().join('/')+' à '+edit.heure+(occupied.nom?' — '+[occupied.civilite,occupied.prenom,occupied.nom].filter(Boolean).join(' '):'')+'\n\nEnregistrer quand même ?'))return;
       }
       var cmsKeyNew=cmsKey(edit.commune),cmsNew=edit.commune!==commune?S.cmsList.find(function(c){var cn=cmsKey(c.nom);return cn===cmsKeyNew||cmsKeyNew.indexOf(cn)!==-1||cn.indexOf(cmsKeyNew)!==-1;}):null;
