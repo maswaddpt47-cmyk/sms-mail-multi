@@ -170,6 +170,18 @@ récit reste dans `git log`.
 
 **Amendement** : corriger uniquement les deux libellés de valeur zéro pour afficher **« 0 j ouvré »**, sans en déduire une égalité de dates civiles. Garder le pourcentage « le jour même » fondé sur `sameDay`, les calculs, les limites de provenance et les archives inchangés. Ajouter le cas réception veille d'un férié → préparation le férié au contrôle du texte affiché. Aucun autre enrichissement demandé.
 
+
+## AG-025 — Réactivité des anciennes fiches : réception → dernier message enregistré — ouvert le 01/11/2026
+**Auteur** : session 01Sptc2d — lu sur `2e63536`
+**Demande de l'utilisateur (01/11/2026)** : les anciennes fiches sont exclues de « Préparation moy. » faute de `premierePreparationAt` alors que réception et date du message existent ; calculer réception → date du message disponible, hors week-ends et fériés nationaux, sans condition sur `premierePreparationAt` ; libellé « Réception → dernier message enregistré », jamais présenté comme le premier envoi ; première préparation conservée à part ; effectifs calculables et exclusions avec motif ; ni ressaisie, ni migration, ni date inventée ; délai d'attente et archives inchangés.
+**Champs réellement enregistrés** : réception = `dateReception`, ou avant le 22/10 l'ancien champ `dateDemande` (état `ancienne`, AG-023) ; date du message = `ts`, **réécrit à chaque régénération** (donc le **dernier** message), aux formats texte français (« JJ/MM/AAAA HH:MM », ancien), ISO `Z` ou ISO avec décalage de Paris, lus par `lireTs` ; `ts` vide pour les fiches importées.
+**Proposition** : `reactiviteDernierMessage(history, début, fin, CMS)` remplace l'estimation des anciennes fiches dans la tuile (la fonction `legacyPreparationEstimate` reste, inutilisée par l'écran). Délai = `joursOuvresFrance(réception, jour Paris de ts)` ; **toutes** les fiches, avec ou sans première préparation. Période : jour du dernier message ; CMS par `cmsKey`. **Exclusions comptées avec leur motif** : date du message absente ; date du message illisible ou impossible ; dernier message de suivi (relance, rappel de la veille, lapin, ou `dateRelance`) — il ne mesure pas la réponse à la demande ; réception à confirmer (date du message après le 22/10) ; réception absente ; réception invalide ; dernier message antérieur à la réception. Une date du message illisible ne se rattache à aucune période : comptée quelle que soit la période, et dit.
+**Affichage** : tuile « Réception → dernier message enregistré » : **médiane en jours ouvrés** (fériés exclus) en grand ; notes : fiches calculables, part le même jour civil, exclusions par motif, limite « le dernier message n'est pas forcément le premier envoi ; une fiche régénérée compte plus long ». « Préparation moy. (jours ouvrés) » inchangée, à côté.
+**Choix faits par Claude, à trancher** : médiane (et non moyenne : `ts` réécrit produit des valeurs extrêmes) ; médiane en grand, la part « le même jour » en note (le 22/10, le pourcentage était passé en grand pour l'estimation : à rétablir si tu préfères) ; messages de suivi exclus.
+**Critère déclencheur** : 7 (chiffre affiché). Contradicteur : **Codex**, après livraison (circuit allégé).
+**Ce que ça engage** : calcul d'affichage, rien de stocké, aucune donnée modifiée ; délai d'attente, première préparation, archives et bilan inchangés.
+**Si personne ne répond, je fais quoi ?** Livraison testée et en ligne ; Codex vérifie une fois.
+
 ---
 
 # Vérification des étapes d'AG-013
