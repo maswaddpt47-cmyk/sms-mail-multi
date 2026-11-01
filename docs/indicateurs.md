@@ -1,5 +1,7 @@
 # Définitions des indicateurs — sms-mail-multi
 
+> Mise à jour du 01/11/2026 : les Statistiques courantes utilisent désormais le **dernier message enregistré** (AG-026, `1f12de9`), anciennes fiches comprises, pour total/canaux/types/CMS/graphique. La section historique « Fiches préparées » ci-dessous décrit AG-015 et les archives, pas la population actuelle de cet écran. Le bilan mensuel est étendu à tous les indicateurs (AG-027) : inventaire et correspondance dans [`bilan-mensuel.md`](bilan-mensuel.md). Les rendez-vous suivent leur mois, les messages leur propre mois ; les prévisions et vues annuelles sont datées hors mois.
+
 Étape 1 d'AG-013 (31/10/2026). Ce fichier décrit **ce que le code calcule aujourd'hui** (`main`
 `ecdaf0f`), indicateur par indicateur ; il ne change aucun calcul. Les numéros renvoient à
 `index.html`. Les choix métier tranchés par l'utilisateur le 31/10/2026 sont en fin de fichier,

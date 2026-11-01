@@ -50,6 +50,7 @@ jobs:
           node scripts/check-activite.js
           node scripts/check-delai-attente.js
           node scripts/check-reception.js
+          node scripts/check-bilan-complet.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -64,6 +65,7 @@ jobs:
           node scripts/check-activite.js
           node scripts/check-delai-attente.js
           node scripts/check-reception.js
+          node scripts/check-bilan-complet.js
 
   deploy:
     needs: tests

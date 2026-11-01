@@ -4310,19 +4310,94 @@ function monthlyReportData(history,month,cms,now){
     nonPointes:typeof isAPointer==='function'?total.past.filter(isAPointer).length:null};
 }
 
+/* AG-027 : rapport complet, modèles partagés ; aucune écriture dans les données du profil. */
+function monthlyReportComplete(history,month,cms,now,context){
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month||''))return null;
+  var d=monthlyReportData(history,month,cms,now);if(!d)return null;
+  var c=context||{},today=parisDayStr(now||new Date()),start=month+'-01',end=d.today;
+  var hist=history.filter(function(h){return h.date&&h.date>=start&&h.date<=end&&String(h.date).slice(0,7)===month;});
+  var rdv=statsRdvModel(hist,[],'all',cms,new Date(end+'T12:00:00+01:00'),c.permanences||[]);
+  var fiches=fichesMessagesModel(history,start,end,cms),dm=reactiviteDernierMessage(history,start,end,cms);
+  var delai=delaiAttenteParCms(rdv.entries),ss=rdvSansSuite(rdv.entries,today);
+  var futurs=statsRdvModel(history,c.permanences||[],'all',cms,now||new Date());
+  var heat={},seen=Object.create(null),year=Number(today.slice(0,4))-(Number(today.slice(5,7))<7?1:0),heatStart=year+'-07-01';
+  /* Même fenêtre que la heatmap : lundi de la semaine du 1er juillet → dimanche de la semaine courante. */
+  var a=new Date(heatStart+'T12:00:00'),z=new Date(today+'T12:00:00');
+  a.setDate(a.getDate()-(a.getDay()+6)%7);z.setDate(z.getDate()+6-(z.getDay()+6)%7);
+  var heatDu=toLocalDateStr(a),heatAu=toLocalDateStr(z);
+  history.forEach(function(h){if(h.msgType==='indispo'||!h.date||h.date<heatDu||h.date>heatAu||cms&&cmsKey(h.commune)!==cmsKey(cms))return;var k=h.date+'|'+cmsKey(h.commune)+'|'+(h.heure||'');if(seen[k])return;seen[k]=true;heat[h.date]=(heat[h.date]||0)+1;});
+  d.stats={rates:rdv.slotRates,rdvMonths:rdv.byMonth,lapinDays:rdv.lapinDays,
+    fiches:{total:fiches.fiches.length,canaux:fiches.canaux,personnes:fiches.personnes,types:fiches.types,byCms:fiches.byCms,byMonth:fiches.byMonth,nonMesurables:fiches.nonMesurables,
+      sansCms:fiches.fiches.filter(function(h){return !h.commune;}).length},reactivite:dm,
+    delai:{global:delai.global,parCms:delai.ordre.map(function(k){return delai.parCms[k];})},
+    sansSuite:{lapin:ss.lapin.length,pasDeRetour:ss.pasDeRetour.length,aPointer:ss.aPointer.length},
+    contexte:{today:today,free:futurs.days.length?futurs.free:null,days:futurs.days.map(function(x){return {date:x.date,cms:x.commune,total:x.total,free:x.free,occupied:x.occupied,released:x.releasedN,pending:x.pending,completed:x.completed,blocked:x.blocked,overbooked:x.overbooked};}),heat:heat,heatDu:heatDu,heatAu:heatAu,
+      activite:activiteParCms(c.orientations||[],history,c.yearlyStats||{},today,c.secteurs||[])}};
+  d.empty=!d.entries&&!fiches.fiches.length;
+  return d;
+}
+function monthlyReportSupplementHtml(d){
+  if(!d.stats)return '';
+  var s=d.stats,f=s.fiches,r=s.rates,dm=s.reactivite,c=s.contexte;
+  function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function num(x){return x===null||x===undefined?'—':Number(x).toLocaleString('fr-FR');}
+  function pct(n,t){return t?Math.round(n/t*100)+' %':'—';}
+  function table(headers,rows){return '<table><tr>'+headers.map(function(x){return '<th>'+esc(x)+'</th>';}).join('')+'</tr>'+rows.map(function(row){return '<tr>'+row.map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>';}).join('')+'</table>';}
+  function section(title,content){return '<section><h2>'+esc(title)+'</h2>'+content+'</section>';}
+  function kpis(rows){return '<div class="bilan-kpis">'+rows.map(function(x){return '<div class="bilan-kpi"><span class="bilan-kpi-value">'+esc(x[0])+'</span><span class="bilan-kpi-label">'+esc(x[1])+'</span><span class="unit" style="display:block">'+esc(x[2]||'')+'</span></div>';}).join('')+'</div>';}
+  var h=section('Taux des rendez-vous du mois',kpis([
+    [pct(r.realised,r.total),'Taux de concrétisation',r.realised+' créneaux réalisés / '+r.total+' créneaux attribués'],
+    [pct(r.lapins,r.total),'Taux de lapin',r.lapins+' créneaux avec lapin / '+r.total+' créneaux attribués'],
+    [pct(r.total,r.places),'Taux de remplissage',r.total+' créneaux / '+r.places+' places ('+r.jours+' journées, dont '+r.joursDemi+' demi-journées à 3 places)'],
+    [pct(r.occupes,r.places),'Remplissage net',r.occupes+' créneaux non libérés / '+r.places+' places']
+  ])+'<p class="unit">Un créneau = date + CMS + heure ; plusieurs fiches peuvent partager un créneau. Réalisé et lapin peuvent se cumuler. Base : 6 places par journée, 3 par demi-journée. '+r.sansHeure+' RDV sans heure exclus des taux ; journées sans RDV non comptées. Le remplissage peut dépasser 100 %.</p>');
+  var keys=['realise','confirme','en_attente','excuse','annule','lapin','pas_de_retour','a_verifier'];
+  var labels=['Réalisé','Confirmé','En attente','Excusé','Annulé','Lapin','Pas de retour','Statut à vérifier'];
+  h+=section('Rendez-vous par mois',table(['Mois'].concat(labels),Object.keys(s.rdvMonths).sort().map(function(m){return [m].concat(keys.map(function(k){return s.rdvMonths[m][k]||0;}));})));
+  h+=section('Lapins par permanence',table(['Date','CMS','Créneaux avec lapin','Créneaux attribués','Part'],s.lapinDays.map(function(x){return [x.date,x.commune,x.lapins,x.total,pct(x.lapins,x.total)];}))+'<p class="unit">Toutes les journées du mois comportant un lapin, sans tronquer à dix.</p>');
+  h+=section('Fiches par date du message',
+    '<p>Une fiche = un dossier au jour de son dernier message enregistré, anciennes fiches comprises. Une régénération peut changer son mois. Ce total ne compte pas les envois. Mois du message, indépendant du mois du rendez-vous.</p>'+kpis([
+      [f.total,'Fiches avec message daté'],[f.canaux.sms,'SMS'],[f.canaux.mail,'Mails'],[f.canaux.inconnu,'Canal inconnu'],[f.personnes,'Usagers','nom + prénom ; pas une identification certaine']
+    ])+'<p class="unit">'+f.nonMesurables+' fiches sans date du message lisible, hors total et hors graphique ; période inconnue, comptées pour le CMS choisi quelle que soit la période.</p>');
+  h+=section('Réception → dernier message enregistré',kpis([[pct(dm.memeJour,dm.n),'Le même jour',dm.memeJour+' / '+dm.n+' fiches calculables ; même date civile'],[num(dm.moyenne),'Moyenne en jours ouvrés','week-ends et jours fériés nationaux exclus']])+
+    '<p>Le dernier message n’est pas forcément le premier envoi (non enregistré) : une fiche régénérée compte plus long.</p>'+table(['Exclusion','Fiches'],Object.keys(dm.exclus).map(function(k){return [MOTIFS_DERNIER_MESSAGE[k],dm.exclus[k]];}))+'<p class="unit">Exclues : '+dm.nExclus+' ; dont '+dm.horsPeriodeInconnue+' sans date du message lisible, comptées quelle que soit la période.</p>');
+  h+=section('Fiches par mois du message',table(['Mois','SMS','Mails','Canal inconnu'],Object.keys(f.byMonth).sort().map(function(m){var x=f.byMonth[m];return [m,x.sms,x.mail,x.inconnu];})));
+  var typeTotal=['proposition','confirmation','sans_appel'].reduce(function(n,k){return n+(f.types[k]||0);},0);
+  h+=section('Répartition par type du dernier message',table(['Type','Fiches','Part des trois types principaux'],[['proposition','Proposition'],['confirmation','Confirmation'],['sans_appel','Sans appel']].map(function(x){return [x[1],f.types[x[0]]||0,pct(f.types[x[0]]||0,typeTotal)];}))+'<p class="unit">Même dénominateur que les Statistiques : proposition + confirmation + sans appel. Les relances restent comptées au mois du RDV : '+d.followup.recorded+' / '+d.entries+' ('+pct(d.followup.recorded,d.entries)+'). Les autres types sont hors de ces parts.</p>');
+  h+=section('Fiches avec message daté par CMS / commune',table(['CMS','Fiches'],f.byCms.map(function(x){return [x.nom,x.n];}).concat(f.sansCms?[['CMS non renseigné',f.sansCms]]:[])));
+  h+=section('RDV sans suite — à recontacter ?',table(['Catégorie','Fiches'],[['Lapins',s.sansSuite.lapin],['Pas de retour',s.sansSuite.pasDeRetour],['RDV à pointer',s.sansSuite.aPointer]])+'<p class="unit">À pointer = confirmé dont la date est passée au jour d’édition. Une personne déjà recontactée depuis reste comptée ; ce statut ne prouve pas une absence d’accompagnement.</p>');
+  var g=s.delai.global;
+  function delaiRow(x){return [x.nom||'Tous les CMS',num(x.mediane),x.mesurables,x.reprise,x.sansReception,x.incoherente,x.anciennes,num(x.medianePremiers),x.nPremiers,x.suivis];}
+  h+=section('Délai d’attente : réception de la demande → RDV',table(['CMS','Médiane (j calendaires)','Mesurables','À confirmer','Absente ou invalide','Après le RDV','Réceptions anciennes','Médiane premiers RDV (j)','Premiers RDV','Suivis écartés'],[delaiRow(g)].concat(s.delai.parCms.map(delaiRow)))+
+    '<p class="unit">Médianes sur les seules fiches mesurables. Réceptions anciennes : saisies avant le 22/10/2026 dans l’ancien champ prérempli ; une date laissée telle quelle compte. Premier RDV : même nom + prénom et même réception, RDV le plus tôt dans la population ; diagnostic, sans identification certaine. Aucune réception reconstruite.</p>');
+  h+='<section><h2>Contexte au '+esc(c.today)+' — hors mois du bilan</h2><p>Les prévisions suivantes décrivent le jour d’édition ; elles ne reconstituent pas les places disponibles à la fin du mois sélectionné.</p>'+kpis([[num(c.free),'Places disponibles à venir',c.days.length+' permanences à venir · '+c.days.reduce(function(n,x){return n+x.total;},0)+' créneaux']])+table(['Date','CMS','Capacité','Disponibles','Réservés','Libérés ce jour','En attente','Réalisés','Bloqués','Dépassement'],c.days.map(function(x){return [x.date,x.cms,x.total,x.free,x.occupied,x.released,x.pending,x.completed,x.blocked,x.overbooked||0];}))+'</section>';
+  var heatRows=[],dates=Object.keys(c.heat).sort();for(var i=0;i<dates.length;i+=4){var row=[];for(var j=0;j<4;j++){var date=dates[i+j];row.push(date||'',date?c.heat[date]:'');}heatRows.push(row);}
+  h+=section('Activité annuelle — contexte du '+c.heatDu+' au '+c.heatAu,table(['Date','Créneaux','Date','Créneaux','Date','Créneaux','Date','Créneaux'],heatRows)+'<p class="unit">Comme la heatmap des Statistiques : créneaux distincts, hors blocages, CMS choisi ; dates non listées = 0. Hors filtre du mois.</p>');
+  var act=c.activite,months=act.fenetre.mois;
+  var active=act.cms.filter(function(cms){return months.some(function(m){return act.demandes[cms][m]||act.rdv[cms][m];});});
+  var debut=months.findIndex(function(m){return act.archives[m]||active.some(function(cms){return act.demandes[cms][m]||act.rdv[cms][m];});});
+  var rows=[];(debut<0?[]:months.slice(debut)).forEach(function(m){active.forEach(function(cms){rows.push([m,cms,act.demandes[cms][m],act.archives[m]?'— (année archivée, détail indisponible)':act.rdv[cms][m]]);});});
+  var totauxCms=active.map(function(cms){return [cms,months.reduce(function(n,m){return n+act.demandes[cms][m];},0),months.reduce(function(n,m){return n+act.rdv[cms][m];},0)+(Object.keys(act.archives).length?' (partiel)':'')];});
+  var totauxMois=(debut<0?[]:months.slice(debut)).map(function(m){return [m,active.reduce(function(n,cms){return n+act.demandes[cms][m];},0),act.archives[m]?'— (année archivée)':active.reduce(function(n,cms){return n+act.rdv[cms][m];},0)];});
+  h+=section('Activité par CMS — 12 derniers mois (contexte)', '<p>Du '+esc(act.fenetre.du)+' au '+esc(act.fenetre.au)+' ; tous les CMS reconnus, indépendamment du mois et du CMS du bilan, comme les Statistiques. Deux calendriers différents : aucun taux entre demandes et RDV.</p>'+table(['Mois','CMS','Demandes enregistrées','RDV réalisés'],rows)+table(['Total par CMS reconnu','Demandes','RDV réalisés détaillés'],totauxCms)+table(['Total par mois (CMS reconnus)','Demandes','RDV réalisés détaillés'],totauxMois)+
+    '<p class="unit">'+act.orientations.presentes+' orientations présentes sur cet appareil ; '+act.orientations.avant+' avant la fenêtre, '+act.orientations.apres+' après aujourd’hui. Couverture non certifiée : orientations effacées ou jamais importées absentes, réimports potentiellement comptés deux fois.</p>'+table(['Hors tableau','Effectif'],Object.keys(act.anomalies).map(function(k){var noms={dateInconnue:'Date inconnue (toutes périodes)',dateImprobable:'Date improbable avant 2020',cmsNonReconnu:'CMS non reconnu',cmsAmbigu:'CMS ambigu',rdvSansCms:'RDV sans CMS',rdvHorsListe:'RDV avec CMS hors liste'};return [noms[k],act.anomalies[k]];}))+
+    table(['Mois archivé','Réalisés tous CMS (archive, séparés du détail)'],Object.keys(act.archives).sort().map(function(m){return [m,num(act.archives[m].realisesTousCms)];}))+'<p class="unit">Années archivées : détail par CMS indisponible, jamais remplacé par zéro ; totaux détaillés partiels. Sans orientation présente : aucune demande à compter sur cet appareil.</p>');
+  return h;
+}
+
 var BILAN_CSS='.bilan{font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.5;}'
   +'.bilan h1{font-size:20px;margin:0 0 4px;}.bilan h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #333;padding-bottom:3px;}'
   +'.bilan .sub{font-size:12px;color:#555;margin-bottom:14px;}.bilan table{width:100%;border-collapse:collapse;font-size:12px;}'
   +'.bilan td,.bilan th{border:1px solid #bbb;padding:5px 8px;text-align:left;vertical-align:top;}.bilan th{background:#f0f0f0;}'
   +'.bilan td.n{text-align:right;}.bilan .tw{overflow-x:auto;}.bilan ul{margin:6px 0 0;padding-left:18px;font-size:12px;}.bilan .vide{padding:12px;border:1px dashed #999;}'
-  +'.bilan section{break-inside:avoid;page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}'
+  +'.bilan section{break-inside:auto;page-break-inside:auto;}.bilan tr,.bilan .bilan-kpi{break-inside:avoid;page-break-inside:avoid;}.bilan .unit{color:#555;font-size:11px;}'
   +'.bilan .bilan-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0;}.bilan .bilan-kpi{min-width:0;border:1px solid #c7d3df;border-radius:10px;background:#f3f6fa;padding:12px;}'
   +'.bilan .bilan-kpi-value{display:block;font-size:34px;font-weight:700;line-height:1.15;color:#183f59;margin-bottom:6px;}.bilan .bilan-kpi-label{font-size:13px;font-weight:700;overflow-wrap:anywhere;}'
   +'.bilan .bilan-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 0;color:#444;font-size:12px;}.bilan .bilan-total strong{font-size:18px;color:#1a1a2e;}'
   +'.bilan .bilan-followup{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-left:3px solid #5c778b;background:#f3f6fa;padding:10px 12px;margin:10px 0 6px;}.bilan .bilan-followup strong{font-size:24px;line-height:1.2;white-space:nowrap;}.bilan .bilan-followup p{margin:0;font-weight:700;}.bilan .bilan-followup-note{margin:6px 0;color:#555;font-size:11px;}'
   +'.bilan .bilan-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border:1px solid #999;border-radius:50%;color:#666;font-size:9px;font-weight:700;cursor:help;vertical-align:middle;}'
   +'@media(max-width:420px){.bilan h1{font-size:18px;}.bilan .bilan-kpi{padding:10px;}.bilan .bilan-kpi-value{font-size:30px;}.bilan td,.bilan th{padding:5px 6px;}}'
-  +'@media print{.bilan .bilan-info{display:none;}.bilan .bilan-kpi,.bilan .bilan-followup{background:none;border-color:#999;}.bilan .bilan-kpi-value{font-size:30px;color:#1a1a2e;}}';
+  +'@media print{.bilan .tw{overflow:visible;}.bilan table{table-layout:fixed;font-size:10px;}.bilan td,.bilan th{overflow-wrap:anywhere;padding:4px;}.bilan .bilan-info{display:none;}.bilan .bilan-kpi,.bilan .bilan-followup{background:none;border-color:#999;}.bilan .bilan-kpi-value{font-size:30px;color:#1a1a2e;}}';
 function monthlyReportHtml(d,meta){
   function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   var NAMES=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -4337,7 +4412,7 @@ function monthlyReportHtml(d,meta){
     repartition:'Part de chaque statut parmi les rendez-vous enregistrés du mois.'
   };
   function info(cle){return meta.infobulles&&INFOS[cle]?'<span class="bilan-info" tabindex="0" role="note" aria-label="'+esc(INFOS[cle])+'" data-tip="'+esc(INFOS[cle])+'">i</span>':'';}
-  var h='<div class="bilan"><h1>Bilan mensuel des rendez-vous — '+esc(title)+'</h1>'
+  var h='<div class="bilan"><h1>Bilan mensuel d’activité — '+esc(title)+'</h1>'
     +'<div class="sub">'+(d.cms?'CMS : '+esc(d.cms):'Tous les CMS')+' · Profil : '+esc(meta.profil||'—')+' · Établi le '+esc(meta.date||'')+(d.partiel?' · <b>Mois en cours : chiffres arrêtés au '+esc(String(d.today).split('-').reverse().join('/'))+', rendez-vous à venir non comptés</b>':'')+'</div>';
   if(d.empty){
     h+='<p class="vide">Aucun rendez-vous daté de ce mois dans l’historique détaillé de ce profil'+(d.cms?' pour ce CMS':'')+'.'
@@ -4368,7 +4443,9 @@ function monthlyReportHtml(d,meta){
     if(d.sansCms&&!d.cms)h+='<tr><td>CMS non renseigné</td><td class="n">'+d.sansCms+'</td><td class="n">'+d.sansCmsRealised+'</td></tr>';
     h+='</table></section>';
   }
+  h+=monthlyReportSupplementHtml(d);
   h+='<section><h2>Sources et limites</h2><ul>'
+    +(d.stats?'<li>Rapport enrichi : rendez-vous au mois du RDV ; fiches et réactivité au mois du dernier message. Chaque section indique sa population. Les vues de contexte au jour d’édition sont hors mois ; les archives n’apparaissent que dans le contexte des 12 mois, séparées du détail.</li>':'')
     +'<li>Source : historique détaillé du profil « '+esc(meta.profil||'—')+' » (rendez-vous enregistrés), rendez-vous datés du mois'+(d.cms?' pour le CMS '+esc(d.cms):'')+', indisponibilités exclues. Les autres conseillers et les archives annuelles agrégées ne sont pas incluses.</li>'
     +'<li>Les décomptes de rendez-vous portent sur les <b>rendez-vous enregistrés</b> : un rendez-vous annulé, excusé ou lapin puis remplacé par une autre personne reste compté.</li>'
     +'<li>Une relance renseignée correspond à une date ou un type de relance enregistré, sans confirmation de l’envoi du message. Certaines anciennes dates ajoutées automatiquement peuvent être présentes et ne sont pas distinguées des relances réelles.</li>'
@@ -4620,7 +4697,7 @@ function renderStats(){
   });
   headRow.appendChild(pills);
   var bilanBtn=el('button',{class:'gx-press ui-stats-bilan',type:'button',onClick:function(){
-    var months={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))months[h.date.slice(0,7)]=true;});
+    var months={};S.history.forEach(function(h){var lu=lireTs(h.ts);if(lu)months[lu.jour.slice(0,7)]=true;if(h.date&&/^\d{4}-\d{2}/.test(h.date))months[h.date.slice(0,7)]=true;});
     var list=Object.keys(months).sort().reverse(),cur=jourParis().slice(0,7);
     S._bilan={month:list.indexOf(cur)!==-1?cur:(list[0]||cur),cms:S.statsCMS||''};
     S.modal='bilan';renderModal();}},'📄 Bilan mensuel');
@@ -8055,7 +8132,7 @@ function renderModal(){
     box.style.maxWidth='780px';box.style.maxHeight='92vh';box.style.overflowY='auto';
     box.appendChild(header('📄 Bilan mensuel'));
     var bc=S._bilan||(S._bilan={month:jourParis().slice(0,7),cms:''});
-    var bMonths={},bCms={};S.history.forEach(function(h){if(h.date&&/^\d{4}-\d{2}/.test(h.date))bMonths[h.date.slice(0,7)]=true;if(h.commune&&h.msgType!=='indispo')bCms[h.commune]=true;});
+    var bMonths={},bCms={};S.history.forEach(function(h){var lu=lireTs(h.ts);if(lu)bMonths[lu.jour.slice(0,7)]=true;if(h.date&&/^\d{4}-\d{2}/.test(h.date))bMonths[h.date.slice(0,7)]=true;if(h.commune&&h.msgType!=='indispo')bCms[h.commune]=true;});
     bMonths[bc.month]=true;
     var bCtl=el('div',{style:"display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"});
     var bSelM=el('select',{class:'gx-in ui-stats-select','aria-label':'Mois du bilan'});
@@ -8067,7 +8144,7 @@ function renderModal(){
     Object.keys(bCms).sort().forEach(function(c){bSelC.appendChild(el('option',{value:c,selected:c===bc.cms},c));});
     bSelC.addEventListener('change',function(){bc.cms=this.value;renderModal();});
     bCtl.appendChild(bSelM);bCtl.appendChild(bSelC);box.appendChild(bCtl);
-    var bData=monthlyReportData(S.history,bc.month,bc.cms,new Date());
+    var bData=monthlyReportComplete(S.history,bc.month,bc.cms,new Date(),{permanences:S.permanences,orientations:S.orientations,yearlyStats:S.yearlyStats,secteurs:S.secteurs});
     var bMeta={infobulles:true,profil:(getProfile(S.activeProfile)||{}).nom||S.activeProfile,date:jourParis().split('-').reverse().join('/'),archivedYear:!!(S.yearlyStats&&S.yearlyStats[bData.year])};
     var bHtml=monthlyReportHtml(bData,bMeta);
     box.appendChild(el('style',{},BILAN_CSS));

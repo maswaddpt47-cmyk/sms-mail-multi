@@ -1,6 +1,10 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026**, base `main` `6d401eb` + cette livraison. **AG-026 ouvert** : activité des fiches datée au dernier message enregistré, sur demande explicite de l'utilisateur ; anciennes fiches comprises sans inventer de première préparation. Déploiement suivi par le workflow Pages de `main`. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026**, base `main` `1f12de9` + cette livraison AG-027. **AG-026 ouvert** : activité des fiches datée au dernier message enregistré, sur demande explicite de l'utilisateur ; anciennes fiches comprises sans inventer de première préparation. Déploiement suivi par le workflow Pages de `main`. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+
+## Bilan mensuel complet — demande du 01/11/2026
+
+AG-027 ouvert, inventaire `docs/bilan-mensuel.md`. Tous les indicateurs des Statistiques sont repris dans le bilan et l’impression, sans modifier les données. Mois du RDV et du dernier message distincts ; prévisions et vues annuelles datées hors mois. Les taux sont de nouveau inclus sur demande explicite, remplaçant la limitation d’AG-011. Vérifié : 10 scripts en UTC et Europe/Paris (20 exécutions), mutation sans filtre de mois rejetée dans les deux fuseaux ; vraie fenêtre dans Chromium à 390/1280 px (aucun débordement ni erreur JS), PDF A4 de la démo généré et contrôlé. Publication sur main en cours ; contradiction externe après livraison. AG-026 inchangé, aucune auto-réponse.
 
 ## ⏩ Passation du 01/11/2026 à 18:20 — À LIRE EN PREMIER
 

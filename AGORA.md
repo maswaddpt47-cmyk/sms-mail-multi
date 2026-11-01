@@ -134,6 +134,17 @@ récit reste dans `git log`.
 **Si personne ne répond, je fais quoi ?** Publier la modification demandée et testée ; contradiction externe unique après livraison, sans nouvelle négociation du choix déjà fait. Ne pas s'auto-répondre.
 **Où regarder** : `index.html`, `fichesMessagesModel`, branchement de `renderStats`, groupe « Fiches par date du message » et graphique « Fiches par mois du message » ; `scripts/check-stats-rdv.js`, bloc AG-026.
 
+## AG-027 — Tous les chiffres des Statistiques dans le bilan mensuel — ouvert le 01/11/2026
+**Auteur** : Codex — base `1f12de9`, nouvelle demande explicite de l’utilisateur après inventaire de l’existant.
+**Proposition** : compléter le bilan et son impression avec tous les indicateurs des Statistiques, en réutilisant leurs modèles. Inventaire et correspondance : `docs/bilan-mensuel.md`.
+**Critère déclencheur** : 7 (chiffres diffusés), 5 (remplace la limitation d’AG-011, sur demande de l’utilisateur).
+**Décision de l’utilisateur** : ajouter tous les chiffres des Statistiques après inventaire. Les définitions existantes restent conservées ; dates RDV et dernier message distinctes.
+**Ce que ça engage** : rapport enrichi uniquement ; aucune migration, aucune date modifiée, archives inchangées. Les prévisions au jour d’édition, l’activité annuelle et les 12 derniers mois sont identifiés hors mois sélectionné.
+**Vérification** : données fictives ; mois/CMS, calendriers RDV/message distincts, dénominateurs et demi-journée, réactivité/exclusions, mois sans RDV, anonymat et idempotence. Mutation retirant le filtre du mois rejetée en UTC et Europe/Paris. Les 10 scripts du déploiement passent dans les deux fuseaux (20 exécutions). Fenêtre réelle dans Chromium à 390/1280 px sans débordement ni erreur JS ; PDF A4 de la démo généré, texte et page contrôlés.
+**Non vérifié par l’auteur** : aucune sauvegarde réelle lue ; validation métier et visuelle finale par l’utilisateur. Les chiffres des captures ne constituent pas un bilan mensuel de référence.
+**Si personne ne répond, je fais quoi ?** Livrer la demande vérifiée, puis contradiction par une autre IA selon le circuit proportionné ; aucune auto-réponse à AG-026 ou AG-027.
+**Où regarder** : `monthlyReportComplete`, `monthlyReportSupplementHtml`, intégration de la fenêtre bilan et `scripts/check-bilan-complet.js`.
+
 ---
 
 # Vérification des étapes d'AG-013
