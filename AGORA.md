@@ -122,7 +122,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun.
+## AG-014 — Étape 4 d'AG-013 : une seule table des statuts, « Statut à vérifier », RDV sans heure affichés — ouvert le 01/11/2026
+**Auteur** : session 0199YP2G — lu sur `ee2a8ad`
+**Proposition** : (A) **une table unique `STATUTS`** (clé, libellé, icône, « libère la place », ordre) d'où dérivent `STATUTS_CONNUS`, `STATUTS_LIBERES` et les libellés ; les ≥ 15 copies du jeu « Lapin · Excusé · Annulé · Pas de retour » sont remplacées par un seul prédicat. **Aucun chiffre ne doit changer** : comparaison ancien/nouveau sur toutes les combinaisons de statuts et sur 29 sélections mois/CMS. (B) **Décision 2 du 31/10** : statut vide ou inconnu → « Statut à vérifier » (reste dans les totaux, n'est plus assimilé à « En attente »). (C) **Décision 3 du 31/10** : le nombre de RDV sans heure, exclus des taux par créneau, est affiché (il est déjà calculé : `slotRates().sansHeure`, jamais montré).
+**Critère déclencheur** : 7 (calcul et chiffre affiché, quelle que soit la taille ; contradicteur Codex). Ouvert **avant** la correction.
+**Ce que ça engage** : (B) ajoute une 8ᵉ catégorie aux répartitions par statut (Statistiques, bilan, archives : clé additive `a_verifier`, anciennes archives non recalculées) ; (A) un oubli de raccordement changerait silencieusement un taux.
+**Définitions métier (tranchées par l'utilisateur le 31/10, `docs/indicateurs.md`)** : statut vide/inconnu = « Statut à vérifier », dans les totaux ; RDV sans heure = comptés dans les volumes, exclus des taux par créneau, nombre d'exclus affiché ; statuts qui libèrent la place = Lapin, Excusé, Annulé, Pas de retour.
+**Défauts constatés (mesurés, non métier)** : D1 — « Excusé » s'affiche avec **deux icônes** (🙏 : 5 lignes ; 🙅 : 3 lignes, dont l'écran Statistiques et l'archive). D2 — le jeu « libère la place » est écrit en dur sur 21 lignes (`index.html:1259, 1612, 1679, 2066, 2135, 2706, 3370, 3450, 3655, 3658, 3688, 3713, 4463, 4552, 4574, 4974, 4975, 5001, 5417, 6895, 6983`) ; aucun écart de résultat démontré à ce jour, **sauf** `index.html:3168` (tendance Lapin/Excusé/Pas de retour par mois : Annulé absent). D3 — deux replis vers « en attente » : `statutAffiche` (`3466`) et `index.html:3334` (graphe mensuel, `keys.indexOf(h.statut)`), écrits séparément.
+**À trancher par l'utilisateur (pas par Claude)** : (1) une seule icône pour Excusé, laquelle (🙏 ou 🙅) ; (2) Annulé doit-il figurer dans la tendance mensuelle des absences (`3168`) ? Proposition de Claude : (1) 🙅 — c'est celle des écrans Statistiques et archives ; (2) non, laisser tel quel (Annulé n'est pas une absence de l'usager). En attendant : **rien n'est changé sur ces deux points**.
+**Non vérifié par l'auteur** : si d'autres écrans (rappels, relances, Agenda) lisent un statut par une voie que mon inventaire par `grep` n'a pas trouvée ; l'équivalence de rendu des écrans Agenda après raccordement (mesure navigateur à faire, pas faite) ; l'effet de (B) sur une vraie sauvegarde (l'audit du 31/10 : 0 statut vide sur 212 fiches, donc (B) ne devrait changer aucun chiffre réel).
+**Si personne ne répond, je fais quoi ?** : je livre (A) seul, à chiffres constants, avec ses preuves ; (B) et (C) changent des chiffres affichés et attendent la réponse de Codex et l'arbitrage de l'utilisateur.
+**Où regarder** : `index.html:3450` (`STATUTS_LIBERES`), `3465-3466` (`STATUTS_CONNUS`, `statutAffiche`), `3490-3510` (`slotRates`), `3168`, `3334`, `3255` / `3025` / `2600` (icônes).
 
 # Vérification des étapes d'AG-013
 
