@@ -9,6 +9,7 @@ assert(from>=0&&to>from,'Bloc PREPARATION METRICS absent ou incomplet.');
 const context=vm.createContext({Date,Intl});
 vm.runInContext(html.slice(from,to),context);
 vm.runInContext(html.match(/function cmsKey\(c\)\{[^\n]*\}/)[0],context);
+vm.runInContext(html.match(/function ficheSansMessage\(h\)\{[^\n]*\}/)[0],context);   // D1 (AG-026) : fiche sans message
 {const i=html.indexOf('function parisDayStr(');vm.runInContext(html.slice(i,html.indexOf('function cmsKey(',i)),context);}   // AG-016 : lireTs, jourParis (lecteur unique de ts)   // utilisé par preparationCohort (audit 30/10, pt 2)
 assert.equal(typeof context.businessDaysBetween,'function');
 assert.equal(typeof context.preparationStats,'function');
@@ -80,13 +81,19 @@ const DM=[
 const avantDM=JSON.stringify(DM);
 let q=context.reactiviteDernierMessage(DM,null,null,'Fumel');
 assert.equal(q.n,4,'A, B, C, J calculables');assert.equal(q.mediane,1,'médiane de 0, 1, 1, 2');assert.equal(q.memeJour,1);
-assert.deepEqual(JSON.parse(JSON.stringify(q.exclus)),{ts_absent:1,ts_illisible:2,suivi:2,reception_a_confirmer:1,reception_absente:1,reception_invalide:1,inversee:1});
+assert.deepEqual(JSON.parse(JSON.stringify(q.exclus)),{sans_message:0,ts_absent:1,ts_illisible:2,suivi:2,reception_a_confirmer:1,reception_absente:1,reception_invalide:1,inversee:1});
 assert.equal(q.nExclus,9);assert.equal(q.horsPeriodeInconnue,0,'sans période : rien à signaler');
 q=context.reactiviteDernierMessage(DM,null,null,'');assert.equal(q.n,5,'tous CMS : K en plus');
 q=context.reactiviteDernierMessage(DM,'2026-11-01','2026-11-30','fumel ');
 assert.equal(q.n,1,'novembre : C seule');assert.equal(q.mediane,1);assert.equal(q.exclus.ts_absent+q.exclus.ts_illisible,3,'dates illisibles comptées quelle que soit la période');assert.equal(q.horsPeriodeInconnue,3);
 assert.equal(q.exclus.inversee,0,'F (octobre) hors période');
 assert.equal(JSON.stringify(DM),avantDM,'lecture seule');
+// D1 (AG-026) : un RDV importé (body:'' explicite) n'est pas un dossier avec message ; motif propre, période par sa date d'import si lisible.
+{const ics={msgType:'rdv',body:'',channel:'sms',commune:'Fumel',dateReception:'2026-10-07',ts:'2026-11-01T22:25:25+01:00'},plan={msgType:'confirmation',body:'',channel:'sms',commune:'Fumel',ts:''},sansChamp=fx({dateReception:'2026-10-07',ts:'07/10/2026 15:00'});delete sansChamp.body;
+ let z=context.reactiviteDernierMessage([ics,plan,sansChamp],null,null,'');assert.equal(z.exclus.sans_message,2,'import ICS + planning : sans message');assert.equal(z.exclus.ts_absent,0);assert.equal(z.exclus.reception_absente,0);
+ assert.equal(z.n,1,'fiche sans champ body : comptée comme avant');
+ z=context.reactiviteDernierMessage([ics,plan],'2026-10-01','2026-10-31','');assert.equal(z.exclus.sans_message,1,'octobre : planning (date inconnue) seul');assert.equal(z.horsPeriodeInconnue,1);
+ z=context.reactiviteDernierMessage([ics],'2026-11-01','2026-11-30','');assert.equal(z.exclus.sans_message,1,'novembre : import ICS');}
 // AG-025 tranché (décision de l'utilisateur) : moyenne affichée, une décimale. 0, 1 et 5 jours ouvrés → moyenne 2 (médiane 1).
 const MOY=[fx({dateReception:'2026-10-07',ts:'07/10/2026 15:00'}),fx({dateReception:'2026-10-07',ts:'08/10/2026 09:00'}),fx({dateReception:'2026-10-05',ts:'2026-10-12T09:00:00+02:00'})];
 q=context.reactiviteDernierMessage(MOY,null,null,'');assert.equal(q.moyenne,2,'moyenne de 0, 1, 5');assert.equal(q.mediane,1);

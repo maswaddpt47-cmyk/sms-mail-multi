@@ -60,6 +60,13 @@ assert.match(out,/5 \/ 6 dossiers calculables/);assert.match(out,/0,2/);assert.m
 assert.doesNotMatch(out,/SECRET_FICTIF|0600000000|NOTE_INTERDITE|MESSAGE_INTERDIT|undefined|NaN|bilan-info/);
 assert.match(ctx.monthlyReportHtml(messages,{profil:'P'}),/Dossiers/);
 assert.equal(JSON.stringify({history,context}),before,'aucune donnée ni date réécrite');
+// D1 (contradiction de Claude sur AG-026) : un RDV importé par ICS (sans message, daté de l'import) n'entre pas dans « Dossiers ».
+{const ics={id:'ics',date:'2026-10-22',heure:'11:30',commune:'A',nom:'SECRET_FICTIF_ics',prenom:'',msgType:'rdv',body:'',channel:'sms',ts:'2026-10-20T10:00:00+02:00'};
+ const di=ctx.monthlyReportComplete(history.concat([ics]),'2026-10','',now,context);
+ assert.equal(di.stats.fiches.total,7,'D1 : dossiers inchangés');assert.equal(di.stats.fiches.canaux.sms,5);assert.equal(di.stats.fiches.sansMessage,1);
+ assert.equal(di.stats.reactivite.n,6);assert.equal(di.stats.reactivite.exclus.sans_message,1);assert.equal(di.stats.reactivite.exclus.reception_absente,0,'motif exact');
+ const oi=ctx.monthlyReportHtml(di,{profil:'P',date:'25/10/2026'});assert.match(oi,/1 fiche sans message \(RDV importé du calendrier ou du planning\), hors total\./);
+ assert.doesNotMatch(oi,/SECRET_FICTIF/);assert.equal(d.stats.fiches.sansMessage,0);assert.doesNotMatch(out,/sans message/,'aucune mention sans import');}
 assert.equal(JSON.stringify(ctx.monthlyReportComplete(history,'2026-10','',now,context)),JSON.stringify(d),'idempotence');
 assert.match(html,/var bData=monthlyReportComplete\(S.history/,'la fenêtre réelle utilise le modèle complet');
 assert.match(html,/printMonthlyReport\(monthlyReportHtml\(bData/,'impression sur le même modèle');

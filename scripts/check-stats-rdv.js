@@ -437,13 +437,24 @@ console.log('Fiches préparées OK.');
   const toutes=ctx.fichesMessagesModel(anciennes.concat(recentes),null,'2026-11-01','');
   assert.equal(toutes.canaux.total,175,'162 anciennes datées + 13 horodatées = 175 fiches, pas 13');
   assert.equal(toutes.nonMesurables,0);assert.equal(toutes.byMonth['2026-10'].sms,175);
-
   // Vrais fragments de rendu : le total et le graphique utilisent la même population, sans prétendre dater la première préparation.
   const nd=(tag,attrs,kids)=>{const n={tag,attrs:attrs||{},kids:[],appendChild(k){this.kids.push(k);return k;}};if(kids!=null)n.kids=Array.isArray(kids)?kids:[kids];return n;};
   const txt=n=>typeof n==='object'?n.kids.map(txt).join('|'):String(n);
   const rc=vm.createContext({prep:m,wrap:nd('div'),el:nd,canaux:m.canaux});
   const deb=html.indexOf('  var canaux=prep.canaux;'),fin=html.indexOf('  var dm=reactiviteDernierMessage',deb);
   assert(deb>0&&fin>deb);vm.runInContext(html.slice(deb,fin),rc);
+  // D1 (contradiction de Claude) : RDV importés sans message — vraie fonction importICSText, addHistory et tsParis simulés.
+  {const ic=vm.createContext({Date,S:{history:[]},tsParis:()=>'2026-07-15T10:00:00+02:00',operationHistorique:fn=>{fn();return {ok:true};},addHistory:function(item){ic.S.history.unshift(item);return true;}});
+   vm.runInContext(section('function importICSText(','\nfunction '),ic);
+   assert.equal(ic.importICSText('BEGIN:VEVENT\r\nDTSTART:20260720T093000\r\nSUMMARY:FICTIF ICS\r\nLOCATION:A\r\nEND:VEVENT'),1);
+   const imp=ic.S.history[0];assert.equal(imp.body,'');assert.equal(imp.msgType,'rdv');
+   const plan=f('planning','',{body:''});   // import du planning : corps et date vides
+   const avec=jeu.concat([imp,plan]),md=ctx.fichesMessagesModel(avec,'2026-07-01','2026-07-31','A');
+   assert.equal(md.fiches.indexOf(imp),-1,'D1 : RDV importé hors des dossiers');assert.deepEqual({...md.canaux},{...m.canaux},'D1 : totaux et canaux inchangés par les imports');
+   assert.equal(md.sansMessage,2,'D1 : import ICS (juillet) + planning (date inconnue)');assert.equal(md.nonMesurables,m.nonMesurables,'planning : plus compté « sans date lisible »');
+   assert.equal(ctx.fichesMessagesModel(avec,'2026-08-01','2026-08-31','A').sansMessage,1,'août : seul le planning (date inconnue)');
+   const rcD=vm.createContext({prep:md,wrap:nd('div'),el:nd,canaux:md.canaux});vm.runInContext(html.slice(deb,fin),rcD);
+   assert.match(txt(rcD.wrap),/2 fiches sans message \(RDV importé du calendrier ou du planning\) : hors total\./,'D1 : écrit sous « Dossiers »');}
   const rendu=txt(rc.wrap)+'|'+txt(rc.kpiRow);assert.match(rendu,/Dossiers/);assert.match(rendu,/4\|Dossiers/);
   assert.doesNotMatch(rendu,/sans date de première préparation|depuis le 22\/10|Fiches préparées/);
   assert.match(rendu,/2 dossiers sans date lisible du dernier message/);
