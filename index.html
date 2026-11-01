@@ -1541,11 +1541,8 @@ function rdvCountdown(dateStr,heure){
 }
 function timeAgo(tsStr){
   if(!tsStr)return'';
-  /* parse "dd/mm/yyyy hh:mm:ss" ou "dd/mm/yyyy hh:mm" */
-  var m=tsStr.match(/(\d{2})\/(\d{2})\/(\d{4})[^\d]+(\d{2}):(\d{2})/);
-  if(!m)return'';
-  var d=new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5]);
-  var diff=Math.floor((Date.now()-d.getTime())/1000);
+  var lu=lireTs(tsStr);if(!lu||lu.instant===null)return'';   /* AG-016 (B) : texte français ou ISO */
+  var diff=Math.floor((Date.now()-lu.instant)/1000);
   if(diff<60)return'à l\'instant';
   if(diff<3600){var mn=Math.floor(diff/60);return'il y a '+mn+' min';}
   if(diff<86400){var h=Math.floor(diff/3600);return'il y a '+h+'h';}
@@ -2334,7 +2331,7 @@ function exportHistoryCSV(){
   if(!S.history.length){showToast("Aucun historique à exporter","warn");return;}
   var cols=["Date","Canal","Type","Civilité","Prénom","Nom","Téléphone","Démarche","Commune","CMS","Corps","Réception de la demande","Première préparation"];
   var esc=function(v){return '"'+(String(v||"").replace(/"/g,'""'))+'"';};
-  var rows=S.history.map(function(h){return[h.ts,h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,receptionDateFor(h),h.premierePreparationAt||""].map(esc).join(";");});
+  var rows=S.history.map(function(h){return[afficherTs(h.ts),h.channel==="sms"?"SMS":"Mail",h.msgType||"",h.civilite,h.prenom,h.nom,h.telephone,h.demarche,h.commune,h.selectedCMS,h.body,receptionDateFor(h),h.premierePreparationAt||""].map(esc).join(";");});
   var csv="﻿"+cols.map(esc).join(";")+"\n"+rows.join("\n");
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download="historique-ess-cms-"+jourParis()+".csv";a.click();
@@ -2956,7 +2953,7 @@ function renderHistoryCard(h,realIdx,container){
   details.appendChild(el('div',{class:'ui-record-detail-title'},h.demarche||'Démarche non renseignée'));
   var dateRdvStr=h.date?(h.date.split('-').reverse().join('/')+(h.heure?' à '+h.heure:'')):'';
   var ago=timeAgo(h.ts);
-  details.appendChild(el('div',{class:'ui-record-meta',title:h.ts?'Message envoyé le '+h.ts:''},[el('span',{},dateRdvStr?'RDV '+dateRdvStr:(h.ts||'Date non renseignée')+(ago?' · '+ago:'')),h.commune?el('span',{},h.commune):null]));
+  details.appendChild(el('div',{class:'ui-record-meta',title:h.ts?'Message envoyé le '+afficherTs(h.ts):''},[el('span',{},dateRdvStr?'RDV '+dateRdvStr:(afficherTs(h.ts)||'Date non renseignée')+(ago?' · '+ago:'')),h.commune?el('span',{},h.commune):null]));
   var badges=el('div',{class:'ui-record-badges'});
   badges.appendChild(el('span',{class:'ui-record-chip'},h.channel==='sms'?'SMS':'E-mail'));
   badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted'},TLABEL[h.msgType]||h.msgType||'Message'));
@@ -3105,8 +3102,8 @@ function legacyPreparationEstimate(history){
   history.forEach(function(h){
     if(h.msgType==='indispo'||h.msgType==='relance'||h.dateRelance)return;
     if(preparationParisDay(h.premierePreparationAt))return;
-    var m=String(h.ts||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);if(!m)return;
-    var day=m[3]+'-'+m[2]+'-'+m[1],delay=businessDaysBetween(receptionDateFor(h),day);
+    var lu=lireTs(h.ts);if(!lu)return;
+    var day=lu.jour,delay=businessDaysBetween(receptionDateFor(h),day);
     if(delay!==null){delays.push(delay);if(receptionDateFor(h)===day)sameDay++;}   /* « le jour même » = même date civile (audit 30/10, pt 5), pas zéro jour ouvré */
   });
   if(!delays.length)return {median:null,count:0,sameDay:0};
@@ -3120,7 +3117,7 @@ function preparationCohort(history,start,end,cms){
   return history.filter(function(h){
     if(h.msgType==='indispo'||cms&&cmsKey(h.commune)!==cmsKey(cms))return false;if(!start)return true;
     var day=preparationParisDay(h.premierePreparationAt);
-    if(!day){var raw=h.ts||'',m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);day=m?m[3]+'-'+m[2]+'-'+m[1]:raw.slice(0,10);}
+    if(!day){var lu=lireTs(h.ts);day=lu?lu.jour:String(h.ts||'').slice(0,10);}
     return preparationDayUTC(day)!==null&&day>=start&&day<=end;
   });
 }
@@ -3129,7 +3126,7 @@ function preparationCohort(history,start,end,cms){
 /* Année d'une entrée d'historique : priorité à la date du RDV, sinon à la date d'envoi (ts). */
 function entryYear(h){
   if(h.date){var y=parseInt(String(h.date).slice(0,4),10);if(y)return y;}
-  if(h.ts){var m=String(h.ts).match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m)return parseInt(m[3],10);}
+  if(h.ts){var lu=lireTs(h.ts);if(lu)return parseInt(lu.jour.slice(0,4),10);}
   return null;
 }
 /* années révolues encore présentes (non archivées) dans l'historique du profil actif */
@@ -3164,8 +3161,8 @@ function computeYearArchive(year){
   arc.avgRdv=rdvDiffs.length?Math.round(rdvDiffs.reduce(function(s,d){return s+d;},0)/rdvDiffs.length):null;
   var monthMap={};
   hist.forEach(function(h){
-    var raw=h.ts||'';var m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    var key=m?(m[3]+'-'+m[2]):raw.substring(0,7);
+    var raw=h.ts||'',lu=lireTs(raw);
+    var key=lu?lu.jour.slice(0,7):raw.substring(0,7);
     if(!key)return;
     if(!monthMap[key])monthMap[key]={sms:0,mail:0};
     monthMap[key][h.channel==='mail'?'mail':'sms']++;
@@ -3444,6 +3441,29 @@ function jourParis(){return parisDayStr(new Date());}
 function anneeParis(){return Number(jourParis().slice(0,4));}
 /* Jours civils de a à b (« AAAA-MM-JJ »), sans fuseau ni changement d'heure ; NaN si une date est invalide. */
 function joursCivilsEntre(a,b){var x=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(a||'')),y=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(b||''));return x&&y?Math.round((Date.UTC(+y[1],+y[2]-1,+y[3])-Date.UTC(+x[1],+x[2]-1,+x[3]))/86400000):NaN;}
+/* AG-016 (B), étape 3 d'AG-013 : UN seul lecteur de `ts` (date du message). Accepte le texte français écrit jusqu'ici
+   (« JJ/MM/AAAA HH:MM:SS », heure de Paris en pratique : appareils en France) ET l'ISO avec fuseau (« 2026-11-01T09:00:00.000Z »).
+   Rend { jour: date civile à Paris « AAAA-MM-JJ », instant: millisecondes ou null }, ou null si illisible. Aucune écriture ici. */
+function decalageParis(t){
+  try{var p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(t)),o={};
+    p.forEach(function(x){o[x.type]=x.value;});return Date.UTC(+o.year,+o.month-1,+o.day,+o.hour,+o.minute,+o.second)-Math.floor(t/1000)*1000;}catch(e){return -new Date(t).getTimezoneOffset()*60000;}
+}
+function instantParis(y,mo,d,h,mi,se){var mur=Date.UTC(y,mo-1,d,h||0,mi||0,se||0),t=mur-decalageParis(mur);return mur-decalageParis(t);}
+function lireTs(ts){
+  var s=String(ts==null?'':ts),m=/(\d{2})\/(\d{2})\/(\d{4})(?:[^\d]+(\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+  if(m){var jour=m[3]+'-'+m[2]+'-'+m[1];   /* texte français : lu comme avant (même une date impossible), pour ne changer aucun chiffre existant */
+    return {jour:jour,instant:m[4]!==undefined?instantParis(+m[3],+m[2],+m[1],+m[4],+m[5],+(m[6]||0)):null};}
+  var i=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.exec(s);
+  if(i){var t=Date.parse(s);if(isNaN(t)||!preparationJourValide(i[1]+'-'+i[2]+'-'+i[3]))return null;return {jour:parisDayStr(new Date(t)),instant:t};}
+  return null;
+}
+function preparationJourValide(j){var x=/^(\d{4})-(\d{2})-(\d{2})$/.exec(j);if(!x)return false;var d=new Date(Date.UTC(+x[1],+x[2]-1,+x[3]));return d.getUTCFullYear()===+x[1]&&d.getUTCMonth()===+x[2]-1&&d.getUTCDate()===+x[3];}
+/* Texte affiché ou exporté : un ts français est rendu tel quel (affichage inchangé) ; un ts ISO est montré en heure de Paris, même forme. */
+function afficherTs(ts){
+  if(ts==null||ts==='')return '';var s=String(ts);if(/\d{2}\/\d{2}\/\d{4}/.test(s))return s;
+  var r=lireTs(s);if(!r||r.instant===null)return s;
+  return new Date(r.instant).toLocaleString('fr-FR',{timeZone:'Europe/Paris'});
+}
 function cmsKey(c){return String(c||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
 /* Audit Codex du 30/10 (AG-006). Clé d'un usager : nom|prénom séparés, espaces retirés, minuscules. Nom et prénom ne
    forment pas un identifiant de personne : deux homonymes restent un seul usager. */
@@ -3475,8 +3495,9 @@ function fichesPrepareesModel(history,start,end,cms){
 /* Jours calendaires du message (ts « JJ/MM/AAAA… ») au RDV (« AAAA-MM-JJ ») : deux dates civiles converties de la même façon,
    sans fuseau d'appareil. Zéro inclus (RDV le jour du message), RDV antérieur ou date invalide : null. */
 function delaiRdvJours(ts,date){
-  var m=String(ts||'').match(/(\d{2})\/(\d{2})\/(\d{4})/),a=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(date||''));
+  var lu=lireTs(ts),m=lu&&/^(\d{4})-(\d{2})-(\d{2})$/.exec(lu.jour),a=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(date||''));
   if(!m||!a)return null;
+  m=[m[0],m[3],m[2],m[1]];   /* même ordre que l'ancien motif JJ/MM/AAAA */
   function civil(y,mo,d){var t=Date.UTC(y,mo-1,d),c=new Date(t);return c.getUTCFullYear()===y&&c.getUTCMonth()===mo-1&&c.getUTCDate()===d?t:null;}
   var t0=civil(+m[3],+m[2],+m[1]),t1=civil(+a[1],+a[2],+a[3]);
   if(t0===null||t1===null||t1<t0)return null;
@@ -6155,7 +6176,7 @@ function renderMandat(){
   }});
   srcSel.appendChild(el('option',{value:"",selected:S.mandatSource===""},"— Saisie manuelle —"));
   S.history.forEach(function(h,i){
-    var lbl=[h.civilite,h.prenom,(h.nom||"").toUpperCase()].filter(Boolean).join(" ")+" — "+(h.demarche||"")+" — "+(h.ts||"");
+    var lbl=[h.civilite,h.prenom,(h.nom||"").toUpperCase()].filter(Boolean).join(" ")+" — "+(h.demarche||"")+" — "+afficherTs(h.ts);
     srcSel.appendChild(el('option',{value:String(i),selected:S.mandatSource===String(i)},lbl));
   });
   src.appendChild(srcSel);col.appendChild(src);
