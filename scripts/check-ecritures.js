@@ -8,7 +8,7 @@ const html=fs.readFileSync(process.env.INDEX_HTML||path.join(__dirname,'../index
 function section(from,to){const start=html.indexOf(from);assert(start>=0,from);const end=html.indexOf(to,start+from.length);assert(end>start,to);return html.slice(start,end);}
 function fonction(nom){return section('function '+nom+'(','\nfunction ');}
 const CODE=[
-  section('function ls(k,d){','\n'),section('function cmsKey(','\n'),section('function toLocalDateStr(d){','\n'),
+  section('function ls(k,d){','\n'),section('function parisDayStr(','function cmsKey('),section('function cmsKey(','\n'),section('function toLocalDateStr(d){','\n'),
   section('/* AG-013, étape 2 (31/10/2026) : une écriture est relue','/* clé cloisonnée par profil actif'),
   section('function pkFor(','function countTodayRdv('),
   section('/* Amendement Codex (31/10) : renvoie false si l','/* retrouve l'),

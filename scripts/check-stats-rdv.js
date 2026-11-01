@@ -406,3 +406,31 @@ console.log('Liste des usagers OK.');
   assert(/relanceN=rdv\.entries\.filter\(aRelanceRenseignee\)/.test(rendu),'M1 : relances sur les RDV de la période');
 }
 console.log('Fiches préparées OK.');
+
+/* AG-016 (A), étape 3 d'AG-013 : la date du jour est la date civile à Paris, quel que soit le fuseau de l'appareil. Horloge simulée. */
+{
+  const A=section('function parisDayStr(','function cmsKey(');
+  const RealDate=Date;
+  function horloge(iso){const fixe=new RealDate(iso).getTime();class D extends RealDate{constructor(...a){a.length?super(...a):super(fixe);}static now(){return fixe;}}return D;}
+  function charger(iso){const c=vm.createContext({Date:horloge(iso),Intl,S:{relanceDelai:3}});vm.runInContext('function toLocalDateStr(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}\n'+A+section('function isDepasse(','\n}\n')+'\n}',c);return c;}
+  const cas=[['2026-11-01T23:30:00Z','2026-11-02'],['2026-11-01T22:59:59Z','2026-11-01'],['2026-12-31T23:00:00Z','2027-01-01'],['2026-12-31T22:59:00Z','2026-12-31'],
+    ['2026-10-24T22:30:00Z','2026-10-25'],['2026-03-28T23:30:00Z','2026-03-29'],['2026-06-30T22:00:00Z','2026-07-01']];   // minuit, fin d'année, changements d'heure, 1er juillet (heatmap)
+  for(const [iso,jour] of cas){const c=charger(iso);assert.equal(c.jourParis(),jour,iso);assert.equal(c.anneeParis(),Number(jour.slice(0,4)),iso);}
+  const c=charger('2026-11-01T23:30:00Z');
+  assert.equal(c.joursCivilsEntre('2026-10-24','2026-10-26'),2);   // à travers le changement d'heure du 25/10
+  assert.equal(c.joursCivilsEntre('2026-12-31','2027-01-01'),1);
+  assert(Number.isNaN(c.joursCivilsEntre('','2026-11-02')));
+  // dépassement de relance compté au jour de Paris : demande du 29/10, délai 3, il est 00:30 le 02/11 à Paris → 4 jours, dépassé
+  assert.equal(c.isDepasse({statut:'en_attente',dateDemande:'2026-10-29'}),true);
+  assert.equal(charger('2026-11-01T22:30:00Z').isDepasse({statut:'en_attente',dateDemande:'2026-10-29'}),false);   // 23:30 le 01/11 : 3 jours
+  assert.equal(c.isDepasse({statut:'en_attente',dateDemande:'pas une date'}),false);
+  // plus aucune date du jour en UTC ni à l'heure de l'appareil ; seule exception : la conversion d'une date Excel
+  const code=html.replace(/\/\*[\s\S]*?\*\//g,'');
+  assert.equal((code.match(/toISOString\(\)\.slice\(0,10\)/g)||[]).length,1,'date du jour en UTC (seule excelDate est admise)');
+  assert(/excelDate\(v\)\{[^}]*toISOString\(\)\.slice\(0,10\)/.test(code));
+  assert.equal((code.match(/toLocalDateStr\(new Date\(\)\)/g)||[]).length,0,'date du jour à l\'heure de l\'appareil');
+  assert.equal((code.match(/new Date\(\)\.getFullYear\(\)|now\.getFullYear\(\)/g)||[]).length,0,'année à l\'heure de l\'appareil');
+  assert.equal((code.match(/setHours\(0,0,0,0\)/g)||[]).length,0,'minuit de l\'appareil');
+  assert(!/todayN/.test(code),'D1 : code mort de la pastille Historique retiré');
+}
+console.log('Date du jour à Paris OK.');
