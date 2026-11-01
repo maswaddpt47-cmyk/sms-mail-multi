@@ -1858,7 +1858,7 @@ function enregistrerCopie(text,fige){
     var garderAbsence=F.receptionAConfirmer||(!F.dateReception&&!!receptionRecord&&!Object.prototype.hasOwnProperty.call(receptionRecord,'dateReception'));
     /* R2 (amendement de Codex) : champ non modifié depuis le chargement de la fiche → son état brut est conservé, même invalide */
     var rec=receptionAEcrire(F.dateReception,F.receptionSource);
-    if(rec.intacte)garderAbsence=rec.garder;
+    if(F.receptionSource)garderAbsence=rec.garder;   /* A23 (Codex, AG-023) : fiche ouverte → seul son état retenu décide ; un vide volontaire sur une réception préremplie s'écrit */
     if(receptionRecord&&!rec.intacte&&!garderAbsence&&receptionChampInitial(receptionRecord)!==(F.dateReception||'')){
       S.history[S.history.indexOf(receptionRecord)]=Object.assign({},receptionRecord,{dateReception:F.dateReception||''});
       if(!lsSet(pk('history'),S.history))throw new Error('réception refusée');
@@ -4869,7 +4869,7 @@ function renderStats(){
     kpiRow.appendChild(c);
   });
   var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});
-  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg===0?'Le jour même':prepMetrics.avg.toLocaleString('fr-FR')+' j'));
+  reactC.appendChild(el('div',{class:'ui-stats-number'},prepMetrics.avg===null?'—':prepMetrics.avg.toLocaleString('fr-FR')+' j'   /* A24 (Codex, AG-024) : 0 jour ouvré n'est pas forcément le même jour civil (veille d'un férié) */));
   /* infobulle (30/10, demande utilisateur) : ce que mesure la tuile, en mots simples ; `title` ne s'affiche pas au toucher */
   var prepLbl=el('div',{class:'ui-stats-metric-label-row'});
   prepLbl.appendChild(el('div',{class:'ui-stats-metric-label'},'Préparation moy. (jours ouvrés)'));
@@ -4886,7 +4886,7 @@ function renderStats(){
     var legacyPct=Math.round(legacyPrep.sameDay/legacyPrep.count*100);
     legacyC.appendChild(el('div',{class:'ui-stats-number'},legacyPct+' %'));
     legacyC.appendChild(el('div',{class:'ui-stats-metric-label'},'Traitées le jour même (estimation)'));
-    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median===0?'le jour même':legacyPrep.median.toLocaleString('fr-FR')+' j ouvré'+(legacyPrep.median>1?'s':'')+' (fériés exclus)')));
+    legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Réception → message, sur '+legacyPrep.count+' ancienne'+(legacyPrep.count>1?'s':'')+' fiche'+(legacyPrep.count>1?'s':'')+' · relances exclues · médiane : '+(legacyPrep.median.toLocaleString('fr-FR')+' j ouvré'+(legacyPrep.median>1?'s':'')+' (fériés exclus)')));
     legacyC.appendChild(el('div',{class:'ui-stats-metric-note'},'Estimation, pas une mesure : elle part de la date du dernier message, une fiche régénérée compte plus long. À ne pas comparer à la préparation moyenne horodatée.'));
     kpiRow.appendChild(legacyC);
   }
