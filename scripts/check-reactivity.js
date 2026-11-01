@@ -1,7 +1,7 @@
 /* Contrôle ciblé du délai réception → première préparation (données fictives).
    Usage : node scripts/check-reactivity.js */
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+const html=fs.readFileSync(process.env.INDEX_HTML||path.join(__dirname,'../index.html'),'utf8');
 const begin='/* ============================== PREPARATION METRICS ============================== */';
 const end='/* ============================== ARCHIVAGE ANNUEL';
 const from=html.indexOf(begin),to=html.indexOf(end,from);
@@ -29,6 +29,36 @@ const intervals=[
   ['', '2026-10-19',null,'date absente']
 ];
 intervals.forEach(([start,finish,expected,label])=>assert.equal(context.businessDaysBetween(start,finish),expected,label));
+
+// AG-024 : jours ouvrés hors samedis, dimanches et jours fériés nationaux (réactivité affichée).
+assert.equal(typeof context.joursOuvresFrance,'function');
+[
+  ['2026-10-19','2026-10-19',0,'même jour'],
+  ['2026-10-16','2026-10-19',1,'vendredi → lundi'],
+  ['2026-04-03','2026-04-07',1,'vendredi → mardi, lundi de Pâques férié'],
+  ['2026-05-22','2026-05-26',1,'vendredi → mardi, lundi de Pentecôte férié'],
+  ['2026-05-13','2026-05-15',1,'mercredi → vendredi, Ascension (jeudi 14/05) férié'],
+  ['2026-11-10','2026-11-12',1,'mardi → jeudi, 11 novembre férié'],
+  ['2026-12-31','2027-01-04',1,'jeudi → lundi, 1er janvier (vendredi) férié'],
+  ['2026-07-13','2026-07-15',1,'14 juillet (mardi) férié'],
+  ['2026-08-14','2026-08-17',1,'15 août un samedi : rien de plus retiré'],
+  ['2027-03-26','2027-03-30',1,'Pâques 2027 (28/03) : lundi 29/03 férié'],
+  ['2026-10-19','2026-10-26',5,'semaine sans férié'],
+  ['2026-10-20','2026-10-19',null,'dates inversées'],
+  ['2026-02-30','2026-03-02',null,'jour inexistant'],
+  ['', '2026-10-19',null,'date absente']
+].forEach(([a,b,att,lbl])=>assert.equal(context.joursOuvresFrance(a,b),att,lbl));
+// Jours fériés nationaux : exactement 11 par an, dates de Pâques connues.
+const f26=Object.keys(context.joursFeriesFrance(2026)).sort();assert.equal(f26.length,11);
+assert.deepEqual(f26,['2026-01-01','2026-04-06','2026-05-01','2026-05-08','2026-05-14','2026-05-25','2026-07-14','2026-08-15','2026-11-01','2026-11-11','2026-12-25']);
+assert.ok(context.joursFeriesFrance(2025)['2025-04-21']&&context.joursFeriesFrance(2025)['2025-05-29']&&context.joursFeriesFrance(2025)['2025-06-09'],'2025 : Pâques 20/04');
+assert.ok(context.joursFeriesFrance(2028)['2028-04-17'],'2028 : Pâques 16/04');
+// La préparation moyenne utilise les jours fériés : réception vendredi 03/04/2026, première préparation mardi 07/04 = 1 (et non 2).
+assert.equal(context.preparationStats([{dateReception:'2026-04-03',premierePreparationAt:'2026-04-07T09:00:00+02:00'}]).avg,1,'préparation : lundi de Pâques exclu');
+// L'estimation des anciennes fiches (réception → dernier message) aussi : vendredi 03/04 → mardi 07/04 = 1 j ouvré.
+assert.equal(context.legacyPreparationEstimate([{dateReception:'2026-04-03',ts:'2026-04-07T10:00:00+02:00',msgType:'confirmation'}]).median,1,'estimation : lundi de Pâques exclu');
+// Les archives gardent lun.–ven. (AG-017 clos) : même intervalle = 2.
+assert.equal(context.businessDaysBetween('2026-04-03','2026-04-07'),2,'archives : méthode inchangée');
 
 const row=(id,dateReception,premierePreparationAt)=>({id,msgType:'confirmation',channel:'sms',dateReception,premierePreparationAt});
 const snapshot=value=>JSON.stringify(value);
