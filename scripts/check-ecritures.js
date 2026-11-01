@@ -324,6 +324,28 @@ for(const [nom,texte] of [['JSON invalide','{pas du json'],['history non liste',
  // formulaire neuf (aucune fiche chargée) : comportement inchangé, réception vide explicite
  {const e=charger();e.ctx.showActivePane=()=>{};Object.assign(e.S,{date:'2026-10-28',heure:'09:30',commune:'Fumel',nom:'NEUF',prenom:'F',dateReception:'',receptionReprise:'',receptionSource:null,selectedCMS:1});
   e.ctx.handleGenerate();assert.equal(e.S.history[0].dateReception,'','formulaire neuf : vide explicite, comme avant');}
+ /* NR1 (vérification de Codex du correctif) : saisie → enregistrement réussi → effacement → second enregistrement, sans réouverture */
+ {const e=prepO();e.S.dateReception='2026-10-03';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-03');
+  e.S.dateReception='';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'','NR1 Générer : effacement explicite écrit');
+  assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history'))).find(h=>h.id==='o1').dateReception,'');}
+ {const e=prepO({dateReception:'pas une date'});e.S.dateReception='2026-10-03';assert.equal(e.ctx.enregistrerCopie('texte fictif 1').ok,true);assert.equal(o1(e).dateReception,'2026-10-03');
+  e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('texte fictif 2').ok,true);assert.equal(o1(e).dateReception,'','NR1 copie : effacement explicite écrit, ancienne valeur invalide non réinjectée');}
+ // NR1 croisé : copie puis « Générer », et après le recalage, champ réellement intact → valeur enregistrée conservée
+ {const e=prepO();e.S.dateReception='2026-10-03';assert.equal(e.ctx.enregistrerCopie('texte fictif 1').ok,true);e.S.dateReception='';e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'');}
+ {const e=prepO();e.S.dateReception='2026-10-03';e.ctx.handleGenerate();e.ctx.handleGenerate();assert.equal(o1(e).dateReception,'2026-10-03','intact après recalage : conservée');}
+ // NR1 : échec de stockage au premier enregistrement → référence inchangée, la reprise reste protégée
+ {const e=prepO();e.S.dateReception='2026-10-03';e.st.panne=()=>true;e.ctx.handleGenerate();e.st.panne=null;
+  assert.equal(e.S.receptionSource.aChamp,false,'échec : référence d\'ouverture conservée');assert.equal(e.S.receptionSource.init,'');
+  e.S.dateReception='';e.ctx.handleGenerate();assert.equal(own(o1(e),'dateReception'),false,'échec puis effacement : reprise toujours à confirmer');}
+ {const e=prepO({dateReception:'pas une date'});e.S.dateReception='2026-10-03';e.st.panne=()=>true;assert.equal(e.ctx.enregistrerCopie('texte fictif 1').ok,false);e.st.panne=null;
+  assert.equal(e.S.receptionSource.brut,'pas une date','échec de copie : référence inchangée');}
+ // NR1 : panne au second écrit de la copie (réception déjà écrite, message refusé) → opération annulée, référence inchangée
+ {const e=prepO({dateReception:'pas une date'});e.S.dateReception='2026-10-03';const n0=e.st.ecritures;e.st.panne=(k,n)=>n===n0+2;
+  assert.equal(e.ctx.enregistrerCopie('texte fictif 1').ok,false);e.st.panne=null;assert.equal(e.S.receptionSource.brut,'pas une date','panne partielle : pas de recalage');}
+ // NR1 : copie du texte identique (seule la réception est écrite), puis effacement
+ {const e=prepO();assert.equal(e.S.history[0].id,'o1');e.S.dateReception='2026-10-03';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);assert.equal(o1(e).dateReception,'2026-10-03');
+  e.S.dateReception='';assert.equal(e.ctx.enregistrerCopie('ancien').ok,true);assert.equal(o1(e).dateReception,'','NR1 texte identique : effacement écrit');}
+ console.log('AG-022 NR1 : effacement après un enregistrement réussi, sans réouverture (Générer et copie), panne sans recalage OK.');
  console.log('AG-022 R1/R2 : « Générer » et copie depuis une fiche ouverte — reprise, invalide et réception enregistrée conservées si le champ est intact OK.');
  console.log('AG-022 : réception — modification sans rapport neutre, confirmation explicite, panne sans effet, copie sans confirmation implicite OK.');}
 
