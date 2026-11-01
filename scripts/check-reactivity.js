@@ -87,6 +87,11 @@ q=context.reactiviteDernierMessage(DM,'2026-11-01','2026-11-30','fumel ');
 assert.equal(q.n,1,'novembre : C seule');assert.equal(q.mediane,1);assert.equal(q.exclus.ts_absent+q.exclus.ts_illisible,3,'dates illisibles comptées quelle que soit la période');assert.equal(q.horsPeriodeInconnue,3);
 assert.equal(q.exclus.inversee,0,'F (octobre) hors période');
 assert.equal(JSON.stringify(DM),avantDM,'lecture seule');
+// AG-025 tranché (décision de l'utilisateur) : moyenne affichée, une décimale. 0, 1 et 5 jours ouvrés → moyenne 2 (médiane 1).
+const MOY=[fx({dateReception:'2026-10-07',ts:'07/10/2026 15:00'}),fx({dateReception:'2026-10-07',ts:'08/10/2026 09:00'}),fx({dateReception:'2026-10-05',ts:'2026-10-12T09:00:00+02:00'})];
+q=context.reactiviteDernierMessage(MOY,null,null,'');assert.equal(q.moyenne,2,'moyenne de 0, 1, 5');assert.equal(q.mediane,1);
+assert.equal(context.reactiviteDernierMessage(MOY.slice(0,1).concat(MOY.slice(0,2)),null,null,'').moyenne,0.3,'0, 0, 1 → 0,3 (une décimale)');
+assert.equal(context.reactiviteDernierMessage([],null,null,'').moyenne,null,'aucune fiche calculable : pas de moyenne');
 assert.equal(context.reactiviteDernierMessage([fx({dateReception:'2026-10-07',ts:'07/10/2026 15:00'}),fx({dateReception:'2026-10-07',ts:'08/10/2026 09:00'})],null,null,'').mediane,0.5,'médiane paire : moyenne des deux valeurs centrales (0 et 1)');
 // Texte réellement affiché : vrai fragment des tuiles avec un DOM minimal.
 const deb=html.indexOf("  var reactC=el('div',{class:'ui-stats-metric',id:'ui-preparation-metric'});"),fin=html.indexOf('  wrap.appendChild(kpiRow);',deb);
@@ -96,9 +101,11 @@ const tx=o=>typeof o==='string'?o:o.kids.map(tx).join(' | ');
 function rendre(hist,prep){const rc=vm.createContext({el:nd,attachPermanenceTip(){},kpiRow:nd('div'),prepMetrics:context.preparationStats(prep),S:{history:hist,statsCMS:'Fumel'},rdv:{start:null,today:'2026-12-31'},
   reactiviteDernierMessage:context.reactiviteDernierMessage,MOTIFS_DERNIER_MESSAGE:context.MOTIFS_DERNIER_MESSAGE,Math,Object});vm.runInContext(html.slice(deb,fin),rc);return rc.kpiRow.kids.map(tx);}
 const [tPrep,tDM]=rendre(DM,DM);
+{const [,tM]=rendre(MOY.map(x=>Object.assign({},x)),[]);assert.ok(tM.startsWith('2 j | Réception → dernier message enregistré | Moyenne en jours ouvrés'),'tuile : moyenne affichée : '+tM);}
+{const [,tV]=rendre([],[]);assert.ok(tV.startsWith('— | Réception → dernier message enregistré'),'sans fiche : tiret');}
 assert.ok(tPrep.startsWith('1 j | Préparation moy. (jours ouvrés)'),'première préparation à part : '+tPrep);
 assert.ok(tPrep.includes('1 dossier mesuré'),'première préparation : seule C');
-assert.ok(tDM.startsWith('1 j | Réception → dernier message enregistré'),'tuile : '+tDM);
+assert.ok(tDM.startsWith('1 j | Réception → dernier message enregistré | Moyenne'),'tuile : '+tDM);
 assert.ok(tDM.includes('4 fiches calculables · 25 % le même jour'),'effectif calculable');
 assert.ok(tDM.includes('Exclues (9) : 1 date du message absente · 2 date du message illisible ou impossible · 2 dernier message de suivi (relance, rappel, lapin) · 1 réception à confirmer · 1 réception absente · 1 réception invalide · 1 dernier message antérieur à la réception.'),'motifs : '+tDM);
 assert.ok(tDM.includes('pas forcément le premier envoi'),'limite écrite');
