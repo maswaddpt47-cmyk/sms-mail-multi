@@ -22,7 +22,7 @@ const CODE=[
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
-  fonction('nouvelIdFiche'),fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),
+  fonction('nouvelIdFiche'),fonction('addHistory'),fonction('addHistoryBrut'),fonction('blockSlot'),fonction('blockSlotBrut'),fonction('hasConflict'),fonction('occupantCreneau'),fonction('confirmerCreneau'),section('var STATUTS=[','/* Amendement de Codex sur AG-006'),
   fonction('readProfileOrientations'),fonction('confirmOrientImport'),fonction('enregistrerDeplacement'),fonction('enregistrerCopie'),fonction('ensureDayOpenFor'),fonction('blockWholeDay'),
   fonction('preparationDayUTC'),fonction('receptionDateFor'),
   section('function getPermanence(','/* RDV confirmé dont la date est passée'),
@@ -804,6 +804,30 @@ async function restaurer(contenu,fonction,options){
    assert.equal(loc([vieille],Object.assign({},C)).index,0,'locate témoin : fiche sans identifiant');
    assert.equal(loc([autre,Object.assign({},C,{id:'f-perdu'})],copie).index,1,'locate : par identifiant');
    assert.equal(toast,2,'« Rouvrez l\'agenda » annoncé quand rien de sûr n\'est trouvé');}
+  /* ── 01/11/2026, signalé par l'utilisateur : heure choisie avant le CMS → double réservation sur un simple toast ── */
+  {const prep=(rep)=>{const e=charger();const msgs=[];e.ctx.confirm=(m)=>{msgs.push(m);return rep;};
+     const occ={id:'f-occ',date:'2026-11-25',heure:'09:30',commune:'Marmande',civilite:'Mme',prenom:'Fictive',nom:'OCCUPANTE',msgType:'proposition',statut:'confirme',channel:'sms'};
+     e.S.history=[occ];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));
+     Object.assign(e.S,{date:'2026-11-25',heure:'09:30',commune:'Marmande',selectedCMS:'2',nom:'ESSAI',prenom:'Nouveau',channel:'sms',msgType:'proposition'});
+     return {e,msgs};};
+   {const {e,msgs}=prep(false);const avant=e.st.getItem(e.ctx.pk('history'));e.ctx.handleGenerate();
+    assert.equal(msgs.length,1,'confirmation demandée');assert(/déjà pris par Mme Fictive OCCUPANTE/.test(msgs[0]),'occupant nommé');assert(/25\/11 à 09:30 \(Marmande\)/.test(msgs[0]));
+    assert.equal(e.S.history.length,1,'refus : aucune fiche ajoutée');assert.equal(e.st.getItem(e.ctx.pk('history')),avant,'refus : stockage inchangé');}
+   {const {e,msgs}=prep(true);e.ctx.handleGenerate();
+    assert.equal(msgs.length,1);assert.equal(e.S.history.length,2,'double réservation acceptée : enregistrée');assert(e.S.history.some(h=>h.id==='f-occ'),'occupant conservé');}
+   {const {e,msgs}=prep(true);assert.equal(e.ctx.confirmerCreneau('2026-11-25','09:30','Marmande'),true);e.ctx.handleGenerate();
+    assert.equal(msgs.length,1,'déjà acceptée au choix du CMS : pas redemandée à la génération');}
+   {const {e,msgs}=prep(false);
+    assert.equal(e.ctx.confirmerCreneau('2026-11-25','10:30','Marmande'),true,'créneau libre : rien demandé');
+    assert.equal(e.ctx.confirmerCreneau('2026-11-25','09:30',''),true,'sans CMS : rien à contrôler encore');
+    e.S.history[0].statut='lapin';assert.equal(e.ctx.confirmerCreneau('2026-11-25','09:30','Marmande'),true,'créneau libéré : réutilisable sans question');
+    assert.equal(msgs.length,0);}}
+  // raccordement de l'écran : choix du CMS et de la date contrôlés quand l'heure est déjà choisie, plus de simple toast
+  {const gen=section('function renderGenerate(','\nfunction ');
+   assert(/if\(!confirmerCreneau\(S\.date,S\.heure,v\)\)patch\.heure='';/.test(gen),'choix du CMS contrôlé');
+   assert(/if\(!confirmerCreneau\(v,S\.heure,S\.commune\)\)patch\.heure='';/.test(gen),'choix de la date contrôlé');
+   assert(!/Créneau déjà pris/.test(section('function handleGenerate(','\nfunction ')),'plus de simple toast');}
+  console.log('Double réservation : confirmation explicite à la génération et au choix du CMS ou de la date OK.');
   console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
 })().catch(e=>{console.error(e);process.exit(1);});

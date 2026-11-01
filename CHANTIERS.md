@@ -280,6 +280,7 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
   `handleGenerate` ; même contrôle à l'import Orientations. Origine du numéro
   tronqué `00 76 …` jamais identifiée : à creuser au prochain cas, fichier
   source sous les yeux.
+- **Double réservation : confirmation explicite** (01/11/2026, signalé par l'utilisateur : heure choisie AVANT le CMS → aucun contrôle, simple toast à la génération, RDV existant masqué dans l'Agenda). `confirmerCreneau` au choix du CMS, au choix de la date et dans `handleGenerate` ; refus = rien d'enregistré (heure vidée au choix du CMS ou de la date). Averti, pas bloqué (règle du 02/10). **Reste ouvert** : l'Agenda n'affiche qu'une fiche par créneau (`getSlots`, priorité par type de message puis la plus récente) : une double réservation déjà enregistrée masque l'autre RDV, même confirmé — affichage à trancher par l'utilisateur (touche « N rendez-vous », critère 7).
 - **Formule de dépassement/relance centralisée dans `isDepasse()`** : ne pas la
   réécrire en ligne ailleurs.
 - **Migrations localStorage** : une migration non testée a déjà réduit 11 CMS à

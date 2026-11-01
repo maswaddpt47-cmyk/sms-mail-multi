@@ -1692,12 +1692,9 @@ function handleGenerate(){
   if(!canGenerate())return;
   var telPb=telProblem(S.telephone);
   if(telPb&&!confirm('⚠️ '+telPb+' : '+S.telephone+'\n\nGénérer quand même ?'))return;
-  if(hasConflict(S.date,S.heure,S.commune)){
-    var matches=S.history.filter(function(h){return h.date===S.date&&h.heure===S.heure&&(h.commune===S.commune||!h.commune)&&!estLibere(h.statut);});
-    var conf=matches.filter(function(x){return x.msgType==='confirmation';})[0]||matches.filter(function(x){return x.msgType==='proposition';})[0]||matches.filter(function(x){return x.msgType==='sans_appel';})[0]||matches[0];
-    var who=conf?[conf.civilite,conf.prenom,conf.nom].filter(Boolean).join(' '):'';
-    showToast('⚠️ Créneau déjà pris'+(who?' — '+who:''),'warn');
-  }
+  /* 01/11/2026 (signalé par l'utilisateur) : un créneau déjà pris n'est plus enregistré sur un simple toast ; confirmation
+     explicite nommant l'occupant, rien d'enregistré si elle est refusée. */
+  if(!confirmerCreneau(S.date,S.heure,S.commune))return;
   var r=compute();var body=r.body,subject=r.subject,dem=r.dem;
   S.generatedBody=body;S.generatedSubject=subject;
   var enregistre=addHistory({channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:tsParis()},true);
@@ -2164,6 +2161,22 @@ function lunchBreakEntry(perm,history,todayStr){
 }
 function hasConflict(date,heure,commune){
   return S.history.some(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&!estLibere(h.statut);});
+}
+/* Occupant actif d'un créneau (même priorité que l'ancien avertissement de handleGenerate), ou null. */
+function occupantCreneau(date,heure,commune){
+  var m=S.history.filter(function(h){return h.date===date&&h.heure===heure&&(h.commune===commune||!h.commune)&&!estLibere(h.statut);});
+  return m.filter(function(x){return x.msgType==='confirmation';})[0]||m.filter(function(x){return x.msgType==='proposition';})[0]||m.filter(function(x){return x.msgType==='sans_appel';})[0]||m[0]||null;
+}
+/* Double réservation (signalée le 01/11/2026 : heure choisie AVANT le CMS → aucun contrôle, puis simple toast à la génération,
+   le RDV existant masqué dans l'Agenda). Averti, pas bloqué (règle du 02/10 : chevauchement parfois volontaire), mais par une
+   confirmation explicite ; une double réservation acceptée n'est pas redemandée pour le même créneau. Vrai = on peut continuer. */
+function confirmerCreneau(date,heure,commune){
+  if(!date||!heure||!commune||!hasConflict(date,heure,commune))return true;
+  var cle=date+'|'+heure+'|'+cmsKey(commune);if(S._creneauAccepte===cle)return true;
+  var o=occupantCreneau(date,heure,commune),qui=o?([o.civilite,o.prenom,o.nom].filter(Boolean).join(' ')||'un autre rendez-vous'):'un autre rendez-vous';
+  var ok=confirm('⚠️ Le créneau du '+date.slice(8,10)+'/'+date.slice(5,7)+' à '+heure+' ('+commune+') est déjà pris par '+qui+'.\n\nRéserver quand même ce créneau ? Les deux rendez-vous seront enregistrés sur la même heure.');
+  if(ok)S._creneauAccepte=cle;
+  return ok;
 }
 /* même chose pour un profil qui n'est pas forcément le profil actif (RDV d'un collègue
    modifié depuis l'agenda partagé) */
@@ -2687,7 +2700,7 @@ function renderGenerate(){
   var dateLabel=el('div',{style:"display:flex;align-items:center;gap:6px;margin-bottom:4px;"});
   dateLabel.appendChild(el('label',{style:"font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--c-muted);"},"Date RDV *"));
   dd.appendChild(dateLabel);
-  dd.appendChild(el('input',{class:'gx-in',style:INPUT,type:"date",value:S.date,onChange:function(e){setFieldSave({date:e.target.value});}}));
+  dd.appendChild(el('input',{class:'gx-in',style:INPUT,type:"date",value:S.date,onChange:function(e){var v=e.target.value,patch={date:v};if(!confirmerCreneau(v,S.heure,S.commune))patch.heure='';setFieldSave(patch);}}));   /* heure déjà choisie : contrôle du créneau (01/11) */
   if(S.date&&S.commune&&perm){
     var agLink=el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;border:1px solid oklch(0.72 0.12 155);background:oklch(0.94 0.06 155);color:oklch(0.38 0.12 155);margin-top:4px;",onClick:function(){S._agScrollTarget=S.date;S.activeTab='agenda';showActivePane();renderTabs();renderAgenda();}},"📅 Voir dans l'agenda");
     dd.appendChild(agLink);
@@ -2764,6 +2777,7 @@ function renderGenerate(){
       var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
       if(cmsMatch)patch.selectedCMS=String(cmsMatch.id);
     }
+    if(!confirmerCreneau(S.date,S.heure,v))patch.heure='';   /* heure choisie avant le CMS : contrôle du créneau (01/11) */
     setFieldSave(patch);
   }});
   commSel.appendChild(el('option',{value:"",selected:S.commune===""},"— Sélectionner un CMS —"));
