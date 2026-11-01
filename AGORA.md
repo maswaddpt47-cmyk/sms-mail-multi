@@ -122,6 +122,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-021 — Délai d'attente Marmande : médiane masquée, fiches mesurables et exclues accessibles — ouvert le 01/11/2026
+**Auteur** : session 0199YP2L — lu sur `c3e712f` (base de la branche de session)
+**Proposition** : (1) masquer la médiane du délai d'attente, globale et par CMS (AG-019), en gardant les effectifs mesurables et exclus et la mention « Couverture insuffisamment établie pour interpréter le délai d’attente » ; aucune moyenne de remplacement. (2) « Mesurables » ouvre la liste des fiches du calcul : personne, date de réception, date du RDV, délai en jours calendaires, triée par délai croissant, filtres période et CMS appliqués. (3) Les fiches exclues sont listées avec leur motif. Rien n'est stocké, rien n'est envoyé, aucune date modifiée.
+**Critère déclencheur** : 7 (chiffre affiché : médiane et effectifs du délai d'attente, `CLAUDE.md`, section AGORA). Le contrôle des listes n'ajoute aucun indicateur.
+**Ce que ça engage** : affichage seul. Aucune donnée, archive ni format d'export touché ; retirer le masquage = un commit.
+**Définitions retenues** (inchangées depuis AG-019, sauf mention) : délai = jours calendaires de la réception saisie au RDV ; « mesurable » = fiche de la période et du CMS avec réception saisie valide et RDV non antérieur à la réception ; exclus = « sans réception saisie » (date du message non assimilée à une réception) et « réception postérieure au RDV ».
+**Choix faits par Claude, à trancher** : masquage inconditionnel, provisoire (pas de seuil de couverture) ; les médianes du diagnostic « premiers RDV » sont masquées aussi, seuls leurs effectifs restent ; médiane toujours calculée dans le modèle, jamais affichée ; tri par délai croissant, départage par date du RDV puis par nom.
+**Non vérifié par l'auteur** : que la liste reproduit à l'identique les 8 dossiers mesurables de Marmande (à contrôler par l'utilisateur sur ses données réelles, hors Claude) ; que le motif « sans réception » recouvre les cas réels (hypothèse non établie sur fichiers réels) ; rendu sur téléphone et au clavier non mesuré.
+**Si personne ne répond, je fais quoi ?** Le masquage reste : retirer un chiffre non établi ne se défait pas sans décision de l'utilisateur. Les listes restent affichées, seul leur libellé pourra être amendé.
+**Où regarder** : `index.html`, `delaiAttenteParCms` et `carteDelaiAttente` (section AG-019), liste modale `delai-list` (renderModal).
+
 ---
 
 # Vérification des étapes d'AG-013
