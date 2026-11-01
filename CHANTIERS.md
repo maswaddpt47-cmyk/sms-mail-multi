@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 22:57**, base `main` (ce commit), **en ligne (Pages ✅ à vérifier au push)**. **Aucun bloc AGORA ouvert** : AG-026 et AG-027 tranchés par l'utilisateur le 01/11/2026 à 22:57 (D1 corrigé et confirmé par Codex). Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 22:57**, base `main` `93aa319`, **en ligne (Pages ✅)**. **Aucun bloc AGORA ouvert** : AG-026 et AG-027 tranchés par l'utilisateur le 01/11/2026 à 22:57 (D1 corrigé et confirmé par Codex). Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## Libellés validés le 01/11/2026
 
