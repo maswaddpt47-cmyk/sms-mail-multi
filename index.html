@@ -2405,7 +2405,7 @@ var STATUT_STYLES={
   confirme:{border:'oklch(0.48 0.2 266)',bg:'oklch(0.82 0.14 266)',text:'oklch(0.2 0.15 266)',label:'✓ Confirmé'},
   en_attente:{border:'oklch(0.78 0.14 350)',bg:'oklch(0.95 0.06 350)',text:'oklch(0.45 0.18 350)',label:'⏳ En attente'},
   realise:{border:'oklch(0.5 0.16 145)',bg:'oklch(0.86 0.1 145)',text:'oklch(0.26 0.14 145)',label:'✅ Réalisé'},
-  excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙅 Excusé'},
+  excuse:{border:'oklch(0.72 0.14 85)',bg:'oklch(0.92 0.08 85)',text:'oklch(0.4 0.12 85)',label:'🙏 Excusé'},
   annule:{border:'oklch(0.5 0.23 25)',bg:'oklch(0.72 0.2 25)',text:'oklch(0.27 0.12 25)',label:'✕ Annulé'},
   lapin:{border:'oklch(0.65 0.2 45)',bg:'oklch(0.93 0.1 45)',text:'oklch(0.38 0.18 45)',label:'🐇 Lapin'},
   pas_de_retour:{border:'oklch(0.62 0.04 266)',bg:'oklch(0.91 0.02 266)',text:'oklch(0.42 0.06 266)',label:'📵 Pas de retour'}
@@ -3262,7 +3262,7 @@ function renderArchivedYearStats(wrap,arc){
   });
   wrap.appendChild(rateRow);
 
-  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙅'],['annule','Annulé','✕'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵']];
+  var statMeta=[['confirme','Confirmé','✓'],['en_attente','En attente','⏳'],['realise','Réalisé','✅'],['excuse','Excusé','🙏'],['annule','Annulé','✕'],['lapin','Lapin','🐇'],['pas_de_retour','Pas de retour','📵']];
   var statCard=card('Répartition par statut');
   var statGrid=el('div',{class:'ui-stats-status-list'});
   statMeta.forEach(function(s){
@@ -5124,7 +5124,7 @@ function renderAgenda(){
   var btnNext=el('button',{id:'ag-timeline-next',class:'gx-press',style:NBTN},'›');
   btnNext.addEventListener('click',function(){timelineMove(1);});
   var statutSel=el('select',{'aria-label':'Filtrer par statut',id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
-  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙅 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙏 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.value=_agStatutFilter;
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
