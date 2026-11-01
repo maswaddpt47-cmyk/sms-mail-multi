@@ -2,6 +2,8 @@
 
 ## Publication sur main — consigne utilisateur du 20/10/2026
 
+**« Main toujours » (01/11/2026)** : même quand la plateforme impose une branche de session, publier sur `main` (avance rapide : `git merge-base --is-ancestor origin/main HEAD`, puis `git push origin HEAD:main`) et garder la branche de session alignée. Ne pas redemander.
+
 **Pousser systématiquement sur `main` après les vérifications, sans
 redemander de feu vert.** L’utilisateur a demandé : « push systématiquement
 sur main dorénavant !!! », puis « note le dans AGENTS ». Cette consigne,
@@ -220,6 +222,7 @@ App = fichier HTML unique en JS vanilla, sans build ni framework. Les tests auto
 - **Test Playwright ciblé uniquement** : si l'utilisateur le demande explicitement pour ce changement, ou en début de session pour valider l'état général de l'app après une reprise/un déploiement. Ne pas en faire un réflexe systématique.
 - **Retrait d'une variable ou d'une fonction** (règle 1, 01/11/2026) : un harnais Node ne charge pas toute l'application. Après un tel changement, ouvrir l'appli dans Chromium (aperçu démo, onglets Agenda, Historique, Statistiques, Générer) et vérifier qu'aucune erreur JS n'apparaît. Constat : l'Agenda plantait alors que les tests Node passaient (AG-016 A).
 - **Chiffres animés** (règle 2, 01/11/2026) : un compteur se lit après la fin de son animation (déclencher `beforeprint` ou attendre), sinon on lit 0 ou une valeur intermédiaire. Constat répété : AG-014 et AG-015.
+- **Tous les tests du déploiement avant de pousser** (règle 3, 01/11/2026) : lancer chaque `scripts/check-*.js` listé dans `.github/workflows/deploy.yml`, en UTC et Europe/Paris, pas seulement ceux du calcul touché. Constat : `bb92cbc` a échoué au déploiement, `check-activite.js` attendait l'ancien appel de la carte (corrigé `6dfb857`).
 
 ## Portage entre SMS-mail et sms-mail-multi — arrêté le 20/10/2026
 
