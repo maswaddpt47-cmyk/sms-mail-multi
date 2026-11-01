@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **01/11/2026 à 18:20**, base `main` `40c6622`, **en ligne (Pages ✅)**. **Aucun bloc AGORA ouvert** : AG-021 et AG-022 tranchés par l'utilisateur le 01/11/2026 à 18:20 (médiane du délai d'attente réaffichée ; choix d'AG-022 retenus tels que livrés). Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **01/11/2026 à 18:45**, base `main` `7a7ef2e`, **en ligne (Pages ✅)**. Aucun bloc AGORA ouvert. **Décision à trancher** : réceptions saisies avant le 22/10 (voir « Décisions à trancher »). Aucun développement en cours. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## ⏩ Passation du 01/11/2026 à 18:20 — À LIRE EN PREMIER
 
@@ -123,7 +123,9 @@ dans « Points à ne pas défaire ».
 
 ## Décisions à trancher
 
-Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi. Aucune décision en attente (AG-012 à AG-022 tranchés).
+Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
+
+- **Réceptions saisies avant le 22/10/2026 — « À confirmer » (160 sur la capture du 01/11)** — diagnostic du 01/11/2026 à 18:45, sans lecture de sauvegarde réelle. **Cause prouvée** (historique git + reproduction fictive Chromium : fiche créée par `fe8b21d~1`, lue par `7a7ef2e`) : du 23/07 au 22/10, le seul champ de réception de Générer s'appelait « Date de réception de la demande », **prérempli au jour même** et enregistré dans `dateDemande` ; `dateReception` n'existe que depuis `20fbf4e` (22/10). Ces fiches n'ont donc pas de `dateReception` → `etatReception` = *reprise* → exclues du délai d'attente (AG-022), alors que `receptionDateFor` les lit comme réception pour la **préparation moyenne** et l'**export CSV**, et que les écrans les nomment « ancienne date du message ». Aucun autre champ, aucun défaut d'écriture : l'écran et le calcul lisent le même champ ; c'est sa **définition** qui diffère d'un chiffre à l'autre. Les imports planning/ICS ne produisent pas de reprise (`dateDemande` vide). **Non distinguable dans le code** : date saisie et préremplissage laissé tel quel (même jour). **À trancher par l'utilisateur** ; si l'on fait entrer ces dates dans le délai : bloc AGORA (critères 5 — note de l'utilisateur du 22/10 « la date de réception déjà saisie est le point zéro » contre AG-022 — et 7), Codex.
 
 ## Points à ne pas défaire
 
