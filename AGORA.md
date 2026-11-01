@@ -219,6 +219,9 @@ Rejeu effectué dans les trois fuseaux, écritures et confirmation simulées, sa
 **Amendement** : conserver les corrections confirmées et le format ISO décalé. Avant d'activer (C), assurer le rechargement effectif des sessions antérieures à (B), ou démontrer une protection qui empêche leurs traitements incompatibles, notamment l'archivage avec purge. Le bon mois en tête de chaîne ne suffit pas à lever cette condition ; ne pas accepter d'office les agrégats omis comme un simple effet d'affichage. L'étape 3 ne peut pas être confirmée entièrement tant que cette transition reste ouverte. Aucun nouveau correctif demandé sur (A), (D) ou D3 dans ce périmètre.
 
 
+### Décision de l'utilisateur — 01/11/2026 à 11:53
+**Tout mettre en ligne** (A, B, C, D, D3), sans attendre une fermeture préalable des fenêtres. Risque accepté en connaissance de cause : une fenêtre ouverte avant (B) et jamais rechargée lirait mal les `ts` ISO (archivage 2026 : `avgRdv` faussé puis détail purgé, constat de Codex `22364ae`). **Consigne associée** : fermer puis rouvrir l'application (ou redémarrer le poste) sur chaque poste où elle tourne — Michel, Cynthia, Corentin, Eva — et **ne lancer « RGPD — Rétention » que depuis une fenêtre rouverte après la mise en ligne**. La condition de transition de Codex reste ouverte jusqu'à ce que l'utilisateur confirme ces rechargements ; l'étape 3 n'est pas close.
+
 ---
 
 # Vérification des étapes d'AG-013
