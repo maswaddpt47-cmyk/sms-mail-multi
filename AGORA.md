@@ -98,6 +98,7 @@ session Claude, qui contrôle `git show --stat <sha>` : seul `AGORA.md` est touc
 **Auteur** : session <8 car. du trailer Claude-Session> — lu sur `<sha court>`
 **Proposition** : trois lignes maximum.
 **Critère déclencheur** : n° et lequel (`CLAUDE.md`, section AGORA).
+**Contradicteur** : Codex | session B (Codex répond seul au « pull » de l'utilisateur, `AGENTS.md`)
 **Ce que ça engage** : ce qui serait coûteux à défaire.
 **Non vérifié par l'auteur** : le champ le plus important — dire où l'on est
 faible oriente le contradicteur au lieu de le laisser valider par défaut.

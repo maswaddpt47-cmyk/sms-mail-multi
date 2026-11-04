@@ -111,6 +111,7 @@ l'implémentation ; le commiter et le **pousser directement sur `main`**
 (`git pull --rebase origin main` avant — exception au workflow de branche :
 c'est du texte, ça ne casse aucun déploiement) ; annoncer en une ligne
 « ⚖️ AGORA : critère N — … » avec la phrase à coller dans l'autre session, **qui nomme le dépôt** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-00N, tu es la session B ».
+**Bloc pour Codex : dire « pull » à Codex suffit** (son `AGENTS.md` le fait répondre, MD-LIB `agora.md` §12, 03/11/2026) ; la session qui ouvre le bloc l'annonce quand même à l'utilisateur, en une ligne, dès qu'il est en ligne.
 **Ne jamais bloquer** : continuer le travail, aucune réponse n'est garantie.
 L'utilisateur tranche.
 
