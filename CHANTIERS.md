@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **04/11/2026 à 06:56**, base `main` (ce commit), **en ligne (Pages ✅ à vérifier au push)**. Aucun bloc AGORA ouvert, aucun développement en cours. **Reçu par pull le 04/11** : règles MD-LIB 61-62 (`fa7666a`) et « pull » suffit pour Codex (`AGENTS.md`, ligne Contradicteur du gabarit, `0ea5f52`). **Ménage du `CLAUDE.md` fait le 04/11** (accord de l'utilisateur) : règles communes chargées depuis MD-LIB/collaboration.md, 395 → 201 lignes. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **04/11/2026 à 06:56**, base `main` `7873b38`, **en ligne (Pages ✅)**. Aucun bloc AGORA ouvert, aucun développement en cours. **Reçu par pull le 04/11** : règles MD-LIB 61-62 (`fa7666a`) et « pull » suffit pour Codex (`AGENTS.md`, ligne Contradicteur du gabarit, `0ea5f52`). **Ménage du `CLAUDE.md` fait le 04/11** (accord de l'utilisateur) : règles communes chargées depuis MD-LIB/collaboration.md, 395 → 201 lignes. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## Libellés validés le 01/11/2026
 
