@@ -14,6 +14,8 @@ sur main dorénavant !!! ». Elle remplace la restriction du 19/10 imposant
 de travailler et de publier ; préserver les changements concurrents, sans
 force-push. Vérifier le déploiement Pages avant d’annoncer une mise en ligne.
 
+**« Main toujours » (01/11/2026)** : même quand la plateforme impose une branche de session, publier sur `main` en avance rapide (`git fetch origin main`, `git merge-base --is-ancestor origin/main HEAD`, puis `git push origin HEAD:main`) et garder la branche de session alignée. Ne pas redemander (MD-LIB `git-workflow.md` §3).
+
 ## Autorisations — accès complet (consigne de l’utilisateur du 04/11/2026)
 
 **L’utilisateur donne toutes les autorisations pour le travail demandé** : « je
@@ -126,6 +128,10 @@ plateforme (le signaler une fois, puis continuer le reste).
 - Distinguer code local, code poussé, aperçu et production. Avant toute annonce
   « en ligne », vérifier le commit réellement déployé et les étapes de publication.
   Suivre `MD-LIB/deploiement.md` et son vérificateur lorsqu’ils s’appliquent.
+- **Avant de pousser, lancer tous les tests que le déploiement exécutera, dans
+  ses conditions** (chaque script listé par le workflow, chaque fuseau), pas
+  seulement ceux du changement : il casse aussi les tests de son voisinage
+  (MD-LIB `collaboration.md` règle 60, 01/11/2026).
 - Ne pas désactiver un contrôle requis pour faire passer une livraison.
 
 ## Sécurité, audit et instructions
