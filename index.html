@@ -517,6 +517,11 @@
 .ui-stats-rate-band{grid-template-columns:repeat(2,minmax(0,1fr));}
 .ui-stats-metric{padding:0 16px;border-left:1px solid var(--c-border);min-width:0;text-align:left;}
 .ui-stats-metric:first-child{border-left:0;}
+/* Tuiles cliquables : ne pas garder le fond natif clair des boutons en mode nuit. */
+.ui-stats-metric-band button.ui-stats-metric{appearance:none;-webkit-appearance:none;font:inherit;color:var(--c-text);background:var(--c-subtle-bg);border:1px solid var(--c-border-in);border-radius:8px;padding:12px 14px;cursor:pointer;}
+.ui-stats-metric-band button.ui-stats-metric:hover{background:var(--c-hover);}
+.ui-stats-metric-band button.ui-stats-metric:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px;}
+.ui-delai-attente .ui-stats-metric-band{gap:12px;}
 .ui-stats-number{font-size:33px;line-height:1.1;font-weight:800;letter-spacing:-.065em;color:var(--ui-ink);font-variant-numeric:tabular-nums;margin-bottom:9px;}
 .ui-stats-metric:first-child .ui-stats-number{color:var(--ui-accent);}
 .ui-stats-metric-label-row{display:flex;align-items:center;gap:5px;}

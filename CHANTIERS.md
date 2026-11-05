@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **04/11/2026 à 20:55**, base `main` `9b1b062`, **en ligne (Pages ✅)**. Aucun bloc AGORA ouvert, aucun développement en cours. **`AGENTS.md` (04/11)** : section « Autorisations — accès complet » (Codex agit sans demander, sauf purge, réécriture d'historique, format/migration, écart à la demande), règle 60 (tous les tests du déploiement avant de pousser) et « Main toujours ». **Reçu par pull le 04/11** : annonce d'un bloc AGORA sur une ligne à part, 🔴 et en gras (`CLAUDE.md`, `9b1b062`, MD-LIB `agora.md` §4) ; règles MD-LIB 61-62 (`fa7666a`) et « pull » suffit pour Codex (`AGENTS.md`, ligne Contradicteur du gabarit, `0ea5f52`). **Ménage du `CLAUDE.md` fait le 04/11** (accord de l'utilisateur) : règles communes chargées depuis MD-LIB/collaboration.md, 395 → 201 lignes. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
+État au **05/11/2026**, base `main` `4f0e1c7` + cette correction de contraste (déploiement suivi par Pages). Aucun bloc AGORA ouvert, aucun développement en cours. **`AGENTS.md` (04/11)** : section « Autorisations — accès complet » (Codex agit sans demander, sauf purge, réécriture d'historique, format/migration, écart à la demande), règle 60 (tous les tests du déploiement avant de pousser) et « Main toujours ». **Reçu par pull le 04/11** : annonce d'un bloc AGORA sur une ligne à part, 🔴 et en gras (`CLAUDE.md`, `9b1b062`, MD-LIB `agora.md` §4) ; règles MD-LIB 61-62 (`fa7666a`) et « pull » suffit pour Codex (`AGENTS.md`, ligne Contradicteur du gabarit, `0ea5f52`). **Ménage du `CLAUDE.md` fait le 04/11** (accord de l'utilisateur) : règles communes chargées depuis MD-LIB/collaboration.md, 395 → 201 lignes. Avant de pousser : tous les tests du déploiement (`CLAUDE.md`, politique de tests).
 
 ## Libellés validés le 01/11/2026
 
@@ -141,6 +141,8 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
 - Aucune : les réceptions saisies avant le 22/10 sont comptées (choix de l'utilisateur du 01/11, AG-023, livré).
 
 ## Points à ne pas défaire
+
+- **Tuiles cliquables des Statistiques — jour/nuit (05/11/2026)** : fond, texte, bordure, survol et focus utilisent les variables du thème ; ne pas laisser le fond natif des boutons derrière les chiffres clairs. Aucun calcul modifié. Contrastes calculés des libellés : 6,68:1 en jour, 8,69:1 en nuit sur le fond de tuile ; neuf tests du déploiement réussis en UTC et Europe/Paris. Rendu à confirmer sur l'appareil de l'utilisateur : Chromium local bloqué avant ouverture (setsockopt refusé par l'environnement).
 
 - **Réception d'avant le 22/10 (AG-023)** : `dateDemande` ≤ 2026-10-22 sans `dateReception` = réception saisie dans l'ancien champ (libellé « Date de réception de la demande », prérempli au jour du message) ; ne pas la remettre « à confirmer », ne pas étendre la borne au-delà du 22/10 (après, c'est la date du message). Tests : `check-delai-attente.js`, `check-reception.js`.
 - **Réactivité en jours ouvrés français (AG-024)** : `joursOuvresFrance` (week-ends + 11 fériés nationaux) pour l'affichage ; `businessDaysBetween` (lun.–ven.) réservé aux archives `ag017-v1`. L'envoi n'est pas enregistré : ne jamais présenter `premierePreparationAt` ni `ts` comme une date d'envoi. Test : `check-reactivity.js`.
