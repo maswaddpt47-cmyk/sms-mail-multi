@@ -123,6 +123,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-029 — Calendrier GDIN : inscriptions, séances et réimport — ouvert le 06/11/2026
+**Auteur** : Codex — lu sur `2f0370b`, demande de développement du calendrier GDIN uniquement.
+**Proposition** : conserver chaque inscription ICS, puis regrouper à l'affichage par action, créneau, lieu et intitulé d'activité disponible. UID seul interdit comme identité ; import multiple, recherche, filtres et durées nulles visibles.
+**Critère déclencheur** : 1 (identité des inscriptions), 7 (regroupements et filtres).
+**Contradicteur** : session B distincte ; ne pas auto-répondre.
+**Ce que ça engage** : même clé locale et même objet version 1, mêmes champs d'événement. L'identité composite dans `key` conserve UID et CATEGORIES ; aucune migration ni suppression automatique d'anciens imports. Une ancienne ligne n'est remplacée que si elle correspond exactement à une inscription réimportée. Sans preuve, conservation et signalement. Aucun lien avec les dossiers métier.
+**Choix** : CATEGORIES est un numéro d'action, non un identifiant d'événement. Deux créneaux d'une même demande restent distincts. Regroupement désactivable ; sans action, pas de fusion supposée. Les descriptions et titres originaux restent consultables. Une absence dans un nouvel export ne prouve pas une suppression ; aucune suppression silencieuse. Date flottante = heure de Paris, UTC/TZID convertis explicitement ; durée nulle signalée sans inventer une durée métier.
+**Non vérifié par l'auteur** : syntaxe exacte des titres/descriptions GDIN, échantillon anonymisé demandé ; aucune sauvegarde ni fiche réelle lue. Le cas Espace Santé est reproduit avec dix inscriptions fictives, ce qui ne certifie pas l'export réel.
+**Vérifié avant livraison** : `scripts/check-calendar.js` en UTC et Europe/Paris, dont dix inscriptions fictives → un atelier de 09:30 à 11:30 le 02/11/2026, UID partagés entre créneaux/participants, actions/lieux/activités distincts, annulation partielle, durée nulle, filtres, réimport multiple et lot invalide sans écriture partielle. Mutations UID seul et absence de regroupement rejetées dans les deux fuseaux, via `CALENDAR_JS` sur les copies mutées. Les onze scripts du déploiement passent dans les deux fuseaux. Contrôle visuel navigateur non exécuté : attente de permission de l'environnement interrompue ; aucune capture de cette évolution revendiquée.
+**Si personne ne répond, je fais quoi ?** Livrer le calendrier et ses contrôles fictifs, conserver les sources originales dans le détail et rendre le regroupement désactivable ; ne pas prétendre avoir validé les données réelles.
+**Où regarder** : `calendar.js` (`parse`, `merge`, `metadata`, `sessions`, `render`), `calendar.css`, `scripts/check-calendar.js`.
+
 ## AG-028 — Calendrier visuel et import ICS local — ouvert le 06/11/2026
 **Auteur** : Codex — lu sur `8a58402`, demande de l'utilisateur : nouvelle rubrique d'agenda de type Outlook pour afficher des fichiers ICS.
 **Proposition** : rubrique « Calendrier », vues jour/semaine/mois, import ICS avec aperçu et fusion par UID ; événements importés en bleu, RDV du profil en vert. Aucun événement importé n'est converti en dossier métier.

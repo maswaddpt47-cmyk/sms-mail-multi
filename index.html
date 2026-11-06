@@ -2505,7 +2505,7 @@ function workspaceSection(number,title,description){
 }
 function renderWorkspaceHeading(){
   var titles={generate:['Préparer un message','Renseignez le rendez-vous, vérifiez le message et copiez-le dans votre messagerie.','Messages'],agenda:['Votre agenda','Retrouvez les rendez-vous et les créneaux de votre équipe.','Agenda'],orientations:['Les orientations','Retrouvez les demandes à traiter et préparez leur accompagnement.','Orientations'],history:['Historique des messages','Retrouvez vos messages et le suivi des rendez-vous.','Historique'],stats:['Votre activité en un regard','Consultez les indicateurs de votre accompagnement numérique.','Statistiques'],templates:['Vos modèles de messages','Adaptez les textes à vos situations du quotidien.','Modèles'],config:['Configuration','Personnalisez votre outil et les informations de vos rendez-vous.','Configuration'],mandat:['Préparer un mandat','Renseignez, relisez et préparez le document pour signature.','Mandat'],mandats:['Mandats archivés','Retrouvez les documents conservés dans votre espace.','Mandats archivés']};
-  titles.calendar=['Votre calendrier','Importez vos calendriers ICS et retrouvez vos événements en vue jour, semaine ou mois.','Calendrier'];
+  titles.calendar=['Votre calendrier GDIN','Importez vos fichiers ICS GDIN : rendez-vous et ateliers en vue jour, semaine ou mois.','Calendrier'];
   var item=titles[S.activeTab]||titles.generate;
   document.getElementById('workspace-title').textContent=item[0];
   document.getElementById('workspace-subtitle').textContent=item[1];
@@ -2604,7 +2604,7 @@ function showActivePane(){
 function renderCalendar(){
   var pane=document.getElementById('pane-calendar');if(!pane)return;
   var generation=_generationProfil;
-  CalendarICS.render(pane,{profileId:S.activeProfile,currentProfile:function(){return generation===_generationProfil&&!_chargementEchoue?S.activeProfile:null;},history:S.history,storage:localStorage,noteVersion:noterVersion,write:lsSet,notify:showToast});
+  CalendarICS.render(pane,{profileId:S.activeProfile,currentProfile:function(){return generation===_generationProfil&&!_chargementEchoue?S.activeProfile:null;},storage:localStorage,noteVersion:noterVersion,write:lsSet,notify:showToast});
 }
 function renderGenerate(){
   var previousSettings=document.getElementById('message-settings');
