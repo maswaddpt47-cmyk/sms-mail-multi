@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **06/11/2026**, base `main` `2bf7638`. **Calendrier GDIN dans sms-mail-multi** : améliorer l'onglet Calendrier existant, sans toucher aux dépôts GDIN/GDINV2 ni créer un autre site (clarification de l'utilisateur). AG-029 décrit les identités et regroupements ; aucune auto-réponse. Les livraisons statistiques précédentes restent closes.
+État au **06/11/2026**, base `main` `0f9f5ab` (Pages ✅, vérifié le 06/11 à 19:56). Relecture B des correctifs AG-029 : D1 corrigé (2 inscriptions au même titre conservées, rejoué). **Limite relevée** : un même fichier contenant deux versions d’Ne même inscription (ex. annulée puis réinscrite) est refusé en entier, et « importer séparément » est alors impossible — hypothèse sur l’export réel, à trancher. **Calendrier GDIN dans sms-mail-multi** : améliorer l'onglet Calendrier existant, sans toucher aux dépôts GDIN/GDINV2 ni créer un autre site (clarification de l'utilisateur). AG-029 décrit les identités et regroupements ; aucune auto-réponse. Les livraisons statistiques précédentes restent closes.
 
 **Livraisons déjà validées le 06/11, à conserver** : « Lapins par permanence » en fin des Statistiques (`a0d0e25`) ; depuis Orientations, « Préparer le message » vide les anciens date/heure puis propose un créneau vide d’une journée déjà ouverte du CMS reconnu (`c878666`, sélection automatique validée par l’utilisateur). Contraste des tuiles en mode nuit (`2cd9b66`) : rendu utilisateur à confirmer.
 
