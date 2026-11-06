@@ -46,7 +46,9 @@
         // UID désigne une demande GDIN : jamais une séance. Conserver aussi les
         // différentes inscriptions portant le même UID au même créneau.
         var action=unescapeText(ev.CATEGORIES&&ev.CATEGORIES.value).trim().slice(0,500);
-        events.push({key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location]),title:title,location:location,description:unescapeText(ev.DESCRIPTION&&ev.DESCRIPTION.value).slice(0,20000),start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')});
+        var description=unescapeText(ev.DESCRIPTION&&ev.DESCRIPTION.value).slice(0,20000),person=descriptionFields(description).participant;
+        var discriminator=person?'participant:'+person:'description:'+description;
+        events.push({key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location,discriminator]),title:title,location:location,description:description,start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')});
         ev=null;return;
       }
       if(line.indexOf('BEGIN:')===0){nested++;return;}if(line.indexOf('END:')===0){nested--;return;}if(nested)return;
@@ -56,12 +58,16 @@
     return {events:events,warnings:warnings,total:total};
   }
   function isEvent(e){return e&&typeof e.key==='string'&&typeof e.title==='string'&&typeof e.location==='string'&&typeof e.description==='string'&&typeof e.allDay==='boolean'&&typeof e.cancelled==='boolean'&&typeof e.start==='string'&&typeof e.end==='string'&&(e.allDay?validDay(e.start)&&validDay(e.end)&&e.end>e.start:/^\d{4}-\d{2}-\d{2}T.*Z$/.test(e.start)&&Number.isFinite(Date.parse(e.start))&&Number.isFinite(Date.parse(e.end))&&e.end>=e.start);}
-  function metadata(e){
-    var id=[];if(e.key.indexOf('gdin:')===0){try{var value=JSON.parse(e.key.slice(5));if(Array.isArray(value))id=value;}catch(err){}}
-    var desc=e.description||'',activity='',participant='';
+  function descriptionFields(desc){
+    var activity='',participant='';
     desc.split('\n').forEach(function(line){var m=/^\s*(?:action|nom de l.action|intitulé(?: de l.action)?|activité|atelier)\s*:\s*(.+)$/i.exec(line);if(m&&!activity)activity=m[1].trim();
       m=/^\s*(?:participant|bénéficiaire|usager)\s*:\s*(.+)$/i.exec(line);if(m&&!participant)participant=m[1].trim();});
-    return {uid:typeof id[0]==='string'?id[0]:e.key.indexOf('uid:')===0?e.key.slice(4):'',action:typeof id[1]==='string'?id[1]:'',activity:activity,participant:participant};
+    return {activity:activity,participant:participant};
+  }
+  function metadata(e){
+    var id=[];if(e.key.indexOf('gdin:')===0){try{var value=JSON.parse(e.key.slice(5));if(Array.isArray(value))id=value;}catch(err){}}
+    var fields=descriptionFields(e.description||'');
+    return {uid:typeof id[0]==='string'?id[0]:e.key.indexOf('uid:')===0?e.key.slice(4):'',action:typeof id[1]==='string'?id[1]:'',activity:fields.activity,participant:fields.participant,legacy:e.key.indexOf('uid:')===0||e.key.indexOf('event:')===0||e.key.indexOf('gdin:')===0&&id.length===6};
   }
   function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/\s+/g,' ').trim();}
   function sessions(events,group){
@@ -73,12 +79,15 @@
   }
   function select(events,filters){filters=filters||{};var q=norm(filters.query);return events.filter(function(e){
     return (!filters.action||e.action===filters.action)&&(!filters.location||e.location===filters.location)&&(!filters.type||(filters.type==='collective'?e.collective:filters.type==='individual'?!e.collective:filters.type==='zero'?e.zeroDuration:filters.type==='cancelled'?e.cancelled:true))&&(!q||norm([e.title,e.action,e.location].concat((e.members||[e]).map(function(m){return m.title+' '+m.description;})).join(' ')).includes(q));});}
-  function merge(existing,incoming){var map=new Map(),added=0,updated=0,unchanged=0;
-    // Ancienne identité UID : remplacement seulement sur correspondance exacte,
-    // jamais sur le seul UID d'une demande (plusieurs séances possibles).
-    existing.forEach(function(e){var legacy=e.key.indexOf('uid:')===0||e.key.indexOf('event:')===0,match=legacy&&incoming.find(function(n){return metadata(n).uid===(e.key.indexOf('uid:')===0?e.key.slice(4):'')&&n.start===e.start&&n.end===e.end&&n.title===e.title&&n.location===e.location;});map.set(match?match.key:e.key,e);});var unique=new Map();incoming.forEach(function(e){unique.set(e.key,e);});
+  function merge(existing,incoming){var map=new Map(),added=0,updated=0,unchanged=0,identical=0,legacyExact=new Map(),legacyWithoutAction=new Map();
+    function signature(e,withAction){var m=metadata(e);return JSON.stringify([m.uid,withAction?m.action:'',e.start,e.end,e.title,e.location,e.description,e.allDay,e.cancelled]);}
+    incoming.forEach(function(e){legacyExact.set(signature(e,true),e);legacyWithoutAction.set(signature(e,false),e);});
+    // Rapprochement des anciens UID/replis et des anciennes clés GDIN à six
+    // éléments seulement si le contenu importé correspond exactement.
+    existing.forEach(function(e){var m=metadata(e),hasAction=e.key.indexOf('gdin:')===0,match=m.legacy&&(hasAction?legacyExact:legacyWithoutAction).get(signature(e,hasAction));map.set(match?match.key:e.key,e);});
+    var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
     unique.forEach(function(e,k){if(!map.has(k))added++;else if(JSON.stringify(map.get(k))===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);});
-    if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged};}
+    if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged,identical:identical};}
   function load(storage,key){var raw=storage.getItem(key);if(raw===null)return {events:[],raw:null};var data=JSON.parse(raw);if(!data||data.version!==1||!Array.isArray(data.events)||data.events.length>LIMIT||!data.events.every(isEvent))throw new Error('Calendrier local illisible : aucune donnée ne sera remplacée.');return {events:data.events,raw:raw};}
   function save(ctx,events,raw){if(ctx.currentProfile()!==ctx.profileId)throw new Error('Le profil a changé : recommencez depuis le bon profil.');if(ctx.storage.getItem(ctx.key)!==raw)throw new Error('Calendrier modifié dans un autre onglet : recommencez votre import.');ctx.noteVersion(ctx.key,raw);if(!ctx.write(ctx.key,{version:1,events:events}))throw new Error('Enregistrement non confirmé. Rouvrez le calendrier avant de réessayer.');}
   function overlaps(e,day){if(e.allDay)return e.start<=day&&e.end>day;var r=dayRanges.get(day);if(!r){if(dayRanges.size>128)dayRanges.clear();r=[localInstant(day,'00:00:00',ZONE),localInstant(dayAdd(day,1),'00:00:00',ZONE)];dayRanges.set(day,r);}var s=Date.parse(e.start),f=Date.parse(e.end);return s<r[1]&&(f>r[0]||f===s&&s>=r[0]);}
@@ -109,7 +118,7 @@
     var options=node('div',{class:'ics-options'});root.appendChild(options);
     var dl=node('label',{},'Aller au '),di=node('input',{type:'date',value:st.date,'aria-label':'Date du calendrier'});dl.appendChild(di);options.appendChild(dl);di.addEventListener('change',function(){if(validDay(di.value)){st.date=di.value;rerender();}});
     var gl=node('label',{class:'ics-source'}),gi=node('input',{type:'checkbox','aria-label':'Regrouper les inscriptions'});gi.checked=st.group;gi.addEventListener('change',function(){st.group=gi.checked;rerender();});gl.appendChild(gi);gl.appendChild(doc.createTextNode('Regrouper les inscriptions'));options.appendChild(gl);
-    root.appendChild(node('p',{class:'ics-help'},'Calendrier GDIN autonome · heure de Paris. Les horaires sans fuseau sont conservés tels qu’écrits dans l’ICS. Inscriptions regroupées par action, début, fin, lieu et intitulé d’activité lorsqu’il est renseigné.'));
+    root.appendChild(node('p',{class:'ics-help'},'Calendrier GDIN autonome · heure de Paris. Les horaires sans fuseau sont conservés tels qu’écrits dans l’ICS. Inscriptions regroupées par action, début, fin, lieu et intitulé d’activité. Un intitulé absent ou différent crée un groupe distinct : contrôlez les inscriptions d’origine.'));
     if(error)root.appendChild(node('p',{class:'ics-alert',role:'alert'},error));
     if(st.message)root.appendChild(node('p',{class:'ics-status',role:'status'},st.message));
     file.addEventListener('change',async function(){var files=Array.from(file.files||[]);if(!files.length)return;var token={};st.readToken=token;st.preview=null;st.message='Lecture des fichiers…';rerender();
@@ -121,11 +130,13 @@
           if(combined.events.length>LIMIT)throw new Error('5 000 inscriptions maximum par import.');}
         st.preview=combined;st.message='';
       }catch(e){if(st.readToken!==token)return;st.preview=null;st.message=e.message;}rerender();});
-    if(st.preview){var pre=st.preview,preview=node('section',{class:'ics-preview','aria-label':'Aperçu de l’import'}),merged;
-      try{merged=merge(data.events,pre.events);}catch(e){st.message=e.message;}
-      preview.appendChild(node('h3',{},'Vérifier l’import'));preview.appendChild(node('p',{},merged?pre.files+' fichier(s) · '+merged.added+' nouvelles inscriptions · '+merged.updated+' mises à jour · '+merged.unchanged+' déjà présentes':'Import trop volumineux.'));
-      var imported=sessions(merge([],pre.events).events,st.group),zero=imported.filter(function(e){return e.zeroDuration;}).length;
-      preview.appendChild(node('p',{},pre.total+' lignes ICS lues → '+imported.length+' événements après dédoublonnage et regroupement, dont '+imported.filter(function(e){return e.collective;}).length+' collectifs.'));
+    if(st.preview){var pre=st.preview,preview=node('section',{class:'ics-preview','aria-label':'Aperçu de l’import'}),merged,imported=[],previewError='';
+      try{merged=merge(data.events,pre.events);imported=sessions(merge([],pre.events).events,st.group);}catch(e){previewError=e.message;}
+      preview.appendChild(node('h3',{},'Vérifier l’import'));preview.appendChild(node('p',{},merged?pre.files+' fichier(s) · '+merged.added+' nouvelles inscriptions · '+merged.updated+' mises à jour · '+merged.unchanged+' déjà présentes':'Import non disponible.'));
+      if(previewError)preview.appendChild(node('p',{class:'ics-alert',role:'alert'},previewError));
+      if(merged){preview.appendChild(node('p',{},merged.identical+' lignes strictement identiques fusionnées dans cet import.'));
+        preview.appendChild(node('p',{},pre.total+' lignes ICS lues → '+imported.length+' événements après dédoublonnage et regroupement, dont '+imported.filter(function(e){return e.collective;}).length+' collectifs.'));}
+      var zero=imported.filter(function(e){return e.zeroDuration;}).length;
       if(zero)preview.appendChild(node('p',{class:'ics-alert'},zero+' événement(s) à durée nulle : horaires identiques ou heure de fin absente. Aucune durée réelle inventée.'));
       if(pre.warnings.dates)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.dates+' événements ignorés : date, durée ou fuseau non reconnu.'));
       if(pre.warnings.recurrences)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.recurrences+' événements récurrents ignorés : cette première version importe les événements simples, sans développer les répétitions.'));
@@ -143,7 +154,7 @@
     var events=select(all,st),range=bounds(st.date,st.view),days=[];for(var d=range[0];d<range[1];d=dayAdd(d,1))days.push(d);
     var inPeriod=events.filter(function(e){return days.some(function(day){return overlaps(e,day);});});root.appendChild(node('p',{class:'ics-results',role:'status'},inPeriod.length+' événement(s) dans la période affichée · '+events.length+' correspondant aux filtres dans tous les imports'));
     if(events.length&&!inPeriod.length)root.appendChild(button('Voir le premier résultat',function(){var first=events.slice().sort(function(a,b){return a.start.localeCompare(b.start);})[0];st.date=first.allDay?first.start:parisDay(first.start);rerender();}));
-    if(data.events.some(function(e){return e.key.indexOf('uid:')===0;}))root.appendChild(node('p',{class:'ics-alert'},'Ancien import présent : réimportez les ICS originaux pour récupérer les inscriptions que l’ancien rapprochement par UID avait pu écraser. Aucune ligne ancienne sans correspondance exacte n’est effacée.'));
+    if(data.events.some(function(e){return metadata(e).legacy;}))root.appendChild(node('p',{class:'ics-alert'},'Ancien import présent : réimportez les ICS originaux pour récupérer les inscriptions que l’ancien rapprochement pouvait écraser. Les lignes exactement reconnues sont rapprochées sans doublon ; les autres restent et doivent être contrôlées.'));
     function detail(e){
       var dialog=node('dialog',{class:'ics-dialog','aria-label':'Détail de l’événement'}),h=node('h3',{},e.title);dialog.appendChild(h);
       dialog.appendChild(node('p',{},(e.cancelled?'Événement annulé · ':'')+(e.collective?'Atelier collectif · '+e.members.length+' inscriptions':'Rendez-vous importé')+(e.action?' · Action '+e.action:'')));
@@ -172,7 +183,7 @@
       days.forEach(function(day,i){var col=node('div',{class:'ics-time-day'+(day===today?' ics-today':'')});col.style.height=(last-first)*60+'px';placed[i].forEach(function(p){var e=chip(p.event,'ics-positioned');e.style.top=(p.start-first*60)+'px';e.style.height=Math.max(24,Math.min(p.end,last*60)-p.start)+'px';e.style.left='calc('+100*p.column/p.columns+'% + 3px)';e.style.width='calc('+100/p.columns+'% - 6px)';col.appendChild(e);});body.appendChild(col);});timeline.appendChild(body);sc.appendChild(timeline);
     }
     if(!inPeriod.length)root.appendChild(node('p',{class:'ics-empty'},'Aucun événement dans cette période avec ces filtres. Importez un ICS, réinitialisez les filtres ou choisissez une autre date.'));
-    root.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport de la même inscription ne crée pas de doublon. Un changement de créneau ou de titre est conservé comme une nouvelle inscription : retirez l’ancienne après contrôle. Les absences d’un export ne suppriment rien.'));
+    root.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport identique ne crée pas de doublon. Un changement de créneau, de titre, de participant ou de description sans participant explicite crée une nouvelle inscription : contrôlez puis retirez l’ancienne si nécessaire. Deux versions contradictoires dans un même lot empêchent son ajout ; importez les fichiers séparément après contrôle. Les absences d’un export ne suppriment rien.'));
   }
   return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select};
 });
