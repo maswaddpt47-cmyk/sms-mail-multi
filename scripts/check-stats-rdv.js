@@ -565,3 +565,35 @@ console.log('Lecteur de ts OK.');
   assert(/date:todayFR\(\),ts:new Date\(\)\.toLocaleString\('fr-FR',\{timeZone:'Europe\/Paris'\}\)/.test(code),'mandat inchangé');
 }
 console.log('ts ISO avec décalage de Paris OK.');
+
+/* 06/11/2026 : prochain créneau libre proposé quand une orientation est préparée dans Messages (mêmes heures libres que
+   les Statistiques et l'Agenda). Horloge injectée ; données fictives. */
+{
+  assert.equal(typeof ctx.prochainCreneauLibre,'function');
+  const now=new Date('2026-11-06T09:45:00Z');   // 06/11/2026, 10:45 à Paris
+  const perm=(id,commune,date,extra)=>Object.assign({id,commune,exceptDate:date,debut:'09:30',fin:'16:30'},extra);
+  const rdvf=(id,date,heure,commune,statut,extra)=>Object.assign({id,date,heure,commune,statut:statut||'confirme',msgType:'confirmation',nom:'FICTIF '+id,prenom:'X'},extra);
+  const perms=[perm(1,'Marmande','2026-11-02'),perm(2,'Marmande','2026-11-06'),perm(3,'Marmande','2026-11-09'),perm(4,'Fumel','2026-11-07'),perm(5,'Marmande','2026-11-08',{archived:true})];
+  const hist=[rdvf('a','2026-11-06','11:30','Marmande'),rdvf('b','2026-11-06','13:30','Marmande','lapin'),rdvf('c','2026-11-09','09:30','Marmande','excuse')];
+  const avant=JSON.stringify({hist,perms});
+  // Aujourd'hui : 09:30 et 10:30 sont passées, 11:30 prise, 12:30 jamais proposée, 13:30 libérée le jour même (non réattribuable) → 14:30.
+  assert.deepEqual({...ctx.prochainCreneauLibre('Marmande',hist,perms,now)},{date:'2026-11-06',heure:'14:30',commune:'Marmande'});
+  assert.equal(ctx.prochainCreneauLibre('marmande ',hist,perms,now).heure,'14:30','CMS comparé par cmsKey');
+  assert.equal(ctx.prochainCreneauLibre('Marmande',hist,perms.slice().reverse(),now).date,'2026-11-06','journées rangées dans le désordre : la plus proche d\'abord');
+  // Journée du jour pleine → journée suivante ouverte ; la place libérée (excusé) d'un jour futur est proposée.
+  const plein=hist.concat(['14:30','15:30'].map((h,i)=>rdvf('p'+i,'2026-11-06',h,'Marmande')));
+  assert.deepEqual({...ctx.prochainCreneauLibre('Marmande',plein,perms,now)},{date:'2026-11-09',heure:'09:30',commune:'Marmande'},'excusé d\'un jour futur : réutilisable');
+  // Le soir : plus aucune heure à venir aujourd'hui.
+  assert.equal(ctx.prochainCreneauLibre('Marmande',hist,perms,new Date('2026-11-06T16:00:00Z')).date,'2026-11-09');
+  // Autre CMS, journée archivée, journée passée ignorées ; aucun créneau → null ; CMS vide → null.
+  assert.equal(ctx.prochainCreneauLibre('Fumel',hist,perms,now).date,'2026-11-07');
+  assert.equal(ctx.prochainCreneauLibre('Agen',hist,perms,now),null);
+  assert.equal(ctx.prochainCreneauLibre('',hist,perms,now),null);
+  assert.equal(ctx.prochainCreneauLibre('Marmande',hist,perms.filter(p=>p.exceptDate!=='2026-11-09'&&p.exceptDate!=='2026-11-06'),now),null,'seules une journée passée et une archivée');
+  assert.equal(JSON.stringify({hist,perms}),avant,'lecture seule');
+  // Raccordement réel : « Préparer le message » vide la date et l'heure du dossier précédent et propose le créneau.
+  const prep=html.slice(html.indexOf("S.msgType='sans_appel';"),html.indexOf('},"Préparer le message");'));
+  assert.match(prep,/var proposition=prochainCreneauLibre\(S\.commune,S\.history,S\.permanences\|\|\[\],new Date\(\)\);/);
+  assert.match(prep,/S\.date=proposition\?proposition\.date:'';S\.heure=proposition\?proposition\.heure:'';/);
+}
+console.log('Prochain créneau libre proposé à la préparation d\'une orientation OK.');
