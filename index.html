@@ -4450,6 +4450,23 @@ function printMonthlyReport(html,title){
   w.document.close();w.focus();setTimeout(function(){w.print();},300);
 }
 
+/* 06/11/2026 (demande de l'utilisateur) : prochain créneau libre d'un CMS, proposé quand une orientation est préparée dans Messages.
+   Mêmes heures libres que les Statistiques, « Prochaines permanences » et les tuiles « Libre » de l'Agenda (statsRdvModel :
+   journées ouvertes non archivées à partir d'aujourd'hui, créneaux pris, bloqués, pause et demi-journées exclus, place libérée
+   le jour même non réattribuable). Aujourd'hui : seulement les heures encore à venir (heure de Paris). Lecture seule.
+   Renvoie {date, heure, commune} ou null (aucune journée ouverte à venir avec une heure libre). */
+function prochainCreneauLibre(commune,history,permanences,now){
+  if(!String(commune||'').trim())return null;
+  now=now||new Date();
+  var today=parisDayStr(now),maintenant=now.toLocaleTimeString('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit',hour12:false});
+  var days=statsRdvModel(history||[],permanences||[],'all',commune,now).days;   /* déjà triées par date */
+  for(var i=0;i<days.length;i++){
+    var d=days[i],heures=(d.freeHours||[]).filter(function(h){return d.date>today||h>maintenant;}).sort();
+    if(heures.length)return {date:d.date,heure:heures[0],commune:d.commune};
+  }
+  return null;
+}
+
 /* ============================== RENDER: STATS ============================== */
 /* infobulle d'une case (survol ; toucher sur mobile), partagée par Orientations et la heatmap de Statistiques */
 var _tipTimer=null,_tipGlobal=false;
@@ -7653,9 +7670,14 @@ function renderOrientations(){
       S.dateDemande=jourParis();
       S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';S.receptionReprise='';S.receptionSource=null;
       S.msgType='sans_appel';
+      /* 06/11/2026 : la date et l'heure du dossier précédent ne sont jamais reprises (constat : RDV du 26/11 à 14:30 resté dans le
+         formulaire) ; le prochain créneau libre du CMS reconnu est proposé, modifiable. */
+      var proposition=prochainCreneauLibre(S.commune,S.history,S.permanences||[],new Date());
+      S.date=proposition?proposition.date:'';S.heure=proposition?proposition.heure:'';
+      regen();
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
-      showToast('✅ Formulaire pré-rempli pour '+fullName);
+      showToast('✅ Formulaire pré-rempli pour '+fullName+(proposition?' — prochain créneau libre proposé : '+proposition.date.split('-').reverse().join('/')+' à '+proposition.heure+' (modifiable)':S.commune?' — aucune journée ouverte à venir avec un créneau libre pour '+S.commune+' : choisissez la date':' — CMS non reconnu : choisissez le CMS et la date'),proposition?undefined:'warn');
     }},"Préparer le message");
     btnCol.appendChild(fillBtn);
 
