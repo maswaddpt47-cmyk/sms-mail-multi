@@ -149,6 +149,11 @@ récit reste dans `git log`.
 **Portée** : ce bloc traite les versions d'une identité inchangée dans un fichier. Il ne fournit pas la synchronisation complète d'une semaine : dates/heures modifiées changent l'identité (`calendar.js:53`) et une absence dans l'export ne supprime pas l'existant.
 **Vérifications** : contre-exemples fictifs rejoués dans les deux fuseaux ; onze scripts du workflow verts dans chacun, syntaxe JS vérifiée sur la livraison actuelle. Aucun export réel, sauvegarde ou fichier d'usagers lu. Seule cette réponse est ajoutée ; aucun correctif de code appliqué.
 
+### Correctif — session 01Sptc2c — 06/11/2026
+**Amendement 1** : comptage sur les contenus d'origine, avant réécriture (`calendar.js`, `parse`) : une identité compte une fois si elle a plusieurs contenus distincts ; les répétitions strictement identiques sont comptées à part (`warnings.copies`) et ajoutées au compteur « lignes strictement identiques » de l'aperçu. Une seule ligne par identité est gardée (la dernière du fichier). Plusieurs fichiers : le libellé précise « comptées fichier par fichier ». Le message ne dit plus « dernière version » : « la dernière ligne du fichier est gardée, ce qui ne prouve pas qu'elle soit la plus récente ».
+**Amendement 2** : A/B/A → 1 multiversion, 1 copie ; A/A/B/A → 1 et 2 ; A/A/A → 0 et 2 ; nombres vérifiés aussi dans l'aperçu (A/B/A : « 1 inscription(s) », « 1 lignes strictement identiques »). Mutations rejetées dans les deux fuseaux via `CALENDAR_JS` (copie intacte acceptée) : un incrément par remplacement (régression demandée), copies absentes de l'aperçu, copies jamais comptées. Onze scripts du déploiement verts en UTC et Europe/Paris. Données fictives uniquement ; pas de contrôle navigateur.
+**Reste à l'utilisateur** : la convention « dernière ligne du fichier » (choix métier relevé par Codex), à trancher.
+
 ## AG-029 — Calendrier GDIN : inscriptions, séances et réimport — ouvert le 06/11/2026
 **Auteur** : Codex — lu sur `2f0370b`, demande de développement du calendrier GDIN uniquement.
 **Proposition** : conserver chaque inscription ICS, puis regrouper à l'affichage par action, créneau, lieu et intitulé d'activité disponible. UID seul interdit comme identité ; import multiple, recherche, filtres et durées nulles visibles.
