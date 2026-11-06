@@ -1,10 +1,12 @@
 # CHANTIERS — sms-mail-multi
 
-État au **06/11/2026**, base `main` `eb23bc6`. **Calendrier GDIN dans sms-mail-multi** : améliorer l'onglet Calendrier existant, sans toucher aux dépôts GDIN/GDINV2 ni créer un autre site (clarification de l'utilisateur). AG-029 décrit les identités et regroupements ; aucune auto-réponse. Les livraisons statistiques précédentes restent closes.
+État au **06/11/2026**, base `main` `249a271`. **Calendrier GDIN dans sms-mail-multi** : améliorer l'onglet Calendrier existant, sans toucher aux dépôts GDIN/GDINV2 ni créer un autre site (clarification de l'utilisateur). AG-029 décrit les identités et regroupements ; aucune auto-réponse. Les livraisons statistiques précédentes restent closes.
 
 **Livraisons déjà validées le 06/11, à conserver** : « Lapins par permanence » en fin des Statistiques (`a0d0e25`) ; depuis Orientations, « Préparer le message » vide les anciens date/heure puis propose un créneau vide d’une journée déjà ouverte du CMS reconnu (`c878666`, sélection automatique validée par l’utilisateur). Contraste des tuiles en mode nuit (`2cd9b66`) : rendu utilisateur à confirmer.
 
 ## Calendrier GDIN — invariants et vérification du 06/11/2026
+
+- **Allègement demandé après validation utilisateur (« Ça fonctionne »)** : paragraphes de méthode, consigne de défilement mobile et conservation des imports regroupés sous « Aide du calendrier », fermé par défaut sous la grille. Alertes/erreurs et aperçu de validation restent visibles à leur moment utile. Rendu uniquement, aucun calcul ou stockage modifié ; pas de nouveau bloc AGORA. Onze scripts verts en UTC et Europe/Paris et syntaxe vérifiée ; contrôle visuel utilisateur restant. Fichiers versionnés `gdin-20261106-7`.
 
 - **Objet réel dans les tuiles** : l'utilisateur a montré que DESCRIPTION contient directement le libellé de démarche (sans préfixe). Affichage de ce texte en clair, nom séparé ; objet commun seulement si toutes les inscriptions du collectif concordent. Numéro d'action retiré de la tuile et du détail principal ; filtre « Objet » à la place du filtre par numéro. Date du même jour non répétée, sources repliées. Aucun changement d'identité ni de regroupement ; aucun réimport nécessaire pour afficher les descriptions existantes. Onze scripts verts dans les deux fuseaux ; mutations objet masqué et filtre inerte rejetées via CALENDAR_JS. Contrôle visuel restant. Fichiers versionnés `gdin-20261106-6` ; détails dans le complément AG-029.
 
