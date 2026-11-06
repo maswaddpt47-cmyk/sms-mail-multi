@@ -106,6 +106,23 @@
   function save(ctx,events,raw){if(ctx.currentProfile()!==ctx.profileId)throw new Error('Le profil a changé : recommencez depuis le bon profil.');if(ctx.storage.getItem(ctx.key)!==raw)throw new Error('Calendrier modifié dans un autre onglet : recommencez votre import.');ctx.noteVersion(ctx.key,raw);if(!ctx.write(ctx.key,{version:1,events:events}))throw new Error('Enregistrement non confirmé. Rouvrez le calendrier avant de réessayer.');}
   function overlaps(e,day){if(e.allDay)return e.start<=day&&e.end>day;var r=dayRanges.get(day);if(!r){if(dayRanges.size>128)dayRanges.clear();r=[localInstant(day,'00:00:00',ZONE),localInstant(dayAdd(day,1),'00:00:00',ZONE)];dayRanges.set(day,r);}var s=Date.parse(e.start),f=Date.parse(e.end);return s<r[1]&&(f>r[0]||f===s&&s>=r[0]);}
   function bounds(date,view){if(view==='day')return [date,dayAdd(date,1)];var d=new Date(date+'T12:00:00Z');if(view==='week'){var first=dayAdd(date,-((d.getUTCDay()+6)%7));return [first,dayAdd(first,7)];}var month=date.slice(0,7)+'-01',m=new Date(month+'T12:00:00Z');var first=dayAdd(month,-((m.getUTCDay()+6)%7));return [first,dayAdd(first,42)];}
+  // Code couleur GDIN : table unique (étape → mots-clés, fond, bordure, texte). Modifier ici seulement.
+  // Mots-clés cherchés comme mots entiers dans l'objet, sans casse ni accents ; liste du 06/11/2026.
+  var STAGES=[
+    {id:'atelier',label:'Atelier (collectif)',keys:['atelier'],bg:'#008000',border:'#006F00',text:'#FFFFFF'},
+    {id:'contact',label:'Prise de contact',keys:['prise de contact','premier contact'],bg:'#000080',border:'#00006F',text:'#FFFFFF'},
+    {id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi'],bg:'#9999FF',border:'#6363FE',text:'#000000'},
+    {id:'intervention',label:'Intervention / atelier partenaire',keys:['intervention','atelier partenaire','cms','regie'],bg:'#9400D3',border:'#8000B7',text:'#FFFFFF'},
+    {id:'pass',label:'Suivi pass',keys:['suivi pass'],bg:'#D74F00',border:'#BA4400',text:'#FFFFFF'},
+    {id:'sondage',label:'Sondage',keys:['sondage'],bg:'#663300',border:'#582C00',text:'#FFFFFF'},
+    {id:'reservation',label:'Réservation',keys:['reservation'],bg:'#800080',border:'#6F006F',text:'#FFFFFF'},
+    {id:'autre',label:'Autre / non classé',keys:[],bg:'#5F6368',border:'#4A4D51',text:'#FFFFFF'}];
+  // Ordre d'essai : les étapes précises avant « atelier » et « accompagnement » (ex. « atelier partenaire »).
+  var STAGE_ORDER=['intervention','pass','sondage','reservation','contact','accompagnement','atelier'];
+  function stageById(id){return STAGES.filter(function(x){return x.id===id;})[0];}
+  function hasWord(text,key){return (' '+text.replace(/[^a-z0-9]+/g,' ')+' ').indexOf(' '+key+' ')>=0;}
+  function stageOf(e){var text=norm(objectLabel(e));for(var i=0;i<STAGE_ORDER.length;i++){var st=stageById(STAGE_ORDER[i]);if(text&&st.keys.some(function(k){return hasWord(text,k);}))return st;}
+    return e.collective?stageById('atelier'):stageById('autre');}
   // AG-031 : semaine et mois du lundi au vendredi ; la vue Jour garde le jour choisi.
   function isWeekend(day){var w=new Date(day+'T12:00:00Z').getUTCDay();return w===0||w===6;}
   function visibleDays(range,view){var out=[];for(var d=range[0];d<range[1];d=dayAdd(d,1))if(view==='day'||!isWeekend(d))out.push(d);return out;}
@@ -118,7 +135,7 @@
   function rdvs(history){return (history||[]).filter(function(h){return h.msgType!=='indispo'&&validDay(h.date);}).map(function(h,i){var start=/^\d{2}:\d{2}$/.test(h.heure||'')?localInstant(h.date,h.heure+':00',ZONE):null;return {key:'rdv:'+i,title:[h.prenom,h.nom].filter(Boolean).join(' ')||'Rendez-vous',description:h.demarche||'',location:h.commune||'',start:start===null?h.date:new Date(start).toISOString(),end:start===null?dayAdd(h.date,1):new Date(start+3600000).toISOString(),allDay:start===null,unknownTime:start===null,cancelled:h.statut==='annule',source:'rdv'};});}
   function render(pane,ctx){
     if(!ctx.profileId)return;ctx.key='ess-'+ctx.profileId+'-calendar-ics-v1';
-    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:'',menuOpen:false});
+    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:'',menuOpen:false,legendOpen:false});
     function node(tag,attrs,text){var n=doc.createElement(tag);Object.keys(attrs||{}).forEach(function(k){if(k==='class')n.className=attrs[k];else if(k==='onclick')n.addEventListener('click',attrs[k]);else n.setAttribute(k,attrs[k]);});if(text!==undefined)n.textContent=text;return n;}
     function button(text,fn,cls){return node('button',{type:'button',class:cls||'ics-button',onclick:fn},text);}
     function rerender(){if(ctx.currentProfile()===ctx.profileId)render(pane,ctx);}
@@ -207,8 +224,12 @@
     }
     function chip(e,cls){var end=e.allDay?'':new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'}).format(new Date(e.end));
       var object=objectLabel(e),subject=object||(e.collective?'Atelier collectif':e.title),people=e.collective?e.members.length+' inscriptions':object&&norm(object)!==norm(e.title)?e.title:'',hours=(e.cancelled?'Annulé · ':'')+time(e)+(end?'–'+end:'');
-      var label=hours+' '+subject+(people?' · '+people:'')+(e.zeroDuration?' · ⚠ Durée nulle':'');var b=button('',function(){detail(e);},'ics-event '+(e.collective?'ics-collective ':'')+(e.zeroDuration?'ics-zero ':'')+(e.cancelled?'ics-cancelled ':'')+(cls||''));b.appendChild(node('span',{class:'ics-event-hours'},hours));b.appendChild(node('strong',{class:'ics-event-subject'},subject));if(people)b.appendChild(node('span',{class:'ics-event-people'},people));if(e.zeroDuration)b.appendChild(node('span',{class:'ics-event-warning'},'⚠ Durée nulle'));b.title=label+(e.location?' — '+e.location:'');b.setAttribute('aria-label',b.title);return b;}
+      var label=hours+' '+subject+(people?' · '+people:'')+(e.zeroDuration?' · ⚠ Durée nulle':'');var b=button('',function(){detail(e);},'ics-event '+(e.collective?'ics-collective ':'')+(e.zeroDuration?'ics-zero ':'')+(e.cancelled?'ics-cancelled ':'')+(cls||''));b.appendChild(node('span',{class:'ics-event-hours'},hours));b.appendChild(node('strong',{class:'ics-event-subject'},subject));if(people)b.appendChild(node('span',{class:'ics-event-people'},people));if(e.zeroDuration)b.appendChild(node('span',{class:'ics-event-warning'},'⚠ Durée nulle'));var stage=stageOf(e);b.setAttribute('data-stage',stage.id);b.style.setProperty('--stage-bg',stage.bg);b.style.setProperty('--stage-border',stage.border);b.style.setProperty('--stage-text',stage.text);b.title=label+' · '+stage.label+(e.location?' — '+e.location:'');b.setAttribute('aria-label',b.title);return b;}
     if(st.view!=='day')help.appendChild(node('p',{class:'ics-mobile-help'},'Sur téléphone, faites glisser le calendrier horizontalement pour voir les autres jours.'));
+    var legend=node('details',{class:'ics-legend'});if(st.legendOpen)legend.setAttribute('open','');legend.addEventListener('toggle',function(){st.legendOpen=legend.open;});legend.appendChild(node('summary',{},'Légende des couleurs GDIN'));
+    var keyList=node('ul',{class:'ics-legend-list'});STAGES.forEach(function(x){var li=node('li',{}),sw=node('span',{class:'ics-legend-swatch','aria-hidden':'true'});sw.style.background=x.bg;sw.style.borderLeftColor=x.border;li.appendChild(sw);li.appendChild(doc.createTextNode(x.label));keyList.appendChild(li);});legend.appendChild(keyList);
+    var others=Array.from(new Set(all.filter(function(e){return stageOf(e).id==='autre';}).map(function(e){return objectLabel(e)||'(sans objet reconnu)';}))).sort(function(a,b){return a.localeCompare(b,'fr');});
+    var otherBox=node('details',{class:'ics-legend-others'});otherBox.appendChild(node('summary',{},'Intitulés classés en « Autre »'));if(others.length){var ol=node('ul',{});others.forEach(function(t){ol.appendChild(node('li',{},t));});otherBox.appendChild(ol);}else otherBox.appendChild(node('p',{},'Aucun intitulé classé en « Autre » dans les imports.'));legend.appendChild(otherBox);root.appendChild(legend);
     var sc=node('div',{class:'ics-scroll',tabindex:'0','aria-label':st.view==='month'?'Calendrier mensuel':'Calendrier horaire, défilement horizontal et vertical'});root.appendChild(sc);
     if(st.view==='month'){
       var month=node('div',{class:'ics-month'});['Lun.','Mar.','Mer.','Jeu.','Ven.'].forEach(function(n){month.appendChild(node('div',{class:'ics-month-heading'},n));});
@@ -224,5 +245,5 @@
     if(!inPeriod.length)root.appendChild(node('p',{class:'ics-empty'},'Aucun événement dans cette période avec ces filtres. Importez un ICS, réinitialisez les filtres ou choisissez une autre date.'));
     help.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport identique ne crée pas de doublon. Un changement de créneau, de titre, de participant ou de description sans participant explicite crée une nouvelle inscription : contrôlez puis retirez l’ancienne si nécessaire. Deux versions d’une même inscription dans un même fichier : la dernière du fichier est gardée. Dans deux fichiers différents d’un même lot : import refusé, importez-les séparément après contrôle. Les absences d’un export ne suppriment rien.'));root.appendChild(help);
   }
-  return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });

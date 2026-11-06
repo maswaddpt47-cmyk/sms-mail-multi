@@ -13,6 +13,14 @@ const whole=C.parse(ics(['UID:day\r\nDTSTART;VALUE=DATE:20261106\r\nDTEND;VALUE=
 assert(whole.allDay);assert(C.overlaps(whole,'2026-11-06'));assert(C.overlaps(whole,'2026-11-07'));assert(!C.overlaps(whole,'2026-11-08'),'fin ICS exclusive');
 const midnight=C.parse(ics(['UID:night\r\nDTSTART:20261106T233000\r\nDTEND:20261107T003000\r\nSUMMARY:Nuit fictive'])).events[0];assert(C.overlaps(midnight,'2026-11-06')&&C.overlaps(midnight,'2026-11-07'));
 assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
+/* Code couleur GDIN : classement par mots entiers de l'objet, collectif → Atelier, sinon Autre (données fictives). */
+{const ev=(desc,extra={})=>({key:'k'+desc,title:'Personne fictive',location:'',description:desc,start:'2026-11-03T09:00:00.000Z',end:'2026-11-03T10:00:00.000Z',allDay:false,cancelled:false,...extra});const sid=(d,x)=>C.stageOf(ev(d,x)).id;
+ assert.equal(sid('Demande de logement social'),'accompagnement');assert.equal(sid('Dossier CAF'),'accompagnement');assert.equal(sid('Démarche ANTS'),'accompagnement');
+ assert.equal(sid('Atelier partenaire régie'),'intervention','atelier partenaire avant atelier');assert.equal(sid('Atelier smartphone'),'atelier');assert.equal(sid('Prise de contact'),'contact');
+ assert.equal(sid('Suivi pass'),'pass');assert.equal(sid('Sondage satisfaction'),'sondage');assert.equal(sid('Réservation salle'),'reservation');
+ assert.equal(sid('Café numérique'),'autre','mot entier : café n’est pas CAF');assert.equal(sid('Texte fictif inconnu'),'autre');
+ assert.equal(C.stageOf({...ev('Texte fictif inconnu'),collective:true,members:[ev('Texte fictif inconnu'),ev('Texte fictif inconnu')]}).id,'atelier','collectif sans mot-clé → Atelier');
+ assert.equal(C.STAGES.length,8);assert.deepEqual(C.STAGES.find(s=>s.id==='accompagnement'),{id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi'],bg:'#9999FF',border:'#6363FE',text:'#000000'});}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
 assert.equal(C.visibleDays(C.bounds('2026-11-06','month'),'month').length,30,'AG-031 : mois = 6 semaines de 5 jours');
