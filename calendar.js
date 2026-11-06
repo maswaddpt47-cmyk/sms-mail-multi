@@ -116,12 +116,14 @@
     {id:'pass',label:'Suivi pass',keys:['suivi pass'],bg:'#D74F00',border:'#BA4400',text:'#FFFFFF'},
     {id:'sondage',label:'Sondage',keys:['sondage'],bg:'#663300',border:'#582C00',text:'#FFFFFF'},
     {id:'reservation',label:'Réservation',keys:['reservation'],bg:'#800080',border:'#6F006F',text:'#FFFFFF'},
+    {id:'lapin',label:'Lapin (sans durée)',keys:[],bg:'#FF8C00',border:'#E07B00',text:'#000000'},
     {id:'autre',label:'Autre / non classé',keys:[],bg:'#5F6368',border:'#4A4D51',text:'#FFFFFF'}];
   // Ordre d'essai : les étapes précises avant « atelier » et « accompagnement » (ex. « atelier partenaire »).
   var STAGE_ORDER=['intervention','pass','sondage','reservation','contact','accompagnement','atelier'];
   function stageById(id){return STAGES.filter(function(x){return x.id===id;})[0];}
   function hasWord(text,key){return (' '+text.replace(/[^a-z0-9]+/g,' ')+' ').indexOf(' '+key+' ')>=0;}
-  function stageOf(e){var text=norm(objectLabel(e));for(var i=0;i<STAGE_ORDER.length;i++){var st=stageById(STAGE_ORDER[i]);if(text&&st.keys.some(function(k){return hasWord(text,k);}))return st;}
+  // Sans durée (début = fin) = lapin, avant toute autre étape (consigne de l'utilisateur, 06/11/2026).
+  function stageOf(e){if(!e.allDay&&e.start===e.end)return stageById('lapin');var text=norm(objectLabel(e));for(var i=0;i<STAGE_ORDER.length;i++){var st=stageById(STAGE_ORDER[i]);if(text&&st.keys.some(function(k){return hasWord(text,k);}))return st;}
     return e.collective?stageById('atelier'):stageById('autre');}
   // AG-031 : semaine et mois du lundi au vendredi ; la vue Jour garde le jour choisi.
   function isWeekend(day){var w=new Date(day+'T12:00:00Z').getUTCDay();return w===0||w===6;}

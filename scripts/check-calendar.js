@@ -20,7 +20,8 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
  assert.equal(sid('Suivi pass'),'pass');assert.equal(sid('Sondage satisfaction'),'sondage');assert.equal(sid('Réservation salle'),'reservation');
  assert.equal(sid('Café numérique'),'autre','mot entier : café n’est pas CAF');assert.equal(sid('Texte fictif inconnu'),'autre');
  assert.equal(C.stageOf({...ev('Texte fictif inconnu'),collective:true,members:[ev('Texte fictif inconnu'),ev('Texte fictif inconnu')]}).id,'atelier','collectif sans mot-clé → Atelier');
- assert.equal(C.STAGES.length,8);assert.deepEqual(C.STAGES.find(s=>s.id==='accompagnement'),{id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi'],bg:'#9999FF',border:'#6363FE',text:'#000000'});}
+ assert.equal(sid('Demande de logement social',{end:'2026-11-03T09:00:00.000Z'}),'lapin','sans durée → lapin, avant l’objet');assert.equal(sid('Atelier fictif',{allDay:true,start:'2026-11-03',end:'2026-11-04'}),'atelier','journée entière ≠ lapin');
+ assert.equal(C.STAGES.length,9);assert.deepEqual(C.STAGES.find(s=>s.id==='accompagnement'),{id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi'],bg:'#9999FF',border:'#6363FE',text:'#000000'});}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
 assert.equal(C.visibleDays(C.bounds('2026-11-06','month'),'month').length,30,'AG-031 : mois = 6 semaines de 5 jours');
