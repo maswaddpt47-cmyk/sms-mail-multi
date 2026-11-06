@@ -4978,7 +4978,7 @@ function renderStats(){
   });
   if(!rdv.lapinDays.length)lapinList.appendChild(el('p',{class:'ui-chart-description'},'Aucun lapin sur la période.'));
   else if(rdv.lapinDays.length>10)lapinList.appendChild(el('p',{class:'ui-chart-description'},(rdv.lapinDays.length-10)+' journée'+(rdv.lapinDays.length-10>1?'s':'')+' plus ancienne'+(rdv.lapinDays.length-10>1?'s':'')+' non affichée'+(rdv.lapinDays.length-10>1?'s':'')+' : réduire la période ou choisir un CMS.'));
-  lapinCard.appendChild(lapinList);wrap.appendChild(lapinCard);
+  lapinCard.appendChild(lapinList);   /* ajouté en fin de page (demande de l'utilisateur, 06/11/2026) */
 
   /* ── KPI ── */
   var canaux=prep.canaux;
@@ -5193,6 +5193,7 @@ function renderStats(){
   })();
   wrap.appendChild(carteDelaiAttente(rdv.entries,(rdv.start?'du '+rdv.start.split('-').reverse().join('/')+' au '+rdv.today.split('-').reverse().join('/'):'toutes dates')+' · '+(S.statsCMS||'tous les CMS')));   /* AG-019 : délai d'attente, mêmes filtres que la page ; AG-021 : libellé des listes */
   wrap.appendChild(carteActiviteParCms());   /* AG-018 : activité par CMS sur 12 mois (données courantes seulement) */
+  wrap.appendChild(lapinCard);   /* « Lapins par permanence » en dernier (demande de l'utilisateur, 06/11/2026) */
   pane.appendChild(wrap);
 
   animerGraphesStats(wrap);
