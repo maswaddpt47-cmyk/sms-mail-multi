@@ -289,6 +289,20 @@
     .workspace-topbar{grid-column:1;grid-row:1;padding:12px 16px;min-height:64px;gap:8px;}.workspace-breadcrumb{display:none;}.workspace-mobile-brand{display:block;font-size:12px;font-weight:800;letter-spacing:-.4px;}.topbar-tools{gap:6px;}.workspace-topbar #btnProfile{font-size:10px;padding:7px 8px;gap:5px!important;}.workspace-topbar #btnData{font-size:10px;padding:9px 10px;}.workspace-topbar #btnDark{width:32px;height:34px;font-size:15px;}
     #gh-banner-root{grid-column:1;grid-row:3;}#workspace-main{grid-column:1;grid-row:4;scrollbar-gutter:auto;}.workspace-pagehead{padding:24px 18px 20px;}.workspace-pagehead h1{font-size:24px;}.workspace-pagehead p{font-size:11px;}.gen-grid{padding:0 16px 28px;gap:22px;}.gen-type-grid{grid-template-columns:1fr 1fr;}#pane-generate section{padding:18px!important;}.tab-pane-inner,.mandat-grid{padding:0 16px 28px;}.ui-section-head{margin-bottom:17px;}.ui-profile-wrap{padding:32px 18px!important;}.ui-profile-card{padding:17px!important;}.ui-profile-intro h1{font-size:25px;}}
   @media(max-width:420px){#pane-generate .gen-row1{grid-template-columns:70px minmax(0,1fr);}.gen-row1>div:last-child{grid-column:1 / -1;}.ui-date-row{grid-template-columns:1fr;}.ui-message-editor{min-height:240px;height:300px;}.workspace-topbar #btnData svg{display:none;}}
+  .sidebar-toggle{display:flex;align-items:center;gap:11px;margin:0 0 14px;min-height:36px;padding:7px 13px;border:1px solid #ffffff1f;border-radius:8px;background:transparent;color:#bfd0d9;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;text-align:left;}
+  .sidebar-toggle:hover{background:#ffffff0c;color:#fff;}
+  .sidebar-toggle>span[aria-hidden]{width:18px;text-align:center;font-size:15px;line-height:1;}
+  @media(min-width:761px){
+    .workspace-shell.sidebar-collapsed{grid-template-columns:68px minmax(0,1fr);}
+    .sidebar-collapsed .workspace-sidebar{padding-left:10px;padding-right:10px;}
+    .sidebar-collapsed .sidebar-brand{padding:0 0 22px;justify-content:center;}
+    .sidebar-collapsed .sidebar-brand>div:not(.brand-mark),.sidebar-collapsed .nav-group-label,.sidebar-collapsed .nav-label,.sidebar-collapsed .sidebar-footer{display:none;}
+    .sidebar-collapsed .sidebar-toggle,.sidebar-collapsed .workspace-nav-button{justify-content:center;padding-left:0;padding-right:0;}
+    .sidebar-collapsed .workspace-nav-button{position:relative;}
+    .sidebar-collapsed .workspace-nav-button>span[title]{position:absolute;top:1px;right:1px;margin-left:0!important;transform:scale(.85);}
+    .sidebar-collapsed .workspace-nav-button>span[title]+span[title]{top:auto;bottom:1px;}
+  }
+  @media(max-width:760px){.sidebar-toggle{display:none;}}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
   @media print{.workspace-sidebar,.workspace-topbar,.workspace-pagehead,#gh-banner-root{display:none!important;}.workspace-shell{display:block;height:auto;}#app-root{height:auto!important;overflow:visible!important;}#workspace-main{display:block;overflow:visible!important;}}
 
@@ -920,9 +934,17 @@
   <div class="workspace-shell">
     <aside class="workspace-sidebar">
       <div class="sidebar-brand"><div class="brand-mark" aria-hidden="true">↗</div><div><div class="brand-name">SMS &amp; MAIL</div><div class="brand-subtitle">Espace conseiller</div></div></div>
+      <button type="button" id="sidebarToggle" class="sidebar-toggle" aria-expanded="true" aria-label="Replier le menu" title="Replier le menu"><span aria-hidden="true">«</span><span class="nav-label">Replier le menu</span></button>
       <nav id="tabnav" aria-label="Navigation principale"></nav>
       <div class="sidebar-footer"><strong>Un message. Un accompagnement.</strong>Votre quotidien, simplement.</div>
     </aside>
+    <script>
+    /* Menu latéral repliable (ordinateur) : choix mémorisé dans ce navigateur, sans effet sur téléphone. */
+    (function(){var shell=document.querySelector('.workspace-shell'),btn=document.getElementById('sidebarToggle');if(!shell||!btn)return;
+      function apply(c){shell.classList.toggle('sidebar-collapsed',c);btn.setAttribute('aria-expanded',String(!c));var t=c?'Déplier le menu':'Replier le menu';btn.setAttribute('aria-label',t);btn.title=t;btn.firstChild.textContent=c?'»':'«';btn.lastChild.textContent=t;}
+      var c=false;try{c=localStorage.getItem('ess-ui-sidebar-collapsed')==='1';}catch(e){}apply(c);
+      btn.addEventListener('click',function(){c=!shell.classList.contains('sidebar-collapsed');apply(c);try{localStorage.setItem('ess-ui-sidebar-collapsed',c?'1':'0');}catch(e){}});})();
+    </script>
     <header class="workspace-topbar">
       <div class="workspace-breadcrumb">Mon espace <span aria-hidden="true">&nbsp; / &nbsp;</span> <strong id="workspace-breadcrumb">Messages</strong></div>
       <div class="workspace-mobile-brand">SMS &amp; MAIL</div>
@@ -2565,7 +2587,7 @@ function renderTabs(){
       if(key==='agenda')renderAgenda();
       if(key==='calendar')renderCalendar();
       if(key==='generate')renderGenerate();
-    };})(d[0])},[workspaceIcon(d[2]),el('span',{class:'nav-label'},d[1])]);
+    };})(d[0])},[workspaceIcon(d[2]),el('span',{class:'nav-label'},d[1])]);btn.title=d[1];
     if(d[0]==='agenda'&&agTodayN>0){
       var bdgToday=el('span',{title:agTodayN+' RDV aujourd\'hui',style:"display:inline-flex;align-items:center;justify-content:center;background:oklch(0.50 0.16 155);color:#fff;font-size:10px;font-weight:800;border-radius:20px;min-width:17px;height:17px;padding:0 4px;margin-left:5px;vertical-align:middle;line-height:1;"},String(agTodayN));
       btn.appendChild(bdgToday);
