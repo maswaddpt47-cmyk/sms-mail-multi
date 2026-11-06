@@ -133,6 +133,7 @@ récit reste dans `git log`.
 **Non vérifié par l'auteur** : **que GDIN écrive la version la plus récente en dernier** dans le fichier — hypothèse, aucun export réel lu (règle 59). Que ce cas existe réellement dans les exports GDIN (l'utilisateur ne l'a pas confirmé).
 **Si personne ne répond, je fais quoi ?** Livrer, testé sur données fictives ; l'aperçu dit quelle règle a été appliquée, l'utilisateur peut contrôler l'inscription dans le détail.
 **Où regarder** : `calendar.js` (`parse`, aperçu dans `render`), `scripts/check-calendar.js`.
+**Vérifié avant livraison** : `scripts/check-calendar.js` en UTC et Europe/Paris, données fictives : annulée puis réinscrite → réinscription gardée, 1 version comptée ; ordre inverse → annulation gardée ; copie identique de l'ancienne version sans refus ; copies identiques non comptées ; refus conservé entre deux fichiers ; aperçu UI : alerte affichée, bouton « Ajouter » actif. Trois mutations (pas de remplacement, compteur inerte, copie identique oubliée) rejetées dans les deux fuseaux, le test lisant bien la copie via `CALENDAR_JS`. Les 11 scripts du déploiement verts dans les deux fuseaux. L'ancien test « lot contradictoire » (un seul fichier) porte désormais sur deux fichiers. Pas de contrôle navigateur.
 
 ## AG-029 — Calendrier GDIN : inscriptions, séances et réimport — ouvert le 06/11/2026
 **Auteur** : Codex — lu sur `2f0370b`, demande de développement du calendrier GDIN uniquement.
