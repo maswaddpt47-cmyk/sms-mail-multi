@@ -133,6 +133,7 @@ récit reste dans `git log`.
 **Non vérifié par l'auteur** : s'il existe réellement des ateliers GDIN le samedi.
 **Si personne ne répond, je fais quoi ?** Livrer, testé ; le compteur week-end évite tout événement masqué en silence.
 **Où regarder** : `calendar.js` (`render` : jours, `move`, en-têtes Mois, compteur), `scripts/check-calendar.js`.
+**Vérifié avant livraison** : `scripts/check-calendar.js` en UTC et Europe/Paris, données fictives : semaine = 5 jours, mois = 30 cases, vue Jour d'un samedi conservée ; compteur week-end : un événement du samedi (horaire ou journée entière) compté, un événement du vendredi ou débordant du vendredi au samedi non compté (déjà visible). Ancienne assertion « 42 cases » alignée sur 30. Mutations rejetées dans les deux fuseaux via `CALENDAR_JS` (copie intacte acceptée) : week-end non retiré ; compteur incluant les événements déjà visibles. Démo Chromium 1280 et 390 px : Semaine « 2 nov. – 6 nov. », Mois Lun.–Ven., jour suivant du vendredi = lundi, aucun débordement ni erreur JS. Les 11 scripts du déploiement verts dans les deux fuseaux.
 
 # Blocs tranchés
 
