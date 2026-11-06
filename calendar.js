@@ -70,6 +70,15 @@
     return {uid:typeof id[0]==='string'?id[0]:e.key.indexOf('uid:')===0?e.key.slice(4):'',action:typeof id[1]==='string'?id[1]:'',activity:fields.activity,participant:fields.participant,legacy:e.key.indexOf('uid:')===0||e.key.indexOf('event:')===0||e.key.indexOf('gdin:')===0&&id.length===6};
   }
   function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/\s+/g,' ').trim();}
+  // GDIN fournit aussi l'objet directement dans DESCRIPTION, sans préfixe.
+  // Champ d'affichage seulement : aucune modification de l'identité ou du regroupement.
+  function objectLabel(e){
+    var members=e.members||[e],labels=members.map(function(m){var fields=metadata(m);if(fields.activity)return fields.activity;
+      var lines=(m.description||'').split('\n').map(function(s){return s.trim();}).filter(function(s){return s&&!/^(?:participant|bénéficiaire|usager|uid|téléphone|telephone|e-?mail)\s*:/i.test(s);});
+      return (lines[0]||'').replace(/^(?:objet|d[ée]marche|motif)\s*:\s*/i,'').trim().slice(0,500);
+    });
+    return labels.length&&labels.every(function(s){return s&&norm(s)===norm(labels[0]);})?labels[0]:'';
+  }
   function sessions(events,group){
     var map=new Map();events.forEach(function(e){var m=metadata(e),k=group!==false&&m.action?'session:'+JSON.stringify([m.action,e.start,e.end,e.allDay,norm(e.location),norm(m.activity)]):e.key;
       if(!map.has(k))map.set(k,Object.assign({},e,{key:k,members:[],action:m.action,activity:m.activity}));map.get(k).members.push(e);});
@@ -78,7 +87,7 @@
       e.participants=e.members.map(function(m){var meta=metadata(m);return {name:meta.participant||m.title,cancelled:m.cancelled,key:m.key};});return e;});
   }
   function select(events,filters){filters=filters||{};var q=norm(filters.query);return events.filter(function(e){
-    return (!filters.action||e.action===filters.action)&&(!filters.location||e.location===filters.location)&&(!filters.type||(filters.type==='collective'?e.collective:filters.type==='individual'?!e.collective:filters.type==='zero'?e.zeroDuration:filters.type==='cancelled'?e.cancelled:true))&&(!q||norm([e.title,e.action,e.location].concat((e.members||[e]).map(function(m){return m.title+' '+m.description;})).join(' ')).includes(q));});}
+    return (!filters.action||e.action===filters.action)&&(!filters.object||objectLabel(e)===filters.object)&&(!filters.location||e.location===filters.location)&&(!filters.type||(filters.type==='collective'?e.collective:filters.type==='individual'?!e.collective:filters.type==='zero'?e.zeroDuration:filters.type==='cancelled'?e.cancelled:true))&&(!q||norm([e.title,e.action,e.location].concat((e.members||[e]).map(function(m){return m.title+' '+m.description;})).join(' ')).includes(q));});}
   function merge(existing,incoming){var map=new Map(),added=0,updated=0,unchanged=0,identical=0,legacyExact=new Map(),legacyWithoutAction=new Map();
     function signature(e,withAction){var m=metadata(e);return JSON.stringify([m.uid,withAction?m.action:'',e.start,e.end,e.title,e.location,e.description,e.allDay,e.cancelled]);}
     incoming.forEach(function(e){legacyExact.set(signature(e,true),e);legacyWithoutAction.set(signature(e,false),e);});
@@ -98,7 +107,7 @@
   function rdvs(history){return (history||[]).filter(function(h){return h.msgType!=='indispo'&&validDay(h.date);}).map(function(h,i){var start=/^\d{2}:\d{2}$/.test(h.heure||'')?localInstant(h.date,h.heure+':00',ZONE):null;return {key:'rdv:'+i,title:[h.prenom,h.nom].filter(Boolean).join(' ')||'Rendez-vous',description:h.demarche||'',location:h.commune||'',start:start===null?h.date:new Date(start).toISOString(),end:start===null?dayAdd(h.date,1):new Date(start+3600000).toISOString(),allDay:start===null,unknownTime:start===null,cancelled:h.statut==='annule',source:'rdv'};});}
   function render(pane,ctx){
     if(!ctx.profileId)return;ctx.key='ess-'+ctx.profileId+'-calendar-ics-v1';
-    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',location:'',type:'',preview:null,message:''});
+    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:''});
     function node(tag,attrs,text){var n=doc.createElement(tag);Object.keys(attrs||{}).forEach(function(k){if(k==='class')n.className=attrs[k];else if(k==='onclick')n.addEventListener('click',attrs[k]);else n.setAttribute(k,attrs[k]);});if(text!==undefined)n.textContent=text;return n;}
     function button(text,fn,cls){return node('button',{type:'button',class:cls||'ics-button',onclick:fn},text);}
     function rerender(){if(ctx.currentProfile()===ctx.profileId)render(pane,ctx);}
@@ -147,18 +156,21 @@
     var sl=node('label',{},'Rechercher'),search=node('input',{type:'search',value:st.query,placeholder:'Activité, participant, action, lieu…','aria-label':'Rechercher dans le calendrier'});sl.appendChild(search);filters.appendChild(sl);
     search.addEventListener('input',function(){st.query=search.value;var start=search.selectionStart;rerender();var fresh=pane.querySelector&&pane.querySelector('input[type="search"]');if(fresh){fresh.focus();if(start!==null)fresh.setSelectionRange(start,start);}});
     function filter(label,key,choices){var l=node('label',{},label),s=node('select',{'aria-label':label});choices.forEach(function(c){var o=node('option',{value:c[0]},c[1]);s.appendChild(o);});s.value=st[key];s.addEventListener('change',function(){st[key]=s.value;rerender();});l.appendChild(s);filters.appendChild(l);}
-    filter('Action','action',[['','Toutes les actions']].concat(Array.from(new Set(all.map(function(e){return e.action;}).filter(Boolean))).sort().map(function(a){return [a,'Action '+a];})));
+    filter('Objet','object',[['','Tous les objets']].concat(Array.from(new Set(all.map(objectLabel).filter(Boolean))).sort(function(a,b){return a.localeCompare(b,'fr');}).map(function(a){return [a,a];})));
     filter('Lieu','location',[['','Tous les lieux']].concat(Array.from(new Set(all.map(function(e){return e.location;}).filter(Boolean))).sort().map(function(a){return [a,a];})));
     filter('Événements','type',[['','Tous'],['collective','Collectifs'],['individual','Inscriptions seules'],['zero','Durée nulle'],['cancelled','Annulés']]);
-    filters.appendChild(button('Réinitialiser les filtres',function(){st.query='';st.action='';st.location='';st.type='';rerender();}));
+    filters.appendChild(button('Réinitialiser les filtres',function(){st.query='';st.action='';st.object='';st.location='';st.type='';rerender();}));
     var events=select(all,st),range=bounds(st.date,st.view),days=[];for(var d=range[0];d<range[1];d=dayAdd(d,1))days.push(d);
     var inPeriod=events.filter(function(e){return days.some(function(day){return overlaps(e,day);});});root.appendChild(node('p',{class:'ics-results',role:'status'},inPeriod.length+' événement(s) dans la période affichée · '+events.length+' correspondant aux filtres dans tous les imports'));
     if(events.length&&!inPeriod.length)root.appendChild(button('Voir le premier résultat',function(){var first=events.slice().sort(function(a,b){return a.start.localeCompare(b.start);})[0];st.date=first.allDay?first.start:parisDay(first.start);rerender();}));
     if(data.events.some(function(e){return metadata(e).legacy;}))root.appendChild(node('p',{class:'ics-alert'},'Ancien import présent : réimportez les ICS originaux pour récupérer les inscriptions que l’ancien rapprochement pouvait écraser. Les lignes exactement reconnues sont rapprochées sans doublon ; les autres restent et doivent être contrôlées.'));
     function detail(e){
-      var dialog=node('dialog',{class:'ics-dialog','aria-label':'Détail de l’événement'}),h=node('h3',{},e.title);dialog.appendChild(h);
-      dialog.appendChild(node('p',{},(e.cancelled?'Événement annulé · ':'')+(e.collective?'Atelier collectif · '+e.members.length+' inscriptions':'Rendez-vous importé')+(e.action?' · Action '+e.action:'')));
-      dialog.appendChild(node('p',{},e.allDay?fmt(e.start,{dateStyle:'full'})+' — '+fmt(dayAdd(e.end,-1),{dateStyle:'full'}):new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full',timeStyle:'short'}).format(new Date(e.start))+' → '+new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full',timeStyle:'short'}).format(new Date(e.end))));
+      var heading=objectLabel(e)||(e.collective?'Atelier collectif':e.title),dialog=node('dialog',{class:'ics-dialog','aria-label':'Détail de l’événement'}),h=node('h3',{},heading);dialog.appendChild(h);
+      if(!e.collective&&norm(e.title)!==norm(heading))dialog.appendChild(node('p',{},e.title));
+      if(e.cancelled)dialog.appendChild(node('p',{},'Événement annulé'));
+      var dateLine;if(e.allDay){var lastDay=dayAdd(e.end,-1);dateLine=fmt(e.start,{dateStyle:'full'})+(lastDay===e.start?'':' — '+fmt(lastDay,{dateStyle:'full'}))+' · Toute la journée';}
+      else{var dateFormat=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full'}),clock=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'});dateLine=dateFormat.format(new Date(e.start))+' · '+clock.format(new Date(e.start))+'–'+(parisDay(e.start)===parisDay(e.end)?'':dateFormat.format(new Date(e.end))+' · ')+clock.format(new Date(e.end));}
+      dialog.appendChild(node('p',{},dateLine));
       if(e.zeroDuration)dialog.appendChild(node('p',{class:'ics-alert'},'Durée nulle : début et fin identiques, ou fin absente de l’ICS. Le petit bloc dans la grille est seulement un repère visuel.'));
       if(e.location)dialog.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){dialog.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});dialog.appendChild(list);}
@@ -169,8 +181,8 @@
       dialog.addEventListener('close',function(){dialog.remove();});root.appendChild(dialog);dialog.showModal();close.focus();
     }
     function chip(e,cls){var end=e.allDay?'':new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'}).format(new Date(e.end));
-      var activity=e.activity||(e.action?'Action '+e.action:''),subject=!e.collective&&activity&&norm(activity)!==norm(e.title)?activity+' · '+e.title:e.title;
-      var label=(e.cancelled?'Annulé · ':'')+time(e)+(end?'–'+end:'')+' '+subject+(e.collective?' · '+e.members.length+' inscriptions':'')+(e.zeroDuration?' · ⚠ Durée nulle':'');var b=button(label,function(){detail(e);},'ics-event '+(e.collective?'ics-collective ':'')+(e.zeroDuration?'ics-zero ':'')+(e.cancelled?'ics-cancelled ':'')+(cls||''));b.title=label+(e.location?' — '+e.location:'');b.setAttribute('aria-label',b.title);return b;}
+      var object=objectLabel(e),subject=object||(e.collective?'Atelier collectif':e.title),people=e.collective?e.members.length+' inscriptions':object&&norm(object)!==norm(e.title)?e.title:'',hours=(e.cancelled?'Annulé · ':'')+time(e)+(end?'–'+end:'');
+      var label=hours+' '+subject+(people?' · '+people:'')+(e.zeroDuration?' · ⚠ Durée nulle':'');var b=button('',function(){detail(e);},'ics-event '+(e.collective?'ics-collective ':'')+(e.zeroDuration?'ics-zero ':'')+(e.cancelled?'ics-cancelled ':'')+(cls||''));b.appendChild(node('span',{class:'ics-event-hours'},hours));b.appendChild(node('strong',{class:'ics-event-subject'},subject));if(people)b.appendChild(node('span',{class:'ics-event-people'},people));if(e.zeroDuration)b.appendChild(node('span',{class:'ics-event-warning'},'⚠ Durée nulle'));b.title=label+(e.location?' — '+e.location:'');b.setAttribute('aria-label',b.title);return b;}
     if(st.view!=='day')root.appendChild(node('p',{class:'ics-mobile-help'},'Sur téléphone, faites glisser le calendrier horizontalement pour voir les autres jours.'));
     var sc=node('div',{class:'ics-scroll',tabindex:'0','aria-label':st.view==='month'?'Calendrier mensuel':'Calendrier horaire, défilement horizontal et vertical'});root.appendChild(sc);
     if(st.view==='month'){
@@ -187,5 +199,5 @@
     if(!inPeriod.length)root.appendChild(node('p',{class:'ics-empty'},'Aucun événement dans cette période avec ces filtres. Importez un ICS, réinitialisez les filtres ou choisissez une autre date.'));
     root.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport identique ne crée pas de doublon. Un changement de créneau, de titre, de participant ou de description sans participant explicite crée une nouvelle inscription : contrôlez puis retirez l’ancienne si nécessaire. Deux versions contradictoires dans un même lot empêchent son ajout ; importez les fichiers séparément après contrôle. Les absences d’un export ne suppriment rien.'));
   }
-  return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select};
+  return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
