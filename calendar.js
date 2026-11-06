@@ -30,7 +30,7 @@
     if(typeof text!=='string'||text.length>5*1024*1024)throw new Error('Fichier trop volumineux (5 Mo maximum).');
     text=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/\n[ \t]/g,'');
     var lines=text.split('\n');if(!lines.some(function(l){return l.trim()==='BEGIN:VCALENDAR';})||!lines.some(function(l){return l.trim()==='END:VCALENDAR';}))throw new Error('Ce fichier ne contient pas de calendrier ICS complet.');
-    var events=[],warnings={dates:0,recurrences:0,participants:0,versions:0},seen=new Map(),ev=null,nested=0,total=0;
+    var events=[],warnings={dates:0,recurrences:0,participants:0,versions:0,copies:0},seen=new Map(),ev=null,nested=0,total=0;
     lines.forEach(function(line){
       if(line==='BEGIN:VEVENT'){if(ev)throw new Error('Événement ICS mal fermé.');ev={};nested=0;total++;if(total>LIMIT)throw new Error('5 000 événements maximum par fichier.');return;}
       if(!ev)return;
@@ -49,15 +49,17 @@
         var description=unescapeText(ev.DESCRIPTION&&ev.DESCRIPTION.value).slice(0,20000),person=descriptionFields(description).participant;
         var discriminator=person?'participant:'+person:'description:'+description;
         // AG-030 : deux versions d'une même inscription dans un même fichier :
-        // la dernière du fichier est gardée et comptée (refus conservé entre fichiers).
-        var item={key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location,discriminator]),title:title,location:location,description:description,start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')},at=seen.get(item.key);
-        if(at!==undefined&&JSON.stringify(events[at])!==JSON.stringify(item)){for(var x=at;x<events.length;x++)if(events[x].key===item.key)events[x]=item;warnings.versions++;}else{if(at===undefined)seen.set(item.key,events.length);events.push(item);}
+        // la dernière du fichier est gardée (refus conservé entre fichiers). Comptage
+        // sur les contenus d'origine : une identité compte une fois, les répétitions à part.
+        var item={key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location,discriminator]),title:title,location:location,description:description,start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')},at=seen.get(item.key),content=JSON.stringify(item);
+        if(at===undefined){seen.set(item.key,{index:events.length,contents:new Set([content]),count:1});events.push(item);}else{at.count++;at.contents.add(content);events[at.index]=item;}
         ev=null;return;
       }
       if(line.indexOf('BEGIN:')===0){nested++;return;}if(line.indexOf('END:')===0){nested--;return;}if(nested)return;
       var p=property(line);if(p){if(p.name==='ATTENDEE'||p.name==='ORGANIZER'){warnings.participants++;return;}ev[p.name]=p;}
     });
     if(ev)throw new Error('Un événement ICS est incomplet.');if(!total)throw new Error('Aucun événement VEVENT dans ce calendrier.');
+    seen.forEach(function(x){if(x.contents.size>1)warnings.versions++;warnings.copies+=x.count-x.contents.size;});
     return {events:events,warnings:warnings,total:total};
   }
   function isEvent(e){return e&&typeof e.key==='string'&&typeof e.title==='string'&&typeof e.location==='string'&&typeof e.description==='string'&&typeof e.allDay==='boolean'&&typeof e.cancelled==='boolean'&&typeof e.start==='string'&&typeof e.end==='string'&&(e.allDay?validDay(e.start)&&validDay(e.end)&&e.end>e.start:/^\d{4}-\d{2}-\d{2}T.*Z$/.test(e.start)&&Number.isFinite(Date.parse(e.start))&&Number.isFinite(Date.parse(e.end))&&e.end>=e.start);}
@@ -136,7 +138,7 @@
     if(st.message)root.appendChild(node('p',{class:'ics-status',role:'status'},st.message));
     file.addEventListener('change',async function(){var files=Array.from(file.files||[]);if(!files.length)return;var token={};st.readToken=token;st.preview=null;st.message='Lecture des fichiers…';rerender();
       try{if(files.length>30||files.reduce(function(n,f){return n+f.size;},0)>15*1024*1024)throw new Error('30 fichiers et 15 Mo maximum par import.');
-        var combined={events:[],warnings:{dates:0,recurrences:0,participants:0,versions:0},total:0,files:files.length};
+        var combined={events:[],warnings:{dates:0,recurrences:0,participants:0,versions:0,copies:0},total:0,files:files.length};
         for(var i=0;i<files.length;i++){var f=files[i];if(f.size>5*1024*1024)throw new Error('Fichier trop volumineux (5 Mo maximum par fichier).');var text=await f.text();
           if(ctx.currentProfile()!==ctx.profileId){if(ctx.notify)ctx.notify('Profil changé pendant la lecture du calendrier : rien n’a été importé.','warn');return;}if(st.readToken!==token)return;
           var parsed=parse(text);combined.events=combined.events.concat(parsed.events);combined.total+=parsed.total;Object.keys(combined.warnings).forEach(function(k){combined.warnings[k]+=parsed.warnings[k];});
@@ -147,12 +149,12 @@
       try{merged=merge(data.events,pre.events);imported=sessions(merge([],pre.events).events,st.group);}catch(e){previewError=e.message;}
       preview.appendChild(node('h3',{},'Vérifier l’import'));preview.appendChild(node('p',{},merged?pre.files+' fichier(s) · '+merged.added+' nouvelles inscriptions · '+merged.updated+' mises à jour · '+merged.unchanged+' déjà présentes':'Import non disponible.'));
       if(previewError)preview.appendChild(node('p',{class:'ics-alert',role:'alert'},previewError));
-      if(merged){preview.appendChild(node('p',{},merged.identical+' lignes strictement identiques fusionnées dans cet import.'));
+      if(merged){preview.appendChild(node('p',{},(merged.identical+pre.warnings.copies)+' lignes strictement identiques fusionnées dans cet import.'));
         preview.appendChild(node('p',{},pre.total+' lignes ICS lues → '+imported.length+' événements après dédoublonnage et regroupement, dont '+imported.filter(function(e){return e.collective;}).length+' collectifs.'));}
       var zero=imported.filter(function(e){return e.zeroDuration;}).length;
       if(zero)preview.appendChild(node('p',{class:'ics-alert'},zero+' événement(s) à durée nulle : horaires identiques ou heure de fin absente. Aucune durée réelle inventée.'));
       if(pre.warnings.dates)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.dates+' événements ignorés : date, durée ou fuseau non reconnu.'));
-      if(pre.warnings.versions)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.versions+' inscription(s) présente(s) en plusieurs versions dans un même fichier : la dernière version du fichier est gardée. Contrôlez-la dans le détail.'));
+      if(pre.warnings.versions)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.versions+' inscription(s) présente(s) en plusieurs versions dans un même fichier'+(pre.files>1?' (comptées fichier par fichier)':'')+' : la dernière ligne du fichier est gardée, ce qui ne prouve pas qu’elle soit la plus récente. Contrôlez-la dans le détail.'));
       if(pre.warnings.recurrences)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.recurrences+' événements récurrents ignorés : cette première version importe les événements simples, sans développer les répétitions.'));
       preview.appendChild(node('p',{class:'ics-help'},'Vérifiez le regroupement après import. Titres et descriptions originaux sont conservés dans le détail ; les noms des inscriptions y restent visibles. Contacts ATTENDEE/ORGANIZER, liens et pièces jointes ne sont pas exploités. Aucun ajout tant que vous ne validez pas. Un fichier invalide annule tout l’aperçu.'));
       var apply=button('Ajouter au calendrier',function(){try{var current=load(ctx.storage,ctx.key),m=merge(current.events,pre.events);save(ctx,m.events,current.raw);st.preview=null;st.message=m.added+' ajoutés · '+m.updated+' mis à jour · '+m.unchanged+' déjà présents.';if(pre.events.length)st.date=pre.events.map(function(e){return e.allDay?e.start:parisDay(e.start);}).sort()[0];}catch(e){st.message=e.message;}rerender();},'ics-button ics-import');apply.disabled=!!error||!merged||!pre.events.length;preview.appendChild(apply);preview.appendChild(button('Annuler',function(){st.preview=null;rerender();}));root.appendChild(preview);
