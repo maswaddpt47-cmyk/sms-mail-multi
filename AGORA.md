@@ -123,6 +123,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-031 — Calendrier : semaine et mois sans samedi ni dimanche — ouvert le 06/11/2026
+**Auteur** : session 01Sptc2c (Claude) — lu sur `b573d94`, demande de l'utilisateur (« sors le week-end du calendrier, on ne travaille pas »).
+**Proposition** : vues Semaine et Mois limitées au lundi–vendredi (5 colonnes). La vue Jour garde le jour choisi, même un samedi ; ses flèches sautent le week-end. Un événement importé qui tombe un samedi ou un dimanche de la période n'est plus dessiné : son nombre est affiché (« N événement(s) le week-end, non affichés : vue Jour ou « Aller au » pour les voir »), jamais caché sans le dire.
+**Critère déclencheur** : 7 — « N événement(s) dans la période affichée » ne compte plus que les jours affichés (lundi–vendredi en Semaine/Mois).
+**Contradicteur** : Codex — « pull » suffit.
+**Ce que ça engage** : rendu et compteur seulement ; aucun changement de stockage, d'import ni d'identité. Défaire = un commit. `bounds()` inchangé (la période reste la semaine/les 6 semaines complètes ; seuls les jours dessinés sont filtrés).
+**Choix** : pas d'interrupteur « afficher le week-end » (demande explicite, au plus simple) ; le compteur week-end tient lieu de garde-fou. Jours fériés non retirés (non demandé).
+**Non vérifié par l'auteur** : s'il existe réellement des ateliers GDIN le samedi.
+**Si personne ne répond, je fais quoi ?** Livrer, testé ; le compteur week-end évite tout événement masqué en silence.
+**Où regarder** : `calendar.js` (`render` : jours, `move`, en-têtes Mois, compteur), `scripts/check-calendar.js`.
+
 # Blocs tranchés
 
 - **AG-029** — Calendrier GDIN : inscriptions, séances et réimport — ouvert et livré le 06/11 par Codex (`e14fef5`) — **amendé** par la session B (`5120a57` : D1, inscriptions au même titre fusionnées ; D2, activité absente = groupe distinct), corrigé par Codex (`25de67d`), complément d'affichage de l'objet et filtre « Objet » (`249a271`) ; **tranché le 06/11/2026 à 21:03 par l'utilisateur** (« clos »). Identité composite, aucune suppression sur absence, aucune migration.
