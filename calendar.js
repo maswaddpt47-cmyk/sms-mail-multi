@@ -30,7 +30,7 @@
     if(typeof text!=='string'||text.length>5*1024*1024)throw new Error('Fichier trop volumineux (5 Mo maximum).');
     text=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/\n[ \t]/g,'');
     var lines=text.split('\n');if(!lines.some(function(l){return l.trim()==='BEGIN:VCALENDAR';})||!lines.some(function(l){return l.trim()==='END:VCALENDAR';}))throw new Error('Ce fichier ne contient pas de calendrier ICS complet.');
-    var events=[],warnings={dates:0,recurrences:0,participants:0},ev=null,nested=0,total=0;
+    var events=[],warnings={dates:0,recurrences:0,participants:0,versions:0},seen=new Map(),ev=null,nested=0,total=0;
     lines.forEach(function(line){
       if(line==='BEGIN:VEVENT'){if(ev)throw new Error('Événement ICS mal fermé.');ev={};nested=0;total++;if(total>LIMIT)throw new Error('5 000 événements maximum par fichier.');return;}
       if(!ev)return;
@@ -48,7 +48,10 @@
         var action=unescapeText(ev.CATEGORIES&&ev.CATEGORIES.value).trim().slice(0,500);
         var description=unescapeText(ev.DESCRIPTION&&ev.DESCRIPTION.value).slice(0,20000),person=descriptionFields(description).participant;
         var discriminator=person?'participant:'+person:'description:'+description;
-        events.push({key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location,discriminator]),title:title,location:location,description:description,start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')});
+        // AG-030 : deux versions d'une même inscription dans un même fichier :
+        // la dernière du fichier est gardée et comptée (refus conservé entre fichiers).
+        var item={key:'gdin:'+JSON.stringify([uid||'',action,start,end,title,location,discriminator]),title:title,location:location,description:description,start:start,end:end,allDay:a.allDay,cancelled:!!(ev.STATUS&&ev.STATUS.value.toUpperCase()==='CANCELLED')},at=seen.get(item.key);
+        if(at!==undefined&&JSON.stringify(events[at])!==JSON.stringify(item)){for(var x=at;x<events.length;x++)if(events[x].key===item.key)events[x]=item;warnings.versions++;}else{if(at===undefined)seen.set(item.key,events.length);events.push(item);}
         ev=null;return;
       }
       if(line.indexOf('BEGIN:')===0){nested++;return;}if(line.indexOf('END:')===0){nested--;return;}if(nested)return;
@@ -94,7 +97,7 @@
     // Rapprochement des anciens UID/replis et des anciennes clés GDIN à six
     // éléments seulement si le contenu importé correspond exactement.
     existing.forEach(function(e){var m=metadata(e),hasAction=e.key.indexOf('gdin:')===0,match=m.legacy&&(hasAction?legacyExact:legacyWithoutAction).get(signature(e,hasAction));map.set(match?match.key:e.key,e);});
-    var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
+    var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans des fichiers différents de ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
     unique.forEach(function(e,k){if(!map.has(k))added++;else if(JSON.stringify(map.get(k))===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);});
     if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged,identical:identical};}
   function load(storage,key){var raw=storage.getItem(key);if(raw===null)return {events:[],raw:null};var data=JSON.parse(raw);if(!data||data.version!==1||!Array.isArray(data.events)||data.events.length>LIMIT||!data.events.every(isEvent))throw new Error('Calendrier local illisible : aucune donnée ne sera remplacée.');return {events:data.events,raw:raw};}
@@ -133,7 +136,7 @@
     if(st.message)root.appendChild(node('p',{class:'ics-status',role:'status'},st.message));
     file.addEventListener('change',async function(){var files=Array.from(file.files||[]);if(!files.length)return;var token={};st.readToken=token;st.preview=null;st.message='Lecture des fichiers…';rerender();
       try{if(files.length>30||files.reduce(function(n,f){return n+f.size;},0)>15*1024*1024)throw new Error('30 fichiers et 15 Mo maximum par import.');
-        var combined={events:[],warnings:{dates:0,recurrences:0,participants:0},total:0,files:files.length};
+        var combined={events:[],warnings:{dates:0,recurrences:0,participants:0,versions:0},total:0,files:files.length};
         for(var i=0;i<files.length;i++){var f=files[i];if(f.size>5*1024*1024)throw new Error('Fichier trop volumineux (5 Mo maximum par fichier).');var text=await f.text();
           if(ctx.currentProfile()!==ctx.profileId){if(ctx.notify)ctx.notify('Profil changé pendant la lecture du calendrier : rien n’a été importé.','warn');return;}if(st.readToken!==token)return;
           var parsed=parse(text);combined.events=combined.events.concat(parsed.events);combined.total+=parsed.total;Object.keys(combined.warnings).forEach(function(k){combined.warnings[k]+=parsed.warnings[k];});
@@ -149,6 +152,7 @@
       var zero=imported.filter(function(e){return e.zeroDuration;}).length;
       if(zero)preview.appendChild(node('p',{class:'ics-alert'},zero+' événement(s) à durée nulle : horaires identiques ou heure de fin absente. Aucune durée réelle inventée.'));
       if(pre.warnings.dates)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.dates+' événements ignorés : date, durée ou fuseau non reconnu.'));
+      if(pre.warnings.versions)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.versions+' inscription(s) présente(s) en plusieurs versions dans un même fichier : la dernière version du fichier est gardée. Contrôlez-la dans le détail.'));
       if(pre.warnings.recurrences)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.recurrences+' événements récurrents ignorés : cette première version importe les événements simples, sans développer les répétitions.'));
       preview.appendChild(node('p',{class:'ics-help'},'Vérifiez le regroupement après import. Titres et descriptions originaux sont conservés dans le détail ; les noms des inscriptions y restent visibles. Contacts ATTENDEE/ORGANIZER, liens et pièces jointes ne sont pas exploités. Aucun ajout tant que vous ne validez pas. Un fichier invalide annule tout l’aperçu.'));
       var apply=button('Ajouter au calendrier',function(){try{var current=load(ctx.storage,ctx.key),m=merge(current.events,pre.events);save(ctx,m.events,current.raw);st.preview=null;st.message=m.added+' ajoutés · '+m.updated+' mis à jour · '+m.unchanged+' déjà présents.';if(pre.events.length)st.date=pre.events.map(function(e){return e.allDay?e.start:parisDay(e.start);}).sort()[0];}catch(e){st.message=e.message;}rerender();},'ics-button ics-import');apply.disabled=!!error||!merged||!pre.events.length;preview.appendChild(apply);preview.appendChild(button('Annuler',function(){st.preview=null;rerender();}));root.appendChild(preview);
@@ -205,7 +209,7 @@
       days.forEach(function(day,i){var col=node('div',{class:'ics-time-day'+(day===today?' ics-today':'')});col.style.height=(last-first)*60+'px';placed[i].forEach(function(p){var e=chip(p.event,'ics-positioned');e.style.top=(p.start-first*60)+'px';e.style.height=Math.max(24,Math.min(p.end,last*60)-p.start)+'px';e.style.left='calc('+100*p.column/p.columns+'% + 3px)';e.style.width='calc('+100/p.columns+'% - 6px)';col.appendChild(e);});body.appendChild(col);});timeline.appendChild(body);sc.appendChild(timeline);
     }
     if(!inPeriod.length)root.appendChild(node('p',{class:'ics-empty'},'Aucun événement dans cette période avec ces filtres. Importez un ICS, réinitialisez les filtres ou choisissez une autre date.'));
-    help.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport identique ne crée pas de doublon. Un changement de créneau, de titre, de participant ou de description sans participant explicite crée une nouvelle inscription : contrôlez puis retirez l’ancienne si nécessaire. Deux versions contradictoires dans un même lot empêchent son ajout ; importez les fichiers séparément après contrôle. Les absences d’un export ne suppriment rien.'));root.appendChild(help);
+    help.appendChild(node('p',{class:'ics-help'},'Les imports restent uniquement dans ce navigateur et ce profil. Ils ne sont pas inclus dans les sauvegardes de l’application : conservez les fichiers ICS originaux. Le réimport identique ne crée pas de doublon. Un changement de créneau, de titre, de participant ou de description sans participant explicite crée une nouvelle inscription : contrôlez puis retirez l’ancienne si nécessaire. Deux versions d’une même inscription dans un même fichier : la dernière du fichier est gardée. Dans deux fichiers différents d’un même lot : import refusé, importez-les séparément après contrôle. Les absences d’un export ne suppriment rien.'));root.appendChild(help);
   }
   return {parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
