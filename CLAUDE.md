@@ -70,7 +70,7 @@ doit pas être défait remonte dans sa dernière section.
 
 **Modifications faites hors session** (consigne de l'utilisateur, 30/10/2026) : quand
 il dit « pull » après avoir modifié le dépôt lui-même ou avec un autre outil,
-`git pull`, lire `git log` et le diff de ce qui est arrivé depuis la dernière
+`git fetch origin main` puis `git merge --ff-only origin/main` (jamais `git pull`, MD-LIB règle 63), lire `git log` et le diff de ce qui est arrivé depuis la dernière
 base connue, puis mettre à jour `CHANTIERS.md` (en-tête compris) avant toute
 autre tâche. Ne pas supposer qu'une entrée datée est encore vraie.
 **Ne jamais demander l'autorisation de mettre `CHANTIERS.md` à jour** (consigne du
@@ -108,7 +108,7 @@ correctif localisé appuyé sur une preuve ; tout ce qui se défait en un commit
 
 **Fonctionnement** : écrire le bloc au moment du choix, pas après
 l'implémentation ; le commiter et le **pousser directement sur `main`**
-(`git pull --rebase origin main` avant — exception au workflow de branche :
+(`git fetch origin main` puis `git merge --ff-only origin/main` avant — exception au workflow de branche :
 c'est du texte, ça ne casse aucun déploiement) ; annoncer en une ligne
 « ⚖️ AGORA : critère N — … » avec la phrase à coller dans l'autre session, **qui nomme le dépôt** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-00N, tu es la session B ».
 **Bloc pour Codex : dire « pull » à Codex suffit** (son `AGENTS.md` le fait répondre, MD-LIB `agora.md` §12, 03/11/2026) ; la session qui ouvre le bloc l'annonce quand même à l'utilisateur dès qu'il est en ligne, **sur une ligne à part en tête du message, 🔴 et en gras** : `🔴 **⚖️ AGORA : critère N — <sujet>. Bloc AG-00N commité. → Dis « pull » à Codex.**` (MD-LIB `agora.md` §4, 04/11/2026 : un « pull » noyé dans un compte rendu n'a pas été vu).
@@ -127,10 +127,11 @@ Règles communes de collaboration : MD-LIB/collaboration.md, chargé automatique
 
 ## Workflow obligatoire avant toute intervention
 
-### 1. Git pull depuis main
-Toujours exécuter avant de toucher le moindre fichier :
+### 1. Mise à jour depuis main
+Toujours exécuter avant de toucher le moindre fichier — jamais `git pull`, qui peut fusionner une autre branche dans `main` (MD-LIB règle 63, 04/11/2026) :
 ```bash
-git pull origin main
+git fetch origin main
+git merge --ff-only origin/main
 ```
 
 ### 2. Commits séparés par modification
@@ -165,7 +166,7 @@ Avant d'écrire « en ligne », « déployé » ou « à recharger » : `MD-LIB/
 ## Résumé du flux
 
 ```
-git pull origin main
+git fetch origin main + git merge --ff-only origin/main
 → modification
 → commit (feat/fix/refactor)
 → git push origin main
