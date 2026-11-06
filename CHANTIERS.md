@@ -1,10 +1,12 @@
 # CHANTIERS — sms-mail-multi
 
-État au **06/11/2026**, base `main` `8a58402` + cette livraison. **Calendrier ICS demandé par l'utilisateur** : rubrique distincte, jour/semaine/mois, aperçu avant import, événements locaux par profil. Tests et déploiement : workflow Pages. **AG-028 ouvert** pour une contradiction externe unique ; aucune auto-réponse. Les livraisons précédentes restent closes ; aucune donnée ni statistique métier modifiée.
+État au **06/11/2026**, base `main` `9493963` + correctif de publication. **Calendrier ICS demandé par l'utilisateur** : rubrique distincte, jour/semaine/mois, aperçu avant import, événements locaux par profil. Tests et déploiement : workflow Pages. **AG-028 ouvert** pour une contradiction externe unique ; aucune auto-réponse. Les livraisons précédentes restent closes ; aucune donnée ni statistique métier modifiée.
 
 **Livraisons déjà validées le 06/11, à conserver** : « Lapins par permanence » en fin des Statistiques (`a0d0e25`) ; depuis Orientations, « Préparer le message » vide les anciens date/heure puis propose un créneau vide d’une journée déjà ouverte du CMS reconnu (`c878666`, sélection automatique validée par l’utilisateur). Contraste des tuiles en mode nuit (`2cd9b66`) : rendu utilisateur à confirmer.
 
 ## Calendrier ICS — livraison du 06/11/2026
+
+Publication initiale `9493963` : onze tests verts dans les deux fuseaux ; Pages est resté dix minutes à `updating_pages`, puis a expiré. La relance du seul déploiement a rencontré deux artifacts `github-pages` de tentatives différentes. Correctif : nom du paquet incluant `github.run_id` et `github.run_attempt`, identique à la publication et au téléversement ; aucun test désactivé, aucun code du calendrier changé. Nouvelle publication suivie dans Actions.
 
 - Nouvelle rubrique **Calendrier**, distincte de l'Agenda de suivi : vues jour/semaine/mois, aujourd'hui et navigation par date ; ICS en bleu et rendez-vous du profil en vert, filtres séparés. Durée des RDV : 1 h indicative ; heure absente indiquée dans la ligne Journée.
 - Import **manuel** après aperçu : UTC, Europe/Paris, dates flottantes (Paris), journées entières et chevauchements ; réimport fusionné par UID, pas de doublon. Événements récurrents/non reconnus signalés avant import et non développés. Aucune interprétation HTML ni import des participants/pièces jointes.
