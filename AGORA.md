@@ -123,6 +123,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-030 — Calendrier : deux versions d'une inscription dans un même fichier ICS — ouvert le 06/11/2026
+**Auteur** : session 01Sptc2c (Claude) — lu sur `15b9715`, demande de l'utilisateur (« prépare la correction du point 1 »).
+**Proposition** : quand **un même fichier** contient deux versions différentes d'une même inscription (même identité, contenu différent : par ex. annulée puis réinscrite), garder la **dernière du fichier** au lieu de refuser tout l'import, et l'annoncer dans l'aperçu (« N inscription(s) en plusieurs versions dans un même fichier : la dernière est gardée »). Entre **fichiers différents** d'un même lot, le refus actuel reste (l'ordre de sélection ne dit pas lequel est le plus récent ; importer séparément y est possible).
+**Critère déclencheur** : 7 (compteurs de l'aperçu d'import) et 2 (deux options : dernière du fichier, ou priorité à la version non annulée).
+**Contradicteur** : Codex — « pull » suffit.
+**Ce que ça engage** : rien dans le stockage (même clé, mêmes champs, version 1) ; seule la version retenue est enregistrée, l'autre n'est pas conservée. Défaire = un commit.
+**Choix** : « dernière du fichier » plutôt que « non annulée d'abord » : une annulation postérieure à l'inscription doit l'emporter, et la règle ne dépend pas d'un statut métier. Pas d'usage de SEQUENCE/LAST-MODIFIED/DTSTAMP : non lus aujourd'hui, et ajouter leur lecture changerait le parseur pour un cas non observé.
+**Non vérifié par l'auteur** : **que GDIN écrive la version la plus récente en dernier** dans le fichier — hypothèse, aucun export réel lu (règle 59). Que ce cas existe réellement dans les exports GDIN (l'utilisateur ne l'a pas confirmé).
+**Si personne ne répond, je fais quoi ?** Livrer, testé sur données fictives ; l'aperçu dit quelle règle a été appliquée, l'utilisateur peut contrôler l'inscription dans le détail.
+**Où regarder** : `calendar.js` (`parse`, aperçu dans `render`), `scripts/check-calendar.js`.
+
 ## AG-029 — Calendrier GDIN : inscriptions, séances et réimport — ouvert le 06/11/2026
 **Auteur** : Codex — lu sur `2f0370b`, demande de développement du calendrier GDIN uniquement.
 **Proposition** : conserver chaque inscription ICS, puis regrouper à l'affichage par action, créneau, lieu et intitulé d'activité disponible. UID seul interdit comme identité ; import multiple, recherche, filtres et durées nulles visibles.
