@@ -2,6 +2,8 @@
 
 État au **06/11/2026 à 21:03**, base `main` `c79b4f2` (Pages ✅). **Calendrier GDIN clos** : AG-028, AG-029 et AG-030 tranchés par l'utilisateur le 06/11 ; aucun bloc AGORA ouvert. AG-028 clos sans relecture externe (choix de l'utilisateur). Invariants ci-dessous.
 
+**Menu latéral repliable (06/11, demande de l'utilisateur)** : bouton « Replier le menu » en tête du menu, ordinateur seulement (> 760 px) ; replié = icônes seules (68 px), infobulles, pastilles de l'Agenda en haut/bas ; choix mémorisé dans ce navigateur (`ess-ui-sidebar-collapsed`). Téléphone inchangé. Rendu seul, pas de bloc AGORA. Mesuré dans la démo à 1280 et 390 px : aucun débordement ni erreur JS. **Contrôle visuel de l'utilisateur restant.**
+
 **Livraisons déjà validées le 06/11, à conserver** : « Lapins par permanence » en fin des Statistiques (`a0d0e25`) ; depuis Orientations, « Préparer le message » vide les anciens date/heure puis propose un créneau vide d’une journée déjà ouverte du CMS reconnu (`c878666`, sélection automatique validée par l’utilisateur). Contraste des tuiles en mode nuit (`2cd9b66`) : rendu utilisateur à confirmer.
 
 ## Calendrier GDIN — invariants (clos le 06/11/2026)
