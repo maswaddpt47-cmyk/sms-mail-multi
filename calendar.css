@@ -17,3 +17,5 @@
 
 .ics-dialog[open]{display:flex;flex-direction:column;}.ics-dialog-header{flex:none;display:flex;justify-content:flex-end;padding:8px 12px;background:var(--c-card);border-bottom:1px solid var(--c-border-in);}.ics-dialog-header .ics-button{margin:0;min-height:42px;}.ics-dialog-body{flex:1 1 auto;min-height:0;max-height:calc(100vh - 110px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y pinch-zoom;-webkit-overflow-scrolling:touch;padding:18px;box-sizing:border-box;}.ics-dialog-body:focus-visible{outline:2px solid var(--ui-accent);outline-offset:-3px;}
 @supports(height:100dvh){.ics-dialog{max-height:calc(100dvh - 24px);}.ics-dialog-body{max-height:calc(100dvh - 110px);}}
+
+.ics-menu{margin:0 0 8px;}.ics-menu>summary{cursor:pointer;display:inline-flex;align-items:center;min-height:36px;padding:6px 12px;border:1px solid var(--c-border-in);border-radius:8px;background:var(--c-card);font-size:12px;font-weight:650;color:var(--c-text);}.ics-menu[open]>summary{margin-bottom:10px;}

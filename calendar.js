@@ -112,7 +112,7 @@
   function rdvs(history){return (history||[]).filter(function(h){return h.msgType!=='indispo'&&validDay(h.date);}).map(function(h,i){var start=/^\d{2}:\d{2}$/.test(h.heure||'')?localInstant(h.date,h.heure+':00',ZONE):null;return {key:'rdv:'+i,title:[h.prenom,h.nom].filter(Boolean).join(' ')||'Rendez-vous',description:h.demarche||'',location:h.commune||'',start:start===null?h.date:new Date(start).toISOString(),end:start===null?dayAdd(h.date,1):new Date(start+3600000).toISOString(),allDay:start===null,unknownTime:start===null,cancelled:h.statut==='annule',source:'rdv'};});}
   function render(pane,ctx){
     if(!ctx.profileId)return;ctx.key='ess-'+ctx.profileId+'-calendar-ics-v1';
-    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:''});
+    var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:'',menuOpen:false});
     function node(tag,attrs,text){var n=doc.createElement(tag);Object.keys(attrs||{}).forEach(function(k){if(k==='class')n.className=attrs[k];else if(k==='onclick')n.addEventListener('click',attrs[k]);else n.setAttribute(k,attrs[k]);});if(text!==undefined)n.textContent=text;return n;}
     function button(text,fn,cls){return node('button',{type:'button',class:cls||'ics-button',onclick:fn},text);}
     function rerender(){if(ctx.currentProfile()===ctx.profileId)render(pane,ctx);}
@@ -129,7 +129,11 @@
     var tabs=node('div',{class:'ics-view-tabs','aria-label':'Vue du calendrier'});[['day','Jour'],['week','Semaine'],['month','Mois']].forEach(function(v){var b=button(v[1],function(){st.view=v[0];rerender();});b.setAttribute('aria-pressed',String(st.view===v[0]));tabs.appendChild(b);});toolbar.appendChild(tabs);
     var file=node('input',{type:'file',accept:'.ics,text/calendar',multiple:'multiple',class:'ics-file','aria-label':'Choisir un ou plusieurs fichiers ICS'});root.appendChild(file);
     var imp=button('Importer des ICS',function(){file.click();},'ics-button ics-import');if(error)imp.disabled=true;toolbar.appendChild(imp);
-    var options=node('div',{class:'ics-options'});root.appendChild(options);
+    // Volet « Filtres et options » repliable (fermé par défaut, état gardé par profil) :
+    // la grille reste visible sur téléphone. Navigation et import restent hors du volet.
+    var active=[st.query,st.object,st.location,st.type].filter(Boolean).length,menu=node('details',{class:'ics-menu'});if(st.menuOpen)menu.setAttribute('open','');
+    menu.appendChild(node('summary',{},'Filtres et options'+(active?' · '+active+' filtre(s) actif(s)':'')));menu.addEventListener('toggle',function(){st.menuOpen=menu.open;});root.appendChild(menu);
+    var options=node('div',{class:'ics-options'});menu.appendChild(options);
     var dl=node('label',{},'Aller au '),di=node('input',{type:'date',value:st.date,'aria-label':'Date du calendrier'});dl.appendChild(di);options.appendChild(dl);di.addEventListener('change',function(){if(validDay(di.value)){st.date=di.value;rerender();}});
     var gl=node('label',{class:'ics-source'}),gi=node('input',{type:'checkbox','aria-label':'Regrouper les inscriptions'});gi.checked=st.group;gi.addEventListener('change',function(){st.group=gi.checked;rerender();});gl.appendChild(gi);gl.appendChild(doc.createTextNode('Regrouper les inscriptions'));options.appendChild(gl);
     var help=node('details',{class:'ics-help-panel'});help.appendChild(node('summary',{},'Aide du calendrier'));
@@ -159,7 +163,7 @@
       preview.appendChild(node('p',{class:'ics-help'},'Vérifiez le regroupement après import. Titres et descriptions originaux sont conservés dans le détail ; les noms des inscriptions y restent visibles. Contacts ATTENDEE/ORGANIZER, liens et pièces jointes ne sont pas exploités. Aucun ajout tant que vous ne validez pas. Un fichier invalide annule tout l’aperçu.'));
       var apply=button('Ajouter au calendrier',function(){try{var current=load(ctx.storage,ctx.key),m=merge(current.events,pre.events);save(ctx,m.events,current.raw);st.preview=null;st.message=m.added+' ajoutés · '+m.updated+' mis à jour · '+m.unchanged+' déjà présents.';if(pre.events.length)st.date=pre.events.map(function(e){return e.allDay?e.start:parisDay(e.start);}).sort()[0];}catch(e){st.message=e.message;}rerender();},'ics-button ics-import');apply.disabled=!!error||!merged||!pre.events.length;preview.appendChild(apply);preview.appendChild(button('Annuler',function(){st.preview=null;rerender();}));root.appendChild(preview);
     }
-    var all=sessions(data.events,st.group),filters=node('div',{class:'ics-filters','aria-label':'Recherche et filtres'});root.appendChild(filters);
+    var all=sessions(data.events,st.group),filters=node('div',{class:'ics-filters','aria-label':'Recherche et filtres'});menu.appendChild(filters);
     var sl=node('label',{},'Rechercher'),search=node('input',{type:'search',value:st.query,placeholder:'Activité, participant, action, lieu…','aria-label':'Rechercher dans le calendrier'});sl.appendChild(search);filters.appendChild(sl);
     search.addEventListener('input',function(){st.query=search.value;var start=search.selectionStart;rerender();var fresh=pane.querySelector&&pane.querySelector('input[type="search"]');if(fresh){fresh.focus();if(start!==null)fresh.setSelectionRange(start,start);}});
     function filter(label,key,choices){var l=node('label',{},label),s=node('select',{'aria-label':label});choices.forEach(function(c){var o=node('option',{value:c[0]},c[1]);s.appendChild(o);});s.value=st[key];s.addEventListener('change',function(){st[key]=s.value;rerender();});l.appendChild(s);filters.appendChild(l);}
