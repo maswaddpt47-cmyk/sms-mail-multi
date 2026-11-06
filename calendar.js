@@ -214,7 +214,7 @@
       var dateLine;if(e.allDay){var lastDay=dayAdd(e.end,-1);dateLine=fmt(e.start,{dateStyle:'full'})+(lastDay===e.start?'':' — '+fmt(lastDay,{dateStyle:'full'}))+' · Toute la journée';}
       else{var dateFormat=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full'}),clock=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'});dateLine=dateFormat.format(new Date(e.start))+' · '+clock.format(new Date(e.start))+'–'+(parisDay(e.start)===parisDay(e.end)?'':dateFormat.format(new Date(e.end))+' · ')+clock.format(new Date(e.end));}
       body.appendChild(node('p',{},dateLine));
-      if(e.zeroDuration)body.appendChild(node('p',{class:'ics-alert'},'Durée nulle : début et fin identiques, ou fin absente de l’ICS. Le petit bloc dans la grille est seulement un repère visuel.'));
+      
       if(e.location)body.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){body.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});body.appendChild(list);}
       var importDetails=node('details',{class:'ics-import-details'});importDetails.appendChild(node('summary',{},'Détails de l’import'));
