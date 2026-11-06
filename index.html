@@ -6,6 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4c51c6">
+<link rel="stylesheet" href="calendar.css">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -943,6 +944,7 @@
       <div id="pane-templates" class="tab-pane"></div>
       <div id="pane-config" class="tab-pane"></div>
       <div id="pane-agenda" class="tab-pane"></div>
+      <div id="pane-calendar" class="tab-pane"></div>
       <div id="pane-mandat" class="tab-pane"></div>
       <div id="pane-mandats" class="tab-pane"></div>
       <div id="pane-orientations" class="tab-pane"></div>
@@ -951,6 +953,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
+<script src="calendar.js"></script>
 <script>
 "use strict";
 
@@ -1178,7 +1181,7 @@ var _clesIllisibles={};
    qu'il a lue ou écrite de chaque donnée suivie ; lsSet refuse d'écrire si le stockage a changé entre-temps (autre onglet),
    recharge la mémoire depuis le stockage et demande de refaire l'action : aucun onglet n'écrase les modifications d'un autre. */
 var _versionLue={};
-function cleSuivie(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||/^ess-[^-]+-(history|permanences|orientations|yearly-stats)$/.test(k);}
+function cleSuivie(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||/^ess-[^-]+-(history|permanences|orientations|yearly-stats|calendar-ics-v1)$/.test(k);}
 function noterVersion(k,brut){if(cleSuivie(k))_versionLue[k]=brut;}
 function lireDonnee(k,defaut){
   var v;try{v=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return defaut;}
@@ -2502,6 +2505,7 @@ function workspaceSection(number,title,description){
 }
 function renderWorkspaceHeading(){
   var titles={generate:['Préparer un message','Renseignez le rendez-vous, vérifiez le message et copiez-le dans votre messagerie.','Messages'],agenda:['Votre agenda','Retrouvez les rendez-vous et les créneaux de votre équipe.','Agenda'],orientations:['Les orientations','Retrouvez les demandes à traiter et préparez leur accompagnement.','Orientations'],history:['Historique des messages','Retrouvez vos messages et le suivi des rendez-vous.','Historique'],stats:['Votre activité en un regard','Consultez les indicateurs de votre accompagnement numérique.','Statistiques'],templates:['Vos modèles de messages','Adaptez les textes à vos situations du quotidien.','Modèles'],config:['Configuration','Personnalisez votre outil et les informations de vos rendez-vous.','Configuration'],mandat:['Préparer un mandat','Renseignez, relisez et préparez le document pour signature.','Mandat'],mandats:['Mandats archivés','Retrouvez les documents conservés dans votre espace.','Mandats archivés']};
+  titles.calendar=['Votre calendrier','Importez vos calendriers ICS et retrouvez vos événements en vue jour, semaine ou mois.','Calendrier'];
   var item=titles[S.activeTab]||titles.generate;
   document.getElementById('workspace-title').textContent=item[0];
   document.getElementById('workspace-subtitle').textContent=item[1];
@@ -2554,11 +2558,12 @@ function renderTabs(){
     return h.date===_todayTab&&(h.statut==='confirme'||h.statut==='realise');
   }).length;
   var aPointerN=aPointerList().length;
-  var defs=[["generate","Messages","message"],["agenda","Agenda","calendar"],["orientations","Orientations"+(orientN>0?" ("+orientN+")":""),"list"],["history","Historique","history"],["stats","Statistiques","chart"],["templates","Modèles","templates"],["mandat","Mandat","document"],["mandats","Mandats archivés","archive"],["config","Configuration","settings"]];
+  var defs=[["generate","Messages","message"],["agenda","Agenda","calendar"],["calendar","Calendrier","calendar"],["orientations","Orientations"+(orientN>0?" ("+orientN+")":""),"list"],["history","Historique","history"],["stats","Statistiques","chart"],["templates","Modèles","templates"],["mandat","Mandat","document"],["mandats","Mandats archivés","archive"],["config","Configuration","settings"]];
   defs.forEach(function(d,index){
-    if(index===0||index===5)nav.appendChild(el('div',{class:'nav-group-label'},index===0?'AU QUOTIDIEN':'VOS OUTILS'));
+    if(index===0||d[0]==='templates')nav.appendChild(el('div',{class:'nav-group-label'},index===0?'AU QUOTIDIEN':'VOS OUTILS'));
     var btn=el('button',{class:'gx-press workspace-nav-button',type:'button','aria-current':S.activeTab===d[0]?'page':null,'aria-controls':'pane-'+d[0],onClick:(function(key){return function(){S.activeTab=key;showActivePane();renderTabs();var mainScroll=document.querySelector('main');if(mainScroll)mainScroll.scrollTop=0;if(key==='stats')renderStats();if(key==='orientations')renderOrientations();
       if(key==='agenda')renderAgenda();
+      if(key==='calendar')renderCalendar();
       if(key==='generate')renderGenerate();
     };})(d[0])},[workspaceIcon(d[2]),el('span',{class:'nav-label'},d[1])]);
     if(d[0]==='agenda'&&agTodayN>0){
@@ -2589,13 +2594,18 @@ function showActivePane(){
   renderWorkspaceHeading();
   var activeMain=document.getElementById('workspace-main');if(activeMain)activeMain.setAttribute('data-active-tab',S.activeTab);
   var appRoot=document.getElementById('app-root');if(appRoot)appRoot.setAttribute('data-active-tab',S.activeTab);
-  var map={generate:'pane-generate',history:'pane-history',agenda:'pane-agenda',stats:'pane-stats',templates:'pane-templates',config:'pane-config',mandat:'pane-mandat',mandats:'pane-mandats',orientations:'pane-orientations'};
-  ['pane-generate','pane-history','pane-agenda','pane-stats','pane-templates','pane-config','pane-mandat','pane-mandats','pane-orientations'].forEach(function(id){
+  var map={generate:'pane-generate',history:'pane-history',agenda:'pane-agenda',calendar:'pane-calendar',stats:'pane-stats',templates:'pane-templates',config:'pane-config',mandat:'pane-mandat',mandats:'pane-mandats',orientations:'pane-orientations'};
+  ['pane-generate','pane-history','pane-agenda','pane-calendar','pane-stats','pane-templates','pane-config','pane-mandat','pane-mandats','pane-orientations'].forEach(function(id){
     document.getElementById(id).style.display=(map[S.activeTab]===id)?'block':'none';
   });
 }
 
 /* ============================== RENDER: GENERATE ============================== */
+function renderCalendar(){
+  var pane=document.getElementById('pane-calendar');if(!pane)return;
+  var generation=_generationProfil;
+  CalendarICS.render(pane,{profileId:S.activeProfile,currentProfile:function(){return generation===_generationProfil&&!_chargementEchoue?S.activeProfile:null;},history:S.history,storage:localStorage,noteVersion:noterVersion,write:lsSet,notify:showToast});
+}
 function renderGenerate(){
   var previousSettings=document.getElementById('message-settings');
   if(previousSettings)S.uiMessageSettingsOpen=previousSettings.open;
@@ -8425,6 +8435,7 @@ function renderAll(){
   renderGenerate();renderHistory();renderTemplates();renderConfig();renderMandat();renderMandats();
   if(S.activeTab==='stats')renderStats();
   if(S.activeTab==='agenda')renderAgenda();
+  if(S.activeTab==='calendar')renderCalendar();
   if(S.activeTab==='orientations')renderOrientations();
   renderModal();renderToast();
 }

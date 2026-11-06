@@ -123,7 +123,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
-Aucun. AG-026 et AG-027 tranchés le 01/11/2026 ; textes intégraux : `git log -p AGORA.md`.
+## AG-028 — Calendrier visuel et import ICS local — ouvert le 06/11/2026
+**Auteur** : Codex — lu sur `8a58402`, demande de l'utilisateur : nouvelle rubrique d'agenda de type Outlook pour afficher des fichiers ICS.
+**Proposition** : rubrique « Calendrier », vues jour/semaine/mois, import ICS avec aperçu et fusion par UID ; événements importés en bleu, RDV du profil en vert. Aucun événement importé n'est converti en dossier métier.
+**Critère déclencheur** : 1 (nouvel espace de données local indépendant), examen de provenance des dates (MD-LIB règle 57). Aucun indicateur métier modifié.
+**Contradicteur** : session B, distincte de la session Codex qui livre ; ne pas auto-répondre.
+**Ce que ça engage** : clé `ess-<profil>-calendar-ics-v1`, objet `{version:1,events:[...]}` ; événements : clé UID ou identité de repli, titre, description, lieu, début/fin, journée entière, annulation. Instants en ISO UTC, jours entiers en dates civiles avec fin exclusive. Aucun changement du stockage ni des formats d'export existants, aucune migration. Les événements ne sont pas inclus dans les sauvegardes de l'application : conserver l'ICS original, dit à l'écran.
+**Choix de fonctionnement** : affichage en Europe/Paris ; date sans fuseau = Paris ; conversions UTC/IANA et principaux identifiants Windows européens ; première occurrence de l'heure d'automne ambiguë, heure locale inexistante refusée. Sans heure de fin : point horaire sans durée inventée, ou journée entière. Les RDV de l'application ont une durée visuelle indicative de 1 h, explicitée ; sans heure, ligne Journée avec « Heure à préciser ».
+**Limites affichées avant import** : répétitions (`RRULE`, `RDATE`, `EXDATE`, exceptions) non développées, événements concernés ignorés et comptés ; dates/durées/fuseaux non reconnus également signalés. Participants, organisateurs, liens et pièces jointes non importés. Texte rendu sans HTML. 5 Mo et 5 000 événements maximum ; réimport = mise à jour sans doublon. Retrait d'un événement local : confirmation dédiée.
+**Vérifié** : `scripts/check-calendar.js`, en UTC et Europe/Paris : dates, fuseaux, été/hiver, fins exclusives, journées, chevauchements, doublons, pannes, conflits, profils et import via le vrai composant avec DOM simulé. Deux mutations rejetées dans les deux fuseaux (fuseau flottant incorrect ; doublons conservés). Parcours Chromium sur données fictives uniquement : nouvelle rubrique, choix du fichier, aperçu, ajout, jour/semaine/mois, détail avec texte hostile non interprété, conservation après rechargement ; jour/nuit à 390 et 1280 px, aucun débordement de page ni erreur JS. Contrôle ajouté au déploiement.
+**Non vérifié par l'auteur** : aucune donnée d'usager ni sauvegarde réelle lue ; seul le vocabulaire des propriétés du fichier joint a été examiné, sans afficher les valeurs. Pas de synchronisation avec un compte Outlook ; import manuel d'événements simples. L'ICS doit être réimporté sur un autre navigateur/appareil. Pas de mesure d'envoi ni d'indicateur d'activité tiré de ce calendrier.
+**Si personne ne répond, je fais quoi ?** Livrer la rubrique demandée, testée, sans attendre une nouvelle négociation des fonctions ; une contradiction externe après livraison, centrée sur l'import, les dates et la séparation des données.
+**Où regarder** : `calendar.js`, `calendar.css`, `index.html` (`renderCalendar`, navigation et version suivie de la clé locale), `scripts/check-calendar.js`, `.github/workflows/deploy.yml`.
 
 ---
 
