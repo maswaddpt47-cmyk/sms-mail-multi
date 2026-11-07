@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **06/11/2026 à 21:03**, base `main` `c79b4f2` (Pages ✅). **Calendrier GDIN clos** : AG-028, AG-029 et AG-030 tranchés par l'utilisateur le 06/11 ; aucun bloc AGORA ouvert. AG-028 clos sans relecture externe (choix de l'utilisateur). Invariants ci-dessous.
+État au **07/11/2026 à 09:31**, base `main` `724760f` (Pages ✅). **Calendrier** : menu « Filtres et options » repliable, semaine/mois sans week-end, code couleur GDIN (9 étapes dont Lapin), mention « Durée nulle » retirée des tuiles et du détail — **« ça fonctionne », validé par l'utilisateur le 07/11** sur ce dernier point. **Ouvert** : AG-031 (sans week-end, critère 7), réponse de Codex attendue. **Attendu de l'utilisateur** : intitulés du volet « Classés en Autre » pour compléter les mots-clés. Menu latéral repliable gardé.
 
 **Calendrier — volet « Filtres et options » repliable (06/11, demande de l'utilisateur)** : « Aller au », « Regrouper » et les filtres dans un volet fermé par défaut (état gardé par profil pendant la session, nombre de filtres actifs affiché sur le volet) ; navigation, vues et import toujours visibles. Mesuré dans la démo : sur 390 px la grille apparaît à l'écran (elle commençait sous le bas de l'écran) ; aucun débordement ni erreur JS ; saisie dans la recherche sans refermer le volet. Rendu seul, pas de bloc AGORA. Contrôle visuel de l'utilisateur restant.
 
