@@ -6,7 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4c51c6">
-<link rel="stylesheet" href="calendar.css?v=gdin-20261106-17">
+<link rel="stylesheet" href="calendar.css?v=gdin-20261109-1">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -975,7 +975,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
-<script src="calendar.js?v=gdin-20261106-17"></script>
+<script src="calendar.js?v=gdin-20261109-1"></script>
 <script>
 "use strict";
 
@@ -1391,11 +1391,17 @@ function ghNowFile(pid){
 function maybeAutoBackupProfile(profileId){
   if(_ecrituresGroupees||_stockageEnEchec||!ghToken())return;
   var nowMs=Date.now();
-  if(nowMs-(_ghLastAutoPushByProfile[profileId]||0)>120000){
+  var depuis=nowMs-(_ghLastAutoPushByProfile[profileId]||0);
+  if(depuis>120000){
     _ghLastAutoPushByProfile[profileId]=nowMs;
     githubPush(true,null,profileId);
+    return;
   }
+  /* AG-032 (amendement Codex R2) : une modification faite pendant les 2 min ne reste plus sans sauvegarde ;
+     un seul envoi différé par profil, à la fin du délai, avec l'état du moment. */
+  if(!_ghAutoDiffere[profileId]){var t=setTimeout(function(){_ghAutoDiffere[profileId]=null;maybeAutoBackupProfile(profileId);},120000-depuis+1000);if(t&&t.unref)t.unref();_ghAutoDiffere[profileId]=t;}
 }
+var _ghAutoDiffere={};
 
 /* pousse un fichier daté, puis nettoie les anciens (garde GH_BACKUP_RETENTION_JOURS) */
 /* P08 (vérification finale de Codex) : « fiches non sauvegardées » = since-export. couvert[pid] = nombre de fiches déjà
@@ -1455,17 +1461,26 @@ function ghRestoreLatest(token,onSuccess){
   ghListBackups(token,function(backups){
     if(!backups.length){showToast('❌ Aucun backup trouvé sur GitHub','err');return;}
     var latest=backups[0];
-    fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+latest.path+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
-      .then(function(r){if(!r.ok)throw new Error();return r.json();})
-      .then(function(data){
+    fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+latest.path+'?ref='+GH_BRANCH,{headers:ghEntetesBrut(token)})
+      .then(function(r){if(!r.ok)throw new Error();return r.text();})
+      .then(function(texte){
         if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
-        var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+        var json=ghContenuSauvegarde(texte);
         S.importText=json;
         if(doImport()){if(onSuccess)onSuccess();}
         else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
       })
       .catch(function(){showToast('❌ Impossible de restaurer depuis GitHub','err');});
   });
+}
+
+/* AG-032 (amendement Codex R3) : au-delà de 1 Mo, l'API GitHub ne renvoie le contenu qu'en média « raw ». On le demande
+   toujours ; si la réponse est quand même l'enveloppe JSON en base64, elle est décodée. */
+function ghEntetesBrut(token){return Object.assign({},ghHeaders(token),{Accept:'application/vnd.github.raw+json'});}
+function ghContenuSauvegarde(texte){
+  var o;try{o=JSON.parse(texte);}catch(e){return texte;}
+  if(o&&typeof o==='object'&&!Array.isArray(o)&&o.encoding==='base64'&&typeof o.content==='string')return decodeURIComponent(escape(atob(o.content.replace(/\n/g,''))));
+  return texte;
 }
 
 /* rétention : au moins 30 jours de sauvegardes conservées par profil (même choix que SMS-mail,
@@ -1524,11 +1539,11 @@ function ghListBackups(token,cb){
 function ghRestoreFile(token,filePath){
   var pid=S.activeProfile;
   showToast('⏳ Restauration en cours…','ok');
-  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+filePath+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(data){
+  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+filePath+'?ref='+GH_BRANCH,{headers:ghEntetesBrut(token)})
+    .then(function(r){if(!r.ok)throw new Error();return r.text();})
+    .then(function(texte){
       if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
-      var json=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+      var json=ghContenuSauvegarde(texte);
       S.importText=json;
       if(doImport())showToast('✅ Restauration réussie !');
       else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
@@ -2343,10 +2358,24 @@ function unarchiveDay(id){
 
 /* modals */
 /* démarches/templates/customTemplates/secteurs/customVars/mandats/cmsList sont partagés entre profils : lus depuis S quel que soit pid */
+/* AG-032 : le calendrier ICS du profil fait partie de la sauvegarde. Même contrôle que sa lecture (CalendarICS.load) ;
+   illisible → clé marquée illisible, la sauvegarde est refusée (sauvegardeFiable). Absent → calendrier vide écrit en clair
+   (amendement Codex R1 : l'absence du champ est réservée aux anciennes sauvegardes, qui ne touchent pas au calendrier). */
+function calendrierInvalide(brut){
+  if(typeof CalendarICS!=='undefined'){try{CalendarICS.load({getItem:function(){return brut;}},'calendrier');return '';}catch(e){return e.message||'illisible';}}
+  try{var d=JSON.parse(brut);return d&&d.version===1&&Array.isArray(d.events)?'':'illisible';}catch(e){return 'illisible';}
+}
+function lireCalendrierProfil(pid){
+  var k=pkFor(pid,'calendar-ics-v1'),brut;
+  try{brut=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return null;}
+  if(brut===null)return {version:1,events:[]};
+  if(calendrierInvalide(brut)){_clesIllisibles[k]=true;return null;}
+  return JSON.parse(brut);
+}
 function exportDataForProfile(pid){
   var permanences=pid===S.activeProfile?S.permanences:lireDonnee('ess-'+pid+'-permanences',[]);
   var yearlyStats=pid===S.activeProfile?S.yearlyStats:lireDonnee('ess-'+pid+'-yearly-stats',{});
-  return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),yearlyStats:yearlyStats,permanences:permanences,orientations:readProfileOrientations(pid)};
+  return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),yearlyStats:yearlyStats,permanences:permanences,orientations:readProfileOrientations(pid),calendarIcs:lireCalendrierProfil(pid)};
 }
 /* T12 (vérification de clôture de Codex) : une sauvegarde n'est faite que si toutes les données du profil (et les réglages
    communs) ont pu être lues ; sinon elle serait incomplète tout en annonçant un succès. À appeler après exportDataForProfile. */
@@ -2380,6 +2409,8 @@ function verifierSauvegarde(data){
   if(!textes(data.cmsList,['nom','adresse','debutApresMidi']))return 'Sauvegarde invalide (CMS illisible).';
   if(!textes(data.history,['date','heure','commune','nom','prenom','civilite','telephone','statut','msgType','channel','body','subject','demarche','ts','dateDemande','dateRelance','dateReception','notes']))return 'Sauvegarde invalide (fiche avec un champ illisible).';
   if(!textes(data.permanences,['commune','exceptDate','debut','fin']))return 'Sauvegarde invalide (journée illisible).';
+  /* AG-032 : champ présent = calendrier complet à restaurer ; null ou invalide → import refusé (Q2) */
+  if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&(!data.calendarIcs||typeof data.calendarIcs!=='object'||calendrierInvalide(JSON.stringify(data.calendarIcs))))return 'Sauvegarde invalide (calendrier illisible).';
   return '';
 }
 function doImport(){
@@ -2397,6 +2428,8 @@ function doImport(){
     if(data.yearlyStats){neuf.yearlyStats=data.yearlyStats;paires.push([pk('yearly-stats'),data.yearlyStats]);}
     if(data.permanences){neuf.permanences=migratePermanences(data.permanences,neuf.history||S.history);paires.push([pk('permanences'),neuf.permanences],[pk('perm-version'),PERM_MODEL_VERSION]);}
     if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
+    /* AG-032 (Q1, décision de l'utilisateur du 09/11) : la sauvegarde remplace le calendrier ; sans le champ, il est conservé */
+    if(Object.prototype.hasOwnProperty.call(data,'calendarIcs'))paires.push([pk('calendar-ics-v1'),data.calendarIcs]);
   }catch(e){S.importError="❌ Sauvegarde illisible. Aucune donnée modifiée.";renderModal();return false;}
   /* réglages communs dans la même écriture : plus aucun enregistrement hors transaction après l'import */
   var now=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'}),appliques=Object.assign({},S,neuf);
@@ -2404,6 +2437,7 @@ function doImport(){
   if(!ecrireTout(paires)){S.importError=ecrireTout.incoherent?MSG_INCOHERENT:"❌ Enregistrement impossible (stockage plein ?) : import annulé, aucune donnée modifiée.";renderModal();return false;}
   Object.keys(neuf).forEach(function(k){S[k]=neuf[k];});
   S.modal=null;S.importText="";S.importError="";S.saveStatus='Sauvegardé le '+now;
+  if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&typeof CalendarICS!=='undefined'&&CalendarICS.forget)CalendarICS.forget(S.activeProfile);   /* aperçu d'import en cours abandonné */
   maybeAutoBackupProfile(S.activeProfile);
   regen();renderAll();showToast("✅ Import réussi !"+(doImport.marquees?" — "+doImport.marquees+" fiche(s) sans identifiant signalée(s) non réconciliée(s), exclue(s) des totaux d'archives":""));
   return true;
@@ -2625,8 +2659,8 @@ function showActivePane(){
 /* ============================== RENDER: GENERATE ============================== */
 function renderCalendar(){
   var pane=document.getElementById('pane-calendar');if(!pane)return;
-  var generation=_generationProfil;
-  CalendarICS.render(pane,{profileId:S.activeProfile,currentProfile:function(){return generation===_generationProfil&&!_chargementEchoue?S.activeProfile:null;},storage:localStorage,noteVersion:noterVersion,write:lsSet,notify:showToast});
+  var generation=_generationProfil,pidCalendrier=S.activeProfile;
+  CalendarICS.render(pane,{profileId:S.activeProfile,currentProfile:function(){return generation===_generationProfil&&!_chargementEchoue?S.activeProfile:null;},storage:localStorage,noteVersion:noterVersion,write:function(k,v){var ok=lsSet(k,v);if(ok)maybeAutoBackupProfile(pidCalendrier);return ok;},notify:showToast});   /* AG-032 (R2) : écriture réussie → sauvegarde automatique du profil */
 }
 function renderGenerate(){
   var previousSettings=document.getElementById('message-settings');

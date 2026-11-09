@@ -19,6 +19,7 @@ const CODE=[
   section('function clearHistory(','function exportHistoryCSV('),fonction('deleteHistItem'),fonction('saveHistItem'),
   section('function entryYear(','/* années révolues'),
   section('function archiveYear(','/* affiche les stats agrégées'),
+  fonction('calendrierInvalide'),
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
@@ -373,7 +374,7 @@ async function restaurer(contenu,fonction,options){
   options=options||{};
   const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));let appele=0;   /* mémoire chargée depuis le stockage, comme dans l'application */
   if(options.panne)e.st.panne=()=>true;
-  e.ctx.fetch=()=>new Promise(res=>setTimeout(()=>{if(options.changerProfil)e.S.activeProfile='p2';res({ok:true,json:()=>Promise.resolve({content:Buffer.from(contenu,'utf8').toString('base64')})});},5));
+  e.ctx.fetch=()=>new Promise(res=>setTimeout(()=>{if(options.changerProfil)e.S.activeProfile='p2';res({ok:true,text:()=>Promise.resolve(JSON.stringify({encoding:'base64',content:Buffer.from(contenu,'utf8').toString('base64')}))});},5));
   if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{appele++;});
   await new Promise(r=>setTimeout(r,40));return {e,appele};
 }
@@ -383,7 +384,7 @@ async function restaurer(contenu,fonction,options){
     assert.equal(ok.e.S.history[0].id,'x',fonction+' : restauration appliquée');
     if(fonction==='fichier')assert(ok.e.journal.toasts.some(t=>/Restauration réussie/.test(t)));else assert.equal(ok.appele,1);
     {const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];e.st.setItem('ess-cms','"ancien"');e.st.ecritures=0;e.st.panne=(k,i)=>i>=2;
-     e.ctx.fetch=()=>Promise.resolve({ok:true,json:()=>Promise.resolve({content:Buffer.from(JSON.stringify(sauvegarde),'utf8').toString('base64')})});
+     e.ctx.fetch=()=>Promise.resolve({ok:true,text:()=>Promise.resolve(JSON.stringify({encoding:'base64',content:Buffer.from(JSON.stringify(sauvegarde),'utf8').toString('base64')}))});
      if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
      assert(e.journal.toasts.some(m=>/retour en arrière incomplet/.test(m)),fonction+' : incohérence relayée');assert(!e.journal.toasts.some(m=>/aucune donnée modifiée/.test(m)),fonction+' : pas de « aucune donnée modifiée »');}
     for(const [cas,contenu,opt] of [['illisible','{"history":{}}',{}],['stockage plein',JSON.stringify(sauvegarde),{panne:true}],['profil changé',JSON.stringify(sauvegarde),{changerProfil:true}]]){
@@ -502,7 +503,7 @@ async function restaurer(contenu,fonction,options){
   /* ── P08 / T12 : vrai githubPush, réseau simulé ── */
   function prepPush(){const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
     e.st.setItem('ess-p1-history',JSON.stringify([rdv('s1','2026-11-03','09:30','SAUVE','A')]));e.ctx.loadProfileData();
-    vm.runInContext(section('var _couvert={};','function githubPush(')+fonction('exportDataForProfile')+fonction('sauvegardeFiable')+fonction('exportData')+fonction('downloadExport'),e.ctx);   // vraies fonctions, extraites du fichier
+    vm.runInContext(section('var _couvert={};','function githubPush(')+fonction('calendrierInvalide')+fonction('lireCalendrierProfil')+fonction('exportDataForProfile')+fonction('sauvegardeFiable')+fonction('exportData')+fonction('downloadExport'),e.ctx);   // vraies fonctions, extraites du fichier
     const push=vm.runInContext('('+fonction('githubPush')+')',e.ctx);
     Object.assign(e.ctx,{ghToken:()=>'jeton-fictif',ghNowFile:()=>'b/p1/fictif.json',ghCleanOldBackups(){},renderHeader(){},btoa:x=>Buffer.from(x,'binary').toString('base64'),unescape,encodeURIComponent});
     const res={puts:0,envoye:null,finPut:null,fins:[]};
@@ -962,6 +963,36 @@ async function restaurer(contenu,fonction,options){
    assert(!/Créneau déjà pris/.test(section('function handleGenerate(','\nfunction ')),'plus de simple toast');
    assert(!/— Choisir —/.test(gen)&&/Choisissez d’abord la date et le CMS/.test(gen),'plus de liste d\'heures avant la date et le CMS');}
   assert(/S\._lastLapinDetected=false;\s*saveLast\(\);/.test(section('function onReset(','\nfunction ')),'« Effacer » enregistre le formulaire vide (CMS et démarche oubliés)');
+  /* ── AG-032 : calendrier dans la sauvegarde (amendé par Codex : R1 vide explicite, R2 sauvegarde auto, R3 gros fichier) ── */
+  {const CAL=require(path.join(__dirname,'../calendar.js')),K='ess-p1-calendar-ics-v1';
+   const ev=(i)=>({key:'gdin:'+JSON.stringify(['u'+i,'A','2026-11-0'+(2+i%5)+'T09:00:00.000Z','2026-11-0'+(2+i%5)+'T10:00:00.000Z','Personne fictive '+i,'','participant:'+i]),title:'Personne fictive '+i,location:'',description:'Demande fictive '+i,start:'2026-11-0'+(2+i%5)+'T09:00:00.000Z',end:'2026-11-0'+(2+i%5)+'T10:00:00.000Z',allDay:false,cancelled:false});
+   const cal=n=>({version:1,events:Array.from({length:n},(_,i)=>ev(i))});
+   const prep=(stock)=>{const {e}=prepPush();e.ctx.CalendarICS=CAL;vm.runInContext(fonction('calendrierInvalide')+fonction('lireCalendrierProfil'),e.ctx);if(stock!==undefined)e.st.setItem(K,stock);return e;};
+   // export : calendrier présent, vide explicite (R1), illisible → sauvegarde refusée (Q3)
+   {const e=prep(JSON.stringify(cal(3)));assert.deepEqual(e.ctx.exportDataForProfile('p1').calendarIcs,cal(3),'AG-032 : calendrier exporté tel quel');assert.equal(e.ctx.sauvegardeFiable('p1'),true);}
+   {const e=prep();assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarIcs)),{version:1,events:[]},'AG-032 R1 : calendrier absent → vide écrit en clair');}
+   {const e=prep('{"version":2,"events":[]}');e.ctx.exportDataForProfile('p1');assert.equal(e.ctx.sauvegardeFiable('p1'),false,'AG-032 Q3 : calendrier illisible → sauvegarde refusée');}
+   // import : remplacement (Q1), vide restitué (R1), ancienne sauvegarde sans champ conservée, invalide refusé (Q2), panne → retour arrière
+   const avecCal=c=>Object.assign({},sauvegarde,{calendarIcs:c});
+   const imp=(texte,existant)=>{const e=prepImport(texte);e.ctx.CalendarICS=CAL;e.st.setItem(K,JSON.stringify(existant));e.st.ecritures=0;return e;};
+   {const e=imp(JSON.stringify(avecCal(cal(2))),cal(5));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)),cal(2),'AG-032 Q1 : la sauvegarde remplace le calendrier');}
+   {const e=imp(JSON.stringify(avecCal({version:1,events:[]})),cal(1));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)).events,[],'AG-032 R1 : calendrier vide restitué');}
+   {const e=imp(JSON.stringify(sauvegarde),cal(4));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)),cal(4),'AG-032 : ancienne sauvegarde sans calendrier → calendrier conservé');}
+   for(const [cas,c] of [['null',null],['version 2',{version:2,events:[]}],['événement abîmé',{version:1,events:[{key:1}]}]]){
+     const e=imp(JSON.stringify(avecCal(c)),cal(4)),avant=e.st.etat();assert.equal(e.ctx.doImport(),false,'AG-032 Q2 : '+cas+' refusé');assert.equal(e.st.etat(),avant,'AG-032 Q2 : '+cas+' sans aucune écriture');assert.match(e.S.importError,/calendrier illisible/);}
+   {const e=imp(JSON.stringify(avecCal(cal(2))),cal(4)),avant=e.st.etat();e.st.panne=k=>k===K;assert.equal(e.ctx.doImport(),false);e.st.panne=null;assert.equal(e.st.etat(),avant,'AG-032 : panne à l’écriture du calendrier → tout revient en arrière');}
+   // R2 : écriture du calendrier → sauvegarde automatique ; seconde modification pendant les 2 min → envoi différé unique
+   assert(/pidCalendrier=S\.activeProfile/.test(section('function renderCalendar(','\nfunction '))&&/write:function\(k,v\)\{var ok=lsSet\(k,v\);if\(ok\)maybeAutoBackupProfile\(pidCalendrier\);return ok;\}/.test(section('function renderCalendar(','\nfunction ')),'AG-032 R2 : écriture réussie du calendrier reliée à la sauvegarde automatique du profil');
+   {const e=charger(),minuteries=[];e.ctx.setTimeout=(f,ms)=>{minuteries.push({f,ms});return {unref(){}};};
+    e.ctx.maybeAutoBackupProfile('p1');assert.equal(e.journal.pushs,1);e.ctx.maybeAutoBackupProfile('p1');e.ctx.maybeAutoBackupProfile('p1');
+    assert.equal(e.journal.pushs,1);assert.equal(minuteries.length,1,'AG-032 R2 : un seul envoi différé pendant le délai');assert(minuteries[0].ms>110000&&minuteries[0].ms<=121000);
+    e.ctx._ghLastAutoPushByProfile.p1=Date.now()-130000;minuteries[0].f();assert.equal(e.journal.pushs,2,'AG-032 R2 : la modification faite pendant le délai part à la fin du délai');}
+   // R3 : restauration GitHub d'un fichier de plus de 1 Mo, réponse « raw »
+   for(const f of ['fichier','dernier']){const e=imp('',cal(1)),gros=JSON.stringify(avecCal(cal(5000)),null,2);assert(Buffer.byteLength(gros)>1024*1024,'fichier fictif > 1 Mo');let entetes=null;
+     e.ctx.fetch=(url,opt)=>{entetes=opt.headers;return Promise.resolve({ok:true,text:()=>Promise.resolve(gros)});};
+     if(f==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
+     assert.equal(entetes.Accept,'application/vnd.github.raw+json','AG-032 R3 : média raw demandé');assert.equal(JSON.parse(e.st.getItem(K)).events.length,5000,'AG-032 R3 : '+f+' > 1 Mo restauré');}
+   console.log('AG-032 : calendrier sauvegardé (vide explicite, illisible refusé), restauré en remplacement, ancienne sauvegarde sans effet, invalide refusé, panne annulée, sauvegarde auto différée, restauration GitHub > 1 Mo OK.');}
   console.log('Double réservation : confirmation explicite à la génération et au choix du CMS ou de la date OK.');
   console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
