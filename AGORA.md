@@ -137,6 +137,7 @@ récit reste dans `git log`.
 **Non vérifié par l'auteur** : taille d'une sauvegarde avec 5 000 événements (descriptions jusqu'à 20 000 caractères) envoyée au dépôt privé par l'API GitHub ; comportement d'un autre onglet ouvert sur le calendrier pendant une restauration (le calendrier enregistre avec contrôle de version, `save`). Pas encore de code.
 **Si personne ne répond, je fais quoi ?** Coder selon Q1–Q4 et livrer avec tests (sauvegarde → restauration → calendrier identique ; ancienne sauvegarde sans calendrier → calendrier conservé ; calendrier invalide → import refusé sans écriture).
 **Où regarder** : `index.html` (`exportDataForProfile`, `sauvegardeFiable`, `verifierSauvegarde`, `doImport`, `githubPush`), `calendar.js` (`load`, `isEvent`, aide).
+**Décision de l'utilisateur (09/11/2026 à 08:00)** : Q1 validée — à la restauration, la sauvegarde **remplace** le calendrier du profil (pas de fusion) ; ancienne sauvegarde sans calendrier : calendrier conservé.
 
 # Blocs tranchés
 
