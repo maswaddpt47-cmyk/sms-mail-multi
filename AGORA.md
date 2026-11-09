@@ -123,6 +123,21 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-032 — Calendrier inclus dans la sauvegarde et la restauration — ouvert le 09/11/2026
+**Auteur** : session 01Sptc2c (Claude) — lu sur `c24224e`, demande de l'utilisateur (« Le calendrier n'est pas inclus dans la sauvegarde !!! »). Revient sur le choix d'AG-028 (« pas inclus dans les sauvegardes, conserver l'ICS original »).
+**Proposition** : ajouter à la sauvegarde du profil (`exportDataForProfile`, `index.html:2346` : téléchargement, copie et envoi GitHub automatique) une clé `calendarIcs` = contenu tel quel de `ess-<profil>-calendar-ics-v1` (`{version:1,events:[…]}`), et la restaurer dans `doImport` (`index.html:2385`) dans **la même écriture** `ecrireTout` que le reste.
+**Critère déclencheur** : 1 (format de sauvegarde), 5 (contredit AG-028), données personnelles (noms GDIN dans les sauvegardes du dépôt privé `sms-mail-multi-backups`) → Codex.
+**Contradicteur** : Codex — « pull » suffit.
+**Ce que ça engage** : un champ de plus dans le JSON de sauvegarde, lu par toutes les restaurations futures. Clé de stockage et format du calendrier inchangés (version 1).
+**Choix proposés** :
+- Q1 — **Restauration** : une sauvegarde qui contient `calendarIcs` **remplace** le calendrier du profil (comme l'historique et les orientations) ; une ancienne sauvegarde **sans** `calendarIcs` **ne touche pas** au calendrier existant (pas d'effacement). Alternative écartée : fusion par `merge()`, qui ferait réapparaître des événements retirés volontairement.
+- Q2 — **Validation** : `calendarIcs` vérifié par la même règle que la lecture du calendrier (`CalendarICS.load` : version 1, ≤ 5 000 événements, chaque événement `isEvent`) ; invalide → import entier refusé, rien modifié.
+- Q3 — **Calendrier illisible au moment de sauvegarder** : sauvegarde refusée (comme `sauvegardeFiable` pour les autres clés), pour ne pas annoncer une sauvegarde complète qui ne l'est pas. Calendrier vide ou absent : `calendarIcs` omis.
+- Q4 — **Textes** : retirer de l'aide du calendrier « Ils ne sont pas inclus dans les sauvegardes de l'application » (`calendar.js`, règle 23) ; dire à la place qu'ils sont dans la sauvegarde du profil.
+**Non vérifié par l'auteur** : taille d'une sauvegarde avec 5 000 événements (descriptions jusqu'à 20 000 caractères) envoyée au dépôt privé par l'API GitHub ; comportement d'un autre onglet ouvert sur le calendrier pendant une restauration (le calendrier enregistre avec contrôle de version, `save`). Pas encore de code.
+**Si personne ne répond, je fais quoi ?** Coder selon Q1–Q4 et livrer avec tests (sauvegarde → restauration → calendrier identique ; ancienne sauvegarde sans calendrier → calendrier conservé ; calendrier invalide → import refusé sans écriture).
+**Où regarder** : `index.html` (`exportDataForProfile`, `sauvegardeFiable`, `verifierSauvegarde`, `doImport`, `githubPush`), `calendar.js` (`load`, `isEvent`, aide).
+
 # Blocs tranchés
 
 - **AG-031** — Calendrier : semaine et mois sans samedi ni dimanche — ouvert le 06/11 (`e69a0c8`), livré (`1f2e3f1`) — **confirmé** par Codex (`e2439b2`) sans amendement ; **tranché le 07/11/2026 à 09:36 par l'utilisateur** (« oui »). Jours fériés conservés ; événement visible seulement le week-end compté avec « Voir en vue Jour ».
