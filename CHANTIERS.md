@@ -225,6 +225,9 @@ Toute entrée ajoutée ici dit si elle ouvre un bloc `AGORA.md` ou non, et pourq
 
 ## Pistes d'amélioration
 
+- **Démo sans calendrier** (*proposée, en attente*, 06/11/2026, rappelée le 13/11) : `scripts/build-ui-preview.py` n'emporte ni `calendar.js` ni `calendar.css`, l'onglet Calendrier reste vide dans la démo ; chaque contrôle visuel a dû les copier à la main. Choix recommandé : les copier (ou les intégrer) dans le script de démo.
+- **Harnais Chromium du calendrier** (point à ne pas refaire, 09/11) : pour simuler une action de l'utilisateur, passer par les fonctions de l'application (`lsSet`, `doImport`), jamais par `localStorage.setItem` direct, que la protection entre onglets prend pour un autre onglet (faux échec de restauration).
+
 Règle 22 de MD-LIB dans `CLAUDE.md` ; ne pas reproposer une piste écartée sans fait nouveau.
 
 **Priorités d'enrichissement fixées par l'utilisateur le 01/11/2026 à 14:38** — **après** la clôture d'AG-017 et d'AG-013, **jamais des conditions de clôture**. Pour chacune : proposition courte d'abord, choix de l'utilisateur, puis circuit AGORA des calculs (critère 7, Codex) avant tout code. Données existantes d'abord, premier lot limité.
