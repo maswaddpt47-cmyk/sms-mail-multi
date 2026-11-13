@@ -10,6 +10,8 @@
 
 **Menu latéral repliable (06/11)** : livré par erreur (la demande visait le calendrier), **gardé par décision de l'utilisateur** (`d11ad06`). Bouton « Replier le menu » en tête du menu, ordinateur seulement (> 760 px) ; replié = icônes seules (68 px), infobulles, pastilles de l'Agenda en haut/bas ; choix mémorisé dans ce navigateur (`ess-ui-sidebar-collapsed`). Téléphone inchangé. Rendu seul, pas de bloc AGORA. Mesuré dans la démo à 1280 et 390 px : aucun débordement ni erreur JS. **Contrôle visuel de l'utilisateur restant.**
 
+**Jeton GitHub reconnu par Proton Pass (13/11, demande de l'utilisateur)** : champ de Configuration → Général devenu un formulaire de connexion (`form`, identifiant fixe `github-token`, `autocomplete=current-password`, bouton « Enregistrer le jeton », sans rechargement) ; stockage inchangé (`ess-gh-token`). Entrée Proton Pass « SMS MULTI » déjà réglée sur `maswaddpt47-cmyk.github.io` (capture de l'utilisateur). **Suggestion sur téléphone à confirmer par l'utilisateur** ; si rien : réglage Chrome « Saisie automatique via un autre service » (hypothèse non vérifiée).
+
 **Livraisons déjà validées le 06/11, à conserver** : « Lapins par permanence » en fin des Statistiques (`a0d0e25`) ; depuis Orientations, « Préparer le message » vide les anciens date/heure puis propose un créneau vide d’une journée déjà ouverte du CMS reconnu (`c878666`, sélection automatique validée par l’utilisateur). Contraste des tuiles en mode nuit (`2cd9b66`) : rendu utilisateur à confirmer.
 
 ## Calendrier GDIN — invariants (clos le 06/11/2026)
