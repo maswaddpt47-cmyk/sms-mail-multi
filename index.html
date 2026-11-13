@@ -6934,9 +6934,15 @@ function renderConfig(){
     var card4=el('div',{class:'ui-settings-panel',style:"background:var(--c-card);border:1px solid var(--c-border);border-radius:16px;padding:18px 20px;margin-bottom:14px;"});
     card4.appendChild(el('div',{style:"font-weight:800;font-size:14px;margin-bottom:6px;"},"☁️ Token GitHub"));
     card4.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;"},"Collez ici votre token GitHub (scope : Contents → Read & Write). Il est stocké uniquement dans ce navigateur et n'est envoyé qu'à api.github.com."));
-    var tokenIn=el('input',{type:'password',style:INS3,placeholder:"ghp_xxxxxxxxxxxxxxxxxxxx",value:ghToken()});
+    /* Vrai formulaire de connexion (13/11/2026) : sans <form>, nom ni autocomplete, Proton Pass ne proposait pas le jeton.
+       Identifiant fixe, mot de passe = jeton, bouton d'envoi ; le stockage du jeton est inchangé (ess-gh-token). */
+    var tokenForm=el('form',{autocomplete:'on',action:'#',onSubmit:function(ev){ev.preventDefault();localStorage.setItem('ess-gh-token',tokenIn.value.trim());showToast(tokenIn.value.trim()?'✓ Jeton GitHub enregistré':'Jeton GitHub effacé');}});
+    tokenForm.appendChild(el('input',{type:'text',name:'username',autocomplete:'username',value:'github-token','aria-hidden':'true',tabindex:'-1',readonly:'readonly',style:'position:absolute;left:-9999px;width:1px;height:1px;opacity:0;'}));
+    var tokenIn=el('input',{type:'password',name:'password',id:'gh-token',autocomplete:'current-password','aria-label':'Token GitHub',style:INS3,placeholder:"ghp_xxxxxxxxxxxxxxxxxxxx",value:ghToken()});
     tokenIn.addEventListener('input',function(e){localStorage.setItem('ess-gh-token',e.target.value.trim());});
-    card4.appendChild(tokenIn);
+    tokenForm.appendChild(tokenIn);
+    tokenForm.appendChild(el('button',{type:'submit',class:'gx-press ui-record-button',style:'margin-top:10px;'},'Enregistrer le jeton'));
+    card4.appendChild(tokenForm);
     records.appendChild(card4);
   }
   if(createPane.firstChild)content.appendChild(createPane);
