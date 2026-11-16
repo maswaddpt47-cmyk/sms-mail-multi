@@ -1143,7 +1143,7 @@ var S={
   generatedBody:"", generatedSubject:"",
   activeTab:"generate", subTab:"builtin", configTab:"cms", historyFilter:"all", historySearch:"", historyGrouped:false, historyDateFrom:"", historyDateTo:"",
   statsCMS:"", statsYear:"live", calendarType:"google", relanceDelai:3, relanceReponseH:3, includeLapinMention:true, _agScrollTarget:null, tplSearch:"",
-  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], yearlyStats:{}, mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
+  cmsList:[], demarches:[], secteurs:[], templates:{}, customTemplates:[], customVars:[], hiddenBuiltinKeys:[], history:[], yearlyStats:{}, mandats:[], favDemarches:[], permanences:[], collapsedThemes:[], orientations:[], orientationSource:null, orientSearch:"", orientFilter:"all", orientImportRows:null, orientImportCmsFilter:"", orientImportBulkTarget:"",
   editPerm:null, agShowArchived:false, agendaRdv:null, _ghNewerBackup:null,
   saveStatus:"Données chargées",
   modal:null, histItem:null,
@@ -1734,6 +1734,28 @@ function partsInfo(){
 function setField(patch){Object.assign(S,patch);regen();renderGenerate();}
 function setFieldSave(patch){Object.assign(S,patch);regen();saveLast();renderGenerate();}
 
+/* AG-033 (16/11/2026) : lien orientation → dossier. L'orientation retenue par « Préparer le message » (S.orientationSource,
+   état du formulaire, jamais enregistré) ne se lie à la fiche que si nom et prénom sont encore les siens : une autre personne
+   saisie dans le même formulaire ne se lie pas. Renvoie l'identifiant à écrire, ou '' (aucun champ ajouté). */
+function orientationALier(src,item){
+  if(!src||src.id==null||src.id==='')return '';
+  var eq=function(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();};
+  return eq(src.nom,item&&item.nom)&&eq(src.prenom,item&&item.prenom)?String(src.id):'';
+}
+/* AG-033 : l'orientation passe « Traitée » après l'enregistrement réussi de sa fiche. Écriture séparée de l'opération
+   atomique AG-013 : false si elle échoue (la fiche reste enregistrée et liée) ; true s'il n'y a rien à écrire. */
+function marquerOrientationTraitee(id){
+  var i=(S.orientations||[]).findIndex(function(o){return o&&o.id!=null&&String(o.id)===String(id);});
+  if(i===-1||S.orientations[i].done===true)return true;   /* absente (supprimée, autre appareil) ou déjà traitée */
+  var arr=S.orientations.slice();arr[i]=Object.assign({},arr[i],{done:true});
+  return writeProfileOrientations(S.activeProfile,arr);
+}
+/* AG-033 : fiche liée la plus récente d'une orientation (carte Orientations) ; S.history est rangé récent d'abord. */
+function ficheDeOrientation(o,history){
+  if(!o||o.id==null||o.id==='')return null;
+  var id=String(o.id);
+  return (history||[]).find(function(h){return !!h&&h.orientationId===id&&h.msgType!=='indispo';})||null;
+}
 function handleGenerate(){
   if(!canGenerate())return;
   var telPb=telProblem(S.telephone);
@@ -1746,18 +1768,20 @@ function handleGenerate(){
   var itemGen={channel:S.channel,msgType:S.msgType,body:body,subject:subject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,demarche:dem?dem.nom:"",selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,dateDemande:S.dateDemande||"",dateReception:S.dateReception||"",ts:tsParis()};
   /* AG-022 R1 (amendement de Codex) : un champ Réception non modifié ne remplace jamais une reprise ni une valeur brute par un vide */
   var rec=receptionAEcrire(S.dateReception,S.receptionSource);if(rec.garder)delete itemGen.dateReception;else itemGen.dateReception=rec.valeur;
+  var lienOrient=orientationALier(S.orientationSource,itemGen);if(lienOrient)itemGen.orientationId=lienOrient;   /* AG-033 */
   var enregistre=addHistory(itemGen,true);
+  var okOrient=!enregistre||!lienOrient||marquerOrientationTraitee(lienOrient);   /* AG-033 : après la fiche, jamais avant */
   /* NR1 (vérification de Codex du correctif R1/R2) : après une écriture réussie, la référence du champ devient la réception
      effectivement enregistrée — un effacement ou une saisie suivante, sans rouvrir la fiche, est alors une vraie modification.
      Échec : référence inchangée. Formulaire neuf (source nulle) : comportement inchangé. */
   if(enregistre&&S.receptionSource&&!rec.garder){S.receptionSource=sourceReception({dateReception:rec.valeur});S.receptionReprise='';}
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
-  if(enregistre)showToast("✓ Message généré et enregistré");
+  if(enregistre)showToast(okOrient?"✓ Message généré et enregistré":"✓ Message enregistré, mais l'orientation n'a pas pu être marquée traitée : marquez-la à la main.",okOrient?undefined:'warn');
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
-  renderGenerate();renderHistory();renderMandat();renderAgenda();
+  renderGenerate();renderHistory();renderMandat();renderAgenda();renderOrientations();renderTabs();
 }
 function onReset(){
-  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",receptionReprise:"",receptionSource:null,dateDemande:jourParis(),genNotes:"",includeLapinMention:true});
+  Object.assign(S,{civilite:"",prenom:"",nom:"",telephone:"",date:"",heure:"",demarcheAutre:"",selectedCMS:"",selectedDemarche:"",commune:"",dateReception:"",receptionReprise:"",receptionSource:null,dateDemande:jourParis(),genNotes:"",includeLapinMention:true,orientationSource:null});
   S._lastLapinDetected=false;
   saveLast();   /* 01/11/2026 (demande de l'utilisateur) : « Effacer » oublie aussi le dernier CMS et la dernière démarche, sinon ils revenaient au rechargement */
   regen();renderGenerate();
@@ -2407,7 +2431,7 @@ function verifierSauvegarde(data){
   if(!textes(data.customTemplates,['nom','body','sujet','canal','type']))return 'Sauvegarde invalide (modèle personnalisé illisible).';
   if(!textes(data.customVars,['nom','valeur']))return 'Sauvegarde invalide (variable personnalisée illisible).';
   if(!textes(data.cmsList,['nom','adresse','debutApresMidi']))return 'Sauvegarde invalide (CMS illisible).';
-  if(!textes(data.history,['date','heure','commune','nom','prenom','civilite','telephone','statut','msgType','channel','body','subject','demarche','ts','dateDemande','dateRelance','dateReception','notes']))return 'Sauvegarde invalide (fiche avec un champ illisible).';
+  if(!textes(data.history,['date','heure','commune','nom','prenom','civilite','telephone','statut','msgType','channel','body','subject','demarche','ts','dateDemande','dateRelance','dateReception','notes','orientationId']))return 'Sauvegarde invalide (fiche avec un champ illisible).';
   if(!textes(data.permanences,['commune','exceptDate','debut','fin']))return 'Sauvegarde invalide (journée illisible).';
   /* AG-032 : champ présent = calendrier complet à restaurer ; null ou invalide → import refusé (Q2) */
   if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&(!data.calendarIcs||typeof data.calendarIcs!=='object'||calendrierInvalide(JSON.stringify(data.calendarIcs))))return 'Sauvegarde invalide (calendrier illisible).';
@@ -2505,6 +2529,7 @@ function openMessagesOnSlot(dateStr,commune,heure){
 }
 /* charge la fiche complète (avec date/heure) dans Générer pour consulter/copier le message existant, sans créer de doublon */
 function openHistInGen(h){
+  S.orientationSource=null;   /* AG-033 : une fiche rouverte ne se lie à aucune orientation */
   S.civilite=h.civilite||"";S.prenom=h.prenom||"";S.nom=h.nom||"";S.telephone=h.telephone||"";
   S.commune=h.commune||"";S.selectedCMS=h.selectedCMS||"";
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
@@ -7705,6 +7730,9 @@ function renderOrientations(){
     details.appendChild(provenance);
     var badges=el('div',{class:'ui-record-badges'});
     badges.appendChild(el('span',{class:'ui-record-chip'+(o.done?' ui-record-chip-complete':' ui-record-chip-pending')},o.done?'Traitée':'À traiter'));
+    var ficheLiee=ficheDeOrientation(o,S.history);   /* AG-033 : dossier préparé depuis cette orientation, sur cet appareil */
+    if(ficheLiee&&ficheLiee.date){var skLie=statutAffiche(ficheLiee),slLie=(STATUTS.find(function(s){return s[0]===skLie;})||[0,'Statut à vérifier'])[1];
+      badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted',title:'Dossier préparé depuis cette orientation (statut actuel de la fiche)'},'RDV le '+ficheLiee.date.split('-').reverse().join('/')+(ficheLiee.heure?' à '+ficheLiee.heure:'')+' · '+slLie));}
     if(o.date)badges.appendChild(el('span',{class:'ui-record-muted'},'Demande du '+o.date.split('-').reverse().join('/')));
     details.appendChild(badges);main.appendChild(details);card.appendChild(main);
     var btnCol=el('div',{class:'ui-record-actions'});
@@ -7744,6 +7772,7 @@ function renderOrientations(){
       S.dateDemande=jourParis();
       S.dateReception=preparationDayUTC(o.date)!==null?o.date:'';S.receptionReprise='';S.receptionSource=null;
       S.msgType='sans_appel';
+      S.orientationSource=(o.id!=null&&o.id!=='')?{id:String(o.id),nom:o.nom||'',prenom:o.prenom||''}:null;   /* AG-033 : lien posé à l'enregistrement du dossier */
       /* 06/11/2026 : la date et l'heure du dossier précédent ne sont jamais reprises (constat : RDV du 26/11 à 14:30 resté dans le
          formulaire) ; le prochain créneau libre du CMS reconnu est proposé, modifiable. */
       var proposition=prochainCreneauLibre(S.commune,S.history,S.permanences||[],new Date());
@@ -8599,7 +8628,7 @@ function loadProfileData(){
   finally{if(!termine){_chargementEchoue=true;_stockageEnEchec=true;S.saveStatus='⚠️ Chargement du profil interrompu : rien ne sera enregistré. Rechargez la page.';}}
 }
 function loadProfileDataCorps(){
-  S.dateReception='';S.receptionReprise='';S.receptionSource=null;
+  S.dateReception='';S.receptionReprise='';S.receptionSource=null;S.orientationSource=null;
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
   _versionLue={};   /* P01 : seules les données du profil chargé et les réglages communs sont suivies */
