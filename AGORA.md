@@ -123,6 +123,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-033 — Lien orientation → dossier, orientation marquée traitée à l'enregistrement — ouvert le 16/11/2026
+**Auteur** : session 01Sptc2e — lu sur `b011441`
+**Proposition** : « Préparer le message » depuis une orientation retient son `id` (état du formulaire, non enregistré) ; à l'enregistrement réussi du dossier (`handleGenerate` → `addHistory`), la fiche reçoit `orientationId` (texte, l'`id` de l'orientation) et l'orientation passe `done=true`, à condition que nom et prénom de la fiche soient encore ceux de l'orientation. La carte de l'orientation affiche le RDV de la fiche liée la plus récente (date, heure, statut affiché). Aucun chiffre ni calcul modifié ; le comptage demandes → RDV viendra d'un bloc à part (critère 7).
+**Critère déclencheur** : 1 (nouveau champ enregistré sur la fiche : format de stockage et de sauvegarde) ; règle 57 §3 de MD-LIB (nouvelle donnée enregistrée d'un projet existant).
+**Contradicteur** : Codex (répond seul au « pull » de l'utilisateur, `AGENTS.md`)
+**Ce que ça engage** : un champ de plus dans `history` et dans les sauvegardes (`exportDataForProfile`, validation `textes(data.history, …)` étendue à `orientationId`) ; `done` écrit automatiquement, alors qu'il n'était posé que par le bouton « Marquer traitée » (qui reste). Export CSV de l'historique inchangé (le distinguer = nouveau bloc, comme AG-022). Anciennes fiches sans `orientationId` : jamais réécrites. Identité d'orientation : `o.id` texte (`Date.now()_ri` à l'import Excel, `Date.now()_Math.random()` en JSON) ; une orientation sans `id` ne se lie pas.
+**Non vérifié par l'auteur** : (1) l'écriture de `done` est faite **après** `addHistory`, hors de l'opération atomique AG-013 : une panne de stockage entre les deux laisse une fiche liée et une orientation « À traiter » (toast d'avertissement, pas de retour arrière) ; (2) la déduplication d'`addHistoryBrut` (même date, heure, CMS, nom, prénom) fusionne la fiche existante avec `orientationId` : une régénération depuis une autre orientation homonyme sur le même créneau remplacerait le lien ; (3) sur un appareil sans orientations (téléphone de l'utilisateur), une fiche restaurée portant `orientationId` n'affiche rien de plus ; (4) suppression de la fiche liée : l'orientation reste `done`, la carte ne montre plus de RDV, sans message.
+**Si personne ne répond, je fais quoi ?** — je livre tel quel après les tests (`check-orientation-lien.js`, mutations) ; la seule vérification Codex suit la livraison (règle 58).
+**Où regarder** : `index.html` — `handleGenerate` (≈1737), `addHistoryBrut` (≈1824), `openHistInGen` (≈2507), `onReset` (≈1760), validation de sauvegarde (≈2410), bouton « Préparer le message » et carte d'orientation (≈7656-7761).
+
+
 # Blocs tranchés
 
 - **AG-032** — Calendrier inclus dans la sauvegarde et la restauration — ouvert le 09/11 (`9953d5e`), Q1 « remplacement » validée par l'utilisateur — **amendé** par Codex (`9fdfe61` : R1 vide explicite, R2 sauvegarde automatique, R3 restauration GitHub > 1 Mo), corrigé (`321507a`) ; **tranché le 09/11/2026 à 08:23 par l'utilisateur** (« ça marche », après essai). Ancienne sauvegarde sans `calendarIcs` : calendrier conservé ; champ invalide : import refusé. Non mesuré : envoi réel de plusieurs Mo vers GitHub.
