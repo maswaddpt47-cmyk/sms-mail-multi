@@ -1245,6 +1245,7 @@ function restaurerCles(cles,brut){
   for(var j=cles.length-1;j>=0;j--){
     var cur;try{cur=localStorage.getItem(cles[j]);}catch(e){cur=undefined;}
     if(cur!==undefined&&cur!==brut[j]&&cur!==_tentative[cles[j]]){noterVersion(cles[j],cur);continue;}   /* écriture d'un autre onglet : conservée */
+    if(cur!==undefined&&cur===brut[j]){noterVersion(cles[j],cur);continue;}   /* AG-033 R1 (16/11) : clé déjà à l'état d'avant (écriture jamais passée) : rien à réécrire, une réécriture échouerait sur la même panne et ferait croire à un retour arrière incomplet */
     try{if(brut[j]===null)localStorage.removeItem(cles[j]);else localStorage.setItem(cles[j],brut[j]);if(localStorage.getItem(cles[j])!==brut[j])ok=false;else{noterVersion(cles[j],brut[j]);_tentative[cles[j]]=brut[j];}}catch(e){ok=false;}}   /* ce retour arrière est lui-même une écriture de cet onglet (opérations imbriquées) */
   if(!ok)_stockageEnEchec=true;   /* R2 : retour arrière refusé = état partiel → panne, sauvegardes automatiques suspendues */
   return ok;
@@ -1272,17 +1273,19 @@ var MSG_INCOHERENT='⚠️ Enregistrement interrompu et retour en arrière incom
    écrit et relu. Au moindre échec, y compris d'une opération imbriquée ou d'une lecture préalable, mémoire et stockage
    (historique, journées, compteur d'export) reviennent à l'état d'avant (copie profonde : une fiche modifiée sur place est
    aussi rétablie). Une seule sauvegarde automatique, à la fin. Renvoie {ok, incoherent, valeur}. */
-function operationHistorique(fn,pid){
+function operationHistorique(fn,pid,clesSup){
   pid=pid||S.activeProfile;var actif=pid===S.activeProfile;
-  var cles=[pkFor(pid,'history'),pkFor(pid,'permanences'),pkFor(pid,'since-export')],brut;
+  /* AG-033 R1 (Codex) : l'état d'une orientation entre dans la même opération que sa fiche (clé passée par addHistory) */
+  var cles=[pkFor(pid,'history'),pkFor(pid,'permanences'),pkFor(pid,'since-export')].concat(clesSup||[]),brut;
   try{brut=cles.map(function(k){return localStorage.getItem(k);});}catch(e){_echecsEcriture++;return {ok:false,incoherent:false};}
   var histAvant=actif?JSON.parse(JSON.stringify(S.history)):null,permAvant=actif?JSON.parse(JSON.stringify(S.permanences||[])):null,valeur,ok=false,echecsAvant=_echecsEcriture;
+  var orientAvant=actif&&cles.indexOf(pk('orientations'))!==-1?JSON.parse(JSON.stringify(S.orientations||[])):null;
   if(_ecrituresGroupees===0)_tentative={};   /* R1 */
   _ecrituresGroupees++;
   try{valeur=fn();ok=_echecsEcriture===echecsAvant&&(!actif||(lsSet(pk('history'),S.history)&&lsSet(pk('permanences'),S.permanences)))&&_echecsEcriture===echecsAvant;}catch(e){ok=false;}   /* R1 : une opération déjà en échec n'écrit plus rien (la mémoire remise à l'état d'avant, avec la version d'un autre onglet, écraserait ses données) */
   finally{_ecrituresGroupees--;}
   if(ok){maybeAutoBackupProfile(pid);return {ok:true,incoherent:false,valeur:valeur};}
-  if(actif){S.history=histAvant;S.permanences=permAvant;}
+  if(actif){S.history=histAvant;S.permanences=permAvant;if(orientAvant)S.orientations=orientAvant;}
   _echecsEcriture++;   /* une opération imbriquée qui échoue fait échouer celle qui l'englobe (planning, ICS) */
   var restaure=restaurerCles(cles,brut);
   if(actif)realignerDepuisStockage(cles);   /* P01 : la mémoire suit l'état final du stockage (y compris les écritures d'un autre onglet) */
@@ -1742,8 +1745,8 @@ function orientationALier(src,item){
   var eq=function(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();};
   return eq(src.nom,item&&item.nom)&&eq(src.prenom,item&&item.prenom)?String(src.id):'';
 }
-/* AG-033 : l'orientation passe « Traitée » après l'enregistrement réussi de sa fiche. Écriture séparée de l'opération
-   atomique AG-013 : false si elle échoue (la fiche reste enregistrée et liée) ; true s'il n'y a rien à écrire. */
+/* AG-033 : l'orientation passe « Traitée » avec l'enregistrement de sa fiche, dans la même opération (addHistory, R1 de
+   Codex) : false si l'écriture échoue (l'opération entière revient en arrière) ; true s'il n'y a rien à écrire. */
 function marquerOrientationTraitee(id){
   var i=(S.orientations||[]).findIndex(function(o){return o&&o.id!=null&&String(o.id)===String(id);});
   if(i===-1||S.orientations[i].done===true)return true;   /* absente (supprimée, autre appareil) ou déjà traitée */
@@ -1769,14 +1772,13 @@ function handleGenerate(){
   /* AG-022 R1 (amendement de Codex) : un champ Réception non modifié ne remplace jamais une reprise ni une valeur brute par un vide */
   var rec=receptionAEcrire(S.dateReception,S.receptionSource);if(rec.garder)delete itemGen.dateReception;else itemGen.dateReception=rec.valeur;
   var lienOrient=orientationALier(S.orientationSource,itemGen);if(lienOrient)itemGen.orientationId=lienOrient;   /* AG-033 */
-  var enregistre=addHistory(itemGen,true);
-  var okOrient=!enregistre||!lienOrient||marquerOrientationTraitee(lienOrient);   /* AG-033 : après la fiche, jamais avant */
+  var enregistre=addHistory(itemGen,true,lienOrient);   /* AG-033 R1 : fiche et orientation dans la même opération */
   /* NR1 (vérification de Codex du correctif R1/R2) : après une écriture réussie, la référence du champ devient la réception
      effectivement enregistrée — un effacement ou une saisie suivante, sans rouvrir la fiche, est alors une vraie modification.
      Échec : référence inchangée. Formulaire neuf (source nulle) : comportement inchangé. */
   if(enregistre&&S.receptionSource&&!rec.garder){S.receptionSource=sourceReception({dateReception:rec.valeur});S.receptionReprise='';}
   /* AG-013 étape 2 (5e vérification de Codex) : le résultat d'addHistory décide du message, y compris pour un échec hors lsSet */
-  if(enregistre)showToast(okOrient?"✓ Message généré et enregistré":"✓ Message enregistré, mais l'orientation n'a pas pu être marquée traitée : marquez-la à la main.",okOrient?undefined:'warn');
+  if(enregistre)showToast("✓ Message généré et enregistré");
   else showToast(addHistory.incoherent?MSG_INCOHERENT:"❌ Message généré mais NON enregistré : il n'apparaît ni dans l'historique ni dans l'agenda. Rechargez la page et exportez vos données.",'err');
   renderGenerate();renderHistory();renderMandat();renderAgenda();renderOrientations();renderTabs();
 }
@@ -1837,12 +1839,25 @@ function nouvelIdFiche(existants){
 }
 /* AG-013, étape 2 (3e amendement de Codex, 31/10) : une fiche, l'ouverture de sa journée, la pause déjeuner et le compteur
    d'export sont enregistrés ensemble ou pas du tout (operationHistorique). Renvoie true seulement si tout est enregistré. */
-function addHistory(item,prepared){
-  var r=operationHistorique(function(){return addHistoryBrut(item,prepared);});
+/* AG-033 (amendé par Codex, R1) : `lienOrient` = identifiant de l'orientation à marquer « Traitée » ; fiche, journée,
+   compteur d'export et orientation sont écrits dans la même opération (retour arrière compris), une seule sauvegarde
+   automatique à la fin. R2 : si la fiche fusionnée porte déjà le lien d'une autre orientation, ce lien est conservé,
+   l'orientation nouvelle n'est pas marquée et l'écran le dit. */
+function addHistory(item,prepared,lienOrient){
+  var pid=S.activeProfile;
+  addHistoryBrut.conflitOrientation='';
+  var r=operationHistorique(function(){
+    var ok=addHistoryBrut(item,prepared);
+    if(ok===false||!lienOrient||addHistoryBrut.conflitOrientation)return ok;
+    if(!marquerOrientationTraitee(lienOrient))throw new Error('orientation refusée');
+    return ok;
+  },pid,lienOrient?[pkFor(pid,'orientations')]:[]);
   addHistory.incoherent=!!r.incoherent;
+  addHistory.conflitOrientation=r.ok&&r.valeur!==false?addHistoryBrut.conflitOrientation:'';
   if(!r.ok||r.valeur===false)return false;
   var rappel=addHistoryBrut.rappel;addHistoryBrut.rappel=0;
-  if(rappel)setTimeout(function(){showToast('💾 '+rappel+' messages non sauvegardés — pensez à exporter !','warn');},600);
+  if(addHistory.conflitOrientation)setTimeout(function(){showToast('⚠️ Ce créneau porte déjà le dossier d\'une autre demande de cette personne : lien d\'origine conservé, cette orientation reste « À traiter ».','warn');},600);
+  else if(rappel)setTimeout(function(){showToast('💾 '+rappel+' messages non sauvegardés — pensez à exporter !','warn');},600);
   return true;
 }
 function addHistoryBrut(item,prepared){
@@ -1860,6 +1875,8 @@ function addHistoryBrut(item,prepared){
          et sa graphie du CMS, donc sa journée (pas de deuxième journée sous une autre graphie) */
       if(previous.id!=null&&previous.id!=='')merged.id=previous.id;else delete merged.id;
       merged.commune=previous.commune;
+      /* AG-033 R2 (Codex) : un lien d'orientation existant n'est jamais remplacé en silence (lien absent : ajouté ; même lien : inchangé) */
+      if(previous.orientationId&&item.orientationId&&String(previous.orientationId)!==String(item.orientationId)){merged.orientationId=previous.orientationId;addHistoryBrut.conflitOrientation=String(item.orientationId);}
       /* Une ancienne génération ne devient jamais une première préparation fiable.
          Une fiche purement Agenda/ICS sans message peut être préparée pour la première fois. */
       if(previous.premierePreparationAt)merged.premierePreparationAt=previous.premierePreparationAt;
@@ -1914,7 +1931,7 @@ function figerChampsCopie(){
   var r=compute();
   return {activeProfile:S.activeProfile,channel:S.channel,msgType:S.msgType,subject:S.generatedSubject,civilite:S.civilite,prenom:S.prenom,nom:S.nom,telephone:S.telephone,
     selectedDemarche:S.selectedDemarche,demarcheAutre:S.demarcheAutre,commune:S.commune,selectedCMS:S.selectedCMS,date:S.date,heure:S.heure,
-    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,receptionSource:S.receptionSource?Object.assign({},S.receptionSource):null,sourceRef:S.receptionSource,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
+    dateDemande:S.dateDemande||'',dateReception:S.dateReception||'',receptionAConfirmer:!!S.receptionReprise&&!S.dateReception,receptionSource:S.receptionSource?Object.assign({},S.receptionSource):null,sourceRef:S.receptionSource,orientationSource:S.orientationSource?Object.assign({},S.orientationSource):null,dem:r.dem,cmsTrouve:!!S.cmsList.find(function(c){return String(c.id)===String(S.selectedCMS);})};
 }
 function enregistrerCopie(text,fige){
   var F=fige||figerChampsCopie();
@@ -1944,7 +1961,8 @@ function enregistrerCopie(text,fige){
         var itemCopie={channel:F.channel,msgType:F.msgType,body:text,subject:F.subject,civilite:F.civilite,prenom:F.prenom,nom:F.nom,telephone:F.telephone,demarche:F.dem.nom,selectedDemarche:F.selectedDemarche,demarcheAutre:F.demarcheAutre,commune:F.commune,selectedCMS:F.selectedCMS,date:F.date,heure:F.heure,dateDemande:F.dateDemande,dateReception:F.dateReception,ts:tsParis()};
         if(rec.intacte&&!rec.garder)itemCopie.dateReception=rec.valeur;
         if(garderAbsence)delete itemCopie.dateReception;   /* AG-022 : la fusion ne pose ni reprise confirmée d'office, ni réception vide sur une fiche qui n'en a pas */
-        if(!addHistory(itemCopie,true))throw new Error('message refusé');
+        var lienCopie=orientationALier(F.orientationSource,itemCopie);if(lienCopie)itemCopie.orientationId=lienCopie;   /* AG-033 R3 (Codex) : la copie lie et marque l'orientation comme Générer, source figée au départ */
+        if(!addHistory(itemCopie,true,lienCopie))throw new Error('message refusé');
         if(Object.prototype.hasOwnProperty.call(itemCopie,'dateReception'))ecrite=itemCopie.dateReception;
       }
     }
