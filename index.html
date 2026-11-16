@@ -5829,6 +5829,7 @@ function renderAgenda(){
         else{p.style.outline='';}
         if(statut==='depasse'){if(p.getAttribute('data-depasse')==='1')matchSt=true;}
         else if(statut==='a_pointer'){if(p.getAttribute('data-apointer')==='1')matchSt=true;}
+        else if(statut==='relance'){if(p.getAttribute('data-relance')==='1')matchSt=true;}   /* 16/11/2026 : relance renseignée (date ou message de relance), même définition que les statistiques */
         else if(statut&&s===statut)matchSt=true;
       });
       card.setAttribute('data-ag-filter-match',(matchNom&&matchSt)?'1':'0');
@@ -6002,7 +6003,7 @@ function renderAgenda(){
   var btnNext=el('button',{id:'ag-timeline-next',class:'gx-press',style:NBTN},'›');
   btnNext.addEventListener('click',function(){timelineMove(1);});
   var statutSel=el('select',{'aria-label':'Filtrer par statut',id:'ag-statut-sel',style:"font-family:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--c-border-in);background:var(--c-card);color:var(--c-dim);cursor:pointer;"});
-  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙏 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
+  [['','Tous statuts'],['en_attente','⏳ En attente'],['confirme','✓ Confirmé'],['realise','✅ Réalisé'],['excuse','🙏 Excusé'],['annule','✕ Annulé'],['lapin','🐇 Lapin'],['pas_de_retour','📵 Pas de retour'],['depasse','🚨 Dépassement'],['a_pointer','📌 À pointer'],['relance','📨 Relancé']].forEach(function(o){statutSel.appendChild(el('option',{value:o[0]},o[1]));});
   statutSel.value=_agStatutFilter;
   statutSel.addEventListener('change',function(e){agFilterStatut(e.target.value);});
   var btnPrint=el('button',{class:'gx-press',style:NBTN},'🖨️ Imprimer semaine');
@@ -6278,7 +6279,7 @@ function renderAgenda(){
       var _isDepasse=slot.taken?(isDepasse(slot.taken)||isSansReponse(slot.taken)):false;
       var _ownerPill=slot.taken&&slot.taken._profile&&slot.taken._profile!==S.activeProfile?getProfile(slot.taken._profile):null;
       var pillStyleStr="--ui-ag-status-color:"+pillTxt+";--ui-ag-status-bg:"+pillBg+";";
-      var pill=el('button',{class:'ag-slot ui-ag-slot'+(slot.freeAgain?' ui-ag-slot-released':'')+(isIndispo?' ui-ag-slot-blocked':'')+(_isDepasse?' ag-depasse':(slot.taken&&isAPointer(slot.taken))?' ag-apointer':''),style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0','data-apointer':(slot.taken&&isAPointer(slot.taken))?'1':'0',title:_ttLines.join('\n')});
+      var pill=el('button',{class:'ag-slot ui-ag-slot'+(slot.freeAgain?' ui-ag-slot-released':'')+(isIndispo?' ui-ag-slot-blocked':'')+(_isDepasse?' ag-depasse':(slot.taken&&isAPointer(slot.taken))?' ag-apointer':''),style:pillStyleStr,'data-nom':who.toLowerCase(),'data-statut':_pillStatut,'data-depasse':_isDepasse?'1':'0','data-apointer':(slot.taken&&isAPointer(slot.taken))?'1':'0','data-relance':(slot.taken&&aRelanceRenseignee(slot.taken))?'1':'0',title:_ttLines.join('\n')});
       var timeEl=el('span',{class:'ui-ag-time'},slot.heure);
       pill.appendChild(timeEl);
       var pillContent=el('span',{class:'ui-ag-slot-content'});
