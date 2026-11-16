@@ -1,6 +1,13 @@
 # CHANTIERS — sms-mail-multi
 
-État au **16/11/2026 à 20:45**, base `main` `b6ee664` (relu par « pull » : réponse de Codex à AG-033, `5ccd9f1`, verdict amendé, trois écarts R1-R3 corrigés `6556ae3`, tests `b6ee664`). Ménage du 16/11/2026 (62 Ko → ce fichier) : le récit des livraisons est dans `git log`, les blocs AGORA tranchés dans `AGORA.md` (« Blocs tranchés ») et `git log -p AGORA.md` ; ne restent ici que les chantiers ouverts et ce qu'il ne faut pas défaire.
+État au **16/11/2026 à 21:04**, base `main` `2e69980`. Passation Codex avant changement de session ; le détail des livraisons reste dans Git et `AGORA.md`.
+
+## Reprise de session — passation Codex du 16/11/2026
+
+- **Règles** : aucune nouvelle règle de collaboration née de cette session à ajouter. Autorisations et publication sur main déjà consignées dans `AGENTS.md` ; périmètre de travail : `sms-mail-multi`, sans intervention sur les dépôts `GDIN` ou `GDINV2`.
+- **Vérification faite par Codex** : AG-033 amendé en `5ccd9f1`, seul `AGORA.md` modifié ; code examiné `0b5a079` (livraison `52e4b8d`, tests `81e649e`), données fictives uniquement. Syntaxe, 12 scripts en UTC/Europe/Paris et quatre mutations du lien exécutés. Les correctifs ultérieurs `6556ae3` et tests `b6ee664` sont consignés par Claude dans AGORA : **pas de seconde revue indépendante de Codex**.
+- **État distant confirmé pour la reprise** : `2e69980` sur main ; run GitHub Actions `43942627229` réussi (syntaxe, tests UTC/Europe/Paris et déploiement Pages). Ce contrôle de CI ne constitue pas une nouvelle contradiction ni une validation utilisateur. Aucun correctif local à pousser par Codex.
+- **Prochaine étape** : contrôle utilisateur d'AG-033 dans Orientations (puce du RDV, passage à « Traitée » après génération ou copie), puis décision de clôture ; ne pas relancer d'office un audit ni les anciens chantiers. Le bloc a déjà sa réponse Codex. Aucun nouveau développement lancé par cette passation.
 
 ## Chantiers ouverts
 
