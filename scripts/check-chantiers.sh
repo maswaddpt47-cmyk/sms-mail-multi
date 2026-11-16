@@ -9,12 +9,15 @@ F="${1:-CHANTIERS.md}"
 [ -f "$F" ] || exit 0
 
 MAX_LIGNES=300   # au-delà, le fichier n'est plus relu en entier
+MAX_KO=30        # des lignes longues trompent le compte de lignes (62 Ko pour 247 lignes le 16/11/2026)
 MAX_JOURS=7      # en-tête « État au JJ/MM/AAAA » plus vieux que ça
 
 raisons=()
 
 lignes=$(wc -l < "$F")
 [ "$lignes" -gt "$MAX_LIGNES" ] && raisons+=("$lignes lignes (plafond $MAX_LIGNES)")
+ko=$(( $(wc -c < "$F") / 1024 ))
+[ "$ko" -gt "$MAX_KO" ] && raisons+=("$ko Ko (plafond $MAX_KO Ko)")
 
 etat=$(grep -m1 -oE 'État au \*\*[0-9]{2}/[0-9]{2}/[0-9]{4}' "$F" | grep -oE '[0-9]{2}/[0-9]{2}/[0-9]{4}')
 if [ -z "$etat" ]; then
