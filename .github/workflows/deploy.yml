@@ -53,6 +53,7 @@ jobs:
           node scripts/check-reception.js
           node scripts/check-bilan-complet.js
           node scripts/check-calendar.js
+          node scripts/check-orientation-lien.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -69,6 +70,7 @@ jobs:
           node scripts/check-reception.js
           node scripts/check-bilan-complet.js
           node scripts/check-calendar.js
+          node scripts/check-orientation-lien.js
 
   deploy:
     needs: tests
