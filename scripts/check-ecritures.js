@@ -993,6 +993,47 @@ async function restaurer(contenu,fonction,options){
      if(f==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
      assert.equal(entetes.Accept,'application/vnd.github.raw+json','AG-032 R3 : média raw demandé');assert.equal(JSON.parse(e.st.getItem(K)).events.length,5000,'AG-032 R3 : '+f+' > 1 Mo restauré');}
    console.log('AG-032 : calendrier sauvegardé (vide explicite, illisible refusé), restauré en remplacement, ancienne sauvegarde sans effet, invalide refusé, panne annulée, sauvegarde auto différée, restauration GitHub > 1 Mo OK.');}
+  /* ── AG-033 (amendé par Codex le 16/11) : lien orientation → dossier, fiche et orientation dans la même opération ── */
+  const orient=(id,extra)=>Object.assign({id,nom:'FICTIF',prenom:'Ouverte',done:false,commune:'Fumel',motif:'CAF',date:'2026-10-10'},extra||{});
+  const prepLien=(orients,src,avant)=>{const e=charger();e.ctx.showActivePane=()=>{};if(typeof e.ctx.jourParis!=='function')e.ctx.jourParis=()=>'2026-11-01';
+    Object.assign(e.S,{civilite:'M.',prenom:'Ouverte',nom:'FICTIF',telephone:'',commune:'Fumel',selectedCMS:'1',channel:'sms',msgType:'confirmation',dateDemande:'2026-10-23',dateReception:'',receptionSource:null,receptionReprise:'',selectedDemarche:'',demarcheAutre:'',generatedSubject:''});
+    e.S.history=(avant||[]).slice();e.S.permanences=[];e.st.setItem(e.ctx.pk('history'),JSON.stringify(e.S.history));e.st.setItem(e.ctx.pk('permanences'),'[]');e.S.orientations=orients;e.st.setItem(e.ctx.pk('orientations'),JSON.stringify(orients));e.S.orientationSource=src;e.S.date='2026-10-27';e.S.heure='10:30';e.journal.pushs=0;
+    e.ctx.githubPush=()=>{e.journal.pushs++;e.journal.instantane=JSON.parse(e.st.getItem(e.ctx.pk('orientations')));};return e;};
+  const fLien=e=>e.S.history.find(h=>h.date==='2026-10-27');
+  // R1 : une seule opération, une seule sauvegarde, prise après l'orientation
+  {const e=prepLien([orient('oA')],{id:'oA',nom:'FICTIF',prenom:'Ouverte'});e.ctx.handleGenerate();
+   assert.equal(fLien(e).orientationId,'oA');assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('orientations')))[0].done,true,'orientation traitée en stockage');
+   assert.equal(e.journal.pushs,1,'une seule sauvegarde automatique');assert.equal(e.journal.instantane[0].done,true,'instantané pris après le marquage');
+   assert.equal(e.journal.toasts[e.journal.toasts.length-1],'✓ Message généré et enregistré');}
+  // R1 : panne sur la clé orientations → rien d'écrit (fiche comprise), mémoire rétablie, aucune sauvegarde
+  {const e=prepLien([orient('oA')],{id:'oA',nom:'FICTIF',prenom:'Ouverte'});const avant=e.st.etat();e.st.panne=k=>k===e.ctx.pk('orientations');
+   e.ctx.handleGenerate();
+   assert.equal(e.st.etat(),avant,'stockage inchangé');assert.equal(fLien(e),undefined,'fiche non gardée en mémoire');assert.equal(e.S.orientations[0].done,false);assert.equal(e.journal.pushs,0);
+   assert.match(e.journal.toasts[e.journal.toasts.length-1],/NON enregistré/);}
+  // R2 : fusion sur une fiche déjà liée à une autre orientation → lien d'origine conservé, nouvelle orientation non traitée, avertissement
+  {const deja=Object.assign(rdv('f27','2026-10-27','10:30','FICTIF','Ouverte','Fumel','en_attente'),{orientationId:'oA',body:'ancien'});
+   const e=prepLien([orient('oA',{done:true}),orient('oB')],{id:'oB',nom:'FICTIF',prenom:'Ouverte'},[deja]);e.ctx.handleGenerate();await new Promise(r=>setTimeout(r,700));
+   const f=e.S.history.filter(h=>h.date==='2026-10-27');assert.equal(f.length,1,'une seule fiche');assert.equal(f[0].orientationId,'oA','lien d’origine conservé');assert.equal(f[0].id,'f27');
+   assert.equal(e.S.orientations[1].done,false,'oB reste à traiter');assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('orientations')))[1].done,false);
+   assert(e.journal.toasts.some(t=>/lien d'origine conservé/.test(t)),'conflit signalé');}
+  // R2 : même lien ou lien absent sur la fiche existante → pas de conflit
+  {const deja=Object.assign(rdv('f27','2026-10-27','10:30','FICTIF','Ouverte','Fumel','en_attente'),{orientationId:'oA',body:'ancien'});
+   const e=prepLien([orient('oA')],{id:'oA',nom:'FICTIF',prenom:'Ouverte'},[deja]);e.ctx.handleGenerate();
+   assert.equal(fLien(e).orientationId,'oA');assert.equal(e.S.orientations[0].done,true);assert.equal(e.ctx.addHistory.conflitOrientation,'');}
+  {const deja=Object.assign(rdv('f27','2026-10-27','10:30','FICTIF','Ouverte','Fumel','en_attente'),{body:'ancien'});
+   const e=prepLien([orient('oA')],{id:'oA',nom:'FICTIF',prenom:'Ouverte'},[deja]);e.ctx.handleGenerate();
+   assert.equal(fLien(e).orientationId,'oA','lien absent : ajouté');assert.equal(fLien(e).id,'f27');assert.equal(e.S.orientations[0].done,true);}
+  // R3 : enregistrement par copie, source figée au départ : nouvelle fiche liée et orientation traitée ; copie répétée sans effet ; panne annulée
+  {const e=prepLien([orient('oC')],{id:'oC',nom:'FICTIF',prenom:'Ouverte'});const fige=e.ctx.figerChampsCopie();e.S.orientationSource=null;   /* le formulaire change après le figeage : la copie garde sa source */
+   assert.equal(e.ctx.enregistrerCopie('texte copié',fige).ok,true);assert.equal(fLien(e).orientationId,'oC');assert.equal(fLien(e).body,'texte copié');
+   assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('orientations')))[0].done,true);assert.equal(e.journal.pushs,1);
+   const etat=e.st.etat();assert.equal(e.ctx.enregistrerCopie('texte copié',fige).ok,true);assert.equal(e.st.etat(),etat,'copie répétée du même texte : rien de réécrit');
+   assert.equal(e.S.history.filter(h=>h.date==='2026-10-27').length,1);}
+  {const e=prepLien([orient('oC')],{id:'oC',nom:'FICTIF',prenom:'Ouverte'});const avant=e.st.etat();e.st.panne=k=>k===e.ctx.pk('orientations');
+   assert.equal(e.ctx.enregistrerCopie('texte copié').ok,false);assert.equal(e.st.etat(),avant,'copie : stockage inchangé');assert.equal(fLien(e),undefined);assert.equal(e.S.orientations[0].done,false);assert.equal(e.journal.pushs,0);}
+  {const e=prepLien([orient('oC')],{id:'oC',nom:'AUTRE',prenom:'Personne'});assert.equal(e.ctx.enregistrerCopie('texte copié').ok,true);
+   assert.equal('orientationId' in fLien(e),false,'copie : autre personne, pas de lien');assert.equal(e.S.orientations[0].done,false);}
+  console.log('AG-033 : lien orientation → dossier dans la même opération (Générer et copie), panne annulée, fusion sans remplacement silencieux OK.');
   console.log('Double réservation : confirmation explicite à la génération et au choix du CMS ou de la date OK.');
   console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
