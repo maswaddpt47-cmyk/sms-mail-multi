@@ -95,9 +95,10 @@ Fichier : **`AGORA.md`** (racine) — gabarit et règles de réponse.
    taux, moyenne, filtre, définition, bilan imprimé), **quelle que soit sa
    taille** (critère 7 d'`agora.md`, posé ici le 30/10/2026 à la demande de
    l'utilisateur : « si des calculs sont impliqués, fais un bloc AGORA »).
-   Contradicteur : **Codex**. Le bloc est ouvert **avant** la correction ; les
+   Contradicteur : l'IA de l'autre éditeur — **auteur Claude → Codex, auteur Codex → Claude**
+   (MD-LIB `agora.md` §12). Le bloc est ouvert **avant** la correction ; les
    définitions métier y sont séparées des défauts démontrés et tranchées par
-   l'utilisateur ; la réponse de Codex est inscrite telle quelle.
+   l'utilisateur ; la réponse du contradicteur est inscrite telle quelle.
 
 Toute entrée « décision à trancher » de `CHANTIERS.md` est candidate : dire en
 l'écrivant pourquoi on ouvre un bloc ou non.
@@ -111,12 +112,12 @@ l'implémentation ; le commiter et le **pousser directement sur `main`**
 (`git fetch origin main` puis `git merge --ff-only origin/main` avant — exception au workflow de branche :
 c'est du texte, ça ne casse aucun déploiement) ; annoncer en une ligne
 « ⚖️ AGORA : critère N — … » avec la phrase à coller dans l'autre session, **qui nomme le dépôt** : « pull maswaddpt47-cmyk/sms-mail-multi, lis son `AGORA.md`, réponds à AG-00N, tu es la session B ».
-**Bloc pour Codex : dire « pull » à Codex suffit** (son `AGENTS.md` le fait répondre, MD-LIB `agora.md` §12, 03/11/2026) ; la session qui ouvre le bloc l'annonce quand même à l'utilisateur dès qu'il est en ligne, **sur une ligne à part en tête du message, 🔴 et en gras** : `🔴 **⚖️ AGORA : critère N — <sujet>. Bloc AG-00N commité. → Dis « pull » à Codex.**` (MD-LIB `agora.md` §4, 04/11/2026 : un « pull » noyé dans un compte rendu n'a pas été vu).
+**Dire « pull » au contradicteur suffit** (son `AGENTS.md` ou ses consignes le font répondre, MD-LIB `agora.md` §12, 03/11/2026) ; la session qui ouvre le bloc l'annonce quand même à l'utilisateur dès qu'il est en ligne, **sur une ligne à part en tête du message, 🔴 et en gras** : `🔴 **⚖️ AGORA : critère N — <sujet>. Bloc AG-00N publié dans maswaddpt47-cmyk/sms-mail-multi. → Dis « pull » à <Codex ou Claude>.**` (libellé aligné le 17/11/2026 sur `agora.md` §4) (MD-LIB `agora.md` §4, 04/11/2026 : un « pull » noyé dans un compte rendu n'a pas été vu).
 **Ne jamais bloquer** : continuer le travail, aucune réponse n'est garantie.
 L'utilisateur tranche.
 
-**Sécurité, mots de passe, données personnelles : contradicteur Codex**
-(OpenAI) au lieu d'une session Claude (06/10/2026, mode d'emploi : `AGORA.md`).
+**Sécurité, mots de passe, données personnelles : contradicteur de l'autre éditeur**
+(Codex quand Claude écrit, Claude quand Codex écrit ; 06/10/2026, ouvert aux deux sens le 17/11/2026, MD-LIB `agora.md` §12 ; mode d'emploi : `AGORA.md`).
 **Audit Codex** chaque trimestre et après tout changement structurant de
 sécurité, avec le modèle MD-LIB `consigne-audit-externe.md` ; chaque point
 vérifié dans le code avant d'être retenu, rapport hors dépôt public.
