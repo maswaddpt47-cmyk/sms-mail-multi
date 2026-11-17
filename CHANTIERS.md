@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **16/11/2026 à 21:04**, base `main` `2e69980`. Passation Codex avant changement de session ; le détail des livraisons reste dans Git et `AGORA.md`.
+État au **17/11/2026 à 05:59**, base `main` `7277583` (relue par « pull » : rien de nouveau depuis la passation Codex). **17/11** : annonce AGORA et rôle du contradicteur alignés dans `CLAUDE.md` sur MD-LIB `agora.md` §4 et §12 (« publié dans maswaddpt47-cmyk/sms-mail-multi », auteur Claude → Codex, auteur Codex → Claude). Avant : état au **16/11/2026 à 21:04**, base `main` `2e69980`. Passation Codex avant changement de session ; le détail des livraisons reste dans Git et `AGORA.md`.
 
 ## Reprise de session — passation Codex du 16/11/2026
 
