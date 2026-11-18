@@ -6440,7 +6440,17 @@ function renderAgenda(){
           }
         });
       })(slot,day);
-      slotList.appendChild(pill);
+      if(slot.freeAgain&&manageable){   /* 18/11/2026 (demande de l'utilisateur) : un créneau libéré se bloque comme un créneau libre */
+        var freedWrap=el('div',{class:'ui-ag-open-wrap ui-ag-freed-wrap'});
+        freedWrap.appendChild(pill);
+        freedWrap.appendChild(el('button',{type:'button',class:'ui-ag-block-btn',title:'Bloquer ce créneau libéré (indisponible)','aria-label':'Bloquer le créneau libéré de '+slot.heure+' le '+dateLabel,
+          onClick:(function(d,h){return function(e){
+            e.stopPropagation();
+            var motif=prompt('Motif du blocage à '+h+' (facultatif) :','');if(motif===null)return;
+            var okBloc=blockSlot(d.perm.commune,d.dateStr,h,motif);renderAgenda();if(okBloc)showToast('✓ Créneau '+h+' bloqué');
+          };})(day,slot.heure)},'🚫'));
+        slotList.appendChild(freedWrap);
+      } else slotList.appendChild(pill);
     });
     Object.keys(halfdayLists).forEach(function(period){
       if(!halfdayLists[period].children.length)halfdayLists[period].appendChild(el('p',{class:'ui-ag-halfday-empty'},'Aucun RDV'));
@@ -8349,7 +8359,7 @@ function renderModal(){
               S.agendaNew=Object.assign({civilite:'',prenom:'',nom:'',telephone:'',selectedDemarche:S.selectedDemarche||'',demarcheAutre:'',channel:S.channel||'sms'},availability.duplicate||{},{heure:slot.heure,dateStr:availability.dateStr,commune:availability.commune,selectedCMS:cms?String(cms.id):''});
               S.modal='agenda-new';renderModal();
             }},slot.heure+' · Réserver'));
-            if(!slot.freeAgain)row.appendChild(el('button',{'data-ag-block-hour':slot.heure,title:'Marquer ce créneau indisponible','aria-label':'Bloquer le créneau de '+slot.heure,onClick:function(){
+            row.appendChild(el('button',{'data-ag-block-hour':slot.heure,title:'Marquer ce créneau indisponible','aria-label':'Bloquer le créneau de '+slot.heure,onClick:function(){
               var motif=prompt('Motif (facultatif) :','');if(motif===null)return;
               blockSlot(availability.commune,availability.dateStr,slot.heure,motif);renderAgenda();renderModal();
             }},'🚫'));
