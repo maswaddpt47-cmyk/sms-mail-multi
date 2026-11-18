@@ -6129,7 +6129,21 @@ function renderAgenda(){
     dayHead.appendChild(dayDate);
     var dayIdentity=el('div',{class:'ui-ag-day-identity'});
     dayIdentity.appendChild(el('h3',{class:'ui-ag-location'},day.perm.commune));
-    dayIdentity.appendChild(el('div',{class:'ui-ag-day-summary'},takenCount+' rendez-vous · '+freeCount+' créneau'+(freeCount!==1?'x':'')+' disponible'+(freeCount!==1?'s':'')));
+    /* AG-034 (18/11/2026, demande de l'utilisateur) : mêmes chiffres que « Prochaines permanences » (statsRdvModel) — rendez-vous à titulaire
+       actif, places libérées du jour nommées à part, places = capacité fixe 6/3 moins occupés, bloqués et libérés du jour (règle du 23/10).
+       Journée passée : rendez-vous actifs et libérés, sans compte de places. */
+    var _relLab={lapin:['lapin','lapins'],excuse:['excusé','excusés'],annule:['annulé','annulés'],pas_de_retour:['sans retour','sans retour']};
+    var _relTexte=function(r){return Object.keys(_relLab).filter(function(k){return r[k];}).map(function(k){return r[k]+' '+_relLab[k][r[k]>1?1:0];}).join(' · ');};
+    var _jourModele=!isPast?(statsRdvModel(dayHist,[day.perm],'all','',new Date()).days[0]||null):null,_resume;
+    if(_jourModele){
+      var _rt=_relTexte(_jourModele.released);
+      _resume=_jourModele.occupied+' rendez-vous'+(_rt?' · '+_rt:'')+' · '+_jourModele.free+' place'+(_jourModele.free>1?'s':'')+' disponible'+(_jourModele.free>1?'s':'');
+    }else{
+      var _rel={lapin:0,excuse:0,annule:0,pas_de_retour:0},_actifs=0;
+      rdvSlots.forEach(function(slot){if(!slot.freeAgain)_actifs++;else if(_rel.hasOwnProperty(slot.taken.statut))_rel[slot.taken.statut]++;});
+      var _rt2=_relTexte(_rel);_resume=_actifs+' rendez-vous'+(_rt2?' · '+_rt2:'');
+    }
+    dayIdentity.appendChild(el('div',{class:'ui-ag-day-summary'},_resume));
     dayHead.appendChild(dayIdentity);
     var dayActions=el('div',{class:'ui-ag-day-actions',role:'group','aria-label':'Actions pour '+dateLabel+' à '+day.perm.commune});
     if(day.profile!==S.activeProfile){
