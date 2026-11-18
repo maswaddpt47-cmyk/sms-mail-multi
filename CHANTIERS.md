@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **17/11/2026**, base `main` `c36744f` (relue par « pull » : passation Codex `7277583`, `CLAUDE.md` aligné sur `agora.md` §4 et §12 `37dc4ee`). Condensé le 17/11 (30,5 Ko → ce fichier, plafond 30 Ko) : le récit des livraisons est dans `git log` et dans « Blocs tranchés » d'`AGORA.md` ; ici, seulement les chantiers ouverts et ce qu'il ne faut pas défaire.
+État au **18/11/2026 à 13:49** : **bouton 🚫 sur les créneaux libérés** (Lapin, Excusé, Annulé, Pas de retour), demande de l'utilisateur, dans l'Agenda (jours à venir, mon agenda) et dans « Réserver » (le masquage `if(!slot.freeAgain)` est retiré ; sa raison n'était pas retrouvée, l'historique ayant été réécrit). Même enregistrement que pour un créneau libre (`blockSlot`) ; la fiche libérée reste dans l'Historique et les Statistiques ; « 🔓 Libérer » la fait réapparaître. Pas de bloc AGORA, sur décision de l'utilisateur (18/11) : aucun calcul changé, un créneau bloqué est compté comme avant. Une journée sans plus aucun RDV actif sort de la frise (règle existante). Avant : état au **17/11/2026**, base `main` `c36744f` (relue par « pull » : passation Codex `7277583`, `CLAUDE.md` aligné sur `agora.md` §4 et §12 `37dc4ee`). Condensé le 17/11 (30,5 Ko → ce fichier, plafond 30 Ko) : le récit des livraisons est dans `git log` et dans « Blocs tranchés » d'`AGORA.md` ; ici, seulement les chantiers ouverts et ce qu'il ne faut pas défaire.
 
 ## Chantiers ouverts
 
