@@ -123,6 +123,17 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-034 — En-tête des journées de l'Agenda aligné sur « Prochaines permanences » — ouvert le 18/11/2026
+**Auteur** : session 0199YP2L — lu sur `014affe`
+**Proposition** : l'en-tête d'une journée de l'Agenda (« 8 rendez-vous · 1 créneau disponible » le 18/11 Marmande) reprend les chiffres de `statsRdvModel` utilisés par Orientations (« 7 rendez-vous · 1 lapin · 0 place disponible ») : rendez-vous = créneaux à titulaire actif, places libérées du jour nommées à part, places disponibles = capacité fixe 6/3 moins occupés, bloqués et libérés du jour (règle du 23/10). Journées passées : rendez-vous actifs et libérés, sans compte de places.
+**Critère déclencheur** : 7 (chiffre affiché). Demande de l'utilisateur (« aligne l'Agenda », 18/11), circuit proportionné : livré puis relu une fois.
+**Contradicteur** : Codex
+**Ce que ça engage** : affichage seul, aucune donnée ni format touché ; un commit le défait.
+**Non vérifié par l'auteur** : journées vues en portée « Tous » (historique d'un autre profil passé au modèle) ; demi-journées (capacité 3) ; journées passées sans permanence enregistrée.
+**Si personne ne répond, je fais quoi ?** La livraison reste : elle supprime un écart entre deux écrans pour la même journée.
+**Où regarder** : `index.html`, en-tête `ui-ag-day-summary` de `renderAgenda` ; `statsRdvModel` (champs `occupied`, `free`, `released`).
+
+
 ## AG-033 — Lien orientation → dossier, orientation marquée traitée à l'enregistrement — ouvert le 16/11/2026
 **Auteur** : session 01Sptc2e — lu sur `b011441`
 **Proposition** : « Préparer le message » depuis une orientation retient son `id` (état du formulaire, non enregistré) ; à l'enregistrement réussi du dossier (`handleGenerate` → `addHistory`), la fiche reçoit `orientationId` (texte, l'`id` de l'orientation) et l'orientation passe `done=true`, à condition que nom et prénom de la fiche soient encore ceux de l'orientation. La carte de l'orientation affiche le RDV de la fiche liée la plus récente (date, heure, statut affiché). Aucun chiffre ni calcul modifié ; le comptage demandes → RDV viendra d'un bloc à part (critère 7).
