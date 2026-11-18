@@ -4675,8 +4675,10 @@ function buildPermanencesCard(rdv,rerender){
     var bookedLabel=day.multiple?'créneau'+(day.occupied>1?'x':'')+' réservé'+(day.occupied>1?'s':''):day.completed?'rendez-vous':'rendez-vous prévu'+(day.occupied>1?'s':'');
     var releasedText=['lapin','excuse','annule','pas_de_retour'].filter(function(k){return day.released[k];}).map(function(k){return day.released[k]+' '+RELEASED_LABELS[k][day.released[k]>1?2:1];}).join(' · ');
     var summary=day.occupied+' '+bookedLabel+(releasedText?' · '+releasedText:'')+' · '+day.free+' place'+(day.free>1?'s':'')+' disponible'+(day.free>1?'s':'');
-    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+day.total+',minmax(0,1fr));','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
-    for(var i=0;i<day.total;i++){
+    /* 18/11/2026 : une journée au-delà de sa capacité garde toutes ses cases (7 réalisés + 1 lapin = 8 cases pour 6 places) ; avant, la barre s'arrêtait à la capacité et masquait les derniers créneaux */
+    var nCases=Math.max(day.total,day.marks.length);
+    var track=el('div',{class:'ui-permanence-track',style:'grid-template-columns:repeat('+nCases+',minmax(0,1fr));','aria-label':summary+(day.pending?' · dont '+day.pending+' en attente':'')+(day.blocked?' · '+day.blocked+' créneaux bloqués':'')});
+    for(var i=0;i<nCases;i++){
       var kind=day.marks[i]==='free'?'':day.marks[i],mark;
       if(RELEASED_LABELS[kind])mark=releasedMark(kind);
       else mark=el('span',{'aria-hidden':'true',class:'ui-permanence-mark '+(kind?'is-'+(kind==='booked'?'booked':kind):'is-free')});
