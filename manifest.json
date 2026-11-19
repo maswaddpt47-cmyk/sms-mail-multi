@@ -1,11 +1,11 @@
 {
+  "id": "./index.html",
   "name": "Team Générateur SMS & MAIL",
   "short_name": "SMS & MAIL",
   "description": "Générateur de SMS et mails pour conseillers numériques — multi-profil.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#f2f1fb",
   "theme_color": "#4c51c6",
   "icons": [
