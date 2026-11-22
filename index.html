@@ -1382,6 +1382,14 @@ var GH_BRANCH='main';
 var GH_BACKUP_DIR='backups';
 function ghToken(){return localStorage.getItem('ess-gh-token')||'';}
 function ghHeaders(token){return{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};}
+/* 22/11/2026 (MD-LIB règle 73) : un message par cause, d'après la réponse de GitHub (statut 0 = GitHub injoignable) */
+function ghMessageErreur(status,action){
+  if(status===401)return '❌ '+action+' : jeton refusé par GitHub (invalide ou expiré). Collez un nouveau jeton dans Configuration → Général.';
+  if(status===403)return '❌ '+action+' : droits insuffisants (403). Le jeton doit avoir « Contents » en lecture et écriture sur '+GH_REPO+'.';
+  if(status===404)return '❌ '+action+' : ce jeton n\'a pas accès au dépôt '+GH_REPO+', ou ce dépôt n\'existe pas (404). Vérifiez le jeton collé.';
+  if(!status)return '❌ '+action+' : GitHub injoignable (réseau). Réessayez une fois connecté.';
+  return '❌ '+action+' : erreur GitHub '+status+'.';
+}
 /* dossier de backup cloisonné par profil : backups/<profil>/ */
 function ghBackupDir(pid){return GH_BACKUP_DIR+'/'+(pid||S.activeProfile);}
 /* heure de Paris « HHMM » (AG-016 A) : nom des sauvegardes, comparé à la minute, jamais l'heure de l'appareil */
@@ -1438,8 +1446,7 @@ function githubPush(silent,onSuccess,pid){
           var status=r?r.status:0;
           (r?r.json().catch(function(){return null;}):Promise.resolve(null)).then(function(errBody){
             var detail=errBody&&errBody.message?' — '+errBody.message:'';
-            var hint=status===404?' (repo/branche introuvable pour ce token)':status===403||status===401?' (droits insuffisants sur ce repo)':'';
-            showToast('❌ Erreur GitHub '+status+hint+detail,'err');
+            showToast(ghMessageErreur(status,'Sauvegarde GitHub')+detail,'err');
           });
         }
         return;
@@ -1455,17 +1462,17 @@ function githubPush(silent,onSuccess,pid){
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
     })
-    .catch(function(){if(!silent)showToast('❌ Erreur réseau GitHub','err');});
+    .catch(function(){if(!silent)showToast(ghMessageErreur(0,'Sauvegarde GitHub'),'err');});
 }
 
 /* restaure le backup le plus récent sur GitHub */
 function ghRestoreLatest(token,onSuccess){
   var pid=S.activeProfile;   /* amendement Codex (31/10) : la restauration vise le profil d'origine, jamais celui choisi entre-temps */
-  ghListBackups(token,function(backups){
-    if(!backups.length){showToast('❌ Aucun backup trouvé sur GitHub','err');return;}
+  ghListBackups(token,function(backups,err){
+    if(err){showToast(ghMessageErreur(err.status,'Restauration GitHub'),'err');return;}
+    if(!backups.length){showToast('❌ Aucune sauvegarde sur GitHub pour ce profil','err');return;}
     var latest=backups[0];
-    fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+latest.path+'?ref='+GH_BRANCH,{headers:ghEntetesBrut(token)})
-      .then(function(r){if(!r.ok)throw new Error();return r.text();})
+    ghLireFichier(token,latest.path)
       .then(function(texte){
         if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
         var json=ghContenuSauvegarde(texte);
@@ -1473,7 +1480,7 @@ function ghRestoreLatest(token,onSuccess){
         if(doImport()){if(onSuccess)onSuccess();}
         else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
       })
-      .catch(function(){showToast('❌ Impossible de restaurer depuis GitHub','err');});
+      .catch(function(e){showToast(e&&typeof e.ghStatus==='number'?ghMessageErreur(e.ghStatus,'Restauration GitHub'):'❌ Impossible de restaurer depuis GitHub','err');});
   });
 }
 
@@ -1527,23 +1534,30 @@ function ghCleanOldBackups(token,pid){
 }
 
 /* liste les backups disponibles sur GitHub (dossier du profil actif) */
+/* cb(sauvegardes, erreur) : erreur = {status} si GitHub refuse ou est injoignable (22/11/2026, règle 73 : une erreur
+   n'est plus présentée comme « aucune sauvegarde ») */
 function ghListBackups(token,cb){
+  var fait=false;function fin(b,e){if(fait)return;fait=true;cb(b,e||null);}
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+ghBackupDir()+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
-    .then(function(r){return r.ok?r.json():[];})
-    .then(function(files){
-      if(!Array.isArray(files)){cb([]);return;}
-      var backups=files.filter(function(f){return f.name.match(/^backup-\d{4}-\d{2}-\d{2}(?:-\d{4})?\.json$/);});
-      backups.sort(function(a,b){return b.name.localeCompare(a.name);});
-      cb(backups);
-    }).catch(function(){cb([]);});
+    .then(function(r){
+      if(r.ok)return r.json().then(function(files){
+        if(!Array.isArray(files)){fin([]);return;}
+        var backups=files.filter(function(f){return f.name.match(/^backup-\d{4}-\d{2}-\d{2}(?:-\d{4})?\.json$/);});
+        backups.sort(function(a,b){return b.name.localeCompare(a.name);});
+        fin(backups);
+      });
+      if(r.status!==404){fin([],{status:r.status});return;}
+      /* 404 : dossier du profil pas encore créé (aucune sauvegarde) ou dépôt inaccessible ; le dépôt lui-même tranche */
+      return fetch('https://api.github.com/repos/'+GH_REPO,{headers:ghHeaders(token)})
+        .then(function(r2){fin([],r2.ok?null:{status:r2.status});});
+    }).catch(function(){fin([],{status:0});});
 }
 
 /* restaure un fichier backup précis */
 function ghRestoreFile(token,filePath){
   var pid=S.activeProfile;
   showToast('⏳ Restauration en cours…','ok');
-  fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+filePath+'?ref='+GH_BRANCH,{headers:ghEntetesBrut(token)})
-    .then(function(r){if(!r.ok)throw new Error();return r.text();})
+  ghLireFichier(token,filePath)
     .then(function(texte){
       if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
       var json=ghContenuSauvegarde(texte);
@@ -1551,7 +1565,14 @@ function ghRestoreFile(token,filePath){
       if(doImport())showToast('✅ Restauration réussie !');
       else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
     })
-    .catch(function(){showToast('❌ Impossible de restaurer ce backup','err');});
+    .catch(function(e){showToast(e&&typeof e.ghStatus==='number'?ghMessageErreur(e.ghStatus,'Restauration GitHub'):'❌ Impossible de restaurer ce backup','err');});
+}
+
+/* lit un fichier de sauvegarde ; un refus rejette {ghStatus} (0 = réseau) pour un message par cause */
+function ghLireFichier(token,filePath){
+  return fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+filePath+'?ref='+GH_BRANCH,{headers:ghEntetesBrut(token)})
+    .catch(function(){throw {ghStatus:0};})
+    .then(function(r){if(!r.ok)throw {ghStatus:r.status};return r.text();});
 }
 
 /* vérification silencieuse au démarrage */
@@ -8157,10 +8178,14 @@ function renderModal(){
       box.appendChild(loadingDiv);
       var listDiv=el('div',{class:'gx-scroll',style:"overflow-y:auto;max-height:340px;flex:1;"});
       box.appendChild(listDiv);
-      ghListBackups(token,function(backups){
+      ghListBackups(token,function(backups,err){
         box.removeChild(loadingDiv);
+        if(err){
+          listDiv.appendChild(el('div',{style:"text-align:center;padding:20px;color:oklch(0.55 0.16 25);font-size:13px;"},ghMessageErreur(err.status,'Liste des sauvegardes')));
+          return;
+        }
         if(!backups.length){
-          listDiv.appendChild(el('div',{style:"text-align:center;padding:20px;color:var(--c-muted);font-size:13px;"},"Aucun backup trouvé sur GitHub."));
+          listDiv.appendChild(el('div',{style:"text-align:center;padding:20px;color:var(--c-muted);font-size:13px;"},"Aucune sauvegarde sur GitHub pour ce profil."));
           return;
         }
         listDiv.appendChild(el('div',{style:"font-size:12px;color:var(--c-muted);margin-bottom:12px;"},"Choisissez la version à restaurer. ⚠️ Les données actuelles seront remplacées."));

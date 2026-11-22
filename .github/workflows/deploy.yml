@@ -54,6 +54,7 @@ jobs:
           node scripts/check-bilan-complet.js
           node scripts/check-calendar.js
           node scripts/check-orientation-lien.js
+          node scripts/check-erreurs-github.js
 
       - name: Tests (Europe/Paris)
         env:
@@ -71,6 +72,7 @@ jobs:
           node scripts/check-bilan-complet.js
           node scripts/check-calendar.js
           node scripts/check-orientation-lien.js
+          node scripts/check-erreurs-github.js
 
   deploy:
     needs: tests
