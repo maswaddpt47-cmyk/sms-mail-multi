@@ -1423,9 +1423,54 @@ function maybeAutoBackupProfile(profileId){
   }
   /* AG-032 (amendement Codex R2) : une modification faite pendant les 2 min ne reste plus sans sauvegarde ;
      un seul envoi différé par profil, à la fin du délai, avec l'état du moment. */
-  if(!_ghAutoDiffere[profileId]){var t=setTimeout(function(){_ghAutoDiffere[profileId]=null;maybeAutoBackupProfile(profileId);},120000-depuis+1000);if(t&&t.unref)t.unref();_ghAutoDiffere[profileId]=t;}
+  if(!_ghAutoDiffere[profileId]){var t=setTimeout(function(){_ghAutoDiffere[profileId]=null;maybeAutoBackupProfile(profileId);ghActualiserSauvegarde(profileId);},120000-depuis+1000);if(t&&t.unref)t.unref();_ghAutoDiffere[profileId]=t;}
+  ghActualiserSauvegarde(profileId);
 }
 var _ghAutoDiffere={};
+/* État d'affichage uniquement, par profil et pour cette session. Aucune clé ajoutée au stockage ;
+   gh-last-backup reste la date du dernier succès depuis ce navigateur, pas la couverture de tous les changements. */
+var _ghEtatSauvegarde=Object.create(null);
+function ghEtatSauvegarde(pid){
+  return _ghEtatSauvegarde[pid]||(_ghEtatSauvegarde[pid]={envois:Object.create(null),sequence:0,finSequence:0,erreur:''});
+}
+function ghDerniereSauvegarde(pid){
+  var brut=localStorage.getItem(pkFor(pid,'gh-last-backup')),d=brut?new Date(brut):null;
+  return d&&!isNaN(d.getTime())?'Dernière sauvegarde GitHub réussie : '+d.toLocaleString('fr-FR',{timeZone:'Europe/Paris'}):'Aucune sauvegarde GitHub réussie enregistrée ici.';
+}
+function ghSauvegardeTexte(pid){
+  var e=ghEtatSauvegarde(pid),messages=[];
+  if(Object.keys(e.envois).length)messages.push('Sauvegarde GitHub en cours…');
+  if(_ghAutoDiffere[pid])messages.push('Un envoi automatique est prévu.');
+  if(e.erreur)messages.push(e.erreur);
+  if(!ghToken())messages.push('Sauvegarde automatique inactive : jeton GitHub manquant.');
+  return messages.join(' ')||'Aucun envoi en cours dans cette session.';
+}
+function ghActualiserSauvegarde(pid){
+  if(typeof document==='undefined'||typeof document.getElementById!=='function')return;
+  var zone=document.getElementById('gh-backup-status');
+  if(!zone||zone.getAttribute('data-profile')!==pid||S.activeProfile!==pid)return;
+  document.getElementById('gh-backup-last').textContent=ghDerniereSauvegarde(pid);
+  document.getElementById('gh-backup-state').textContent=ghSauvegardeTexte(pid);
+  var bouton=document.getElementById('gh-backup-action');
+  if(bouton)bouton.textContent=ghEtatSauvegarde(pid).erreur?'↻ Réessayer la sauvegarde GitHub':'☁️ Sauvegarder sur GitHub';
+}
+function ghCommencerSauvegarde(pid){
+  var e=ghEtatSauvegarde(pid),numero=++e.sequence;e.envois[numero]=true;e.erreur='';ghActualiserSauvegarde(pid);return numero;
+}
+function ghTerminerSauvegarde(pid,numero,erreur){
+  var e=ghEtatSauvegarde(pid);delete e.envois[numero];
+  /* Deux envois peuvent se chevaucher : une ancienne réponse ne remplace pas le résultat d'un essai plus récent. */
+  if(numero>=e.finSequence){e.finSequence=numero;e.erreur=erreur||'';}
+  ghActualiserSauvegarde(pid);
+}
+function ghBlocSauvegarde(pid){
+  var pf=getProfile(pid),zone=el('section',{id:'gh-backup-status','data-profile':pid,style:'padding:12px;border:1px solid var(--c-border);border-radius:12px;background:var(--c-subtle-bg);color:var(--c-dim);font-size:12px;line-height:1.5;overflow-wrap:anywhere;'});
+  zone.appendChild(el('strong',{},'Sauvegardes GitHub · '+(pf?pf.nom:pid)));
+  zone.appendChild(el('p',{id:'gh-backup-last',style:'margin:6px 0;'},ghDerniereSauvegarde(pid)));
+  zone.appendChild(el('p',{id:'gh-backup-state',role:'status','aria-live':'polite',style:'margin:6px 0;'},ghSauvegardeTexte(pid)));
+  zone.appendChild(el('p',{style:'margin:6px 0 0;color:var(--c-muted);'},'Ce profil, depuis ce navigateur. La date indique le dernier envoi réussi ; les modifications suivantes peuvent encore attendre leur envoi.'));
+  return zone;
+}
 
 /* pousse un fichier daté, puis nettoie les anciens (garde GH_BACKUP_RETENTION_JOURS) */
 /* P08 (vérification finale de Codex) : « fiches non sauvegardées » = since-export. couvert[pid] = nombre de fiches déjà
@@ -1436,15 +1481,19 @@ function couvertDe(pid){return _couvert[pid]||0;}
 function githubPush(silent,onSuccess,pid){
   pid=pid||S.activeProfile;
   var token=ghToken();
-  if(!token){if(!silent)showToast('⚠️ Token GitHub manquant — ajoutez-le dans Configuration','warn');return;}
+  if(!token){ghActualiserSauvegarde(pid);if(!silent)showToast('⚠️ Token GitHub manquant — ajoutez-le dans Configuration','warn');return;}
+  var envoi=ghCommencerSauvegarde(pid);
   if(!silent)showToast('⏳ Sauvegarde GitHub en cours…','ok');
-  var donnees=exportDataForProfile(pid);
-  if(!sauvegardeFiable(pid)){if(!silent)showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}   /* T12 */
-  /* P08 (vérification de clôture de Codex) : nombre de fiches non sauvegardées au moment de l'instantané envoyé */
-  var sinceDepart=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
-  var totalDepart=couvertDe(pid)+sinceDepart;   /* total des ajouts couverts par l'instantané envoyé */
-  var content=btoa(unescape(encodeURIComponent(JSON.stringify(donnees,null,2))));
-  var file=ghNowFile(pid);
+  var donnees,sinceDepart,totalDepart,content,file;
+  try{
+    donnees=exportDataForProfile(pid);
+    if(!sauvegardeFiable(pid)){ghTerminerSauvegarde(pid,envoi,MSG_SAUVEGARDE_REFUSEE);if(!silent)showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}   /* T12 */
+    /* P08 (vérification de clôture de Codex) : nombre de fiches non sauvegardées au moment de l'instantané envoyé */
+    sinceDepart=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
+    totalDepart=couvertDe(pid)+sinceDepart;   /* total des ajouts couverts par l'instantané envoyé */
+    content=btoa(unescape(encodeURIComponent(JSON.stringify(donnees,null,2))));
+    file=ghNowFile(pid);
+  }catch(e){var refus='❌ Sauvegarde GitHub non envoyée : lecture ou préparation locale impossible. Rechargez la page et exportez vos données.';ghTerminerSauvegarde(pid,envoi,refus);if(!silent)showToast(refus,'err');return;}
   /* chaque backup est un nouveau fichier horodaté — pas besoin de SHA */
   fetch('https://api.github.com/repos/'+GH_REPO+'/contents/'+file+'?ref='+GH_BRANCH,{headers:ghHeaders(token)})
     .then(function(r){return r.ok?r.json():null;})
@@ -1455,8 +1504,9 @@ function githubPush(silent,onSuccess,pid){
     })
     .then(function(r){
       if(!r||!r.ok){
+        var status=r?r.status:0;
+        ghTerminerSauvegarde(pid,envoi,ghMessageErreur(status,'Sauvegarde GitHub'));
         if(!silent){
-          var status=r?r.status:0;
           (r?r.json().catch(function(){return null;}):Promise.resolve(null)).then(function(errBody){
             var detail=errBody&&errBody.message?' — '+errBody.message:'';
             showToast(ghMessageErreur(status,'Sauvegarde GitHub')+detail,'err');
@@ -1464,18 +1514,21 @@ function githubPush(silent,onSuccess,pid){
         }
         return;
       }
+      try{
+        localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
+        /* P08 : seules les fiches présentes dans l'instantané envoyé sont retirées du compteur ; celles ajoutées pendant l'envoi restent comptées */
+        var sinceFin=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
+        var aRetirer=Math.max(0,totalDepart-couvertDe(pid));   /* chevauchement ou export intervenu pendant l'envoi : rien n'est retiré deux fois */
+        localStorage.setItem(pkFor(pid,'since-export'),String(Math.max(0,sinceFin-aRetirer)));
+        _couvert[pid]=Math.max(couvertDe(pid),totalDepart);
+      }catch(e){var avertissement='⚠️ Copie transmise à GitHub, mais confirmation locale impossible. Rechargez la page avant de réessayer.';ghTerminerSauvegarde(pid,envoi,avertissement);if(!silent)showToast(avertissement,'warn');return;}
       if(!silent)showToast('✅ Sauvegarde GitHub réussie !');
-      localStorage.setItem(pkFor(pid,'gh-last-backup'),new Date().toISOString());
-      /* P08 : seules les fiches présentes dans l'instantané envoyé sont retirées du compteur ; celles ajoutées pendant l'envoi restent comptées */
-      var sinceFin=parseInt(localStorage.getItem(pkFor(pid,'since-export'))||'0',10)||0;
-      var aRetirer=Math.max(0,totalDepart-couvertDe(pid));   /* chevauchement ou export intervenu pendant l'envoi : rien n'est retiré deux fois */
-      localStorage.setItem(pkFor(pid,'since-export'),String(Math.max(0,sinceFin-aRetirer)));
-      _couvert[pid]=Math.max(couvertDe(pid),totalDepart);
+      ghTerminerSauvegarde(pid,envoi,'');
       if(pid===S.activeProfile){S._ghNewerBackup=null;renderHeader();}
       ghCleanOldBackups(token,pid);
       if(onSuccess)onSuccess();
     })
-    .catch(function(){if(!silent)showToast(ghMessageErreur(0,'Sauvegarde GitHub'),'err');});
+    .catch(function(){var message=ghMessageErreur(0,'Sauvegarde GitHub');ghTerminerSauvegarde(pid,envoi,message);if(!silent)showToast(message,'err');});
 }
 
 /* restaure le backup le plus récent sur GitHub */
@@ -8113,12 +8166,18 @@ function renderModal(){
   function header(title){var h=el('div',{style:"display:flex;align-items:center;justify-content:space-between;"});h.appendChild(el('div',{style:"font-weight:800;font-size:17px;"},title));h.appendChild(closeBtn());return h;}
 
   if(S.modal==='data'){
+    box.classList.add('ui-data-dialog');box.style.overflowY='auto';box.style.overscrollBehavior='contain';box.setAttribute('role','dialog');box.setAttribute('aria-label','Gestion des données');
     box.appendChild(header('💾 Gestion des données'));
     box.appendChild(ligneVersion());
     function dataBtn(label,bg,color,border,cb){return el('button',{class:'gx-press',style:"cursor:pointer;width:100%;font-family:inherit;border:"+(border||'none')+";background:"+bg+";color:"+color+";font-weight:700;font-size:13px;padding:11px 14px;border-radius:11px;text-align:left;",onClick:cb},label);}
     /* GitHub */
     box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;"},'GITHUB'));
-    box.appendChild(dataBtn('☁️ Sauvegarder sur GitHub','oklch(0.2 0.02 264)','#fff','none',function(){closeModal();githubPush();}));
+    var pidSauvegarde=S.activeProfile;
+    box.appendChild(ghBlocSauvegarde(pidSauvegarde));
+    var sauvegarderBtn=dataBtn(ghEtatSauvegarde(pidSauvegarde).erreur?'↻ Réessayer la sauvegarde GitHub':'☁️ Sauvegarder sur GitHub','oklch(0.2 0.02 264)','#fff','none',function(){
+      if(S.activeProfile!==pidSauvegarde){showToast('Profil changé : rouvrez Gestion des données avant de sauvegarder.','warn');return;}
+      githubPush(false,null,pidSauvegarde);
+    });sauvegarderBtn.id='gh-backup-action';box.appendChild(sauvegarderBtn);
     box.appendChild(dataBtn('⬇️ Restaurer depuis GitHub','oklch(0.96 0.025 266)','oklch(0.42 0.14 266)','1.5px solid oklch(0.7 0.1 266)',function(){S.modal='gh-restore';renderModal();}));
     /* Calendrier */
     box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;margin-top:6px;"},'CALENDRIER'));
