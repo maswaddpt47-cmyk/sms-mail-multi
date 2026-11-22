@@ -503,6 +503,7 @@
 .ui-record-summary{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--c-border);padding:0 0 18px;margin:0 0 18px;}.ui-record-summary>div{display:flex;align-items:baseline;gap:8px;padding:0 25px;border-right:1px solid var(--c-border);}.ui-record-summary>div:first-child{padding-left:0;}.ui-record-summary>div:last-child{border:0;}.ui-record-summary strong{font-size:22px;line-height:1.2;letter-spacing:-.8px;color:var(--c-text);}.ui-record-summary span{font-size:10px;color:var(--c-subtle);}.ui-record-orient-search{position:relative;max-width:560px;margin-bottom:20px;}.ui-record-orient-search input{padding-right:38px;}.ui-record-search-clear{position:absolute;right:10px;bottom:9px;border:none;background:none;color:var(--c-muted);cursor:pointer;}.ui-record-orientation .ui-record-actions{flex-direction:column;align-items:stretch;justify-content:flex-start;}.ui-record-orientation .ui-record-actions>.ui-record-button{width:100%;}.ui-record-tel-warning{font-size:10px;line-height:1.7;color:#a43c3c;overflow-wrap:anywhere;}.ui-record-done .ui-record-avatar{background:var(--c-hover);color:var(--c-muted);}
 [data-theme="dark"] .ui-record-button-danger,[data-theme="dark"] .ui-record-tel-warning{color:#f2a3a3;}
 @media(max-width:1150px){.ui-record-filterbar{grid-template-columns:1fr;gap:14px;}.ui-record-date-filters{justify-content:flex-start;}.ui-record-column-head{display:none;}.ui-record-row{grid-template-columns:minmax(0,1fr) 140px;gap:14px;}.ui-record-main{grid-template-columns:minmax(0,1fr);gap:13px;}.ui-record-details{padding-left:44px;}.ui-record-toolbar{align-items:flex-start;}.ui-record-toolbar-actions{justify-content:flex-end;max-width:290px;}}
+.ui-record-chip-link{min-height:32px;font-family:inherit;text-align:left;cursor:pointer;white-space:normal;max-width:100%;}.ui-record-chip-link:hover{border-color:var(--ui-accent);}.ui-record-chip-link:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px;}
 @media(max-width:760px){.ui-record-workspace{padding:0 16px 28px;}.ui-record-toolbar{gap:14px;flex-direction:column;}.ui-record-toolbar-actions{justify-content:flex-start;max-width:none;}.ui-record-filterbar{padding:14px;}.ui-record-viewbar{gap:10px;margin-top:17px;}.ui-record-result-count{margin-left:0;}.ui-record-row{padding:16px;grid-template-columns:minmax(0,1fr);gap:14px;}.ui-record-main{grid-template-columns:minmax(0,1fr);gap:12px;}.ui-record-details{padding-left:44px;}.ui-record-actions{justify-content:flex-start;gap:6px;}.ui-record-actions>.ui-record-button-primary{width:auto;}.ui-record-actions>.ui-record-button{min-height:34px;font-size:10px;}.ui-record-orientation .ui-record-actions{flex-direction:row;flex-wrap:wrap;}.ui-record-orientation .ui-record-actions>.ui-record-button{width:auto;flex:1;}.ui-record-preview{margin-top:0;padding-top:12px;}.ui-record-summary>div{padding:0 16px;gap:6px;}.ui-record-summary strong{font-size:20px;}.ui-record-summary span{font-size:9px;}.ui-record-note{display:block;}.ui-record-note strong{display:block;margin-bottom:3px;}.ui-record-toolbar-heading p{max-width:340px;}.ui-record-filter-tabs{overflow-x:auto;}.ui-record-filter-tab{padding:6px 10px;}}
 @media(max-width:420px){.ui-record-date-filters{flex-wrap:wrap;}.ui-record-date-filters>div{flex:1;}.ui-record-date-filters input{max-width:100%;}.ui-record-edit-fields{grid-template-columns:1fr;}.ui-record-summary>div{padding:0 10px;}.ui-record-summary>div:first-child{padding-left:0;}.ui-record-summary strong{font-size:19px;}.ui-record-summary span{font-size:9px;}.ui-record-summary{justify-content:space-between;}.ui-record-person-name strong{font-size:13px;}.ui-record-filter-tabs{width:100%;}.ui-record-filter-tab{flex:1;padding:6px 8px;}}
 
@@ -1845,6 +1846,19 @@ function ficheDeOrientation(o,history){
   if(!o||o.id==null||o.id==='')return null;
   var id=String(o.id);
   return (history||[]).find(function(h){return !!h&&h.orientationId===id&&h.msgType!=='indispo';})||null;
+}
+/* 22/11/2026 : la puce ouvre uniquement le dossier explicitement lié. Le contexte et l’id de l’orientation
+   sont figés au rendu ; le lien et la fiche sont relus au clic (aucun rapprochement par nom ni écriture). */
+function ouvrirRdvOrientation(source){
+  if(!source||!contexteIntact(source.contexte)){refusContexte('l’ouverture du rendez-vous');return false;}
+  var owner=source.contexte.profil;
+  var orientation=(S.orientations||[]).find(function(o){return o&&o.id!=null&&String(o.id)===source.id;});
+  var fiche=ficheDeOrientation(orientation,readProfileHistory(owner));
+  if(!fiche||!fiche.date){showToast('Ce rendez-vous lié n’est plus disponible. Consultez la liste actualisée des orientations.','warn');renderOrientations();return false;}
+  var perm=(S.permanences||[]).find(function(p){return p.exceptDate===fiche.date&&p.commune===fiche.commune;})||{commune:fiche.commune||''};
+  S.agendaRdv={slot:{heure:fiche.heure||'',taken:Object.assign({},fiche,{_profile:owner}),freeAgain:estLibere(fiche.statut),multiPropo:false,allPropo:[],replaced:[]},
+    day:{dateStr:fiche.date,perm:perm,profile:owner,date:new Date(fiche.date+'T12:00:00')}};
+  S.modal='agenda-rdv';renderModal();return true;
 }
 function handleGenerate(){
   if(!canGenerate())return;
@@ -7863,7 +7877,10 @@ function renderOrientations(){
     badges.appendChild(el('span',{class:'ui-record-chip'+(o.done?' ui-record-chip-complete':' ui-record-chip-pending')},o.done?'Traitée':'À traiter'));
     var ficheLiee=ficheDeOrientation(o,S.history);   /* AG-033 : dossier préparé depuis cette orientation, sur cet appareil */
     if(ficheLiee&&ficheLiee.date){var skLie=statutAffiche(ficheLiee),slLie=(STATUTS.find(function(s){return s[0]===skLie;})||[0,'Statut à vérifier'])[1];
-      badges.appendChild(el('span',{class:'ui-record-chip ui-record-chip-muted',title:'Dossier préparé depuis cette orientation (statut actuel de la fiche)'},'RDV le '+ficheLiee.date.split('-').reverse().join('/')+(ficheLiee.heure?' à '+ficheLiee.heure:'')+' · '+slLie));}
+      var libelleRdv='RDV le '+ficheLiee.date.split('-').reverse().join('/')+(ficheLiee.heure?' à '+ficheLiee.heure:'')+' · '+slLie;
+      var sourceRdv={id:String(o.id),contexte:contexteFige()};
+      badges.appendChild(el('button',{type:'button',class:'ui-record-chip ui-record-chip-muted ui-record-chip-link',title:'Ouvrir la fiche du rendez-vous lié',
+        'aria-label':'Ouvrir le rendez-vous lié : '+libelleRdv,onClick:function(){ouvrirRdvOrientation(sourceRdv);}},libelleRdv));}
     if(o.date)badges.appendChild(el('span',{class:'ui-record-muted'},'Demande du '+o.date.split('-').reverse().join('/')));
     details.appendChild(badges);main.appendChild(details);card.appendChild(main);
     var btnCol=el('div',{class:'ui-record-actions'});

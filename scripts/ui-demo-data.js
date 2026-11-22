@@ -87,6 +87,8 @@
       }
       if(spec.statut==='excuse')item.excuseMotif='Indisponibilité fictive — créneau à nouveau libre.';
       if(spec.statut==='annule')item.annulationMotif='Annulation fictive — rendez-vous à reprogrammer.';
+      /* Une orientation traitée mène à un RDV existant : la puce est essayable sans ajouter de fiche ni modifier les chiffres. */
+      if(spec.code==='04')item.orientationId='demo-orientation-'+profileId+'-03';
       /* Une relance fictive par RDV : le bilan montre aussi le travail de suivi. */
       if(spec.code==='04'||spec.code==='06'){
         item.dateRelance=localDay(creationDate);
@@ -108,10 +110,11 @@
     memoryStorage.setItem('ess-'+profileId+'-lastLogin',frenchDay(todayDate));
     // Les compteurs restent visibles ; la modale de rappel ne masque pas la démo à l’ouverture.
     memoryStorage.setItem('ess-'+profileId+'-overdue-reminder-date',today);
+    var demoFicheLiee=history.find(function(h){return h.orientationId==='demo-orientation-'+profileId+'-03';});
     put('ess-'+profileId+'-orientations',[
       {id:'demo-orientation-'+profileId+'-01',civilite:'Mme',prenom:'Ari',nom:'FICTIF ORIENTATION '+group+'01',telephone:'',commune:centre.nom,communeBenef:'Commune fictive Centre',structure:centre.nom,motif:demarches[0].nom,orienteur:'Référent fictif A',date:today,etat:'À contacter — démo',done:false},
       {id:'demo-orientation-'+profileId+'-02',civilite:'M.',prenom:'Eden',nom:'FICTIF ORIENTATION '+group+'02',telephone:'',commune:centre.nom,communeBenef:'Commune fictive Rives',structure:centre.nom,motif:demarches[1].nom,orienteur:'Référent fictif B',date:recent,etat:'Demande reçue — démo',done:false},
-      {id:'demo-orientation-'+profileId+'-03',civilite:'Mme',prenom:'Kim',nom:'FICTIF ORIENTATION '+group+'03',telephone:'',commune:centre.nom,communeBenef:'Commune fictive Centre',structure:centre.nom,motif:demarches[2].nom,orienteur:'Référent fictif C',date:previous,etat:'Traité — démo',done:true}
+      {id:'demo-orientation-'+profileId+'-03',civilite:demoFicheLiee.civilite,prenom:demoFicheLiee.prenom,nom:demoFicheLiee.nom,telephone:'',commune:centre.nom,communeBenef:'Commune fictive Centre',structure:centre.nom,motif:demoFicheLiee.demarche,orienteur:'Référent fictif C',date:demoFicheLiee.dateReception,etat:'Traité — démo',done:true}
     ]);
   });
   put('ess-mandats',[
