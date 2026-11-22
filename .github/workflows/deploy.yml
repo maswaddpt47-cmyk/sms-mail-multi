@@ -84,6 +84,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Version affichée dans l'appli
+        env:
+          TZ: Europe/Paris
+        run: |
+          SHA=$(git rev-parse --short=7 HEAD)
+          DATE=$(git log -1 --format=%cd --date=format-local:'%d/%m/%Y %H:%M')
+          grep -q "__APP_SHA__" index.html
+          sed -i "s|__APP_SHA__|$SHA|; s|__APP_DATE__|$DATE|" index.html
+          printf '{"sha":"%s","date":"%s"}\n' "$SHA" "$DATE" > version.json
+          grep -q "sha:'$SHA'" index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

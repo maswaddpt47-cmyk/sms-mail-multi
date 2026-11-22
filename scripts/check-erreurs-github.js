@@ -31,5 +31,7 @@ function liste(reponses){return new Promise(res=>{let i=0;ctx.fetch=()=>{const r
     ctx.ghRestoreFile('jeton','p1/b');await new Promise(r=>setTimeout(r,10));
     assert.match(toasts.at(-1),motif,'restauration '+s);
   }
-  console.log('Erreurs GitHub : un message par cause (401, 403, 404, réseau), erreur jamais confondue avec « aucune sauvegarde » OK.');
+  // version : le gabarit à remplir au déploiement est présent
+  assert.match(html,/var APP_VERSION=\{sha:'__APP_SHA__',date:'__APP_DATE__'\};/,'gabarit de version intact (rempli par deploy.yml)');
+  console.log('Erreurs GitHub : un message par cause (401, 403, 404, réseau), erreur jamais confondue avec « aucune sauvegarde », gabarit de version OK.');
 })().catch(e=>{console.error(e);process.exit(1);});

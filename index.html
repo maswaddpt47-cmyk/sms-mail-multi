@@ -1377,6 +1377,19 @@ function saveLast(){lsSet(pk('last'),{selectedCMS:S.selectedCMS,selectedDemarche
 /* repo PRIVÉ dédié — les sauvegardes contiennent des données personnelles
    d'usagers (nom, téléphone, démarche...) et ne doivent jamais être poussées
    vers le repo public qui héberge le code/GitHub Pages */
+/* 22/11/2026 : version de l'appli, remplie au déploiement par deploy.yml (commit et date Paris) ; version.json porte la
+   version en ligne. Non remplacée = copie locale ou aperçu, jamais présentée comme déployée. */
+var APP_VERSION={sha:'__APP_SHA__',date:'__APP_DATE__'};
+function appVersionConnue(){return /^[0-9a-f]{7}$/.test(APP_VERSION.sha);}
+function appVersionTexte(){return appVersionConnue()?'Version de l\'appli : '+APP_VERSION.date+' · '+APP_VERSION.sha:'Version de l\'appli : copie locale (non déployée)';}
+function ligneVersion(){
+  var d=el('div',{style:"font-size:11px;color:var(--c-muted);margin-top:-4px;"},appVersionTexte());
+  if(appVersionConnue())fetch('version.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(v){
+    if(!v||!v.sha)return;
+    d.textContent=appVersionTexte()+(v.sha===APP_VERSION.sha?' (à jour)':' — une version plus récente est en ligne ('+v.date+') : fermez puis rouvrez l\'appli.');
+  }).catch(function(){});
+  return d;
+}
 var GH_REPO='maswaddpt47-cmyk/sms-mail-multi-backups';
 var GH_BRANCH='main';
 var GH_BACKUP_DIR='backups';
@@ -8101,6 +8114,7 @@ function renderModal(){
 
   if(S.modal==='data'){
     box.appendChild(header('💾 Gestion des données'));
+    box.appendChild(ligneVersion());
     function dataBtn(label,bg,color,border,cb){return el('button',{class:'gx-press',style:"cursor:pointer;width:100%;font-family:inherit;border:"+(border||'none')+";background:"+bg+";color:"+color+";font-weight:700;font-size:13px;padding:11px 14px;border-radius:11px;text-align:left;",onClick:cb},label);}
     /* GitHub */
     box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;"},'GITHUB'));
