@@ -185,7 +185,23 @@
       if(pre.warnings.dates)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.dates+' événements ignorés : date, durée ou fuseau non reconnu.'));
       if(pre.warnings.versions)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.versions+' inscription(s) présente(s) en plusieurs versions dans un même fichier'+(pre.files>1?' (comptées fichier par fichier)':'')+' : la dernière ligne du fichier est gardée, ce qui ne prouve pas qu’elle soit la plus récente. Contrôlez-la dans le détail.'));
       if(pre.warnings.recurrences)preview.appendChild(node('p',{class:'ics-alert'},pre.warnings.recurrences+' événements récurrents ignorés : cette première version importe les événements simples, sans développer les répétitions.'));
-      preview.appendChild(node('p',{class:'ics-help'},'Vérifiez le regroupement après import. Titres et descriptions originaux sont conservés dans le détail ; les noms des inscriptions y restent visibles. Contacts ATTENDEE/ORGANIZER, liens et pièces jointes ne sont pas exploités. Aucun ajout tant que vous ne validez pas. Un fichier invalide annule tout l’aperçu.'));
+      if(merged&&imported.length){
+        var previewList=node('details',{class:'ics-preview-list'}),previewBuilt=false;
+        previewList.appendChild(node('summary',{},'Voir les événements à importer'));
+        // Le lot est déjà regroupé pour les chiffres ci-dessus. Son détail se construit à l’ouverture,
+        // sans nouveau rapprochement ni écriture, même si une inscription existe déjà dans le calendrier.
+        previewList.addEventListener('toggle',function(){if(!previewList.open||previewBuilt)return;previewBuilt=true;
+          var list=node('div',{class:'ics-preview-events'});
+          imported.slice().sort(function(a,b){return a.start.localeCompare(b.start)||a.title.localeCompare(b.title,'fr');}).forEach(function(e){
+            var subject=objectLabel(e)||(e.collective?'Atelier collectif':e.title),entry=button('',function(){detail(e,true);},'ics-button ics-preview-event');
+            entry.appendChild(node('span',{class:'ics-preview-date'},dateLine(e)));
+            entry.appendChild(node('strong',{},subject));entry.appendChild(node('span',{class:'ics-location'},e.location||'Lieu non renseigné'));
+            entry.appendChild(node('span',{class:'ics-preview-hint'},'Consulter les inscriptions'));
+            list.appendChild(entry);
+          });previewList.appendChild(list);
+        });preview.appendChild(previewList);
+      }
+      preview.appendChild(node('p',{class:'ics-help'},'Avant d’ajouter, ouvrez « Voir les événements à importer » pour contrôler les dates, horaires, objets, lieux et inscriptions regroupées. Titres et descriptions originaux restent consultables dans le détail. Contacts ATTENDEE/ORGANIZER, liens et pièces jointes ne sont pas exploités. Aucun ajout tant que vous ne validez pas. Un fichier invalide annule tout l’aperçu.'));
       var apply=button('Ajouter au calendrier',function(){try{var current=load(ctx.storage,ctx.key),m=merge(current.events,pre.events);save(ctx,m.events,current.raw);st.preview=null;st.message=m.added+' ajoutés · '+m.updated+' mis à jour · '+m.unchanged+' déjà présents.';if(pre.events.length)st.date=pre.events.map(function(e){return e.allDay?e.start:parisDay(e.start);}).sort()[0];}catch(e){st.message=e.message;}rerender();},'ics-button ics-import');apply.disabled=!!error||!merged||!pre.events.length;preview.appendChild(apply);preview.appendChild(button('Annuler',function(){st.preview=null;rerender();}));root.appendChild(preview);
     }
     var all=sessions(data.events,st.group),filters=node('div',{class:'ics-filters','aria-label':'Recherche et filtres'});menu.appendChild(filters);
@@ -201,27 +217,32 @@
     var weekendHidden=hiddenWeekend(events,range,st.view);if(weekendHidden.length){var firstWE=weekendHidden.slice().sort(function(a,b){return a.start.localeCompare(b.start);})[0];root.appendChild(node('p',{class:'ics-alert',role:'status'},weekendHidden.length+' événement(s) le samedi ou le dimanche dans cette période, non affiché(s) : le calendrier montre du lundi au vendredi.'));root.appendChild(button('Voir en vue Jour',function(){st.date=firstWE.allDay?firstWE.start:parisDay(firstWE.start);st.view='day';rerender();}));}
     if(events.length&&!inPeriod.length)root.appendChild(button('Voir le premier résultat',function(){var first=events.slice().sort(function(a,b){return a.start.localeCompare(b.start);})[0];st.date=first.allDay?first.start:parisDay(first.start);rerender();}));
     if(data.events.some(function(e){return metadata(e).legacy;}))root.appendChild(node('p',{class:'ics-alert'},'Ancien import présent : réimportez les ICS originaux pour récupérer les inscriptions que l’ancien rapprochement pouvait écraser. Les lignes exactement reconnues sont rapprochées sans doublon ; les autres restent et doivent être contrôlées.'));
-    function detail(e){
-      var opener=doc.activeElement,cleaned=false,heading=objectLabel(e)||(e.collective?'Atelier collectif':e.title),overlay=node('div',{class:'ics-dialog-overlay'}),dialog=node('dialog',{class:'ics-dialog','aria-label':'Détail de l’événement','aria-modal':'true'});
+    function dateLine(e){
+      if(e.allDay){var lastDay=dayAdd(e.end,-1);return fmt(e.start,{dateStyle:'full'})+(lastDay===e.start?'':' — '+fmt(lastDay,{dateStyle:'full'}))+' · Toute la journée';}
+      var dateFormat=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full'}),clock=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'});
+      return dateFormat.format(new Date(e.start))+' · '+clock.format(new Date(e.start))+'–'+(parisDay(e.start)===parisDay(e.end)?'':dateFormat.format(new Date(e.end))+' · ')+clock.format(new Date(e.end));
+    }
+    function detail(e,readOnly){
+      var opener=doc.activeElement,cleaned=false,heading=objectLabel(e)||(e.collective?'Atelier collectif':e.title),overlay=node('div',{class:'ics-dialog-overlay'}),dialog=node('dialog',{class:'ics-dialog','aria-label':readOnly?'Détail de l’événement à importer':'Détail de l’événement','aria-modal':'true'});
       // Couche explicite : show() ne rend pas le document inactif comme
       // showModal(). La fermeture retire la couche entière, pas seulement sa carte.
       function cleanup(){if(cleaned)return;cleaned=true;overlay.remove();if(opener&&opener.isConnected&&typeof opener.focus==='function')opener.focus({preventScroll:true});}
       function dismiss(){if(dialog.open)dialog.close();cleanup();}
       var header=node('div',{class:'ics-dialog-header'}),close=button('Fermer',dismiss),body=node('div',{class:'ics-dialog-body',tabindex:'0',role:'region','aria-label':'Contenu du rendez-vous'});
       header.appendChild(close);dialog.appendChild(header);dialog.appendChild(body);body.appendChild(node('h3',{},heading));
+      if(readOnly)body.appendChild(node('p',{class:'ics-status'},'Aperçu du fichier · aucun événement ajouté.'));
       if(!e.collective&&norm(e.title)!==norm(heading))body.appendChild(node('p',{},e.title));
       if(e.cancelled)body.appendChild(node('p',{},'Événement annulé'));
-      var dateLine;if(e.allDay){var lastDay=dayAdd(e.end,-1);dateLine=fmt(e.start,{dateStyle:'full'})+(lastDay===e.start?'':' — '+fmt(lastDay,{dateStyle:'full'}))+' · Toute la journée';}
-      else{var dateFormat=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,dateStyle:'full'}),clock=new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'});dateLine=dateFormat.format(new Date(e.start))+' · '+clock.format(new Date(e.start))+'–'+(parisDay(e.start)===parisDay(e.end)?'':dateFormat.format(new Date(e.end))+' · ')+clock.format(new Date(e.end));}
-      body.appendChild(node('p',{},dateLine));
+      body.appendChild(node('p',{},dateLine(e)));
       
       if(e.location)body.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){body.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});body.appendChild(list);}
       var importDetails=node('details',{class:'ics-import-details'});importDetails.appendChild(node('summary',{},'Détails de l’import'));
       e.members.forEach(function(m){var original=node('details',{class:'ics-original'});original.appendChild(node('summary',{},'Inscription originale : '+m.title));var meta=metadata(m);if(meta.uid)original.appendChild(node('p',{},'Demande (UID) : '+meta.uid));original.appendChild(node('pre',{class:'ics-description'},m.description||'Aucune description dans le fichier.'));importDetails.appendChild(original);});body.appendChild(importDetails);
-      var remove=button('Retirer cet événement importé',function(){if(!win.confirm('Retirer cet événement et ses '+e.members.length+' inscription(s) du calendrier local ? Le fichier ICS d’origine n’est pas modifié.'))return;try{var current=load(ctx.storage,ctx.key),keys=new Set(e.members.map(function(m){return m.key;}));save(ctx,current.events.filter(function(x){return !keys.has(x.key);}),current.raw);dismiss();st.message='Événement retiré du calendrier local.';rerender();}catch(err){st.message=err.message;dismiss();rerender();}});body.appendChild(remove);
+      var remove;if(!readOnly){remove=button('Retirer cet événement importé',function(){if(!win.confirm('Retirer cet événement et ses '+e.members.length+' inscription(s) du calendrier local ? Le fichier ICS d’origine n’est pas modifié.'))return;try{var current=load(ctx.storage,ctx.key),keys=new Set(e.members.map(function(m){return m.key;}));save(ctx,current.events.filter(function(x){return !keys.has(x.key);}),current.raw);dismiss();st.message='Événement retiré du calendrier local.';rerender();}catch(err){st.message=err.message;dismiss();rerender();}});body.appendChild(remove);}
+      var lastAction=remove;if(readOnly){lastAction=button('Revenir à l’aperçu',dismiss);body.appendChild(lastAction);}
       overlay.addEventListener('click',function(ev){if(ev.target===overlay)dismiss();});
-      overlay.addEventListener('keydown',function(ev){if(ev.key==='Escape'){ev.preventDefault();dismiss();return;}if(ev.key==='Tab'){if(ev.shiftKey&&doc.activeElement===close){ev.preventDefault();remove.focus();}else if(!ev.shiftKey&&doc.activeElement===remove){ev.preventDefault();close.focus();}}});
+      overlay.addEventListener('keydown',function(ev){if(ev.key==='Escape'){ev.preventDefault();dismiss();return;}if(ev.key==='Tab'){if(ev.shiftKey&&doc.activeElement===close){ev.preventDefault();lastAction.focus();}else if(!ev.shiftKey&&doc.activeElement===lastAction){ev.preventDefault();close.focus();}}});
       dialog.addEventListener('cancel',function(ev){ev.preventDefault();dismiss();});dialog.addEventListener('close',cleanup);overlay.appendChild(dialog);root.appendChild(overlay);dialog.show();close.focus({preventScroll:true});
     }
     function chip(e,cls){var end=e.allDay?'':new Intl.DateTimeFormat('fr-FR',{timeZone:ZONE,hour:'2-digit',minute:'2-digit'}).format(new Date(e.end));

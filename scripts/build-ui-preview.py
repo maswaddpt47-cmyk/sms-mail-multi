@@ -15,6 +15,9 @@ import zipfile
 def build(output):
     root = Path(__file__).resolve().parents[1]
     output.mkdir(parents=True, exist_ok=True)
+    # Les aperçus gardent l’onglet Calendrier et son aperçu d’import fonctionnels.
+    for name in ['calendar.js', 'calendar.css']:
+        (output / name).write_bytes((root / name).read_bytes())
     html = (root / 'index.html').read_text(encoding='utf-8')
     for name in ['fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
         data = base64.b64encode((root / name).read_bytes()).decode('ascii')
@@ -58,7 +61,7 @@ def build(output):
     )
     archive = output / 'sms-mail-agenda-compact.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
-        for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
+        for name in ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'calendar.js', 'calendar.css',
                      'fonts/OFL.txt', 'fonts/plus-jakarta-sans-latin-ext.woff2', 'fonts/plus-jakarta-sans-latin.woff2']:
             bundle.write(root / name, name)
         bundle.write(demo, demo.name)
