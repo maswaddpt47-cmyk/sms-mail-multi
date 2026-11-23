@@ -3037,6 +3037,15 @@ function renderGenerate(){
        savoir quels créneaux étaient pris et a permis une double réservation sans avertissement. La grille, qui grise et bloque
        les créneaux pris, s'affiche dès que la date et le CMS sont choisis. */
     hh.appendChild(el('p',{class:'ui-chart-description',style:'margin-top:6px;'},'Choisissez d’abord la date et le CMS : les créneaux s’afficheront ici, les créneaux déjà pris grisés.'+(S.heure?' Heure retenue : '+S.heure+' (contrôlée au choix du CMS).':'')));
+    /* 23/11/2026 (demande de l'utilisateur) : saisie manuelle avec un CMS déjà choisi et sans date → le prochain créneau libre
+       est proposé d'un clic (rien n'est rempli sans l'action de l'utilisateur) ; la raison est affichée s'il n'y en a pas. */
+    if(S.commune&&!S.date){
+      var propM=prochainCreneauLibre(S.commune,S.history,S.permanences||[],new Date());
+      if(propM)hh.appendChild(el('button',{type:'button',class:'gx-press ui-record-button ui-record-button-primary',style:'margin-top:6px;',onClick:function(){
+        S.creneauAuto={src:S.orientationSource?S.orientationSource.id:'',date:propM.date,heure:propM.heure};setFieldSave({date:propM.date,heure:propM.heure});
+      }},'📅 Prochain créneau libre à '+S.commune+' : '+propM.date.split('-').reverse().join('/')+' à '+propM.heure));
+      else hh.appendChild(el('p',{class:'ui-chart-description'},'Aucune journée ouverte à venir à '+S.commune+' avec une place libre : choisissez la date.'));
+    }
   }
   row2.appendChild(hh);
   col.appendChild(row2);
@@ -3064,6 +3073,7 @@ function renderGenerate(){
     /* 23/11/2026 : la date et l'heure proposées automatiquement depuis une orientation suivent le CMS choisi ensuite (constat :
        Marmande → Saint-Pardoux gardait la journée de Marmande). Une date ou une heure modifiée à la main n'est jamais remplacée. */
     var auto=S.creneauAuto,suitAuto=!!(auto&&auto.src===(S.orientationSource?S.orientationSource.id:'')&&auto.date===S.date&&auto.heure===S.heure);
+    if(!suitAuto&&v&&!S.date&&!S.heure)suitAuto=true,auto={src:S.orientationSource?S.orientationSource.id:''};   /* 23/11 : saisie manuelle, aucune date encore : proposition */
     if(suitAuto){
       var prop=v?prochainCreneauLibre(v,S.history,S.permanences||[],new Date()):null;
       patch.date=prop?prop.date:'';patch.heure=prop?prop.heure:'';
