@@ -2654,15 +2654,20 @@ function reuseHistItem(h){
   S.channel=h.channel||"sms";S.msgType=h.msgType||"proposition";
   if(h.selectedDemarche)S.selectedDemarche=h.selectedDemarche;
   if(h.demarcheAutre)S.demarcheAutre=h.demarcheAutre;
-  S.date="";S.heure="";S.dateReception="";S.receptionReprise="";S.receptionSource=null;
+  S.dateReception="";S.receptionReprise="";S.receptionSource=null;
+  /* 23/11/2026 (demande de l'utilisateur) : comme depuis une orientation, le prochain créneau libre du CMS est proposé,
+     modifiable, et suit un changement de CMS ; jamais la date ou l'heure de l'ancienne fiche. */
+  var prop=prochainCreneauLibre(S.commune,S.history,S.permanences||[],new Date());
+  S.date=prop?prop.date:"";S.heure=prop?prop.heure:"";
+  S.creneauAuto={src:S.orientationSource?S.orientationSource.id:'',date:S.date,heure:S.heure};
   S.selectedTemplate="__default__";
   regen();S.activeTab="generate";showActivePane();renderTabs();renderGenerate();
-  showToast("✓ Usager chargé — modifiez la date, l'heure et la démarche");
+  showToast(prop?"✓ Usager chargé — prochain créneau libre proposé : "+prop.date.split('-').reverse().join('/')+" à "+prop.heure+" (modifiable)":"✓ Usager chargé — "+(S.commune?"aucune journée ouverte à venir à "+S.commune+" : choisissez la date et l'heure":"choisissez le CMS, la date et l'heure"));
 }
 /* ouvre Messages (Générer) sur un jour, un CMS et éventuellement une heure (statistiques, Agenda : 25/10).
    Même appariement CMS → adresse que le sélecteur du formulaire ; le brouillon d'usager en cours est conservé. */
 function openMessagesOnSlot(dateStr,commune,heure){
-  S.date=dateStr;S.heure=heure||'';S.commune=commune;
+  S.date=dateStr;S.heure=heure||'';S.commune=commune;S.creneauAuto=null;   /* créneau choisi dans l'Agenda : jamais remplacé */
   var vn=commune.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
   var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
   if(cmsMatch)S.selectedCMS=String(cmsMatch.id);
@@ -3058,7 +3063,7 @@ function renderGenerate(){
     }
     /* 23/11/2026 : la date et l'heure proposées automatiquement depuis une orientation suivent le CMS choisi ensuite (constat :
        Marmande → Saint-Pardoux gardait la journée de Marmande). Une date ou une heure modifiée à la main n'est jamais remplacée. */
-    var auto=S.creneauAuto,suitAuto=!!(auto&&S.orientationSource&&auto.src===S.orientationSource.id&&auto.date===S.date&&auto.heure===S.heure);
+    var auto=S.creneauAuto,suitAuto=!!(auto&&auto.src===(S.orientationSource?S.orientationSource.id:'')&&auto.date===S.date&&auto.heure===S.heure);
     if(suitAuto){
       var prop=v?prochainCreneauLibre(v,S.history,S.permanences||[],new Date()):null;
       patch.date=prop?prop.date:'';patch.heure=prop?prop.heure:'';
@@ -8822,7 +8827,7 @@ function loadProfileData(){
   finally{if(!termine){_chargementEchoue=true;_stockageEnEchec=true;S.saveStatus='⚠️ Chargement du profil interrompu : rien ne sera enregistré. Rechargez la page.';}}
 }
 function loadProfileDataCorps(){
-  S.dateReception='';S.receptionReprise='';S.receptionSource=null;S.orientationSource=null;
+  S.dateReception='';S.receptionReprise='';S.receptionSource=null;S.orientationSource=null;S.creneauAuto=null;
   var last=ls(pk('last'),{});
   var lastSave=ls('ess-lastSave',null);
   _versionLue={};   /* P01 : seules les données du profil chargé et les réglages communs sont suivies */
