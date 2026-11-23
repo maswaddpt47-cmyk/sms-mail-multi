@@ -3031,7 +3031,15 @@ function renderGenerate(){
       var cmsMatch=S.cmsList.find(function(c){var cn=(c.nom||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return cn===vn||vn.indexOf(cn)!==-1||cn.indexOf(vn)!==-1;});
       if(cmsMatch)patch.selectedCMS=String(cmsMatch.id);
     }
-    if(!confirmerCreneau(S.date,S.heure,v))patch.heure='';   /* heure choisie avant le CMS : contrôle du créneau (01/11) */
+    /* 23/11/2026 : la date et l'heure proposées automatiquement depuis une orientation suivent le CMS choisi ensuite (constat :
+       Marmande → Saint-Pardoux gardait la journée de Marmande). Une date ou une heure modifiée à la main n'est jamais remplacée. */
+    var auto=S.creneauAuto,suitAuto=!!(auto&&S.orientationSource&&auto.src===S.orientationSource.id&&auto.date===S.date&&auto.heure===S.heure);
+    if(suitAuto){
+      var prop=v?prochainCreneauLibre(v,S.history,S.permanences||[],new Date()):null;
+      patch.date=prop?prop.date:'';patch.heure=prop?prop.heure:'';
+      S.creneauAuto={src:auto.src,date:patch.date,heure:patch.heure};
+      if(v)showToast(prop?'Prochain créneau libre à '+v+' : '+prop.date.split('-').reverse().join('/')+' à '+prop.heure+' (modifiable)':'Aucune journée ouverte à venir à '+v+' : choisissez une date','ok');
+    } else if(!confirmerCreneau(S.date,S.heure,v))patch.heure='';   /* heure choisie avant le CMS : contrôle du créneau (01/11) */
     setFieldSave(patch);
   }});
   commSel.appendChild(el('option',{value:"",selected:S.commune===""},"— Sélectionner un CMS —"));
@@ -7925,6 +7933,7 @@ function renderOrientations(){
          formulaire) ; le prochain créneau libre du CMS reconnu est proposé, modifiable. */
       var proposition=prochainCreneauLibre(S.commune,S.history,S.permanences||[],new Date());
       S.date=proposition?proposition.date:'';S.heure=proposition?proposition.heure:'';
+      S.creneauAuto={src:S.orientationSource?S.orientationSource.id:'',date:S.date,heure:S.heure};   /* 23/11/2026 : suivi du CMS choisi ensuite */
       regen();
       S.activeTab='generate';
       showActivePane();renderTabs();renderGenerate();
