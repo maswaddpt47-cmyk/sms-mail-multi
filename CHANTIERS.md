@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **22/11/2026 à 10:03**, base contrôlée `a890c84` (départ `main` `f12e395`) : les trois pistes du 22/11 sont **implémentées à la demande de l'utilisateur** (« Va pour la totale ») : suivi des sauvegardes GitHub `63c5071`, puce RDV cliquable `f989502`, aperçu ICS détaillé `a890c84`. Syntaxe, 13 scripts du déploiement en UTC/Europe/Paris et parcours Chromium sur données fictives vérifiés ; contrôle utilisateur restant. Aucun nouveau calcul métier, format, migration ou dépendance : pas de bloc AGORA ouvert pour cette livraison d'affichage/navigation. Le détail reste dans Git.
+État au **23/11/2026** (relu par « pull »), base `main` `f0a9179`, déploiement ✅ vérifié. Le contrôle MD-LIB `attendre-deploiement.sh` (`47cd250`) attend désormais par défaut le workflow Pages automatique : pour ce dépôt, le lancer avec `. <sha> .github/workflows/deploy.yml deploy 'Deploy to GitHub Pages'`, sinon il répond ➖. Avant : état au **22/11/2026 à 10:03**, base contrôlée `a890c84` (départ `main` `f12e395`) : les trois pistes du 22/11 sont **implémentées à la demande de l'utilisateur** (« Va pour la totale ») : suivi des sauvegardes GitHub `63c5071`, puce RDV cliquable `f989502`, aperçu ICS détaillé `a890c84`. Syntaxe, 13 scripts du déploiement en UTC/Europe/Paris et parcours Chromium sur données fictives vérifiés ; contrôle utilisateur restant. Aucun nouveau calcul métier, format, migration ou dépendance : pas de bloc AGORA ouvert pour cette livraison d'affichage/navigation. Le détail reste dans Git.
 
 ## Chantiers ouverts
 
