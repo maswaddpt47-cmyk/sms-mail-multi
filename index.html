@@ -2221,6 +2221,31 @@ function applyLunchBreaks(){
   if(added)S.history=hist;if(changed)S.permanences=perms;
   return true;
 }
+/* 23/11/2026 (demande de l'utilisateur, sans bloc AGORA à sa demande) : une journée à venir n'est ouverte que par un
+   enregistrement (RDV ou blocage) ; si plus aucune fiche ne l'occupe (RDV déplacé vers un autre CMS ou une autre date,
+   fiche supprimée, blocage libéré), elle restait cachée dans l'Agenda mais comptait 6 places et était proposée par
+   « Préparer le message » (constat : Marmande 26/11). Elle est fermée avec sa pause déjeuner automatique. Toute autre fiche,
+   même libérée (Lapin, Excusé…), garde la journée. Journées archivées et passées : jamais touchées. Profil actif seulement ;
+   journées et historique écrits ensemble. Renvoie la liste des journées fermées (« commune JJ/MM »). */
+function fermerJourneesVides(){
+  if(historiqueNonLu()||_clesIllisibles[pk('permanences')])return [];
+  var today=jourParis(),fermees=[],cles={};
+  var perms=S.permanences.filter(function(p){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(p.exceptDate||'')||p.exceptDate<today||p.archived)return true;
+    var fiches=S.history.filter(function(h){return h.date===p.exceptDate&&cmsKey(h.commune)===cmsKey(p.commune);});
+    var vide=fiches.every(function(h){return isLunchBreak({heure:h.heure,taken:h});});
+    if(!vide)return true;
+    fermees.push(p.commune+' '+p.exceptDate.slice(8,10)+'/'+p.exceptDate.slice(5,7));cles[p.exceptDate+'|'+cmsKey(p.commune)]=true;
+    return false;
+  });
+  if(!fermees.length)return [];
+  var hist=S.history.filter(function(h){return !cles[h.date+'|'+cmsKey(h.commune)];});
+  var paires=[[pk('permanences'),perms]];if(hist.length!==S.history.length)paires.push([pk('history'),hist]);
+  if(!ecrireTout(paires))return [];
+  S.permanences=perms;S.history=hist;
+  return fermees;
+}
+function annoncerJourneesFermees(f){if(f&&f.length)showToast('Journée'+(f.length>1?'s':'')+' sans rendez-vous fermée'+(f.length>1?'s':'')+' : '+f.join(', '),'ok');}
 /* T01 : vrai si l'historique du profil actif n'a pas pu être lu (repli vide en mémoire) */
 function historiqueNonLu(){return !!_clesIllisibles[pk('history')]||_chargementEchoue;}
 function ensureDayOpen(commune,dateStr){
@@ -2457,7 +2482,7 @@ function blockSlotBrut(commune,dateStr,heure,motif){
 function releaseSlot(entry){
   var idx=S.history.indexOf(entry);
   if(idx===-1)return;
-  S.history.splice(idx,1);lsSet(pk('history'),S.history);
+  S.history.splice(idx,1);if(lsSet(pk('history'),S.history))annoncerJourneesFermees(fermerJourneesVides());
 }
 /* bloque tous les créneaux encore libres passés en paramètre en une fois */
 function blockWholeDay(commune,dateStr,slots,motif){
@@ -2610,7 +2635,7 @@ function exportOrientationsCSV(){
   a.download="orientations-"+S.activeProfile+"-"+jourParis()+".csv";a.click();
   showToast("✓ Export CSV téléchargé");
 }
-function deleteHistItem(realIdx){var h=S.history.slice();h.splice(realIdx,1);if(lsSet(pk('history'),h))S.history=h;renderHistoryList();}
+function deleteHistItem(realIdx){var h=S.history.slice();h.splice(realIdx,1);if(lsSet(pk('history'),h)){S.history=h;annoncerJourneesFermees(fermerJourneesVides());}renderHistoryList();}
 function saveHistItem(realIdx){
   var h=S.history[realIdx];if(!h)return false;
   var maj=Object.assign({},h,{body:S.editHistBody,notes:S.editHistNotes||"",dateDemande:S.editHistDateDemande||"",telephone:S.editHistTel||""});
@@ -8848,6 +8873,7 @@ function loadProfileDataCorps(){
   /* une donnée illisible reste verrouillée : sauvegardes automatiques suspendues et bandeau d'alerte */
   if(Object.keys(_clesIllisibles).length){_stockageEnEchec=true;S.saveStatus='⚠️ Données illisibles au chargement : rien n\'a été écrasé. Rechargez la page avant de saisir.';}
   applyLunchBreaks();
+  var _fermeesAuChargement=fermerJourneesVides();if(_fermeesAuChargement.length)setTimeout(function(){annoncerJourneesFermees(_fermeesAuChargement);},800);
   archiveOldDaysCore(true);
   S.calendarType=ls('ess-caltype','google');
   S.relanceDelai=ls('ess-relance-delai',3);S.relanceReponseH=ls('ess-relance-reponse-h',3);
