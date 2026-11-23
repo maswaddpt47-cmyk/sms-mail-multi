@@ -488,7 +488,7 @@
 .ui-record-toolbar-heading{min-width:0;}.ui-record-toolbar-heading h2{font-size:16px;letter-spacing:-.3px;margin:0 0 5px;}.ui-record-toolbar-heading p{font-size:11px;color:var(--c-subtle);margin:0;line-height:1.7;}
 .ui-record-toolbar-actions,.ui-record-edit-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .ui-record-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 11px;border:1px solid var(--c-border-in);border-radius:7px;background:var(--c-card);color:var(--c-dim);font-family:inherit;font-size:10px;font-weight:700;line-height:1.45;cursor:pointer;text-decoration:none;white-space:nowrap;}
-.ui-record-button:hover{background:var(--c-hover);border-color:var(--ui-accent);}.ui-record-button-primary{background:#087f75;color:#fff;border-color:#087f75;}.ui-record-button-primary:hover{background:#086b63;border-color:#086b63;color:#fff;}.ui-record-button-danger{color:#a43c3c;background:transparent;border-color:transparent;}.ui-record-button-danger:hover{background:var(--c-hover);border-color:#c48787;}
+.ui-record-button:hover{background:var(--c-hover);border-color:var(--ui-accent);}.ui-record-button-primary{background:#087f75;color:#fff;border-color:#087f75;}.ui-record-button-primary:hover{background:#086b63;border-color:#086b63;color:#fff;}.ui-record-button-primary:disabled,.ui-record-button-primary:disabled:hover{background:var(--c-hover);color:var(--c-muted);border-color:var(--c-border);cursor:not-allowed;}.ui-record-button-danger{color:#a43c3c;background:transparent;border-color:transparent;}.ui-record-button-danger:hover{background:var(--c-hover);border-color:#c48787;}
 .ui-record-button[aria-pressed="true"]{background:var(--ui-accent-soft);color:var(--ui-accent);border-color:var(--ui-accent);}
 .ui-record-filterbar{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:20px;padding:17px 18px;background:var(--c-card);border:1px solid var(--c-border);border-radius:10px;align-items:end;}
 .ui-record-search,.ui-record-date-filters>div,.ui-record-orient-search{min-width:0;}.ui-record-filterbar label,.ui-record-orient-search label,.ui-record-editor label{display:block;font-size:10px;font-weight:700;color:var(--c-dim);margin:0 0 6px;}
@@ -7894,7 +7894,8 @@ function renderOrientations(){
     var btnCol=el('div',{class:'ui-record-actions'});
 
     /* Préremplir button */
-    var fillBtn=el('button',{class:'gx-press ui-record-button ui-record-button-primary',onClick:function(){
+    var fillBtn=el('button',{class:'gx-press ui-record-button ui-record-button-primary',disabled:!!o.done,title:o.done?'Orientation traitée : « Réactiver » pour préparer un nouveau message':null,onClick:function(){
+      if(o.done)return;   /* 23/11/2026 : grisé tant que l'orientation est traitée, actif après « Réactiver » */
       /* find matching demarche by motif */
       var mLow=normO(o.motif);
       var matched=S.demarches.find(function(d){return normO(d.nom).indexOf(mLow)!==-1||mLow.indexOf(normO(d.nom))!==-1;});
