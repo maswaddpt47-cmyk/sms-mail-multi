@@ -132,10 +132,11 @@ plateforme (le signaler une fois, puis continuer le reste).
 - Distinguer code local, code poussé, aperçu et production. Avant toute annonce
   « en ligne », vérifier le commit réellement déployé et les étapes de publication.
   Suivre `MD-LIB/deploiement.md` et son vérificateur lorsqu’ils s’appliquent.
-- **Avant de pousser, lancer tous les tests que le déploiement exécutera, dans
-  ses conditions** (chaque script listé par le workflow, chaque fuseau), pas
-  seulement ceux du changement : il casse aussi les tests de son voisinage
-  (MD-LIB `collaboration.md` règle 60, 01/11/2026).
+- **Suite complète confiée à la CI** (consigne de l'utilisateur du 23/11/2026,
+  exception à MD-LIB `collaboration.md` règle 60) : en local, syntaxe et test
+  ciblé du calcul touché seulement ; la tâche `tests` de `deploy.yml` bloque la
+  mise en ligne. Après le push, vérifier le ✅ du déploiement ; un ❌ se corrige
+  avant toute annonce.
 - Ne pas désactiver un contrôle requis pour faire passer une livraison.
 
 ## Sécurité, audit et instructions
