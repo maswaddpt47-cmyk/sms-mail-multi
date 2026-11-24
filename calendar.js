@@ -26,6 +26,13 @@
   function property(line){var quoted=false,cut=-1;for(var i=0;i<line.length;i++){if(line[i]==='"')quoted=!quoted;if(line[i]===':'&&!quoted){cut=i;break;}}if(cut<0)return null;
     var left=line.slice(0,cut).split(';'),p={name:left.shift().toUpperCase(),params:{},value:line.slice(cut+1)};
     left.forEach(function(x){var i=x.indexOf('=');if(i>0)p.params[x.slice(0,i).toUpperCase()]=x.slice(i+1).replace(/^"|"$/g,'');});return p;}
+  // AG-035 : les lignes Téléphone / E-mail de la description n'entrent pas dans l'identité d'une inscription.
+  var CONTACT_LINE=/^\s*(?:t[ée]l(?:[ée]phone)?\.?|e-?mail|mail|courriel)\s*:/i;
+  function stripContacts(desc){return String(desc||'').split('\n').filter(function(l){return !CONTACT_LINE.test(l);}).join('\n');}
+  function contactLines(desc){return String(desc||'').split('\n').filter(function(l){return CONTACT_LINE.test(l);});}
+  function contactLabel(l){return l.split(':')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/gi,'').toLowerCase();}
+  // Complète une description mise à jour avec les lignes de contact de l'ancienne version absentes de la nouvelle : jamais d'écrasement.
+  function completeContacts(oldDesc,newDesc){var have=contactLines(newDesc).map(contactLabel),add=contactLines(oldDesc).filter(function(l){return have.indexOf(contactLabel(l))<0;});return add.length?(newDesc?newDesc+'\n':'')+add.join('\n'):newDesc;}
   function parse(text){
     if(typeof text!=='string'||text.length>5*1024*1024)throw new Error('Fichier trop volumineux (5 Mo maximum).');
     text=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/\n[ \t]/g,'');
@@ -47,7 +54,7 @@
         // différentes inscriptions portant le même UID au même créneau.
         var action=unescapeText(ev.CATEGORIES&&ev.CATEGORIES.value).trim().slice(0,500);
         var description=unescapeText(ev.DESCRIPTION&&ev.DESCRIPTION.value).slice(0,20000),person=descriptionFields(description).participant;
-        var discriminator=person?'participant:'+person:'description:'+description;
+        var discriminator=person?'participant:'+person:'description:'+stripContacts(description);
         // AG-030 : deux versions d'une même inscription dans un même fichier :
         // la dernière du fichier est gardée (refus conservé entre fichiers). Comptage
         // sur les contenus d'origine : une identité compte une fois, les répétitions à part.
@@ -100,8 +107,13 @@
     // éléments seulement si le contenu importé correspond exactement.
     existing.forEach(function(e){var m=metadata(e),hasAction=e.key.indexOf('gdin:')===0,match=m.legacy&&(hasAction?legacyExact:legacyWithoutAction).get(signature(e,hasAction));map.set(match?match.key:e.key,e);});
     var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans des fichiers différents de ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
-    unique.forEach(function(e,k){if(!map.has(k))added++;else if(JSON.stringify(map.get(k))===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);});
+    unique.forEach(function(e,k){var prev=map.get(k);if(prev)e=Object.assign({},e,{description:completeContacts(prev.description,e.description)});if(!prev)added++;else if(JSON.stringify(prev)===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);});
     if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged,identical:identical};}
+  // AG-035 : inscriptions de même identité une fois les contacts écartés (doublons créés avant ce correctif). Garde celle qui a le plus de
+  // lignes de contact, puis la clé canonique (celle qu'un réimport retrouve), puis la dernière ; rien n'est retiré ici.
+  function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+stripContacts(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
+  function duplicates(events){var groups=new Map();events.forEach(function(e,i){if(e.key.indexOf('gdin:')!==0)return;var k=normKey(e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({e:e,i:i});});var out=[];
+    groups.forEach(function(g,k){if(g.length<2)return;var best=g.slice().sort(function(a,b){return contactLines(b.e.description).length-contactLines(a.e.description).length||(b.e.key===k)-(a.e.key===k)||b.i-a.i;})[0];out.push({keep:best.e,remove:g.filter(function(x){return x!==best;}).map(function(x){return x.e;})});});return out;}
   function load(storage,key){var raw=storage.getItem(key);if(raw===null)return {events:[],raw:null};var data=JSON.parse(raw);if(!data||data.version!==1||!Array.isArray(data.events)||data.events.length>LIMIT||!data.events.every(isEvent))throw new Error('Calendrier local illisible : aucune donnée ne sera remplacée.');return {events:data.events,raw:raw};}
   function save(ctx,events,raw){if(ctx.currentProfile()!==ctx.profileId)throw new Error('Le profil a changé : recommencez depuis le bon profil.');if(ctx.storage.getItem(ctx.key)!==raw)throw new Error('Calendrier modifié dans un autre onglet : recommencez votre import.');ctx.noteVersion(ctx.key,raw);if(!ctx.write(ctx.key,{version:1,events:events}))throw new Error('Enregistrement non confirmé. Rouvrez le calendrier avant de réessayer.');}
   function overlaps(e,day){if(e.allDay)return e.start<=day&&e.end>day;var r=dayRanges.get(day);if(!r){if(dayRanges.size>128)dayRanges.clear();r=[localInstant(day,'00:00:00',ZONE),localInstant(dayAdd(day,1),'00:00:00',ZONE)];dayRanges.set(day,r);}var s=Date.parse(e.start),f=Date.parse(e.end);return s<r[1]&&(f>r[0]||f===s&&s>=r[0]);}
@@ -165,6 +177,13 @@
     help.appendChild(node('p',{class:'ics-help'},'Calendrier GDIN autonome · heure de Paris. Les horaires sans fuseau sont conservés tels qu’écrits dans l’ICS. Inscriptions regroupées par action, début, fin, lieu et intitulé d’activité. Un intitulé absent ou différent crée un groupe distinct : contrôlez les inscriptions d’origine.'));
     if(error)root.appendChild(node('p',{class:'ics-alert',role:'alert'},error));
     if(st.message)root.appendChild(node('p',{class:'ics-status',role:'status'},st.message));
+    var dups=error?[]:duplicates(data.events);
+    if(dups.length){var dupBox=node('details',{class:'ics-duplicates'}),nb=dups.reduce(function(n,g){return n+g.remove.length;},0);
+      dupBox.appendChild(node('summary',{},'Doublons d’import ('+nb+')'));
+      dupBox.appendChild(node('p',{class:'ics-help'},'Mêmes inscriptions importées deux fois (seuls téléphone ou e-mail différaient). Pour chacune, la version avec le plus de contacts est gardée ; les autres peuvent être retirées. Rien n’est retiré avant votre confirmation.'));
+      var dupList=node('ul',{class:'ics-participants'});dups.forEach(function(g){dupList.appendChild(node('li',{},g.keep.title+' — '+fmt(parisDay(g.keep.start),{day:'numeric',month:'short'})+' '+time(g.keep)+' : garder la version avec '+contactLines(g.keep.description).length+' ligne(s) de contact, retirer '+g.remove.length+' autre(s) ('+g.remove.map(function(r){return contactLines(r.description).length;}).join(', ')+' ligne(s) de contact)'));});dupBox.appendChild(dupList);
+      dupBox.appendChild(button('Retirer les '+nb+' anciennes versions',function(){if(!win.confirm('Retirer '+nb+' inscription(s) en double du calendrier local, en gardant pour chacune la version avec le plus de contacts ? Les fichiers ICS d’origine ne sont pas modifiés.'))return;try{var current=load(ctx.storage,ctx.key),keys=new Set();duplicates(current.events).forEach(function(g){g.remove.forEach(function(r){keys.add(r.key);});});save(ctx,current.events.filter(function(x){return !keys.has(x.key);}),current.raw);st.message=keys.size+' ancienne(s) version(s) retirée(s) du calendrier local.';rerender();}catch(err){st.message=err.message;rerender();}},'ics-button'));
+      root.appendChild(dupBox);}
     file.addEventListener('change',async function(){var files=Array.from(file.files||[]);if(!files.length)return;var token={};st.readToken=token;st.preview=null;st.message='Lecture des fichiers…';rerender();
       try{if(files.length>30||files.reduce(function(n,f){return n+f.size;},0)>15*1024*1024)throw new Error('30 fichiers et 15 Mo maximum par import.');
         var combined={events:[],warnings:{dates:0,recurrences:0,participants:0,versions:0,copies:0},total:0,files:files.length};
@@ -275,5 +294,5 @@
   }
   // AG-032 : après une restauration, un aperçu d'import en attente est abandonné (il visait l'ancien calendrier).
   function forget(profileId){if(states[profileId]){states[profileId].preview=null;states[profileId].message='';}}
-  return {forget:forget,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {forget:forget,duplicates:duplicates,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
