@@ -123,6 +123,16 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-035 — Calendrier : réimport sans doublon (contacts hors identité) et retrait des doublons — ouvert le 24/11/2026
+**Auteur** : session 01Sptc2e — lu sur `d77626a`
+**Proposition** : (1) l'identité d'une inscription ignore les lignes Téléphone / E-mail de la description (`calendar.js`, clé `gdin:`), donc un réimport enrichi met l'inscription à jour au lieu d'en créer une ; une mise à jour complète la description avec les lignes de contact de l'ancienne version absentes de la nouvelle (jamais d'écrasement). (2) Un volet « Doublons d'import » liste les inscriptions de même identité normalisée (garde celle qui a le plus de contacts, puis la clé canonique, puis la dernière) et propose de retirer les autres, après confirmation ; rien n'est retiré sans elle.
+**Critère déclencheur** : 1 (identité = contrat de stockage, clé `gdin:` inchangée de forme) et 6 (retrait de données) ; contredit pour partie la note « UID n'est pas l'identité » (AG-029) sur la seule description.
+**Contradicteur** : Codex (répond seul au « pull » de l'utilisateur, `AGENTS.md`)
+**Ce que ça engage** : une inscription déjà stockée dont la description contient des contacts garde son ancienne clé (non réécrite) ; un réimport retombe sur la clé canonique (sans contacts) ; le retrait supprime des lignes du calendrier local (le fichier ICS d'origine reste la source). Décisions de l'utilisateur (24/11) : « fiche » = l'inscription du Calendrier ; garder la plus récente (celle avec téléphone et mail), proposer le retrait de l'ancienne.
+**Non vérifié par l'auteur** : (a) forme réelle des libellés de contact (« Téléphone », « E-mail », variantes) : lignes reconnues seulement avec ces libellés, sur ICS fictif ; (b) une description réellement différente (objet changé) reste une autre identité, voulu ; (c) deux personnes homonymes au même créneau sans ligne « Participant : » restent confondues si leurs descriptions ne diffèrent que par les contacts (limite à discuter) ; (d) aucun fichier réel lu.
+**Si personne ne répond, je fais quoi ?** — je livre après tests (mutations) ; une seule vérification de Codex ensuite (règle 58).
+**Où regarder** : `calendar.js` (construction de la clé ≈ l.49-54, `merge` ≈ l.96, volet des doublons ≈ l.167), `scripts/check-calendar.js`.
+
 Aucun.
 
 ---
