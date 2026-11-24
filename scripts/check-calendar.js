@@ -225,5 +225,11 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
   const g=C.duplicates([anc(objet),anc(objet+'\\n'+P+'\\n'+M)]);assert.equal(g.length,1);assert.equal(g[0].conflicts.length,0);
   const g2=C.duplicates([anc(objet+'\\n'+P),anc(objet+'\\nTéléphone : 07 00 00 00 02')]);assert.equal(g2.length,1);assert.equal(g2[0].conflicts.length,1,'numéro seul et numéro libellé de même nature, valeurs différentes : conflit');
   const g3=C.duplicates([anc(objet+'\\n'+P),anc(objet+'\\nTéléphone : 06 12 34 56 78')]);assert.equal(g3[0].conflicts.length,0,'même numéro, formes différentes : pas de conflit');}
+ /* Coordonnées du détail : texte seul, lien seulement pour un numéro ou une adresse de forme exacte. */
+ {const m=(d)=>({title:'FICTIF Personne',description:d});
+  const it=C.contactItems([m('Objet\n06 12 34 56 78\nfictif@example.invalid\nTéléphone : 07.00.00.00.02\nE-mail : autre@example.invalid')]);
+  assert.deepEqual(it.map(x=>[x.kind,x.href]),[['tel','tel:0612345678'],['mail','mailto:fictif@example.invalid'],['tel','tel:0700000002'],['mail','mailto:autre@example.invalid']]);
+  const h=C.contactItems([m('Téléphone : javascript:alert(1)\nE-mail : <img src=x onerror=alert(1)>')]);assert.equal(h.length,2);assert(h.every(x=>x.href===''),'valeur hostile : jamais de lien');
+  assert.equal(C.contactItems([m('Objet seul')]).length,0);}
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
