@@ -104,11 +104,11 @@ Règle 22 de MD-LIB ; ne pas reproposer une piste écartée sans fait nouveau.
 
 **En attente**
 - **Comptage demandes → RDV par CMS** (16/11, suite d'AG-033) : orientations devenues RDV dans « Activité par CMS » ; critère 7, bloc avant le code ; fiches antérieures au 16/11 sans lien ; réimport Excel = nouvelles orientations (Codex), aucun taux certifiable sur ce seul champ.
-- **Retirer une période du Calendrier avant réimport** (24/11, idée de l'utilisateur ; ses exports ne contiennent **pas** l'agenda complet, donc pas de purge globale) : choisir du JJ au JJ, nombre affiché puis confirmation, fiches et Agenda intacts ; à construire seulement si les doublons reviennent après AG-035 ; critère 6, bloc AGORA avant le code.
 - **Badge « ⚠️ 2 RDV »** sur une tuile à deux RDV actifs (01/11) : seulement si une double réservation réelle réapparaît ; différé.
 - **Second lot Activité par CMS** (démarches, doublons d'orientations signalés sans fusion) ; **créneaux libérés puis réattribués** (vérifier d'abord que les événements sont conservés) ; **rappels, relances et lapins** (exploratoire, associations seulement) ; **parcours individuels** reportés, sans identifiant de personne.
 
 **Écartées** (date — piste — raison)
+- 24/11/2026 — retirer une période du Calendrier avant réimport ; reporter téléphone et adresse du Calendrier ou d'un import ICS de l'Agenda dans les fiches de l'Agenda — « laisse tomber » (utilisateur) : le réimport du Calendrier est propre depuis AG-035 ; ne pas reproposer sans fait nouveau (doublons qui reviennent). Limite connue de l'import ICS de l'Agenda (Données → Importer ICS) : reconnaissance par date + heure + lieu, un seul inscrit par créneau.
 - 31/10 — domaine dédié pour le `localStorage` du jeton GitHub — « oublie ».
 - 01/11 — avertir avant restauration / fusion des sauvegardes — laissé de côté ; à rouvrir si un statut revient en arrière.
 - 10/10 — file « à reporter » (CR / Coop) — faite dans la foulée par l'utilisateur.
