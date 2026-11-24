@@ -204,5 +204,12 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
   // R3 : applyDuplicates refuse un élément figé qui a changé
   const g=C.duplicates([anc(objet),anc(objet+'\\n'+TEL)]);assert.throws(()=>C.applyDuplicates([anc(objet),{...anc(objet+'\\n'+TEL),cancelled:true}],g),/a changé/);
  }
+ /* Diagnostic : noms de champs seulement, jamais de valeur. */
+ {const mk=(x)=>C.parse(ics(['UID:'+(x.uid||'d1')+'\r\nCATEGORIES:ACTION-D\r\nDTSTART:20261125T093000\r\nDTEND:20261125T103000\r\nSUMMARY:'+(x.titre||'FICTIF Personne')+'\r\nLOCATION:CMS fictif\r\nDESCRIPTION:'+(x.desc||'Objet fictif')])).events[0];
+  const d1=C.differences([mk({}),mk({desc:'Objet fictif\\nTéléphone : 06 99 99 99 99'})]);assert.deepEqual(d1,['description (lignes : Téléphone)']);
+  const d2=C.differences([mk({}),mk({uid:'d2',titre:'FICTIF Autre'})]);assert(d2.includes('UID')&&d2.includes('titre'));
+  const d3=C.differences([mk({}),mk({desc:'Autre ligne fictive 0612345678'})]);assert.deepEqual(d3,['description (lignes : ligne sans libellé)']);
+  assert(!JSON.stringify([d1,d2,d3]).includes('9999')&&!JSON.stringify(d3).includes('0612345678')&&!JSON.stringify(d3).includes('Autre ligne'),'aucune valeur dans le diagnostic');
+  assert.deepEqual(C.differences([mk({}),mk({})]),[]);}
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
