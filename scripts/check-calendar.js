@@ -174,5 +174,35 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
   // 6 avec ligne « Participant : » l'identité ne change pas
   assert.equal(C.merge(C.merge([],lire(ag('Participant : FICTIF Personne\\n'+objet))).events,lire(ag('Participant : FICTIF Personne\\n'+objet+'\\n'+TEL))).events.length,1);
  }
+ /* AG-035, amendement de Codex (R1-R3) : clés de l'ANCIEN parseur, vrai bouton, contacts conservés, ensemble figé. */
+ {const objet='Demande de logement social',TEL='Téléphone : 06 00 00 00 01',TEL2='Téléphone : 07 00 00 00 02',MAIL='E-mail : fictif@example.invalid';
+  const evt=(desc)=>ics(['UID:r1\r\nCATEGORIES:ACTION-FICTIVE\r\nDTSTART:20261125T093000\r\nDTEND:20261125T103000\r\nSUMMARY:FICTIF Personne\r\nLOCATION:CMS fictif\r\nDESCRIPTION:'+desc]);
+  const anc=(desc)=>C.parse(evt(desc)).events.map(e=>({...e,key:'gdin:'+JSON.stringify(['r1','ACTION-FICTIVE',e.start,e.end,e.title,e.location,'description:'+e.description])}))[0];   /* clé de l'ancien parseur : description entière */
+  const seedUi=(events)=>{profile='fictif-ui';doc.defaultView.confirm=()=>true;storage.setItem(ui.key,JSON.stringify({version:1,events}));C.render(pane,ui);};
+  const stored=()=>JSON.parse(storage.getItem(ui.key)).events;
+  const bouton=()=>nodes(pane,n=>n.tagName==='button'&&/^Retirer les \d+ anciennes versions$/.test(n.textContent))[0];
+  // R1 : deux imports d'avant le correctif (sans contacts / avec) → nettoyage réel → réimport identique : une seule inscription, rien d'ajouté
+  seedUi([anc(objet),anc(objet+'\\n'+TEL+'\\n'+MAIL)]);assert(bouton(),'bandeau présent');await bouton().click();
+  assert.equal(stored().length,1,'R1 : une inscription après nettoyage');
+  const re=C.merge(stored(),C.parse(evt(objet+'\\n'+TEL+'\\n'+MAIL)).events);assert.equal(re.events.length,1,'R1 : réimport idempotent après nettoyage');assert.equal(re.added,0);assert.equal(re.events[0].key,stored()[0].key,'clé existante non réécrite');
+  assert.equal(C.merge(re.events,C.parse(evt(objet+'\\n'+TEL+'\\n'+MAIL)).events).unchanged,1);
+  // R2 : téléphone seul / e-mail seul → les deux contacts survivent au vrai clic
+  seedUi([anc(objet+'\\n'+TEL),C.parse(evt(objet+'\\n'+MAIL)).events[0]]);await bouton().click();
+  assert.equal(stored().length,1);assert(stored()[0].description.includes(TEL)&&stored()[0].description.includes(MAIL),'R2 : téléphone ET e-mail conservés');
+  // R2 : valeurs contradictoires → le choix est montré, rien n'est tranché en silence ; la valeur choisie est celle gardée
+  seedUi([anc(objet+'\\n'+TEL),C.parse(evt(objet+'\\n'+TEL2)).events[0]]);
+  const sels=nodes(pane,n=>n.tagName==='select'&&/^Valeur à garder/.test(n.attrs['aria-label']||''));assert.equal(sels.length,1,'conflit proposé à l’utilisateur');const sel=sels[0];assert.equal(sel.children.length,2,'deux valeurs distinctes montrées');
+  sel.value=TEL;await sel.fire('change');await bouton().click();assert(stored()[0].description.includes('06 00 00 00 01')&&!stored()[0].description.includes('07 00 00 00 02'),'valeur choisie (autre que celle de la version gardée) conservée');
+  seedUi([anc(objet+'\\n'+TEL),C.parse(evt(objet+'\\n'+TEL2)).events[0]]);await bouton().click();assert.equal(stored().length,1,'sans choix : valeur de la version gardée, aucune perte de groupe');
+  // R3 : un autre onglet ajoute un autre groupe entre l'affichage et le clic → rien n'est retiré, aucune écriture
+  seedUi([anc(objet),anc(objet+'\\n'+TEL)]);const w0=writes;
+  const autre=(d)=>C.parse(ics(['UID:r2\r\nCATEGORIES:ACTION-FICTIVE\r\nDTSTART:20261126T093000\r\nDTEND:20261126T103000\r\nSUMMARY:FICTIF Autre\r\nLOCATION:CMS fictif\r\nDESCRIPTION:'+d])).events.map(e=>({...e,key:'gdin:'+JSON.stringify(['r2','ACTION-FICTIVE',e.start,e.end,e.title,e.location,'description:'+e.description])}))[0];
+  const concurrent=[...stored(),autre('Autre objet'),autre('Autre objet\\n'+TEL)];storage.setItem(ui.key,JSON.stringify({version:1,events:concurrent}));
+  await bouton().click();assert.equal(writes,w0,'R3 : aucune écriture');assert.equal(stored().length,4,'R3 : rien retiré');assert(pane.textContent.includes('Le calendrier a changé'),'R3 : message clair');
+  // R3 : refus de la confirmation → aucune écriture
+  seedUi([anc(objet),anc(objet+'\\n'+TEL)]);const w1=writes;doc.defaultView.confirm=()=>false;await bouton().click();doc.defaultView.confirm=()=>true;assert.equal(writes,w1,'refus : sans écriture');assert.equal(stored().length,2);
+  // R3 : applyDuplicates refuse un élément figé qui a changé
+  const g=C.duplicates([anc(objet),anc(objet+'\\n'+TEL)]);assert.throws(()=>C.applyDuplicates([anc(objet),{...anc(objet+'\\n'+TEL),cancelled:true}],g),/a changé/);
+ }
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
