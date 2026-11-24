@@ -149,5 +149,30 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
  const objectChip=nodes(pane,n=>n.tagName==='button'&&(n.className||'').split(' ').includes('ics-event')&&n.textContent.includes('Demande de logement social'))[0];assert(objectChip,'objet brut présent dans la tuile par le vrai import');assert(!objectChip.textContent.includes('ACTION-OBJET-FICTIF'));await objectChip.click();const objectDialog=nodes(pane,n=>n.tagName==='dialog'&&n.open)[0];assert.equal(nodes(objectDialog,n=>n.tagName==='h3')[0].textContent,'Demande de logement social');const dateParagraphs=nodes(objectDialog,n=>n.tagName==='p'&&n.textContent.includes('vendredi'));assert.equal(dateParagraphs.length,1);assert.equal((dateParagraphs[0].textContent.match(/vendredi/g)||[]).length,1,'date non répétée sur une même journée');assert(!nodes(objectDialog,n=>n.tagName==='p'&&n.textContent.includes('Action ACTION-OBJET-FICTIF')).length);await byText('Fermer').click();
  const objectFilter=nodes(pane,n=>n.tagName==='select'&&n.attrs['aria-label']==='Objet')[0];objectFilter.value='Demande de logement social';await objectFilter.fire('change');assert.equal(nodes(pane,n=>n.tagName==='button'&&(n.className||'').split(' ').includes('ics-event')).length,1);await byText('Réinitialiser les filtres').click();
  assert.equal(JSON.stringify(hist),histBefore,'historique métier inchangé');profile='autre';C.render(pane,{...ui,profileId:'autre'});assert(!pane.textContent.includes('<img'),'cloisonnement des profils');
+ /* AG-035 : réimport enrichi (téléphone, e-mail) sans doublon ; doublons déjà créés proposés au retrait, jamais retirés d'office. */
+ {const objet='Demande de logement social',TEL='Téléphone : 06 00 00 00 01',MAIL='E-mail : fictif@example.invalid';
+  const ag=(desc,x={})=>ics(['UID:'+(x.uid||'ag035')+'\r\nCATEGORIES:ACTION-FICTIVE\r\nDTSTART:20261125T093000\r\nDTEND:20261125T103000\r\nSUMMARY:'+(x.titre||'FICTIF Personne')+'\r\nLOCATION:'+(x.lieu||'CMS fictif')+'\r\nDESCRIPTION:'+desc]);
+  const lire=(t)=>C.parse(t).events;
+  const ancien=C.merge([],lire(ag(objet))).events;
+  // 1 réimport avec contacts : même inscription, mise à jour, description complétée
+  let r=C.merge(ancien,lire(ag(objet+'\\n'+TEL+'\\n'+MAIL)));assert.equal(r.events.length,1,'AG-035 : pas de seconde inscription');assert.equal(r.added,0);assert.equal(r.updated,1);
+  assert(r.events[0].description.includes(TEL)&&r.events[0].description.includes(MAIL),'contacts reportés');
+  assert.equal(C.merge(r.events,lire(ag(objet+'\\n'+TEL+'\\n'+MAIL))).unchanged,1,'même fichier : inchangé');
+  // 2 contacts déjà présents jamais écrasés ni perdus par un export sans contacts ; un contact absent s'ajoute, un contact présent n'est pas remplacé
+  let r2=C.merge(r.events,lire(ag(objet)));assert(r2.events[0].description.includes(TEL)&&r2.events[0].description.includes(MAIL),'contacts conservés');assert.equal(r2.events.length,1);
+  let r3=C.merge(r.events,lire(ag(objet+'\\nTéléphone : 07 00 00 00 02')));assert(r3.events[0].description.includes('07 00 00 00 02')&&!r3.events[0].description.includes('06 00 00 00 01'),'valeur de l’export courant');assert(r3.events[0].description.includes(MAIL),'e-mail absent de l’export conservé');
+  // 3 un objet différent reste une autre inscription
+  assert.equal(C.merge(ancien,lire(ag('Autre objet fictif\\n'+TEL))).events.length,2,'objet différent = autre identité');
+  // 4 doublons déjà créés (ancienne règle) : ancienne clé avec contacts dans la description
+  const dupliques=ancien.concat(lire(ag(objet+'\\n'+TEL+'\\n'+MAIL)).map(e=>({...e,key:'gdin:'+JSON.stringify(['ag035','ACTION-FICTIVE',e.start,e.end,e.title,e.location,'description:'+e.description])})));
+  assert.equal(dupliques.length,2);const d=C.duplicates(dupliques);assert.equal(d.length,1,'un groupe');assert.equal(d[0].remove.length,1);
+  assert(d[0].keep.description.includes(TEL),'garde la version avec contacts');assert(!d[0].remove[0].description.includes(TEL),'propose l’ancienne');
+  assert.equal(dupliques.length,2,'duplicates() ne retire rien');
+  assert.equal(C.duplicates(ancien).length,0,'aucun doublon sans cause');assert.equal(C.duplicates([ancien[0],lire(ag('Autre objet fictif'))[0]]).length,0);
+  // 5 à contacts égaux : garde la clé canonique (celle qu'un réimport retrouve)
+  const egaux=[{...dupliques[1]},{...lire(ag(objet+'\\n'+TEL+'\\n'+MAIL))[0]}];const d2=C.duplicates(egaux);assert.equal(d2.length,1);assert.equal(d2[0].keep.key,egaux[1].key,'clé canonique gardée');
+  // 6 avec ligne « Participant : » l'identité ne change pas
+  assert.equal(C.merge(C.merge([],lire(ag('Participant : FICTIF Personne\\n'+objet))).events,lire(ag('Participant : FICTIF Personne\\n'+objet+'\\n'+TEL))).events.length,1);
+ }
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
