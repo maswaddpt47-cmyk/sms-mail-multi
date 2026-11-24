@@ -35,6 +35,9 @@
   function stripContacts(desc){return String(desc||'').split('\n').filter(function(l){return !contactKind(l);}).join('\n');}
   function contactLines(desc){return String(desc||'').split('\n').filter(function(l){return !!contactKind(l);});}
   function contactLabel(l){return contactKind(l);}
+  // Coordonnées affichées dans le détail (25/11) : texte seul ; un lien tel:/mailto: n'est posé que si la valeur a exactement la forme d'un numéro ou d'une adresse.
+  function contactItems(members){var out=[];members.forEach(function(m){contactLines(m.description).forEach(function(l){var kind=contactKind(l),v=(LABELED_CONTACT.test(l)?l.slice(l.indexOf(':')+1):l).trim(),href='';
+    if(kind==='tel'&&isBarePhone(v))href='tel:'+v.replace(/[^\d+]/g,'');else if(kind==='mail'&&isBareMail(v))href='mailto:'+v;out.push({who:m.title,kind:kind,value:v,href:href});});});return out;}
   // Complète une description mise à jour avec les lignes de contact de l'ancienne version absentes de la nouvelle : jamais d'écrasement.
   function completeContacts(oldDesc,newDesc){var have=contactLines(newDesc).map(contactLabel),add=contactLines(oldDesc).filter(function(l){return have.indexOf(contactLabel(l))<0;});return add.length?(newDesc?newDesc+'\n':'')+add.join('\n'):newDesc;}
   function parse(text){
@@ -287,6 +290,8 @@
       
       if(e.location)body.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){body.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});body.appendChild(list);}
+      var coords=contactItems(e.members);if(coords.length){body.appendChild(node('h4',{},'Coordonnées'));var coordList=node('ul',{class:'ics-participants'});
+        coords.forEach(function(c){var li=node('li',{},(e.members.length>1?c.who+' : ':'')+(c.kind==='tel'?'Téléphone ':'E-mail '));li.appendChild(c.href?node('a',{href:c.href},c.value):doc.createTextNode(c.value));coordList.appendChild(li);});body.appendChild(coordList);}
       if(e.members.length>1){var diff=differences(e.members);body.appendChild(node('p',{class:'ics-help'},'Ces '+e.members.length+' inscriptions diffèrent par : '+(diff.length?diff.join(' ; '):'rien (copies identiques)')+'.'));}
       var importDetails=node('details',{class:'ics-import-details'});importDetails.appendChild(node('summary',{},'Détails de l’import'));
       e.members.forEach(function(m){var original=node('details',{class:'ics-original'});original.appendChild(node('summary',{},'Inscription originale : '+m.title));var meta=metadata(m);if(meta.uid)original.appendChild(node('p',{},'Demande (UID) : '+meta.uid));original.appendChild(node('pre',{class:'ics-description'},m.description||'Aucune description dans le fichier.'));importDetails.appendChild(original);});body.appendChild(importDetails);
@@ -326,5 +331,5 @@
   }
   // AG-032 : après une restauration, un aperçu d'import en attente est abandonné (il visait l'ancien calendrier).
   function forget(profileId){if(states[profileId]){states[profileId].preview=null;states[profileId].message='';}}
-  return {forget:forget,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {forget:forget,contactItems:contactItems,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
