@@ -113,6 +113,18 @@
   // AG-035 : inscriptions de même identité une fois les contacts écartés (doublons créés avant ce correctif). Rien n'est retiré ici.
   // La version gardée a le plus de lignes de contact, puis la clé canonique, puis la dernière. Les contacts des versions écartées sont
   // reportés sur elle (R2) ; deux valeurs différentes pour un même champ sont un conflit à trancher par l'utilisateur, jamais un choix silencieux.
+  // Diagnostic (24/11/2026) : NOMS des champs qui distinguent des inscriptions regroupées, jamais leurs valeurs (aucune donnée d'usager affichée).
+  function differences(members){var out=[],a=members[0],ma=metadata(a);
+    function add(x){if(out.indexOf(x)<0)out.push(x);}
+    function lines(d){return String(d||'').split('\n').map(function(l){return l.trim();}).filter(Boolean);}
+    function lab(l){var m=/^([A-Za-zÀ-ÿ' .\-]{1,30})\s*:/.exec(l);return m?m[1].trim():'ligne sans libellé';}
+    members.slice(1).forEach(function(b){var mb=metadata(b);
+      if(ma.uid!==mb.uid)add('UID');if(ma.action!==mb.action)add('action (CATEGORIES)');if(a.start!==b.start)add('début');if(a.end!==b.end)add('fin');
+      if(a.title!==b.title)add('titre');if(a.location!==b.location)add('lieu');if(a.cancelled!==b.cancelled)add('statut annulé');
+      if(a.description!==b.description){var la=lines(a.description),lb=lines(b.description),d=[];
+        la.filter(function(l){return lb.indexOf(l)<0;}).concat(lb.filter(function(l){return la.indexOf(l)<0;})).forEach(function(l){var x=lab(l);if(d.indexOf(x)<0)d.push(x);});
+        add('description ('+(d.length?'lignes : '+d.join(', '):'ordre ou espaces seulement')+')');}});
+    return out;}
   function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+stripContacts(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
   function contactValue(l){return l.slice(l.indexOf(':')+1).toLowerCase().replace(/[\s.\-]/g,'');}
   function duplicates(events){var groups=new Map();events.forEach(function(e,i){if(e.key.indexOf('gdin:')!==0)return;var k=normKey(e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({e:e,i:i});});var out=[];
@@ -271,6 +283,7 @@
       
       if(e.location)body.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){body.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});body.appendChild(list);}
+      if(e.members.length>1){var diff=differences(e.members);body.appendChild(node('p',{class:'ics-help'},'Ces '+e.members.length+' inscriptions diffèrent par : '+(diff.length?diff.join(' ; '):'rien (copies identiques)')+'.'));}
       var importDetails=node('details',{class:'ics-import-details'});importDetails.appendChild(node('summary',{},'Détails de l’import'));
       e.members.forEach(function(m){var original=node('details',{class:'ics-original'});original.appendChild(node('summary',{},'Inscription originale : '+m.title));var meta=metadata(m);if(meta.uid)original.appendChild(node('p',{},'Demande (UID) : '+meta.uid));original.appendChild(node('pre',{class:'ics-description'},m.description||'Aucune description dans le fichier.'));importDetails.appendChild(original);});body.appendChild(importDetails);
       var remove;if(!readOnly){remove=button('Retirer cet événement importé',function(){if(!win.confirm('Retirer cet événement et ses '+e.members.length+' inscription(s) du calendrier local ? Le fichier ICS d’origine n’est pas modifié.'))return;try{var current=load(ctx.storage,ctx.key),keys=new Set(e.members.map(function(m){return m.key;}));save(ctx,current.events.filter(function(x){return !keys.has(x.key);}),current.raw);dismiss();st.message='Événement retiré du calendrier local.';rerender();}catch(err){st.message=err.message;dismiss();rerender();}});body.appendChild(remove);}
@@ -309,5 +322,5 @@
   }
   // AG-032 : après une restauration, un aperçu d'import en attente est abandonné (il visait l'ancien calendrier).
   function forget(profileId){if(states[profileId]){states[profileId].preview=null;states[profileId].message='';}}
-  return {forget:forget,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {forget:forget,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
