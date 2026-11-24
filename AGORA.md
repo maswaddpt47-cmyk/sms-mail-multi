@@ -130,7 +130,7 @@ récit reste dans `git log`.
 **Contradicteur** : Codex (répond seul au « pull » de l'utilisateur, `AGENTS.md`)
 **Ce que ça engage** : une inscription déjà stockée dont la description contient des contacts garde son ancienne clé (non réécrite) ; un réimport retombe sur la clé canonique (sans contacts) ; le retrait supprime des lignes du calendrier local (le fichier ICS d'origine reste la source). Décisions de l'utilisateur (24/11) : « fiche » = l'inscription du Calendrier ; garder la plus récente (celle avec téléphone et mail), proposer le retrait de l'ancienne.
 **Non vérifié par l'auteur** : (a) forme réelle des libellés de contact (« Téléphone », « E-mail », variantes) : lignes reconnues seulement avec ces libellés, sur ICS fictif ; (b) une description réellement différente (objet changé) reste une autre identité, voulu ; (c) deux personnes homonymes au même créneau sans ligne « Participant : » restent confondues si leurs descriptions ne diffèrent que par les contacts (limite à discuter) ; (d) aucun fichier réel lu.
-**Si personne ne répond, je fais quoi ?** — je livre après tests (mutations) ; une seule vérification de Codex ensuite (règle 58).
+**Si personne ne répond, je fais quoi ?** — livré le 24/11 (tests et six mutations) ; une seule vérification de Codex ensuite (règle 58).
 **Où regarder** : `calendar.js` (construction de la clé ≈ l.49-54, `merge` ≈ l.96, volet des doublons ≈ l.167), `scripts/check-calendar.js`.
 
 Aucun.
