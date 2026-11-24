@@ -27,10 +27,14 @@
     var left=line.slice(0,cut).split(';'),p={name:left.shift().toUpperCase(),params:{},value:line.slice(cut+1)};
     left.forEach(function(x){var i=x.indexOf('=');if(i>0)p.params[x.slice(0,i).toUpperCase()]=x.slice(i+1).replace(/^"|"$/g,'');});return p;}
   // AG-035 : les lignes Téléphone / E-mail de la description n'entrent pas dans l'identité d'une inscription.
-  var CONTACT_LINE=/^\s*(?:t[ée]l(?:[ée]phone)?\.?|e-?mail|mail|courriel)\s*:/i;
-  function stripContacts(desc){return String(desc||'').split('\n').filter(function(l){return !CONTACT_LINE.test(l);}).join('\n');}
-  function contactLines(desc){return String(desc||'').split('\n').filter(function(l){return CONTACT_LINE.test(l);});}
-  function contactLabel(l){return l.split(':')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/gi,'').toLowerCase();}
+  var LABELED_CONTACT=/^\s*(t[ée]l(?:[ée]phone)?\.?|e-?mail|mail|courriel)\s*:/i;
+  // AG-035 (25/11) : l'export réel met aussi le numéro ou l'adresse SEULS sur leur ligne (diagnostic de l'utilisateur : « ligne sans libellé »).
+  function isBareMail(l){return /^\s*[^\s@:]+@[^\s@:]+\.[^\s@:]+\s*$/.test(l);}
+  function isBarePhone(l){var t=String(l).trim();return /^[\d\s.\-()+]+$/.test(t)&&/^(?:\+\d{8,14}|00\d{8,14}|0\d{9})$/.test(t.replace(/[\s.\-()]/g,''));}
+  function contactKind(l){var m=LABELED_CONTACT.exec(l);if(m)return /^t/i.test(m[1])?'tel':'mail';if(isBareMail(l))return 'mail';if(isBarePhone(l))return 'tel';return '';}
+  function stripContacts(desc){return String(desc||'').split('\n').filter(function(l){return !contactKind(l);}).join('\n');}
+  function contactLines(desc){return String(desc||'').split('\n').filter(function(l){return !!contactKind(l);});}
+  function contactLabel(l){return contactKind(l);}
   // Complète une description mise à jour avec les lignes de contact de l'ancienne version absentes de la nouvelle : jamais d'écrasement.
   function completeContacts(oldDesc,newDesc){var have=contactLines(newDesc).map(contactLabel),add=contactLines(oldDesc).filter(function(l){return have.indexOf(contactLabel(l))<0;});return add.length?(newDesc?newDesc+'\n':'')+add.join('\n'):newDesc;}
   function parse(text){
@@ -117,7 +121,7 @@
   function differences(members){var out=[],a=members[0],ma=metadata(a);
     function add(x){if(out.indexOf(x)<0)out.push(x);}
     function lines(d){return String(d||'').split('\n').map(function(l){return l.trim();}).filter(Boolean);}
-    function lab(l){var m=/^([A-Za-zÀ-ÿ' .\-]{1,30})\s*:/.exec(l);return m?m[1].trim():'ligne sans libellé';}
+    function lab(l){var k=contactKind(l);if(k)return (/^\s*[A-Za-zÀ-ÿ.\-]+\s*:/.test(l)?'':'sans libellé, ')+(k==='tel'?'numéro de téléphone':'adresse e-mail');var m=/^([A-Za-zÀ-ÿ' .\-]{1,30})\s*:/.exec(l);return m?'libellé « '+m[1].trim()+' »':'texte libre sans libellé';}
     members.slice(1).forEach(function(b){var mb=metadata(b);
       if(ma.uid!==mb.uid)add('UID');if(ma.action!==mb.action)add('action (CATEGORIES)');if(a.start!==b.start)add('début');if(a.end!==b.end)add('fin');
       if(a.title!==b.title)add('titre');if(a.location!==b.location)add('lieu');if(a.cancelled!==b.cancelled)add('statut annulé');
@@ -126,7 +130,7 @@
         add('description ('+(d.length?'lignes : '+d.join(', '):'ordre ou espaces seulement')+')');}});
     return out;}
   function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+stripContacts(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
-  function contactValue(l){return l.slice(l.indexOf(':')+1).toLowerCase().replace(/[\s.\-]/g,'');}
+  function contactValue(l){return (LABELED_CONTACT.test(l)?l.slice(l.indexOf(':')+1):l).toLowerCase().replace(/[\s.\-()]/g,'');}
   function duplicates(events){var groups=new Map();events.forEach(function(e,i){if(e.key.indexOf('gdin:')!==0)return;var k=normKey(e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({e:e,i:i});});var out=[];
     groups.forEach(function(g,k){if(g.length<2)return;var best=g.slice().sort(function(a,b){return contactLines(b.e.description).length-contactLines(a.e.description).length||(b.e.key===k)-(a.e.key===k)||b.i-a.i;})[0];
       var keep=best.e,remove=g.filter(function(x){return x!==best;}).map(function(x){return x.e;}),labels=[],byLabel={};
