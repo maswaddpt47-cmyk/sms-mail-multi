@@ -206,10 +206,24 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
  }
  /* Diagnostic : noms de champs seulement, jamais de valeur. */
  {const mk=(x)=>C.parse(ics(['UID:'+(x.uid||'d1')+'\r\nCATEGORIES:ACTION-D\r\nDTSTART:20261125T093000\r\nDTEND:20261125T103000\r\nSUMMARY:'+(x.titre||'FICTIF Personne')+'\r\nLOCATION:CMS fictif\r\nDESCRIPTION:'+(x.desc||'Objet fictif')])).events[0];
-  const d1=C.differences([mk({}),mk({desc:'Objet fictif\\nTéléphone : 06 99 99 99 99'})]);assert.deepEqual(d1,['description (lignes : Téléphone)']);
+  const d1=C.differences([mk({}),mk({desc:'Objet fictif\\nTéléphone : 06 99 99 99 99'})]);assert.deepEqual(d1,['description (lignes : numéro de téléphone)']);
   const d2=C.differences([mk({}),mk({uid:'d2',titre:'FICTIF Autre'})]);assert(d2.includes('UID')&&d2.includes('titre'));
-  const d3=C.differences([mk({}),mk({desc:'Autre ligne fictive 0612345678'})]);assert.deepEqual(d3,['description (lignes : ligne sans libellé)']);
+  const d3=C.differences([mk({}),mk({desc:'Autre ligne fictive 0612345678'})]);assert.deepEqual(d3,['description (lignes : texte libre sans libellé)']);
   assert(!JSON.stringify([d1,d2,d3]).includes('9999')&&!JSON.stringify(d3).includes('0612345678')&&!JSON.stringify(d3).includes('Autre ligne'),'aucune valeur dans le diagnostic');
   assert.deepEqual(C.differences([mk({}),mk({})]),[]);}
+ /* Numéro et adresse SEULS sur leur ligne (forme de l'export réel, d'après le diagnostic de l'utilisateur) : même identité, même nettoyage. */
+ {const objet='Demande de logement social',P='06 12 34 56 78',M='fictif@example.invalid';
+  const e=(d,x={})=>C.parse(ics(['UID:b1\r\nCATEGORIES:ACTION-B\r\nDTSTART:20261125T093000\r\nDTEND:20261125T103000\r\nSUMMARY:FICTIF Personne\r\nLOCATION:CMS fictif\r\nDESCRIPTION:'+d])).events[0];
+  const ancien=C.merge([],[e(objet)]).events;
+  const r=C.merge(ancien,[e(objet+'\\n'+P+'\\n'+M)]);assert.equal(r.events.length,1,'numéro et adresse seuls : pas de seconde inscription');assert.equal(r.updated,1);assert(r.events[0].description.includes(P)&&r.events[0].description.includes(M));
+  assert.deepEqual(C.differences([e(objet),e(objet+'\\n'+P+'\\n'+M)]),['description (lignes : sans libellé, numéro de téléphone, sans libellé, adresse e-mail)']);
+  assert(!JSON.stringify(C.differences([e(objet),e(objet+'\\n'+P+'\\n'+M)])).includes('12 34'),'aucune valeur montrée');
+  // formes de numéro reconnues / refusées
+  assert.equal(C.stripContacts('Objet\n+33 6 12 34 56 78\n0612345678\n06.12.34.56.78'),'Objet');assert.equal(C.stripContacts('Objet\n25/11/2026\n2026\nDossier 0612345678\n123456789'),'Objet\n25/11/2026\n2026\nDossier 0612345678\n123456789','dates, années, numéros dans une phrase : jamais retirés');
+  // doublons déjà créés avec lignes sans libellé : groupés, contacts reportés, conflit montré
+  const anc=(d)=>({...e(d),key:'gdin:'+JSON.stringify(['b1','ACTION-B',e(d).start,e(d).end,'FICTIF Personne','CMS fictif','description:'+e(d).description])});
+  const g=C.duplicates([anc(objet),anc(objet+'\\n'+P+'\\n'+M)]);assert.equal(g.length,1);assert.equal(g[0].conflicts.length,0);
+  const g2=C.duplicates([anc(objet+'\\n'+P),anc(objet+'\\nTéléphone : 07 00 00 00 02')]);assert.equal(g2.length,1);assert.equal(g2[0].conflicts.length,1,'numéro seul et numéro libellé de même nature, valeurs différentes : conflit');
+  const g3=C.duplicates([anc(objet+'\\n'+P),anc(objet+'\\nTéléphone : 06 12 34 56 78')]);assert.equal(g3[0].conflicts.length,0,'même numéro, formes différentes : pas de conflit');}
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
