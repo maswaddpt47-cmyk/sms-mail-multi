@@ -1153,7 +1153,7 @@ var S={
   nv:{nom:"",valeur:""},
   nc:{nom:"",adresse:""}, ns:"", nd:{nom:"",docs:"",theme:""}, editTheme:null, demSearch:"", editDem:null, editHistIdx:null, editHistBody:"", editHistNotes:"", editHistDateDemande:"", editHistDateReception:"", editHistReceptionInit:"", editHistReprise:"", editHistTel:"", genNotes:"",
   editCms:null, editSect:null, editVar:null, editTpl:null,
-  exportText:"", importText:"", importError:"",
+  exportText:"", importText:"", importError:"", importEnAttente:null,
   copied:{}, toast:null,
   mandatSource:"",
   mandatCivilite:"", mandatPrenom:"", mandatNom:"", mandatCommune:"", mandatNum:"",  helpMandatOpen:false,
@@ -2557,7 +2557,7 @@ function openExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){
 function downloadExport(){var d=exportData();if(!sauvegardeFiable(S.activeProfile)){showToast(MSG_SAUVEGARDE_REFUSEE,'warn');return;}var blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ess-cms-sauvegarde-'+jourParis()+'.json';a.click();URL.revokeObjectURL(a.href);_couvert[S.activeProfile]=couvertDe(S.activeProfile)+(parseInt(localStorage.getItem(pk('since-export'))||'0',10)||0);localStorage.setItem(pk('since-export'),'0');showToast("✓ Fichier téléchargé");}
 function copyExport(){doCopy(S.exportText).then(function(ok){if(ok){flashCopied('export');showToast("Sauvegarde copiée");}});}
 function openImport(){S.modal='import';S.importText="";S.importError="";renderModal();}
-function closeModal(){S.modal=null;renderModal();}
+function closeModal(){if(S.importEnAttente){S.importEnAttente=null;S.importText="";S.importError="";}S.modal=null;renderModal();}   /* fermer la confirmation d'import (✕, fond) = Annuler : rien n'est modifié */
 /* AG-013, étape 2 : la sauvegarde est vérifiée entièrement, puis appliquée en une fois (ecrireTout) ; en cas d'échec rien n'est
    modifié, ni en mémoire ni dans le stockage, et aucun succès n'est annoncé. Renvoie true seulement si tout est enregistré. */
 var IMPORT_LISTES=['cmsList','demarches','secteurs','customTemplates','customVars','mandats','history','permanences','orientations'];
@@ -2580,6 +2580,35 @@ function verifierSauvegarde(data){
   /* AG-032 : champ présent = calendrier complet à restaurer ; null ou invalide → import refusé (Q2) */
   if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&(!data.calendarIcs||typeof data.calendarIcs!=='object'||calendrierInvalide(JSON.stringify(data.calendarIcs))))return 'Sauvegarde invalide (calendrier illisible).';
   return '';
+}
+/* Confirmation avant import JSON (25/11/2026, demande de l'utilisateur) : le fichier est lu et vérifié d'abord (JSON ou sauvegarde invalide
+   = rejet immédiat, aucune confirmation, aucune donnée modifiée) ; sa nature est ensuite montrée avec le nom du profil visé, le
+   remplacement annoncé et la proposition d'exporter l'état actuel. Rien n'est écrit avant « Remplacer » ; Annuler, ✕ et le fond de la fenêtre
+   ne modifient rien. Les réglages communs (CMS, démarches, secteurs, modèles, variables, mandats) sont communs à tous les profils : ils sont nommés. */
+var IMPORT_COMMUNS=[['cmsList','CMS'],['demarches','démarches'],['secteurs','secteurs'],['customTemplates','modèles personnalisés'],['customVars','variables'],['mandats','mandats']];
+function resumeImport(data){
+  function n(o,k){var v=o&&o[k];if(k==='history'&&Array.isArray(v))return v.filter(function(h){return !h||h.msgType!=='indispo';}).length;   /* pauses et blocages automatiques : pas des fiches */
+    return Array.isArray(v)?v.length:(v&&typeof v==='object'?Object.keys(v).length:0);}
+  var cur=exportData(),prof=PROFILES.filter(function(x){return x.id===S.activeProfile;})[0];
+  return {profil:S.activeProfile,nom:prof?prof.nom:S.activeProfile,
+    lignes:[['Fiches','history'],['Journées','permanences'],['Orientations','orientations'],['Années archivées','yearlyStats']].map(function(c){return {libelle:c[0],actuel:n(cur,c[1]),fichier:data[c[1]]==null?null:n(data,c[1])};}),
+    calendrier:Object.prototype.hasOwnProperty.call(data,'calendarIcs')?'remplacé':'conservé',
+    communs:IMPORT_COMMUNS.filter(function(c){return data[c[0]]!=null;}).map(function(c){return c[1];})};
+}
+function demanderImport(){
+  var data;
+  try{data=JSON.parse(String(S.importText||'').trim());}catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";showToast('❌ JSON invalide : aucune donnée modifiée','err');renderModal();return false;}
+  var erreur=verifierSauvegarde(data);
+  if(erreur){S.importError='❌ '+erreur+' Aucune donnée modifiée.';showToast('❌ '+erreur+' Aucune donnée modifiée.','err');renderModal();return false;}
+  S.importError="";S.importEnAttente={ctx:contexteFige(),resume:resumeImport(data)};S.modal='import-confirm';renderModal();return true;
+}
+function annulerImport(){S.importEnAttente=null;S.importText="";S.importError="";S.modal=null;renderModal();showToast('Import annulé : aucune donnée modifiée');}
+function confirmerImport(){
+  var att=S.importEnAttente;if(!att)return false;
+  if(!contexteIntact(att.ctx)){S.importEnAttente=null;S.importText="";S.modal=null;renderModal();refusContexte('l\'import');return false;}   /* profil changé depuis la demande : rien n'est écrit */
+  S.importEnAttente=null;
+  if(doImport())return true;
+  return false;
 }
 function doImport(){
   var data;ecrireTout.incoherent=false;
@@ -8254,7 +8283,7 @@ function renderModal(){
     box.appendChild(el('div',{style:"font-size:11px;font-weight:700;color:var(--c-muted);letter-spacing:.04em;margin-top:6px;"},'FICHIER LOCAL'));
     box.appendChild(dataBtn('⬇️ Exporter JSON','oklch(0.5 0.16 266)','#fff','none',function(){closeModal();downloadExport();}));
     var fileIn2=el('input',{type:'file',accept:'.json,application/json',style:"display:none;"});
-    fileIn2.addEventListener('change',function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var ctxDepart=contexteFige();var r=new FileReader();r.onload=function(ev){if(!contexteIntact(ctxDepart)){refusContexte('la lecture du fichier');return;}S.importText=ev.target.result;doImport();};r.readAsText(f);});
+    fileIn2.addEventListener('change',function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var ctxDepart=contexteFige();var r=new FileReader();r.onload=function(ev){if(!contexteIntact(ctxDepart)){refusContexte('la lecture du fichier');return;}S.importText=ev.target.result;demanderImport();};r.readAsText(f);});
     var impLbl=el('label',{style:"cursor:pointer;display:block;"});
     impLbl.appendChild(fileIn2);
     impLbl.appendChild(dataBtn('⬆️ Importer JSON','var(--c-card)','var(--c-dim)','1px solid var(--c-border)',function(){fileIn2.click();}));
@@ -8284,16 +8313,33 @@ function renderModal(){
     br.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:none;background:oklch(0.2 0.02 264);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){S.modal=null;renderModal();githubPush();}},"☁️ GitHub"));
     box.appendChild(br);
   }
+  else if(S.modal==='import-confirm'&&S.importEnAttente){
+    var rs=S.importEnAttente.resume;
+    box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmer le remplacement des données');
+    box.appendChild(header('⚠️ Remplacer les données de '+rs.nom+' ?'));
+    box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:13px;color:oklch(0.4 0.09 70);line-height:1.6;"},"L'import va REMPLACER les données du profil « "+rs.nom+" » par celles du fichier. Les données actuelles de ce profil seront perdues si elles ne sont pas exportées avant."));
+    var lg=el('ul',{style:"margin:0;padding-left:18px;font-size:13px;line-height:1.7;"});
+    rs.lignes.forEach(function(l){lg.appendChild(el('li',{},l.libelle+' : '+l.actuel+' actuellement → '+(l.fichier==null?'inchangé (absent du fichier)':l.fichier+' dans le fichier')));});
+    lg.appendChild(el('li',{},'Calendrier : '+rs.calendrier+(rs.calendrier==='conservé'?' (le fichier n\'en contient pas)':' par celui du fichier')));
+    box.appendChild(lg);
+    box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},rs.communs.length?'Réglages communs à tous les profils, remplacés aussi : '+rs.communs.join(', ')+'.':'Aucun réglage commun dans ce fichier : ils restent inchangés.'));
+    box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},"Les fiches des autres profils ne sont pas touchées. Le thème et les délais d'alerte ne font pas partie de la sauvegarde : ils ne changent pas."));
+    box.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;font-family:inherit;border:1.5px solid oklch(0.7 0.1 155);background:oklch(0.94 0.06 155);color:oklch(0.38 0.12 155);font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){downloadExport();}},"⬇️ Exporter d'abord l'état actuel de "+rs.nom));
+    var cb=el('div',{style:"display:flex;gap:10px;"});
+    cb.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:annulerImport},"Annuler"));
+    cb.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:none;background:oklch(0.5 0.16 25);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:confirmerImport},"Remplacer les données de "+rs.nom));
+    box.appendChild(cb);
+  }
   else if(S.modal==='import'){
     box.appendChild(header("Importer une sauvegarde"));
-    box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:12.5px;color:oklch(0.46 0.09 70);line-height:1.55;"},"⚠️ L'import remplacera toutes vos données actuelles."));
+    box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:12.5px;color:oklch(0.46 0.09 70);line-height:1.55;"},"⚠️ L'import remplacera les données du profil actif : une confirmation vous sera demandée avant toute modification."));
     // File picker button
     var fileIn=el('input',{type:'file',accept:'.json,application/json',style:"display:none;"});
     fileIn.addEventListener('change',function(e){
       var f=e.target.files&&e.target.files[0];
       if(!f)return;
       var ctxDepart=contexteFige();var reader=new FileReader();
-      reader.onload=function(ev){if(!contexteIntact(ctxDepart)){refusContexte('la lecture du fichier');return;}S.importText=ev.target.result;doImport();};
+      reader.onload=function(ev){if(!contexteIntact(ctxDepart)){refusContexte('la lecture du fichier');return;}S.importText=ev.target.result;demanderImport();};
       reader.readAsText(f);
     });
     var fileLbl=el('label',{style:"display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:inherit;background:oklch(0.96 0.025 266);color:oklch(0.42 0.14 266);font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;border:1.5px dashed oklch(0.7 0.1 266);"},"📂 Choisir un fichier JSON");
@@ -8303,7 +8349,7 @@ function renderModal(){
     box.appendChild(el('div',{style:"display:flex;align-items:center;gap:8px;color:var(--c-muted);font-size:12px;"},[el('hr',{style:"flex:1;border:none;border-top:1px solid var(--c-border);"}),document.createTextNode("ou coller le contenu"),el('hr',{style:"flex:1;border:none;border-top:1px solid var(--c-border);"})]));
     var ita=el('textarea',{placeholder:'{ "cmsList": [...], "demarches": [...] }',class:'gx-scroll',style:"width:100%;height:160px;font-family:ui-monospace,monospace;font-size:11px;border:1.5px solid var(--c-border-in);border-radius:12px;padding:12px;resize:none;color:var(--c-dim);background:var(--c-card);",onInput:function(e){S.importText=e.target.value;}});ita.value=S.importText;box.appendChild(ita);
     var ibr=el('div',{style:"display:flex;gap:10px;"});
-    ibr.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:doImport},"Importer fichier"));
+    ibr.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:none;background:oklch(0.5 0.16 266);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:demanderImport},"Importer fichier"));
     ibr.appendChild(el('button',{class:'gx-press',style:"cursor:pointer;flex:1;font-family:inherit;border:none;background:oklch(0.2 0.02 264);color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:12px;",onClick:function(){S.modal='gh-restore';renderModal();}},"☁️ Restaurer GitHub"));
     box.appendChild(ibr);
     if(S.importError)box.appendChild(el('div',{style:"color:oklch(0.55 0.16 25);font-size:12.5px;font-weight:600;text-align:center;"},S.importError));
