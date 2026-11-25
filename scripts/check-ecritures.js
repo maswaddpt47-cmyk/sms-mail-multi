@@ -1034,6 +1034,33 @@ async function restaurer(contenu,fonction,options){
   {const e=prepLien([orient('oC')],{id:'oC',nom:'AUTRE',prenom:'Personne'});assert.equal(e.ctx.enregistrerCopie('texte copié').ok,true);
    assert.equal('orientationId' in fLien(e),false,'copie : autre personne, pas de lien');assert.equal(e.S.orientations[0].done,false);}
   console.log('AG-033 : lien orientation → dossier dans la même opération (Générer et copie), panne annulée, fusion sans remplacement silencieux OK.');
+  /* ── Confirmation avant import JSON (25/11/2026) : rien d'écrit avant « Remplacer » ; invalide = rejet sans confirmation ; profil visé figé ── */
+  {const prep=(texte)=>{const e=prepImport(texte);e.ctx.renderModal=()=>{};vm.runInContext(fonction('closeModal'),e.ctx);e.ctx.exportData=()=>({history:e.S.history,permanences:e.S.permanences||[],orientations:e.S.orientations||[],yearlyStats:e.S.yearlyStats||{}});   /* export réel couvert par ailleurs ; ici seul le résumé est éprouvé */e.S.activeProfile='p1';e.ctx.PROFILES=[{id:'p1',nom:'Premier'},{id:'p2',nom:'Second'}];
+     e.st.setItem('ess-p2-history',JSON.stringify([rdv('temoin','2026-09-02','10:30','TEMOIN','T')]));return e;};
+   const bon=JSON.stringify({history:[rdv('neuf','2026-10-01','09:30','NEUF','N')],cmsList:[{id:9,nom:'CMS fictif'}]});
+   // JSON invalide / non-sauvegarde : rejet immédiat, aucune confirmation, aucun enregistrement
+   for(const [texte,motif] of [['{pas du json',/JSON invalide/],[JSON.stringify({history:'pas une liste'}),/liste/],['',/JSON invalide/]]){
+     const e=prep(texte),avant=e.st.etat();assert.equal(e.ctx.demanderImport(),false);assert(!e.S.importEnAttente);assert.notEqual(e.S.modal,'import-confirm');
+     assert.match(e.S.importError,motif);assert.equal(e.st.etat(),avant,'rejet : aucun enregistrement');assert(e.journal.toasts.some(m=>/Aucune donnée modifiée|aucune donnée modifiée/.test(m)),'rejet dit à l\'écran (règle 65)');}
+   // fichier valide : confirmation nommant le profil, rien d'écrit
+   {const e=prep(bon),avant=e.st.etat();assert.equal(e.ctx.demanderImport(),true);assert.equal(e.S.modal,'import-confirm');
+    const r=e.S.importEnAttente.resume;assert.equal(r.nom,'Premier');assert.equal(r.profil,'p1');assert.equal(JSON.stringify(r.communs),'["CMS"]');assert.equal(r.lignes[0].actuel,1);assert.equal(r.lignes[0].fichier,1);assert.equal(r.calendrier,'conservé');
+    assert.equal(e.st.etat(),avant,'demande : aucun enregistrement');assert.equal(e.journal.pushs,0,'demande : aucune sauvegarde automatique');
+    // Annuler : rien ne change, texte oublié
+    e.ctx.annulerImport();assert.equal(e.S.modal,null);assert(!e.S.importEnAttente);assert.equal(e.S.importText,'');assert.equal(e.st.etat(),avant,'Annuler : 12 champs et stockage inchangés');assert.equal(e.S.history.length,1);assert.equal(e.S.history[0].id,'ancien');}
+   // ✕ / fond de la fenêtre = Annuler
+   {const e=prep(bon),avant=e.st.etat();e.ctx.demanderImport();e.ctx.closeModal();assert(!e.S.importEnAttente);assert.equal(e.S.importText,'');assert.equal(e.st.etat(),avant);}
+   // Remplacer : appliqué au profil visé, autre profil préservé
+   {const e=prep(bon),autre=e.st.getItem('ess-p2-history');e.ctx.demanderImport();assert.equal(e.ctx.confirmerImport(),true);
+    assert.equal(JSON.stringify(e.S.history.map(h=>h.id)),'["neuf"]','profil visé remplacé');assert.equal(JSON.parse(e.st.getItem(e.ctx.pk('history')))[0].id,'neuf');assert.equal(e.st.getItem('ess-p2-history'),autre,'fiches de l\'autre profil intactes');assert(!e.S.importEnAttente);}
+   // profil changé entre la demande et « Remplacer » : refus, aucun enregistrement
+   {const e=prep(bon);e.ctx.demanderImport();e.st.setItem('ess-cms-migrated-v2','1');e.S.activeProfile='p2';e.ctx.loadProfileData();const avant=e.st.etat();
+    assert.equal(e.ctx.confirmerImport(),false);assert.equal(e.st.etat(),avant,'profil changé : rien d\'écrit');assert(!e.S.importEnAttente);assert.equal(e.S.importText,'');}
+   // « Remplacer » sans demande préalable : rien
+   {const e=prep(bon),avant=e.st.etat();assert.equal(e.ctx.confirmerImport(),false);assert.equal(e.st.etat(),avant);}
+   // compteur de fiches : pauses automatiques non comptées
+   {const e=prep(JSON.stringify({history:[rdv('a','2026-10-01','09:30','A','A'),{msgType:'indispo',date:'2026-10-01',heure:'12:30',nom:'Pause déjeuner'}]}));e.S.history.push({msgType:'indispo',date:'2026-09-01',heure:'12:30',nom:'Pause'});e.ctx.demanderImport();
+    const l=e.S.importEnAttente.resume.lignes[0];assert.equal(l.actuel,1,'pause actuelle non comptée');assert.equal(l.fichier,1,'pause du fichier non comptée');}}
   console.log('Double réservation : confirmation explicite à la génération et au choix du CMS ou de la date OK.');
   console.log('AG-016 D3 et (D) : anti-doublon par cmsKey, identifiants des nouvelles fiches, repli sûr des localisateurs OK.');
   console.log('Écritures sûres : lsSet, ecrireTout (lecture préalable, retour arrière vérifié), persist, writeProfileHistory et appelants, archivage, import JSON (éléments, réglages, panne à chaque écriture), restaurations (profil figé), planning et ICS avec le vrai addHistory OK.');
