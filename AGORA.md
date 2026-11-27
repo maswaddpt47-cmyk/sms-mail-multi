@@ -123,6 +123,22 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-036 — Calendrier : couleur choisie par l'utilisateur pour chaque objet — ouvert le 27/11/2026
+**Auteur** : session 01Sptc2f — lu sur `45e2b64`
+**Proposition** : sur une tuile, l'utilisateur choisit l'étape (parmi les 9 de `STAGES`) ; le choix est mémorisé **par objet normalisé** (`norm(objectLabel(e))`) et s'applique à toutes les tuiles du même objet, aujourd'hui et aux imports futurs. Priorité : lapin (sans durée) > choix de l'utilisateur > mots-clés > collectif → Atelier > Autre. Les mots-clés restent le défaut ; le volet « Intitulés classés en Autre » ne grossit plus.
+**Critère déclencheur** : 1 (nouveau format localStorage, clé `ess-<profil>-calendar-stage-v1`, + sauvegarde/export), 2 (deux options, une seule écrite : par objet ou par tuile), 5 (contredit la note datée 06/11 « table `STAGES` unique, modifier ici seulement », `calendar.js:153`). Pas de critère 7 : aucun chiffre affiché ne change.
+**Contradicteur** : Codex (auteur Claude → Codex, `agora.md` §12)
+**Ce que ça engage** : un format de stockage et de sauvegarde à garder compatible ; une seconde source de vérité de la couleur à côté de `STAGES` ; un objet mal classé par erreur reste mal classé jusqu'à correction manuelle.
+**Faits vérifiés (27/11)** : l'ICS de GDIN ne contient aucun statut exploitable. `CATEGORIES` est un identifiant numérique (ex. `295361`), `STATUS` ne sert qu'à `CANCELLED`, la description commence par l'objet puis le téléphone et l'e-mail (constat de l'utilisateur sur son fichier réel, valeurs non recopiées). `CATEGORIES` n'est affiché nulle part dans l'appli. L'étape ne peut donc venir que de l'objet.
+**Décisions à trancher par l'utilisateur (une par une)** :
+- Q1 — portée du choix : par **objet** (recommandé : une fois « CARTE SOLIDAIRE » en Parme, toutes les tuiles le sont) ou par **tuile** (choix par événement, perdu si l'événement est réimporté sous une autre clé) ?
+- Q2 — le choix est-il inclus dans la sauvegarde GitHub, l'export JSON et la restauration (comme `calendarIcs`, AG-032) ? Recommandé : oui, sinon un changement d'appareil perd tout.
+- Q3 — l'utilisateur fournit-il sa liste d'étapes, ou choisit-on parmi les 9 actuelles (Atelier, Prise de contact, Accompagnement, Intervention, Suivi pass, Sondage, Réservation, Lapin, Autre) ? Recommandé : les 9 actuelles, aucune étape créée par l'utilisateur dans cette version.
+**Non vérifié par l'auteur** : ce que devient un choix quand l'objet est écrit avec des variantes (« Carte solidaire » / « CARTE SOLIDAIRE ») au-delà de `norm` ; le poids du stockage avec des centaines d'objets ; la restauration d'une sauvegarde qui n'a pas la clé (calendrier conservé, comme AG-032) ; l'accessibilité du sélecteur sur tuile (clavier, tactile).
+**Si personne ne répond, je fais quoi ?** — je livre Q1 par objet, Q2 oui (sauvegarde additive, clé absente = aucun choix), Q3 les 9 étapes, après décision de l'utilisateur sur chaque question ; sans sa décision, je ne code pas.
+**Où regarder** : calendar.js:153-170 (`STAGES`, `stageOf`), calendar.js:94-100 (`objectLabel`), calendar.js:310 (volet « Autre »), clé de stockage `ess-<profil>-calendar-ics-v1` et sa sauvegarde (AG-032).
+
+
 # Blocs tranchés
 - **AG-035** — Calendrier : réimport sans doublon et retrait des doublons — ouvert le 24/11 (`3fe270f`), livré (`6b29de0`) — **amendé** par Codex (`b13b21a` : R1 doublon recréé après nettoyage, R2 contact perdu, R3 retrait plus large que confirmé), corrigé (`d909efd`) ; la première hypothèse (seuls les contacts diffèrent) était fausse : le diagnostic de l'utilisateur (lignes sans libellé) a conduit à reconnaître numéro et adresse seuls sur leur ligne (`d3889fb`) ; coordonnées affichées dans le détail (`007aada`) ; **tranché le 24/11/2026 à 23:20 par l'utilisateur** (« ça fonctionne »). Textes intégraux : `git log -p AGORA.md`.
 
