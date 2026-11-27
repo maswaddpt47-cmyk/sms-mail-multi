@@ -127,6 +127,15 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   assert.equal(a.unknownTime,true,'R2 : '+jour+' '+h+' → heure à préciser');assert.equal(a.allDay,true);assert.equal(a.start,jour,'R2 : jour initial conservé, jamais 1970');assert.equal(a.idKey,'','R2 : aucun rapprochement possible');assert(!/^1970/.test(a.start));
   assert.equal(C.project([ics(1,'DU TEST Alice','2026-11-27T08:30:00.000Z','Fumel')],C.agendaItems([{...mk('a1','DU TEST','Alice',h,'Fumel'),date:jour}])).matched,0,'R2 : '+h+' ne masque aucun GDIN');}
  assert.equal(C.agendaItems([mk('a1','DU TEST','Alice','09:30','Fumel')])[0].unknownTime,false,'heure valide inchangée');
+ // R1 (Codex, 27/11) : les inscriptions GDIN masquées d'un RDV REPLIÉ sous un autre restent consultables (titre, UID, description d'origine)
+ {const mkI=(i,titre,desc)=>({...ics(i,titre,D,'Fumel'),description:desc});
+  const ev=[mkI(1,'ALPHA Alice','MARQUEUR-UN\nAlpha'),mkI(2,'ALPHA Alice','MARQUEUR-DEUX\nAlpha bis')],
+        p=C.project(ev,items([mk('a1','TEST','Bob','09:30','Fumel','realise'),mk('a2','ALPHA','Alice','09:30','Fumel','excuse')])),f=C.foldSlots(p.agenda);
+  assert.equal(p.matched,2,'les deux inscriptions de la personne repliée sont masquées');assert.equal(f.items.length,1,'un seul RDV visible (celui du rang le plus haut)');assert.equal(f.folded,1);
+  const d=C.foldedDetails(f.items[0]);assert.equal(d.length,1);assert.equal(d[0].title,'ALPHA Alice');assert.equal(d[0].masked.length,2,'les inscriptions du RDV replié sont consultables');
+  assert.deepEqual(d[0].masked.map(x=>x.description.split('\n')[0]),['MARQUEUR-UN','MARQUEUR-DEUX'],'description d’origine disponible');assert.match(d[0].masked[0].uid,/^u1$/,'UID d’origine disponible');
+  assert.equal(C.maskedInfo(ev[0]).title,'ALPHA Alice');assert.deepEqual(C.foldedDetails({released:[]}),[]);assert.deepEqual(C.foldedDetails({}),[],'RDV sans repli : liste vide');
+  assert.equal(JSON.stringify(ev).includes('MARQUEUR-UN'),true,'inscriptions stockées intactes');}
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
