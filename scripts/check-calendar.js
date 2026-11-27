@@ -22,7 +22,32 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
  assert.equal(C.stageOf({...ev('Texte fictif inconnu'),collective:true,members:[ev('Texte fictif inconnu'),ev('Texte fictif inconnu')]}).id,'atelier','collectif sans mot-clé → Atelier');
  assert.equal(sid('Demande de logement social',{end:'2026-11-03T09:00:00.000Z'}),'lapin','sans durée → lapin, avant l’objet');assert.equal(sid('Atelier fictif',{allDay:true,start:'2026-11-03',end:'2026-11-04'}),'atelier','journée entière ≠ lapin');
  for(const t of ['Carte solidaire','CHQ ÉNERGIE','Chèque énergie','Formation numérique'])assert.equal(sid(t),'accompagnement','27/11 : '+t+' → Parme');assert.equal(sid('Carte'),'autre','mot entier : « carte » seul reste en Autre');
- assert.equal(C.STAGES.length,9);assert.deepEqual(C.STAGES.find(s=>s.id==='accompagnement'),{id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi','carte solidaire','chq energie','cheque energie','formation numerique'],bg:'#9999FF',border:'#6363FE',text:'#000000'});}
+ assert.equal(C.STAGES.length,10);assert.deepEqual(C.STAGES.find(s=>s.id==='excuse'),{id:'excuse',label:'Excusé',keys:[],bg:'#4F6D8F',border:'#3F5873',text:'#FFFFFF'},'27/11 : étape Excusé ajoutée, sans mot-clé');assert.equal(C.STAGES.find(s=>s.id==='lapin').label,'Lapin');assert.deepEqual(C.STAGES.find(s=>s.id==='accompagnement'),{id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi','carte solidaire','chq energie','cheque energie','formation numerique'],bg:'#9999FF',border:'#6363FE',text:'#000000'});}
+/* AG-036 : choix d'étape par objet (Q1 par objet, priorité : sans durée > choix > mots-clés > collectif > Autre ; R2 Codex : jamais pour un objet vide). */
+{const ev=(desc,extra={})=>({key:'k'+desc,title:'Personne fictive',location:'',description:desc,start:'2026-11-03T09:00:00.000Z',end:'2026-11-03T10:00:00.000Z',allDay:false,cancelled:false,...extra});
+ const sid=(d,m,extra)=>C.stageOf(ev(d,extra),m).id,M=o=>Object.assign(Object.create(null),o);
+ assert.equal(sid('Texte fictif inconnu'),'autre');assert.equal(sid('Texte fictif inconnu',M({'texte fictif inconnu':'excuse'})),'excuse','choix appliqué à l’objet');
+ assert.equal(sid('TEXTE  fictif   Inconnu\n0600000000',M({'texte fictif inconnu':'reservation'})),'reservation','casse, espaces et accents neutralisés par norm');
+ assert.equal(sid('Demande de logement social',M({'demande de logement social':'contact'})),'contact','le choix passe avant les mots-clés');
+ assert.equal(sid('Demande de logement social',M({'autre objet':'contact'})),'accompagnement','autre objet : mots-clés conservés');
+ assert.equal(sid('Texte fictif inconnu',M({'texte fictif inconnu':'excuse'}),{end:'2026-11-03T09:00:00.000Z'}),'lapin','sans durée avant le choix');
+ assert.equal(sid('',M({'':'excuse'})),'autre','objet vide : aucun choix appliqué');assert.equal(C.stageOf(ev('0600000000\nmail@exemple.fr'),M({})).id,'autre','objet = numéro : le détail ne propose pas de choix (aucune clé, voir choiceKey)');
+ for(const [obj,attendu] of [['',''],['0600000000',''],['+33 6 00 00 00 00',''],['mail@exemple.fr',''],['CARTE  Solidaire','carte solidaire'],['Chèque énergie','cheque energie']])assert.equal(C.choiceKey(obj),attendu,'clé de choix : '+JSON.stringify(obj));
+ assert.equal(sid('constructor',{}),'autre','objet « constructor » sans choix : pas d’héritage');assert.equal(sid('__proto__',{}),'autre');assert.equal(sid('Texte fictif inconnu',{'texte fictif inconnu':'inexistante'}),'autre','identifiant inconnu ignoré');
+ assert.equal(C.stageOf(ev('Atelier fictif'),M({})).id,'atelier');
+ const ok=m=>C.validStages({version:1,map:m});
+ assert(ok({}));assert(ok({'carte solidaire':'accompagnement','x':'excuse','y':'lapin'}));
+ for(const [cas,d] of [['null',null],['version 2',{version:2,map:{}}],['sans map',{version:1}],['map tableau',{version:1,map:[]}],['id inconnu',{version:1,map:{x:'rouge'}}],['clé non normalisée',{version:1,map:{'Carte Solidaire':'excuse'}}],['clé vide',{version:1,map:{'':'excuse'}}],['valeur non texte',{version:1,map:{x:3}}]])assert.equal(C.validStages(d),false,'refusé : '+cas);
+ const mem=new Map(),storage={getItem:k=>mem.has(k)?mem.get(k):null,setItem:(k,v)=>mem.set(k,v)};let profil='p1',pannes=false;
+ const ctx={profileId:'p1',stagesKey:'ess-p1-calendar-stages-v1',storage,currentProfile:()=>profil,noteVersion(){},write:(k,v)=>{if(pannes)return false;mem.set(k,JSON.stringify(v));return true;}};
+ assert.deepEqual(C.loadStages(storage,ctx.stagesKey),{map:{},raw:null},'absent = aucun choix');
+ {const cur=C.loadStages(storage,ctx.stagesKey);C.saveStages(ctx,M({'carte solidaire':'accompagnement'}),cur.raw);assert.deepEqual(JSON.parse(mem.get(ctx.stagesKey)),{version:1,map:{'carte solidaire':'accompagnement'}},'écrit sous forme versionnée, objet → identifiant (pas de CSS)');}
+ {const cur=C.loadStages(storage,ctx.stagesKey);assert.equal(cur.map['carte solidaire'],'accompagnement');profil='p2';assert.throws(()=>C.saveStages(ctx,cur.map,cur.raw),/profil a changé/);profil='p1';
+  mem.set(ctx.stagesKey,JSON.stringify({version:1,map:{}}));assert.throws(()=>C.saveStages(ctx,cur.map,cur.raw),/autre onglet/,'copie ancienne refusée');
+  const frais=C.loadStages(storage,ctx.stagesKey);pannes=true;assert.throws(()=>C.saveStages(ctx,M({x:'excuse'}),frais.raw),/non confirmé/);pannes=false;
+  assert.throws(()=>C.saveStages(ctx,M({'Majuscule':'excuse'}),frais.raw),/invalide/,'clé non normalisée refusée à l’écriture');}
+ for(const abime of ['pas du json','{"version":1,"map":{"x":"rouge"}}','{"version":2,"map":{}}']){mem.set(ctx.stagesKey,abime);assert.throws(()=>C.loadStages(storage,ctx.stagesKey),'illisible : '+abime);assert.equal(mem.get(ctx.stagesKey),abime,'illisible jamais réécrit');}
+ console.log('AG-036 : choix d’étape par objet (priorité, objet vide, prototype, normalisation), format versionné validé, écriture sûre (profil, autre onglet, panne, illisible) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
 assert.equal(C.visibleDays(C.bounds('2026-11-06','month'),'month').length,30,'AG-031 : mois = 6 semaines de 5 jours');

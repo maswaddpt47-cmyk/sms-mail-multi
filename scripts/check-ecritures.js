@@ -19,7 +19,7 @@ const CODE=[
   section('function clearHistory(','function exportHistoryCSV('),fonction('deleteHistItem'),fonction('saveHistItem'),
   section('function entryYear(','/* années révolues'),
   section('function archiveYear(','/* affiche les stats agrégées'),
-  fonction('calendrierInvalide'),
+  fonction('calendrierInvalide'),fonction('stagesCalendrierInvalides'),
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
@@ -503,7 +503,7 @@ async function restaurer(contenu,fonction,options){
   /* ── P08 / T12 : vrai githubPush, réseau simulé ── */
   function prepPush(){const e=charger();for(const[k,v]of[['ess-cms-migrated-v2','1'],['ess-pm-start-v1','"1"'],['ess-tpl-version','"v5-lapin-templates"'],['ess-p1-perm-version','3']])e.st.setItem(k,v);
     e.st.setItem('ess-p1-history',JSON.stringify([rdv('s1','2026-11-03','09:30','SAUVE','A')]));e.ctx.loadProfileData();
-    vm.runInContext(section('var _couvert={};','function githubPush(')+fonction('calendrierInvalide')+fonction('lireCalendrierProfil')+fonction('exportDataForProfile')+fonction('sauvegardeFiable')+fonction('exportData')+fonction('downloadExport'),e.ctx);   // vraies fonctions, extraites du fichier
+    vm.runInContext(section('var _couvert={};','function githubPush(')+fonction('calendrierInvalide')+fonction('lireCalendrierProfil')+fonction('stagesCalendrierInvalides')+fonction('lireStagesProfil')+fonction('exportDataForProfile')+fonction('sauvegardeFiable')+fonction('exportData')+fonction('downloadExport'),e.ctx);   // vraies fonctions, extraites du fichier
     const push=vm.runInContext('('+fonction('githubPush')+')',e.ctx);
     Object.assign(e.ctx,{ghToken:()=>'jeton-fictif',ghNowFile:()=>'b/p1/fictif.json',ghCleanOldBackups(){},renderHeader(){},btoa:x=>Buffer.from(x,'binary').toString('base64'),unescape,encodeURIComponent});
     const res={puts:0,envoye:null,finPut:null,fins:[]};
@@ -967,7 +967,7 @@ async function restaurer(contenu,fonction,options){
   {const CAL=require(path.join(__dirname,'../calendar.js')),K='ess-p1-calendar-ics-v1';
    const ev=(i)=>({key:'gdin:'+JSON.stringify(['u'+i,'A','2026-11-0'+(2+i%5)+'T09:00:00.000Z','2026-11-0'+(2+i%5)+'T10:00:00.000Z','Personne fictive '+i,'','participant:'+i]),title:'Personne fictive '+i,location:'',description:'Demande fictive '+i,start:'2026-11-0'+(2+i%5)+'T09:00:00.000Z',end:'2026-11-0'+(2+i%5)+'T10:00:00.000Z',allDay:false,cancelled:false});
    const cal=n=>({version:1,events:Array.from({length:n},(_,i)=>ev(i))});
-   const prep=(stock)=>{const {e}=prepPush();e.ctx.CalendarICS=CAL;vm.runInContext(fonction('calendrierInvalide')+fonction('lireCalendrierProfil'),e.ctx);if(stock!==undefined)e.st.setItem(K,stock);return e;};
+   const prep=(stock)=>{const {e}=prepPush();e.ctx.CalendarICS=CAL;vm.runInContext(fonction('calendrierInvalide')+fonction('lireCalendrierProfil')+fonction('stagesCalendrierInvalides')+fonction('lireStagesProfil'),e.ctx);if(stock!==undefined)e.st.setItem(K,stock);return e;};
    // export : calendrier présent, vide explicite (R1), illisible → sauvegarde refusée (Q3)
    {const e=prep(JSON.stringify(cal(3)));assert.deepEqual(e.ctx.exportDataForProfile('p1').calendarIcs,cal(3),'AG-032 : calendrier exporté tel quel');assert.equal(e.ctx.sauvegardeFiable('p1'),true);}
    {const e=prep();assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarIcs)),{version:1,events:[]},'AG-032 R1 : calendrier absent → vide écrit en clair');}
@@ -993,6 +993,28 @@ async function restaurer(contenu,fonction,options){
      if(f==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));e.ctx.confirmerImport();
      assert.equal(entetes.Accept,'application/vnd.github.raw+json','AG-032 R3 : média raw demandé');assert.equal(JSON.parse(e.st.getItem(K)).events.length,5000,'AG-032 R3 : '+f+' > 1 Mo restauré');}
    console.log('AG-032 : calendrier sauvegardé (vide explicite, illisible refusé), restauré en remplacement, ancienne sauvegarde sans effet, invalide refusé, panne annulée, sauvegarde auto différée, restauration GitHub > 1 Mo OK.');}
+  /* ── AG-036 : choix d'étape du calendrier dans la sauvegarde (R1 Codex : absent ≠ vide ≠ invalide) ── */
+  {const CAL=require(path.join(__dirname,'../calendar.js')),K='ess-p1-calendar-stages-v1';
+   const choix=m=>({version:1,map:m}),A={'carte solidaire':'accompagnement'},B={'chq energie':'excuse','formation numerique':'reservation'};
+   const prep=(stock)=>{const {e}=prepPush();e.ctx.CalendarICS=CAL;vm.runInContext(fonction('calendrierInvalide')+fonction('lireCalendrierProfil')+fonction('stagesCalendrierInvalides')+fonction('lireStagesProfil'),e.ctx);if(stock!==undefined)e.st.setItem(K,stock);return e;};
+   // export
+   {const e=prep(JSON.stringify(choix(A)));assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarStages)),choix(A),'AG-036 : choix exportés tels quels');assert.equal(e.ctx.sauvegardeFiable('p1'),true);}
+   {const e=prep();assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarStages)),choix({}),'AG-036 : aucun choix → vide explicite exporté');}
+   for(const [cas,v] of [['version 2','{"version":2,"map":{}}'],['id inconnu','{"version":1,"map":{"x":"rouge"}}'],['JSON cassé','{']]){const e=prep(v);e.ctx.exportDataForProfile('p1');assert.equal(e.ctx.sauvegardeFiable('p1'),false,'AG-036 : '+cas+' → sauvegarde refusée');}
+   // import / restauration
+   const avec=c=>Object.assign({},sauvegarde,{calendarStages:c});
+   const imp=(texte,existant)=>{const e=prepImport(texte);e.ctx.CalendarICS=CAL;if(existant!==undefined)e.st.setItem(K,JSON.stringify(existant));e.st.ecritures=0;return e;};
+   {const e=imp(JSON.stringify(avec(choix(B))),choix(A));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)),choix(B),'AG-036 : champ présent → choix remplacés');}
+   {const e=imp(JSON.stringify(avec(choix({}))),choix(A));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)),choix({}),'AG-036 R1 : vide explicite → remplacé par vide');}
+   {const e=imp(JSON.stringify(sauvegarde),choix(A));assert.equal(e.ctx.doImport(),true);assert.deepEqual(JSON.parse(e.st.getItem(K)),choix(A),'AG-036 R1 : ancienne sauvegarde sans le champ → choix locaux conservés');}
+   for(const [cas,c] of [['null',null],['version 2',{version:2,map:{}}],['id inconnu',{version:1,map:{x:'rouge'}}],['clé non normalisée',{version:1,map:{'Carte Solidaire':'excuse'}}],['map tableau',{version:1,map:[]}]]){
+     const e=imp(JSON.stringify(avec(c)),choix(A)),avant=e.st.etat();assert.equal(e.ctx.doImport(),false,'AG-036 : '+cas+' refusé');assert.equal(e.st.etat(),avant,'AG-036 : '+cas+' sans aucune écriture');assert.match(e.S.importError,/choix de couleurs/);}
+   {const e=imp(JSON.stringify(avec(choix(B))),choix(A)),avant=e.st.etat();e.st.panne=k=>k===K;assert.equal(e.ctx.doImport(),false);e.st.panne=null;assert.equal(e.st.etat(),avant,'AG-036 : panne à l’écriture des choix → tout revient en arrière');}
+   {const cs=vm.runInContext('('+fonction('cleSuivie')+')',vm.createContext({CLES_REGLAGES:{}}));assert.equal(cs('ess-p1-calendar-stages-v1'),true,'AG-036 : choix suivis contre l’écrasement par un autre onglet');}
+   // résumé affiché avant confirmation : portée annoncée (conservés / remplacés par aucun choix / remplacés (n objets))
+   {const e=imp(JSON.stringify(sauvegarde),choix(A));assert.equal(e.ctx.resumeImport(sauvegarde).couleurs,'conservés');assert.equal(e.ctx.resumeImport(avec(choix({}))).couleurs,'remplacés par aucun choix');assert.match(e.ctx.resumeImport(avec(choix(B))).couleurs,/^remplacés \(2 objet/);}
+   assert(section('function renderModal(','\nfunction ').includes("Couleurs du calendrier (choix par objet) : '+rs.couleurs"),'AG-036 : la confirmation affiche la portée des couleurs');
+   console.log('AG-036 : choix d’étape sauvegardés (vide explicite, illisible refusé), restaurés en remplacement, ancienne sauvegarde sans effet (R1), invalide refusé, panne annulée, portée annoncée OK.');}
   /* ── AG-033 (amendé par Codex le 16/11) : lien orientation → dossier, fiche et orientation dans la même opération ── */
   const orient=(id,extra)=>Object.assign({id,nom:'FICTIF',prenom:'Ouverte',done:false,commune:'Fumel',motif:'CAF',date:'2026-10-10'},extra||{});
   const prepLien=(orients,src,avant)=>{const e=charger();e.ctx.showActivePane=()=>{};if(typeof e.ctx.jourParis!=='function')e.ctx.jourParis=()=>'2026-11-01';

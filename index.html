@@ -1204,7 +1204,7 @@ var _clesIllisibles={};
    qu'il a lue ou écrite de chaque donnée suivie ; lsSet refuse d'écrire si le stockage a changé entre-temps (autre onglet),
    recharge la mémoire depuis le stockage et demande de refaire l'action : aucun onglet n'écrase les modifications d'un autre. */
 var _versionLue={};
-function cleSuivie(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||/^ess-[^-]+-(history|permanences|orientations|yearly-stats|calendar-ics-v1)$/.test(k);}
+function cleSuivie(k){return Object.prototype.hasOwnProperty.call(CLES_REGLAGES,k)||/^ess-[^-]+-(history|permanences|orientations|yearly-stats|calendar-ics-v1|calendar-stages-v1)$/.test(k);}
 function noterVersion(k,brut){if(cleSuivie(k))_versionLue[k]=brut;}
 function lireDonnee(k,defaut){
   var v;try{v=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return defaut;}
@@ -2538,10 +2538,21 @@ function lireCalendrierProfil(pid){
   if(calendrierInvalide(brut)){_clesIllisibles[k]=true;return null;}
   return JSON.parse(brut);
 }
+/* AG-036 : choix d'étape (couleur) du Calendrier par objet, par profil. Absent du stockage → vide explicite écrit (comme le calendrier, AG-032 R1) ;
+   illisible → clé marquée illisible, la sauvegarde est refusée (sauvegardeFiable). Un ancien fichier SANS le champ conserve les choix locaux. */
+function stagesCalendrierInvalides(d){return typeof CalendarICS!=='undefined'&&CalendarICS.validStages?!CalendarICS.validStages(d):!(d&&d.version===1&&d.map&&typeof d.map==='object'&&!Array.isArray(d.map));}
+function lireStagesProfil(pid){
+  var k=pkFor(pid,'calendar-stages-v1'),brut;
+  try{brut=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return null;}
+  if(brut===null)return {version:1,map:{}};
+  var d;try{d=JSON.parse(brut);}catch(e){_clesIllisibles[k]=true;return null;}
+  if(stagesCalendrierInvalides(d)){_clesIllisibles[k]=true;return null;}
+  return d;
+}
 function exportDataForProfile(pid){
   var permanences=pid===S.activeProfile?S.permanences:lireDonnee('ess-'+pid+'-permanences',[]);
   var yearlyStats=pid===S.activeProfile?S.yearlyStats:lireDonnee('ess-'+pid+'-yearly-stats',{});
-  return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),yearlyStats:yearlyStats,permanences:permanences,orientations:readProfileOrientations(pid),calendarIcs:lireCalendrierProfil(pid)};
+  return{cmsList:S.cmsList,demarches:S.demarches,secteurs:S.secteurs,customTemplates:S.customTemplates,customVars:S.customVars,templates:S.templates,mandats:S.mandats,history:readProfileHistory(pid),yearlyStats:yearlyStats,permanences:permanences,orientations:readProfileOrientations(pid),calendarIcs:lireCalendrierProfil(pid),calendarStages:lireStagesProfil(pid)};
 }
 /* T12 (vérification de clôture de Codex) : une sauvegarde n'est faite que si toutes les données du profil (et les réglages
    communs) ont pu être lues ; sinon elle serait incomplète tout en annonçant un succès. À appeler après exportDataForProfile. */
@@ -2577,6 +2588,8 @@ function verifierSauvegarde(data){
   if(!textes(data.permanences,['commune','exceptDate','debut','fin']))return 'Sauvegarde invalide (journée illisible).';
   /* AG-032 : champ présent = calendrier complet à restaurer ; null ou invalide → import refusé (Q2) */
   if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&(!data.calendarIcs||typeof data.calendarIcs!=='object'||calendrierInvalide(JSON.stringify(data.calendarIcs))))return 'Sauvegarde invalide (calendrier illisible).';
+  /* AG-036 : champ présent = choix de couleurs à restaurer (vide explicite compris) ; invalide → import entièrement refusé */
+  if(Object.prototype.hasOwnProperty.call(data,'calendarStages')&&(!data.calendarStages||typeof data.calendarStages!=='object'||stagesCalendrierInvalides(data.calendarStages)))return 'Sauvegarde invalide (choix de couleurs du calendrier illisibles).';
   return '';
 }
 /* Confirmation avant import JSON (25/11/2026, demande de l'utilisateur) : le fichier est lu et vérifié d'abord (JSON ou sauvegarde invalide
@@ -2591,6 +2604,7 @@ function resumeImport(data){
   return {profil:S.activeProfile,nom:(prof&&prof.nom)||S.activeProfile,
     lignes:[['Fiches','history'],['Journées','permanences'],['Orientations','orientations'],['Années archivées','yearlyStats']].map(function(c){return {libelle:c[0],actuel:n(cur,c[1]),fichier:data[c[1]]==null?null:n(data,c[1])};}),
     calendrier:Object.prototype.hasOwnProperty.call(data,'calendarIcs')?'remplacé':'conservé',
+    couleurs:Object.prototype.hasOwnProperty.call(data,'calendarStages')?(Object.keys(data.calendarStages.map).length?'remplacés ('+Object.keys(data.calendarStages.map).length+' objet(s))':'remplacés par aucun choix'):'conservés',
     communs:IMPORT_COMMUNS.filter(function(c){return data[c[0]]!=null;}).map(function(c){return c[1];})};
 }
 /* opts (restauration GitHub, 27/11/2026) : {source:'github',fichier:nom du fichier,apres:fonction lancée après un remplacement réussi} */
@@ -2628,6 +2642,8 @@ function doImport(){
     if(data.orientations){neuf.orientations=data.orientations;paires.push([pk('orientations'),data.orientations]);}
     /* AG-032 (Q1, décision de l'utilisateur du 09/11) : la sauvegarde remplace le calendrier ; sans le champ, il est conservé */
     if(Object.prototype.hasOwnProperty.call(data,'calendarIcs'))paires.push([pk('calendar-ics-v1'),data.calendarIcs]);
+    /* AG-036 (R1 Codex) : champ absent = choix locaux conservés ; présent = remplacés, même vides */
+    if(Object.prototype.hasOwnProperty.call(data,'calendarStages'))paires.push([pk('calendar-stages-v1'),data.calendarStages]);
   }catch(e){S.importError="❌ Sauvegarde illisible. Aucune donnée modifiée.";renderModal();return false;}
   /* réglages communs dans la même écriture : plus aucun enregistrement hors transaction après l'import */
   var now=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris'}),appliques=Object.assign({},S,neuf);
@@ -8323,6 +8339,7 @@ function renderModal(){
     var lg=el('ul',{style:"margin:0;padding-left:18px;font-size:13px;line-height:1.7;"});
     rs.lignes.forEach(function(l){lg.appendChild(el('li',{},l.libelle+' : '+l.actuel+' actuellement → '+(l.fichier==null?'inchangé (absent de '+courte+')':l.fichier+' dans '+courte)));});
     lg.appendChild(el('li',{},'Calendrier : '+rs.calendrier+(rs.calendrier==='conservé'?' ('+courte+' n\'en contient pas)':' par celui de '+courte)));
+    lg.appendChild(el('li',{},'Couleurs du calendrier (choix par objet) : '+rs.couleurs+(rs.couleurs==='conservés'?' ('+courte+' n\'en contient pas)':' par celles de '+courte)));
     box.appendChild(lg);
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},rs.communs.length?'Réglages communs à tous les profils, remplacés aussi : '+rs.communs.join(', ')+'.':'Aucun réglage commun dans ce fichier : ils restent inchangés.'));
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},"Les fiches des autres profils ne sont pas touchées. Le thème et les délais d'alerte ne font pas partie de la sauvegarde : ils ne changent pas."));
