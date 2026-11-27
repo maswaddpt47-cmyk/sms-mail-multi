@@ -155,7 +155,7 @@
   var STAGES=[
     {id:'atelier',label:'Atelier (collectif)',keys:['atelier'],bg:'#008000',border:'#006F00',text:'#FFFFFF'},
     {id:'contact',label:'Prise de contact',keys:['prise de contact','premier contact'],bg:'#000080',border:'#00006F',text:'#FFFFFF'},
-    {id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi'],bg:'#9999FF',border:'#6363FE',text:'#000000'},
+    {id:'accompagnement',label:'Accompagnement',keys:['accompagnement','demarche','demarches','logement','caf','ants','anef','carsat','inpi','carte solidaire','chq energie','cheque energie','formation numerique'],bg:'#9999FF',border:'#6363FE',text:'#000000'},
     {id:'intervention',label:'Intervention / atelier partenaire',keys:['intervention','atelier partenaire','cms','regie'],bg:'#9400D3',border:'#8000B7',text:'#FFFFFF'},
     {id:'pass',label:'Suivi pass',keys:['suivi pass'],bg:'#D74F00',border:'#BA4400',text:'#FFFFFF'},
     {id:'sondage',label:'Sondage',keys:['sondage'],bg:'#663300',border:'#582C00',text:'#FFFFFF'},
