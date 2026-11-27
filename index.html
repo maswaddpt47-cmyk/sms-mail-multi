@@ -6,7 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json?v=2">
 <meta name="theme-color" content="#4c51c6">
-<link rel="stylesheet" href="calendar.css?v=gdin-20261127-5">
+<link rel="stylesheet" href="calendar.css?v=gdin-20261127-7">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -976,7 +976,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
-<script src="calendar.js?v=gdin-20261127-5"></script>
+<script src="calendar.js?v=gdin-20261127-7"></script>
 <script>
 "use strict";
 
@@ -2891,7 +2891,7 @@ function showActivePane(){
 function rdvsPourCalendrier(){
   return (S.history||[]).filter(function(h){return h&&h.msgType!=='indispo'&&typeof h.date==='string'&&h.date;}).map(function(h){
     var sv=STATUTS_ARCHIVE.indexOf(h.statut)!==-1?h.statut:STATUT_A_VERIFIER,m=STATUT_STYLES[sv]||STATUT_STYLES.a_verifier;
-    return {id:h.id==null?'':String(h.id),nom:h.nom||'',prenom:h.prenom||'',date:h.date,heure:h.heure||'',commune:h.commune||'',demarche:h.demarche||'',statut:sv,label:m.label,bg:m.bg,border:m.border,text:m.text};});
+    return {id:h.id==null?'':String(h.id),nom:h.nom||'',prenom:h.prenom||'',date:h.date,heure:h.heure||'',commune:h.commune||'',demarche:h.demarche||'',statut:sv,libere:estLibere(sv),label:m.label,bg:m.bg,border:m.border,text:m.text};});
 }
 /* Ouvre la VRAIE fiche depuis un RDV du Calendrier : profil et génération figés au rendu, identifiant relu au clic (jamais l'index ni un rapprochement par nom) ;
    fiche sans identifiant, absente ou ambiguë = refus explicite, aucun identifiant créé. */
