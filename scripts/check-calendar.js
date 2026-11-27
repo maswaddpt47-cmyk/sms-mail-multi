@@ -147,6 +147,23 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   assert.equal(why([ics(1,'DU TEST Alice',D,'Fumel')],[])[0],undefined,'aucun RDV Agenda : aucune raison');
   assert.equal(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')])[0],undefined,'inscription masquée : aucune raison');
   const two=C.project([ics(1,'DU TEST Alice',D,'Fumel'),ics(2,'AUTRE Bob',D,'Fumel')],items([mk('a1','DU TEST','Alice','09:30','Fumel')]));assert.equal(two.reasons.has(two.ics[0].key),true,'seule l’inscription restante a une raison');assert.equal(two.reasons.size,1);}
+ // AG-039 (option 1 de l'utilisateur, 27/11) : une journée d'Agenda (jour Paris + lieu) masque les séances GDIN individuelles, sauf ateliers ; jamais les RDV Agenda, les journées entières, ni d'autres jours/lieux
+ {const ag=items([mk('a1','AA','Bb','09:30','Fumel','realise')]);
+  const g=(i,titre,loc,debut,extra)=>({...ics(i,titre,debut||D,loc),...(extra||{})});
+  const run=(l,stageOf)=>C.dayMask(l.map(e=>({...e,members:[e]})),ag,stageOf||(e=>e.stage||'autre'));
+  {const r=run([g(1,'PERSONNE X','Fumel')]);assert.equal(r.hidden.length,1,'séance individuelle du même jour et lieu : masquée');assert.equal(r.shown.length,0);}
+  {const r=run([g(1,'PERSONNE X','')]);assert.equal(r.hidden.length,1,'lieu inconnu = compatible, comme au rapprochement');}
+  {const r=run([g(1,'PERSONNE X','Marmande')]);assert.equal(r.hidden.length,0,'lieu incompatible : conservée');assert.equal(r.shown.length,1);}
+  {const r=run([g(1,'PERSONNE X','Fumel','2026-11-28T08:30:00.000Z')]);assert.equal(r.hidden.length,0,'autre jour : conservée');}
+  {const r=run([{...g(1,'PERSONNE X','Fumel'),allDay:true,start:'2026-11-27',end:'2026-11-28'}]);assert.equal(r.hidden.length,0,'journée entière : jamais masquée');}
+  for(const st of C.DAY_KEEP){const r=run([{...g(1,'EVENEMENT Y','Fumel'),stage:st}]);assert.equal(r.hidden.length,0,'étape « '+st+' » conservée (atelier)');}
+  for(const st of ['accompagnement','contact','pass','lapin','excuse','autre']){const r=run([{...g(1,'PERSONNE X','Fumel'),stage:st}]);assert.equal(r.hidden.length,1,'étape « '+st+' » masquée');}
+  assert.deepEqual([...C.DAY_KEEP].sort(),['atelier','intervention','reservation','sondage'],'liste d’exceptions validée par l’utilisateur');
+  {const r=C.dayMask([{source:'agenda',key:'x',start:D,location:'Fumel',members:[],allDay:false}],ag,e=>'autre');assert.equal(r.hidden.length,0,'un RDV Agenda n’est jamais masqué');}
+  {const r=C.dayMask([{...g(1,'PERSONNE X','Fumel'),members:[g(1,'PERSONNE X','Fumel'),g(2,'PERSONNE X','Fumel')]}],ag,e=>'autre');assert.equal(r.hidden[0].members.length,2,'les inscriptions restent consultables');}
+  {const two=items([mk('a1','AA','Bb','09:30','Fumel'),mk('a2','CC','Dd','10:30','Marmande')]);const r=C.dayMask([g(1,'P1','Fumel'),g(2,'P2','Marmande'),g(3,'P3','Agen')].map(e=>({...e,members:[e]})),two,e=>'autre');assert.deepEqual(r.hidden.map(e=>e.title),['P1','P2'],'plusieurs lieux le même jour : chacun masque son lieu ; un 3e lieu reste');}
+  {const r=C.dayMask([g(1,'PERSONNE X','Fumel')].map(e=>({...e,members:[e]})),[],e=>'autre');assert.equal(r.hidden.length,0,'aucune journée d’Agenda : rien n’est masqué');}
+ }
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
