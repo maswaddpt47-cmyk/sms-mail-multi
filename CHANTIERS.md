@@ -1,6 +1,6 @@
 # CHANTIERS — sms-mail-multi
 
-État au **27/11/2026 à 23:59** (Paris), base `main` = commit de ces notes (code `47c8fb6` déployé ✅). **Un bloc AGORA ouvert : AG-038** (RDV de l'Agenda dans le Calendrier), revue Codex corrigée ; **essai de l'utilisateur sur ses vraies données : « Propre » (27/11 22:10)** ; reste la contradiction de Codex sur la dernière modification de définition (doublons GDIN masqués), puis sa décision. **Deux points à trancher par l'utilisateur dans « Décisions à trancher », dont un grave : d'anciennes sauvegardes d'usagers restent publiques via les références de pull requests.**
+État au **27/11/2026 à 23:59** (Paris), base `main` = commit de ces notes (code `47c8fb6` déployé ✅). **Un bloc AGORA ouvert : AG-038** (RDV de l'Agenda dans le Calendrier), revue Codex corrigée ; **essai de l'utilisateur sur ses vraies données : « Propre » (27/11 22:10)** ; **Codex a confirmé la dernière définition (doublons GDIN masqués) et son défaut d'accès aux inscriptions d'un RDV replié est corrigé** ; reste la décision de l'utilisateur sur AG-038. **Deux points à trancher par l'utilisateur dans « Décisions à trancher », dont un grave : d'anciennes sauvegardes d'usagers restent publiques via les références de pull requests.**
 
 ## Chantiers ouverts
 
