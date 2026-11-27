@@ -32,6 +32,9 @@
   function isBareMail(l){return /^\s*[^\s@:]+@[^\s@:]+\.[^\s@:]+\s*$/.test(l);}
   function isBarePhone(l){var t=String(l).trim();return /^[\d\s.\-()+]+$/.test(t)&&/^(?:\+\d{8,14}|00\d{8,14}|0\d{9})$/.test(t.replace(/[\s.\-()]/g,''));}
   function contactKind(l){var m=LABELED_CONTACT.exec(l);if(m)return /^t/i.test(m[1])?'tel':'mail';if(isBareMail(l))return 'mail';if(isBarePhone(l))return 'tel';return '';}
+  // AG-040 : identité d'une description = lignes de contact écartées (AG-035), puis par ligne espaces de début/fin retirés et espaces répétés réduits, puis lignes TRIÉES :
+  // deux descriptions qui ne diffèrent que par l'ordre ou les espaces désignent la même inscription. Ne sert qu'à l'identité normalisée (jamais écrit dans une clé stockée).
+  function normDescription(desc){return stripContacts(desc).split('\n').map(function(l){return l.trim().replace(/\s+/g,' ');}).filter(Boolean).sort().join('\n');}
   function stripContacts(desc){return String(desc||'').split('\n').filter(function(l){return !contactKind(l);}).join('\n');}
   function contactLines(desc){return String(desc||'').split('\n').filter(function(l){return !!contactKind(l);});}
   function contactLabel(l){return contactKind(l);}
@@ -116,8 +119,10 @@
     // éléments seulement si le contenu importé correspond exactement.
     existing.forEach(function(e){var m=metadata(e),hasAction=e.key.indexOf('gdin:')===0,match=m.legacy&&(hasAction?legacyExact:legacyWithoutAction).get(signature(e,hasAction));map.set(match?match.key:e.key,e);});
     var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans des fichiers différents de ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
-    var byNorm=new Map();map.forEach(function(x,k){var n=normKey({key:k});if(n!==k&&!byNorm.has(n))byNorm.set(n,k);});   // AG-035 R1 : une inscription créée avant le correctif est retrouvée par son identité normalisée, sa clé n'est pas réécrite
-    unique.forEach(function(e,k){if(!map.has(k)&&byNorm.has(k))k=byNorm.get(k);var prev=map.get(k);if(prev)e=Object.assign({},e,{key:k,description:completeContacts(prev.description,e.description)});if(!prev)added++;else if(JSON.stringify(prev)===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);});
+    // AG-035 R1 + AG-040 : une inscription est retrouvée par son identité NORMALISÉE (contacts écartés, ordre et espaces de la description ignorés), sans réécrire sa clé stockée ;
+    // l'index est complété au fil de l'import pour que deux lignes d'un même fichier qui ne diffèrent que par l'ordre ou les espaces ne créent pas deux inscriptions.
+    var byNorm=new Map();map.forEach(function(x,k){var n=normKey({key:k});if(!byNorm.has(n))byNorm.set(n,k);});
+    unique.forEach(function(e,k){if(!map.has(k)){var nk=normKey({key:k});if(byNorm.has(nk))k=byNorm.get(nk);}var prev=map.get(k);if(prev)e=Object.assign({},e,{key:k,description:completeContacts(prev.description,e.description)});if(!prev)added++;else if(JSON.stringify(prev)===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);var nn=normKey({key:k});if(!byNorm.has(nn))byNorm.set(nn,k);});
     if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged,identical:identical};}
   // AG-035 : inscriptions de même identité une fois les contacts écartés (doublons créés avant ce correctif). Rien n'est retiré ici.
   // La version gardée a le plus de lignes de contact, puis la clé canonique, puis la dernière. Les contacts des versions écartées sont
@@ -134,7 +139,7 @@
         la.filter(function(l){return lb.indexOf(l)<0;}).concat(lb.filter(function(l){return la.indexOf(l)<0;})).forEach(function(l){var x=lab(l);if(d.indexOf(x)<0)d.push(x);});
         add('description ('+(d.length?'lignes : '+d.join(', '):'ordre ou espaces seulement')+')');}});
     return out;}
-  function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+stripContacts(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
+  function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+normDescription(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
   function contactValue(l){return (LABELED_CONTACT.test(l)?l.slice(l.indexOf(':')+1):l).toLowerCase().replace(/[\s.\-()]/g,'');}
   function duplicates(events){var groups=new Map();events.forEach(function(e,i){if(e.key.indexOf('gdin:')!==0)return;var k=normKey(e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({e:e,i:i});});var out=[];
     groups.forEach(function(g,k){if(g.length<2)return;var best=g.slice().sort(function(a,b){return contactLines(b.e.description).length-contactLines(a.e.description).length||(b.e.key===k)-(a.e.key===k)||b.i-a.i;})[0];
@@ -286,7 +291,7 @@
     var dups=error?[]:duplicates(data.events),dupRaw=data.raw,dupChoices={};
     if(dups.length){var dupBox=node('details',{class:'ics-duplicates'}),nb=dups.reduce(function(n,g){return n+g.remove.length;},0);
       dupBox.appendChild(node('summary',{},'Doublons d’import ('+nb+')'));
-      dupBox.appendChild(node('p',{class:'ics-help'},'Mêmes inscriptions importées deux fois (seuls téléphone ou e-mail différaient). Pour chacune, une version est gardée et reçoit les contacts des autres. Si deux valeurs diffèrent pour un même champ, choisissez celle à garder. Rien n’est retiré avant votre confirmation.'));
+      dupBox.appendChild(node('p',{class:'ics-help'},'Mêmes inscriptions importées deux fois (seuls le téléphone, l’e-mail, l’ordre des lignes ou les espaces différaient). Pour chacune, une version est gardée et reçoit les contacts des autres. Si deux valeurs diffèrent pour un même champ, choisissez celle à garder. Rien n’est retiré avant votre confirmation.'));
       var dupList=node('ul',{class:'ics-participants'});dups.forEach(function(g){var li=node('li',{},g.keep.title+' — '+fmt(parisDay(g.keep.start),{day:'numeric',month:'short'})+' '+time(g.keep)+' : '+g.remove.length+' ancienne(s) version(s) retirée(s). Contacts conservés : '+(g.labels.map(function(lb){return g.lines[lb][0];}).join(' ; ')||'aucun')+'.');
         g.conflicts.forEach(function(lb){var sel=node('select',{'aria-label':'Valeur à garder pour '+lb});g.lines[lb].forEach(function(l){sel.appendChild(node('option',{value:l},l));});sel.addEventListener('change',function(){dupChoices[g.id+'|'+lb]=sel.value;});li.appendChild(node('div',{class:'ics-help'},'Valeurs différentes, à trancher : '));li.lastChild.appendChild(sel);});
         dupList.appendChild(li);});dupBox.appendChild(dupList);
@@ -445,5 +450,5 @@
   }
   // AG-032 : après une restauration, un aperçu d'import en attente est abandonné (il visait l'ancien calendrier).
   function forget(profileId){if(states[profileId]){states[profileId].preview=null;states[profileId].message='';}}
-  return {forget:forget,contactItems:contactItems,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,agendaItems:agendaItems,project:project,foldSlots:foldSlots,dayMask:dayMask,canonicalStageMap:canonicalStageMap,DAY_KEEP:DAY_KEEP,maskedInfo:maskedInfo,foldedDetails:foldedDetails,placesCompatible:placesCompatible,render:render,stageOf:stageOf,STAGES:STAGES,validStages:validStages,chooseStage:chooseStage,countEvents:countEvents,choiceKey:choiceKey,loadStages:loadStages,saveStages:saveStages,STAGE_SUFFIX:STAGE_SUFFIX,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {forget:forget,contactItems:contactItems,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,normDescription:normDescription,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,agendaItems:agendaItems,project:project,foldSlots:foldSlots,dayMask:dayMask,canonicalStageMap:canonicalStageMap,DAY_KEEP:DAY_KEEP,maskedInfo:maskedInfo,foldedDetails:foldedDetails,placesCompatible:placesCompatible,render:render,stageOf:stageOf,STAGES:STAGES,validStages:validStages,chooseStage:chooseStage,countEvents:countEvents,choiceKey:choiceKey,loadStages:loadStages,saveStages:saveStages,STAGE_SUFFIX:STAGE_SUFFIX,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });

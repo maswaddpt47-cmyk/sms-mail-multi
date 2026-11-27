@@ -176,6 +176,29 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   {const ag3=items([mk('a1','PERSONNE','Paul','09:30','Fumel','realise')]),pr=C.project(all,ag3);assert.equal(pr.ics.some(e=>e.key===P.key),false,'Paul est rapproché');
    const r=C.dayMask(pr.ics.map(e=>({...e,members:[e]})),ag3,stageIdOf);assert.equal(r.shown.some(e=>e.title==='QUENTIN Quentin'),true,'Quentin, resté seul, garde la protection de l’atelier');assert.equal(r.hidden.some(e=>e.title==='QUENTIN Quentin'),false);
    const faux=C.dayMask(pr.ics.map(e=>({...e,members:[e]})),ag3,e=>C.stageOf(e).id);assert.equal(faux.hidden.some(e=>e.title==='QUENTIN Quentin'),true,'preuve : sans étape canonique, Quentin serait masqué à tort');}}
+ // AG-040 : une description qui ne change que d'ordre ou d'espaces (contacts écartés) est la MÊME inscription ; le titre reste dans l'identité
+ {const ND=C.normDescription;
+  assert.equal(ND('Classe 6C\nGroupe A\n0600000001'),'Classe 6C\nGroupe A','contacts écartés');assert.equal(ND('Groupe A\nClasse 6C'),ND('Classe 6C\nGroupe A'),'ordre ignoré');assert.equal(ND('  Classe   6C \n\nGroupe  A  '),ND('Classe 6C\nGroupe A'),'espaces ignorés');
+  assert.notEqual(ND('Classe 6C\nGroupe A'),ND('Classe 6C\nGroupe B'),'une vraie différence de texte reste une différence');assert.equal(ND(ND('b\n a\nc')),ND('b\n a\nc'),'idempotente');assert.equal(ND(''),'');
+  const vv=(uid,titre,desc)=>'BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTART:20261130T130000Z\r\nDTEND:20261130T140000Z\r\nSUMMARY:'+titre+'\r\nCATEGORIES:777\r\nLOCATION:Cité\r\nDESCRIPTION:'+desc+'\r\nEND:VEVENT';
+  const fic=l=>'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'+l.join('\r\n')+'\r\nEND:VCALENDAR';
+  const A1=vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A\\n0600000001'),A2=vv(9,'ELEVE Alpha','Groupe A\\n Classe  6C\\n0600000001'),B1=vv(9,'ELEVE Beta','Classe 6C\\nGroupe B');
+  const lues=C.parse(fic([A1,A2,B1])).events;assert.equal(lues.length,3,'le fichier contient 3 lignes (Alpha deux fois)');
+  // 1) import dans un calendrier vide : le doublon n'est plus recréé
+  {const m=C.merge([],lues);assert.equal(m.events.length,2,'Alpha en deux lignes = une seule inscription ; Beta reste');assert.equal(m.added,2,'2 ajoutées');assert.deepEqual(m.events.map(e=>e.title).sort(),['ELEVE Alpha','ELEVE Beta']);
+   assert.equal(C.countEvents(m.events).inscriptions,2,'décompte des inscriptions : 2 et non 3');}
+  // 2) doublon DÉJÀ stocké avant ce correctif : le volet « Doublons d'import » le voit, retrait confirmé = 1 groupe, 2 inscriptions restantes
+  {const stocke=lues.slice(),d=C.duplicates(stocke);assert.equal(d.length,1,'un groupe de doublons détecté (Alpha)');assert.equal(d[0].remove.length,1);
+   const apres=C.applyDuplicates(stocke,d,{});assert.equal(apres.length,2,'après retrait confirmé : 2 inscriptions');assert.equal(stocke.length,3,'la liste d’origine n’est pas modifiée par le calcul');
+   // 3) réimport du même fichier après nettoyage : le doublon retiré n'est PAS recréé
+   const re=C.merge(apres,lues);assert.equal(re.added,0,'réimport : rien n’est recréé');assert.equal(re.events.length,2);}
+  // 4) un doublon stocké reste stocké tant que l'utilisateur ne confirme pas (aucun retrait automatique) ; un réimport n'en ajoute pas
+  {const stocke=lues.slice(),re=C.merge(stocke,lues);assert.equal(re.added,0);assert.equal(re.events.length,3,'rien n’est retiré sans confirmation');}
+  // garde-fous : deux PERSONNES ne fusionnent jamais ; une vraie différence de ligne ne fusionne pas ; les contacts restent complétés
+  {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Beta','Classe 6C\\nGroupe A')])).events);assert.equal(m.events.length,2,'même description, titres différents : deux inscriptions');}
+  {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Alpha','Classe 6C\\nGroupe B')])).events);assert.equal(m.events.length,2,'même titre, ligne différente : deux inscriptions');}
+  {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Alpha','Groupe A\\nClasse 6C\\n0600000007')])).events);assert.equal(m.events.length,1);assert.match(m.events[0].description,/0600000007/,'le contact de la version écartée est reporté (AG-035 conservé)');}
+ }
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
