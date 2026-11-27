@@ -136,6 +136,17 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   assert.deepEqual(d[0].masked.map(x=>x.description.split('\n')[0]),['MARQUEUR-UN','MARQUEUR-DEUX'],'description d’origine disponible');assert.match(d[0].masked[0].uid,/^u1$/,'UID d’origine disponible');
   assert.equal(C.maskedInfo(ev[0]).title,'ALPHA Alice');assert.deepEqual(C.foldedDetails({released:[]}),[]);assert.deepEqual(C.foldedDetails({}),[],'RDV sans repli : liste vide');
   assert.equal(JSON.stringify(ev).includes('MARQUEUR-UN'),true,'inscriptions stockées intactes');}
+ // Règle 65 : une inscription GDIN non masquée alors qu'un RDV Agenda existe au même début dit POURQUOI (nom, lieux, ambiguïté, nom incomplet) ; rien si aucun RDV Agenda à cette heure
+ {const why=(ev,ag)=>{const r=C.project(ev,items(ag));return ev.map(e=>r.reasons.get(e.key));};
+  assert.match(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','AUTRE','Bob','09:30','Fumel')])[0],/le nom diffère/,'nom différent');
+  assert.match(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','AUTRE','Bob','09:30','Fumel')])[0],/GDIN : « DU TEST Alice » · Agenda : « AUTRE Bob »/,'les deux noms comparés sont affichés');
+  assert.match(why([ics(1,'DU TEST Alice',D,'Salle des fêtes')],[mk('a1','DU TEST','Alice','09:30','Fumel')])[0],/lieux différents \(GDIN : « Salle des fêtes » · Agenda : « Fumel »\)/,'lieux différents, lieux nommés');
+  assert.match(why([ics(1,'DU TEST Alice',D,'')],[mk('a1','DU TEST','Alice','09:30','Fumel'),mk('a2','DU TEST','Alice','09:30','Fumel')])[0],/ambigu/,'ambiguïté côté Agenda');
+  assert.match(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','','Alice','09:30','Fumel')])[0],/sans nom ou prénom complet/,'RDV Agenda au nom incomplet');
+  assert.equal(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','AUTRE','Bob','10:30','Fumel')])[0],undefined,'autre heure : aucune raison');
+  assert.equal(why([ics(1,'DU TEST Alice',D,'Fumel')],[])[0],undefined,'aucun RDV Agenda : aucune raison');
+  assert.equal(why([ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')])[0],undefined,'inscription masquée : aucune raison');
+  const two=C.project([ics(1,'DU TEST Alice',D,'Fumel'),ics(2,'AUTRE Bob',D,'Fumel')],items([mk('a1','DU TEST','Alice','09:30','Fumel')]));assert.equal(two.reasons.has(two.ics[0].key),true,'seule l’inscription restante a une raison');assert.equal(two.reasons.size,1);}
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');

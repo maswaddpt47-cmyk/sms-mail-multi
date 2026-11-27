@@ -226,7 +226,16 @@
     var drop=new Set(),matched=0,ambiguous=0;
     items.forEach(function(a,ai){var c=cand.get(ai)||[];a.masked=[];if(!c.length)return;
       if(c.every(function(e){return byIcs.get(e.key).length===1;})){a.masked=c;c.forEach(function(e){drop.add(e.key);});matched+=c.length;}else ambiguous++;});
-    return {ics:events.filter(function(e){return !drop.has(e.key);}),agenda:items,matched:matched,ambiguous:ambiguous};}
+    // Règle 65 (MD-LIB) : quand une inscription GDIN n'est PAS masquée alors qu'un RDV de l'Agenda existe au même début, la raison est écrite (lieux seulement, pas de donnée en plus de ce que l'écran montre déjà).
+    var reasons=new Map();
+    events.forEach(function(e){if(drop.has(e.key)||e.allDay)return;var t=Date.parse(e.start),shown=metadata(e).participant||e.title,who=norm(shown),same=items.filter(function(a){return !a.allDay&&Date.parse(a.start)===t;});if(!same.length)return;
+      var named=same.filter(function(a){return a.idKey&&a.idKey===who;}),r;
+      if(named.length){if(!named.some(function(a){return placesCompatible(e.location,a.location);}))r='Même nom et même heure qu’un RDV de l’Agenda, mais lieux différents (GDIN : « '+(e.location||'non indiqué')+' » · Agenda : « '+(named[0].location||'non indiqué')+' »).';
+        else r='Même nom et même heure qu’un RDV de l’Agenda, mais rapprochement ambigu (plusieurs fiches Agenda candidates) : rien n’est masqué.';}
+      else if(same.some(function(a){return !a.idKey;}))r='Même heure qu’un RDV de l’Agenda sans nom ou prénom complet : pas de rapprochement.';
+      else r='Même heure qu’un RDV de l’Agenda, mais le nom diffère (GDIN : « '+shown+' » · Agenda : « '+same[0].title+' »).';
+      reasons.set(e.key,r);});
+    return {ics:events.filter(function(e){return !drop.has(e.key);}),agenda:items,matched:matched,ambiguous:ambiguous,reasons:reasons};}
   function render(pane,ctx){
     if(!ctx.profileId)return;ctx.key='ess-'+ctx.profileId+'-calendar-ics-v1';ctx.stagesKey='ess-'+ctx.profileId+'-'+STAGE_SUFFIX;
     var doc=pane.ownerDocument,win=doc.defaultView||{},today=parisDay(Date.now()),st=states[ctx.profileId]||(states[ctx.profileId]={date:today,view:win.innerWidth<760?'day':'week',group:true,query:'',action:'',object:'',location:'',type:'',preview:null,message:'',menuOpen:false,legendOpen:false});
@@ -343,7 +352,8 @@
       if(!e.collective&&norm(e.title)!==norm(heading))body.appendChild(node('p',{},e.title));
       if(e.cancelled)body.appendChild(node('p',{},'Événement annulé'));
       body.appendChild(node('p',{},dateLine(e)));
-      
+      if(!readOnly&&e.source!=='agenda'){var why=[];e.members.forEach(function(m){var r=proj.reasons&&proj.reasons.get(m.key);if(r&&why.indexOf((e.members.length>1?m.title+' : ':'')+r)<0)why.push((e.members.length>1?m.title+' : ':'')+r);});
+        if(why.length){var wb=node('div',{class:'ics-help',role:'note'});wb.appendChild(node('strong',{},'Pas rapproché de l’Agenda : '));why.forEach(function(w,i){wb.appendChild(node('span',{},(i?' ':'')+w));});body.appendChild(wb);}}
       if(e.location)body.appendChild(node('p',{class:'ics-location'},e.location));
       if(e.collective){body.appendChild(node('h4',{},'Participants / inscriptions ('+e.members.length+')'));var list=node('ul',{class:'ics-participants'});e.participants.forEach(function(p){list.appendChild(node('li',{},p.name+(p.cancelled?' — inscription annulée':'')));});body.appendChild(list);}
       var coords=contactItems(e.members);if(coords.length){body.appendChild(node('h4',{},'Coordonnées'));var coordList=node('ul',{class:'ics-participants'});
