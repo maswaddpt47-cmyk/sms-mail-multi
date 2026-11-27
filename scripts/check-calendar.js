@@ -60,6 +60,45 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   assert.equal(Object.getPrototypeOf(JSON.parse(mem.get(ctx.stagesKey)).map),Object.prototype,'aucune pollution de prototype');assert.equal(({}).excuse,undefined);}
  for(const abime of ['pas du json','{"version":1,"map":{"x":"rouge"}}','{"version":2,"map":{}}']){mem.set(ctx.stagesKey,abime);assert.throws(()=>C.loadStages(storage,ctx.stagesKey),'illisible : '+abime);assert.equal(mem.get(ctx.stagesKey),abime,'illisible jamais réécrit');}
  console.log('AG-036 : choix d’étape par objet (priorité, objet vide, prototype, normalisation), format versionné validé, écriture sûre (profil, autre onglet, panne, illisible) OK.');}
+/* AG-038 : RDV de l'Agenda projetés ; l'Agenda prime sur un doublon GDIN seulement si la correspondance est complète et non ambiguë (R1), par inscription avant regroupement (R2). */
+{const mk=(id,nom,prenom,heure,commune,statut)=>({id,nom,prenom,date:'2026-11-27',heure,commune,demarche:'Demande de logement social',statut:statut||'realise',label:'Libellé '+(statut||'realise'),bg:'#cfc',border:'#080',text:'#000'});
+ const ics=(i,titre,debutZ,lieu,action)=>({key:'gdin:'+JSON.stringify(['u'+i,action||'',debutZ,debutZ,titre,lieu||'',action?'participant:'+titre:'description:'+titre]),title:titre,location:lieu||'',description:(action?'Participant : '+titre+'\n':'')+'Demande de logement social',start:debutZ,end:debutZ,allDay:false,cancelled:false});
+ const D='2026-11-27T08:30:00.000Z';   // 09:30 Paris
+ const items=l=>C.agendaItems(l);
+ // correspondance complète : l'ICS est masqué, l'Agenda reste, rien n'est supprimé
+ {const ev=[ics(1,'DU TEST Alice',D,'Fumel')],avant=JSON.stringify(ev),r=C.project(ev,items([mk('a1','DU TEST','Alice','09:30','Fumel')]));
+  assert.equal(r.ics.length,0,'ICS identique masqué');assert.equal(r.agenda.length,1);assert.equal(r.agenda[0].masked.length,1,'inscription masquée consultable');assert.equal(r.matched,1);assert.equal(JSON.stringify(ev),avant,'inscriptions stockées intactes');}
+ // casse, accents, espaces neutralisés ; lieu inconnu d'un côté = compatible
+ assert.equal(C.project([ics(1,'du  test   ALICE',D,'')],items([mk('a1','DU TEST','Alice','09:30','Fumel')])).matched,1,'norm + lieu ICS inconnu');
+ assert.equal(C.project([ics(1,'ÉLISE Océane',D,'CMS de Fumel')],items([mk('a1','Élise','Océane','09:30','Fumel')])).matched,1,'accents et casse neutralisés');
+ assert.equal(C.project([ics(1,'ÉLISE',D,'CMS de Fumel')],items([mk('a1','Élise','Océane','09:30','Fumel')])).matched,0,'« NOM » seul ≠ « NOM Prénom » : pas de découpage approximatif');
+ assert.equal(C.project([ics(1,'ELISE Oceane',D,'CMS de Fumel')],items([mk('a1','ELISE','Oceane','09:30','Fumel')])).matched,1,'lieu de l’Agenda en mots entiers dans « CMS de Fumel »');
+ // R1 : ce qui ne correspond pas entièrement garde les deux entrées
+ for(const [cas,ev,ag] of [
+   ['heure différente',[ics(1,'DU TEST Alice','2026-11-27T09:00:00.000Z','Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')]],
+   ['jour différent',[ics(1,'DU TEST Alice','2026-11-28T08:30:00.000Z','Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')]],
+   ['ordre Prénom NOM',[ics(1,'Alice DU TEST',D,'Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')]],
+   ['prénom différent',[ics(1,'DU TEST Alicia',D,'Fumel')],[mk('a1','DU TEST','Alice','09:30','Fumel')]],
+   ['lieux connus incompatibles',[ics(1,'DU TEST Alice',D,'Marmande')],[mk('a1','DU TEST','Alice','09:30','Fumel')]],
+   ['RDV sans heure',[ics(1,'DU TEST Alice',D,'Fumel')],[mk('a1','DU TEST','Alice','','Fumel')]],
+   ['nom vide',[ics(1,'Alice',D,'Fumel')],[mk('a1','','Alice','09:30','Fumel')]]]){
+   const r=C.project(ev,items(ag));assert.equal(r.matched,0,'R1 : '+cas+' → pas de fusion');assert.equal(r.ics.length,1,'R1 : '+cas+' → ICS conservé');assert.equal(r.agenda[0].masked.length,0);}
+ // R1 : candidats multiples (homonymes) des deux côtés → rien de masqué, signalé
+ {const r=C.project([ics(1,'DUPONT Jean',D,'Fumel'),ics(2,'DUPONT Jean',D,'Fumel')],items([mk('a1','DUPONT','Jean','09:30','Fumel')]));assert.equal(r.matched,0);assert.equal(r.ambiguous,1);assert.equal(r.ics.length,2,'deux ICS homonymes conservés');}
+ {const r=C.project([ics(1,'DUPONT Jean',D,'Fumel')],items([mk('a1','DUPONT','Jean','09:30','Fumel'),mk('a2','DUPONT','Jean','09:30','Fumel')]));assert.equal(r.matched,0);assert.equal(r.ambiguous,2,'deux fiches Agenda homonymes : jamais l’une plutôt que l’autre');assert.equal(r.ics.length,1);}
+ // R2 : rapprocher par inscription AVANT de regrouper : atelier P+Q, seul P a un RDV Agenda → Q reste, total = 2
+ {const P=ics(1,'PERSONNE Paul',D,'Fumel','777'),Q=ics(2,'QUENTIN Quentin',D,'Fumel','777'),r=C.project([P,Q],items([mk('a1','PERSONNE','Paul','09:30','Fumel')]));
+  assert.equal(r.matched,1);assert.deepEqual(r.ics.map(e=>e.title),['QUENTIN Quentin'],'seule l’inscription rapprochée est retirée');
+  const total=C.countEvents(r.ics).evenements+r.agenda.length;assert.equal(total,2,'Q (ICS) + P (Agenda) = 2 événements, pas 1 séance + 1 RDV − 1 doublon');
+  const rest=C.countEvents(r.ics);assert.equal(rest.inscriptions,1,'reste : une inscription');assert.equal(C.countEvents([P,Q]).evenements,1,'avant projection : 1 séance de 2 inscriptions');}
+ // R4 : statut exact conservé, clé stable (pas d'index), id relu, fiche sans id signalée
+ {const a=items([mk('a1','AA','Bb','10:00','Fumel','lapin'),mk('','CC','Dd','11:00','Fumel','pas_de_retour'),{...mk('a3','EE','Ff','12:00','Fumel','annule')}]);
+  assert.deepEqual(a.map(x=>x.statut),['lapin','pas_de_retour','annule'],'statut exact, pas de « annulé » générique');assert.deepEqual(a.map(x=>x.cancelled),[false,false,true],'seul annulé = annulé');
+  assert.equal(a[0].key,'agenda:id:a1','clé stable fondée sur l’identifiant, jamais sur l’index');assert.equal(a[1].fid,'','fiche sans id : aucun identifiant fabriqué');assert.match(a[1].key,/^agenda:sansid:/);
+  const b=items([mk('a1','AA','Bb','10:00','Fumel','lapin')]);assert.equal(b[0].key,a[0].key,'même clé si l’historique change d’ordre');}
+ assert.equal(items([{...mk('a9','AA','Bb','10:00','Fumel'),date:'pas une date'},null,'x']).length,0,'entrées invalides ignorées');
+ assert.equal(C.placesCompatible('Fumelles','Fumel'),false,'mot entier : « Fumel » n’est pas dans « Fumelles »');assert.equal(C.placesCompatible('','Fumel'),true);assert.equal(C.placesCompatible('Salle des fêtes','Fumel'),false);assert.equal(C.placesCompatible('Mairie de Fumel-sur-Lot','Fumel'),true,'« Fumel » mot entier dans « Fumel-sur-Lot » (tiret = séparateur)');
+ console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
 assert.equal(C.visibleDays(C.bounds('2026-11-06','month'),'month').length,30,'AG-031 : mois = 6 semaines de 5 jours');
@@ -133,8 +172,8 @@ assert.equal(C.objectLabel({...plainEvent,description:'Participant : Personne fi
 assert.equal(C.objectLabel(C.sessions(ten)[0]),'Espace Santé');assert.equal(C.objectLabel({...plainSession,members:[plainEvent,{...plainEvent,description:'Autre objet fictif'}]}),'','collectif hétérogène : aucun objet supposé commun');
 assert.equal(C.merge([plainEvent],C.parse(ics([plainObject])).events).unchanged,1,'objet libre affiché sans changer l’identité');
 const placed=C.positions([p.events[0],{...p.events[1],end:'2026-11-06T10:30:00.000Z'}],'2026-11-06');assert.equal(placed.length,2);assert.equal(placed[0].columns,2);assert.notEqual(placed[0].column,placed[1].column);
-const hist=[{date:'2026-11-06',heure:'09:30',nom:'FICTIF',prenom:'Exemple',commune:'Lieu fictif',msgType:'confirmation'}],histBefore=JSON.stringify(hist);assert.equal(C.rdvs(hist).length,1);assert.equal(JSON.stringify(hist),histBefore);
-assert.equal(C.rdvs([{...hist[0],heure:''}])[0].unknownTime,true,'RDV sans heure conservé, heure à préciser');
+const hist=[{id:'f1',date:'2026-11-06',heure:'09:30',nom:'FICTIF',prenom:'Exemple',commune:'Lieu fictif',statut:'confirme',label:'Confirmé',bg:'#eef',border:'#00f',text:'#000'}],histBefore=JSON.stringify(hist);assert.equal(C.agendaItems(hist).length,1);assert.equal(JSON.stringify(hist),histBefore,'AG-038 : la projection ne modifie jamais ses données');
+assert.equal(C.agendaItems([{...hist[0],heure:''}])[0].unknownTime,true,'RDV sans heure conservé, heure à préciser');
 const data=new Map(),storage={getItem:k=>data.has(k)?data.get(k):null,setItem:(k,v)=>data.set(k,v)};
 let profile='fictif-a',writes=0,ref=null,fail=false;
 const ctx={profileId:profile,currentProfile:()=>profile,history:hist,key:'ess-fictif-a-calendar-ics-v1',storage,noteVersion:(k,v)=>{ref=v;},write:(k,v)=>{writes++;if(fail)return false;storage.setItem(k,JSON.stringify(v));return true;}};

@@ -1040,6 +1040,26 @@ async function restaurer(contenu,fonction,options){
     e.ctx.CalendarICS={};assert.equal(e.ctx.resumeImport(avec(cal1)).calendrierFichier,'nombre indisponible','AG-037 : module sans décompte → idem');}
    assert(section('function renderModal(','\nfunction ').includes("rs.calendrierActuel+' actuellement → '+rs.calendrierFichier+' dans '+courte"),'AG-037 : la confirmation affiche les deux nombres');
    console.log('AG-037 : décompte des événements remplacés (regroupés comme l’écran, inscriptions à part, singulier, vide, absent, illisible, affichage) OK.');}
+  /* ── AG-038 : RDV de l'Agenda donnés au Calendrier, ouverture de la vraie fiche (R4 Codex : id relu au clic, refus explicites, aucune écriture) ── */
+  {const mkE=()=>{const e=charger();vm.runInContext(fonction('rdvsPourCalendrier')+fonction('ouvrirFicheDepuisCalendrier'),e.ctx);
+     Object.assign(e.ctx,{STATUTS_ARCHIVE:['en_attente','confirme','realise','excuse','annule','lapin','pas_de_retour'],STATUT_A_VERIFIER:'a_verifier',STATUT_STYLES:{a_verifier:{label:'À vérifier',bg:'b0',border:'c0',text:'t0'},realise:{label:'Réalisé',bg:'b1',border:'c1',text:'t1'},lapin:{label:'Lapin',bg:'b2',border:'c2',text:'t2'}},showToast:(m)=>e.journal.toasts.push(m)});
+     e.opened=[];e.ctx.openHistItem=i=>e.opened.push(i);return e;};
+   const fiche=(extra)=>Object.assign({nom:'FICTIF',prenom:'Alice',date:'2026-11-27',heure:'09:30',commune:'Fumel',demarche:'Démarche fictive',statut:'realise',msgType:'confirmation'},extra||{});
+   {const e=mkE();e.S.history=[fiche({id:'a1'}),fiche({nom:'SANSID',statut:'statut_inconnu'}),{msgType:'indispo',date:'2026-11-27',heure:'12:30',commune:'Fumel'},fiche({id:'x',date:''}),fiche({id:'a2',statut:'lapin'})];
+    const avant=JSON.stringify(e.S.history),etat=e.st.etat(),r=e.ctx.rdvsPourCalendrier();
+    assert.equal(r.length,3,'AG-038 : blocages (indispo) et fiches sans date exclus');assert.deepEqual(r.map(x=>x.id),['a1','','a2'],'identifiant conservé, jamais fabriqué');
+    assert.equal(r[1].statut,'a_verifier','statut inconnu = « à vérifier », pas « annulé »');assert.equal(r[2].label,'Lapin','statut exact et son libellé');assert.equal(r[0].bg,'b1');
+    assert.equal(JSON.stringify(e.S.history),avant,'AG-038 : la projection ne modifie pas l’historique');assert.equal(e.st.etat(),etat,'AG-038 : aucune écriture');}
+   // ouverture : identifiant relu au clic, profil figé
+   {const e=mkE();e.S.history=[fiche({id:'a1'}),fiche({id:'a2',nom:'AUTRE'})];const c=e.ctx.contexteFige(),etat=e.st.etat();
+    assert.equal(e.ctx.ouvrirFicheDepuisCalendrier(c,'a2'),true);assert.deepEqual(e.opened,[1],'ouvre la fiche portant cet identifiant, pas un index figé');
+    e.S.history=[fiche({id:'a2',nom:'AUTRE'}),fiche({id:'a1'})];assert.equal(e.ctx.ouvrirFicheDepuisCalendrier(c,'a2'),true);assert.deepEqual(e.opened,[1,0],'historique réordonné : l’identifiant est relu au clic');
+    for(const [cas,id,motif] of [['sans identifiant','',/identifiant/],['null',null,/identifiant/],['fiche disparue','zzz',/plus disponible/]]){const n=e.opened.length;assert.equal(e.ctx.ouvrirFicheDepuisCalendrier(c,id),false,'refus : '+cas);assert.equal(e.opened.length,n,cas+' : rien ouvert');assert.match(e.journal.toasts[e.journal.toasts.length-1],motif,cas+' : raison affichée');}
+    e.S.history=[fiche({id:'d'}),fiche({id:'d',nom:'DOUBLE'})];{const n=e.opened.length;assert.equal(e.ctx.ouvrirFicheDepuisCalendrier(c,'d'),false,'identifiant ambigu refusé');assert.equal(e.opened.length,n);assert.match(e.journal.toasts[e.journal.toasts.length-1],/Plusieurs fiches/);}
+    assert.equal(e.st.etat(),etat,'AG-038 : ouvrir une fiche n’écrit rien');}
+   {const e=mkE();e.S.history=[fiche({id:'a1'})];const c=e.ctx.contexteFige();e.S.activeProfile='p2';assert.equal(e.ctx.ouvrirFicheDepuisCalendrier(c,'a1'),false,'profil changé depuis le rendu : refus');assert.deepEqual(e.opened,[]);assert.match(e.journal.toasts[e.journal.toasts.length-1],/profil a changé/);}
+   assert(/agenda:function\(\)\{return contexteIntact\(fige\)\?rdvsPourCalendrier\(\):\[\];\}/.test(section('function renderCalendar(','\nfunction ')),'AG-038 : les RDV ne sont donnés que si le profil rendu est toujours le profil actif');
+   console.log('AG-038 : RDV fournis au Calendrier (blocages exclus, statut exact, id conservé, aucune écriture) et ouverture de la vraie fiche (id relu, profil figé, refus explicites) OK.');}
   /* ── AG-033 (amendé par Codex le 16/11) : lien orientation → dossier, fiche et orientation dans la même opération ── */
   const orient=(id,extra)=>Object.assign({id,nom:'FICTIF',prenom:'Ouverte',done:false,commune:'Fumel',motif:'CAF',date:'2026-10-10'},extra||{});
   const prepLien=(orients,src,avant)=>{const e=charger();e.ctx.showActivePane=()=>{};if(typeof e.ctx.jourParis!=='function')e.ctx.jourParis=()=>'2026-11-01';
