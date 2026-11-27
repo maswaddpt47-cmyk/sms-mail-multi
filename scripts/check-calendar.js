@@ -115,6 +115,11 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   {const r=f([mk('a1','ALPHA','Hugo','','Fumel','realise'),mk('a2','BRAVO','Clara','','Fumel','annule')]);assert.equal(r.items.length,2,'sans heure : jamais repliés');}
   {const ev=[ics(1,'BRAVO Clara',D,'Fumel')],p=C.project(ev,items([mk('a1','ALPHA','Hugo','10:30','Fumel','realise'),mk('a2','BRAVO','Clara','09:30','Fumel','annule')])),r=C.foldSlots(p.agenda);assert.equal(p.ics.length,0,'le GDIN du libéré reste masqué : rapproché avant le repli');assert.equal(r.items.length,2,'autre créneau (09:30) : pas replié');}
   {const ev=[ics(1,'BRAVO Clara',D,'Fumel')],p=C.project(ev,items([mk('a1','ALPHA','Hugo','09:30','Fumel','realise'),mk('a2','BRAVO','Clara','09:30','Fumel','annule')])),r=C.foldSlots(p.agenda);assert.equal(p.ics.length,0);assert.equal(r.items.length,1);assert.equal(r.items[0].released[0].masked.length,1,'l’inscription GDIN du libéré replié reste consultable');}}
+ // R2 (Codex) : une heure non interprétable (25:00, 12:60, heure d'été inexistante) n'est jamais projetée en 1970 ni rapprochable : jour conservé, « Heure à préciser »
+ for(const [jour,h] of [['2026-11-27','25:00'],['2026-11-27','24:00'],['2026-11-27','12:60'],['2026-03-29','02:30']]){const a=C.agendaItems([{...mk('a1','DU TEST','Alice',h,'Fumel'),date:jour}])[0];
+  assert.equal(a.unknownTime,true,'R2 : '+jour+' '+h+' → heure à préciser');assert.equal(a.allDay,true);assert.equal(a.start,jour,'R2 : jour initial conservé, jamais 1970');assert.equal(a.idKey,'','R2 : aucun rapprochement possible');assert(!/^1970/.test(a.start));
+  assert.equal(C.project([ics(1,'DU TEST Alice','2026-11-27T08:30:00.000Z','Fumel')],C.agendaItems([{...mk('a1','DU TEST','Alice',h,'Fumel'),date:jour}])).matched,0,'R2 : '+h+' ne masque aucun GDIN');}
+ assert.equal(C.agendaItems([mk('a1','DU TEST','Alice','09:30','Fumel')])[0].unknownTime,false,'heure valide inchangée');
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');

@@ -6,7 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json?v=2">
 <meta name="theme-color" content="#4c51c6">
-<link rel="stylesheet" href="calendar.css?v=gdin-20261127-7">
+<link rel="stylesheet" href="calendar.css?v=gdin-20261127-8">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -976,7 +976,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
-<script src="calendar.js?v=gdin-20261127-7"></script>
+<script src="calendar.js?v=gdin-20261127-8"></script>
 <script>
 "use strict";
 
@@ -2900,7 +2900,12 @@ function ouvrirFicheDepuisCalendrier(c,id){
   if(id==null||id===''){showToast('Cette fiche n’a pas d’identifiant : ouvrez-la depuis l’Agenda.','warn');return false;}
   var trouvees=[];(S.history||[]).forEach(function(h,i){if(h&&h.id!=null&&String(h.id)===String(id))trouvees.push(i);});
   if(trouvees.length!==1){showToast(trouvees.length?'Plusieurs fiches portent cet identifiant : ouvrez-la depuis l’Agenda.':'Cette fiche n’est plus disponible. Rouvrez l’Agenda.','warn');return false;}
-  openHistItem(trouvees[0]);return true;
+  /* AG-038 R1 (Codex) : la VRAIE fiche RDV de l'Agenda (statut, modification), comme depuis les Orientations — pas la fenêtre Historique (message). */
+  var fiche=S.history[trouvees[0]],owner=c.profil;
+  var perm=(S.permanences||[]).find(function(p){return p&&p.exceptDate===fiche.date&&p.commune===fiche.commune;})||{commune:fiche.commune||''};
+  S.agendaRdv={slot:{heure:fiche.heure||'',taken:Object.assign({},fiche,{_profile:owner}),freeAgain:estLibere(fiche.statut),multiPropo:false,allPropo:[],replaced:[]},
+    day:{dateStr:fiche.date,perm:perm,profile:owner,date:new Date(fiche.date+'T12:00:00')}};
+  S.modal='agenda-rdv';renderModal();return true;
 }
 function renderCalendar(){
   var pane=document.getElementById('pane-calendar');if(!pane)return;
@@ -8294,6 +8299,8 @@ function renderModal(){
       S._lastModal=null;renderStats();if(sc)sc.scrollTop=top;
     }
     if(S._lastModal==='agenda-rdv'&&S.activeTab==='orientations'&&typeof renderOrientations==='function'){S._lastModal=null;renderOrientations();}
+    /* AG-038 R1 : fiche ouverte depuis le Calendrier — tuile, rapprochement et décompte reflètent l'état courant au retour */
+    if(S._lastModal==='agenda-rdv'&&S.activeTab==='calendar'&&typeof renderCalendar==='function'){S._lastModal=null;renderCalendar();}
     S._lastModal=null;return;
   }
   S._lastModal=S.modal;
