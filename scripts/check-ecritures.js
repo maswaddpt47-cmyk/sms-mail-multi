@@ -19,7 +19,7 @@ const CODE=[
   section('function clearHistory(','function exportHistoryCSV('),fonction('deleteHistItem'),fonction('saveHistItem'),
   section('function entryYear(','/* années révolues'),
   section('function archiveYear(','/* affiche les stats agrégées'),
-  fonction('calendrierInvalide'),fonction('stagesCalendrierInvalides'),
+  fonction('calendrierInvalide'),fonction('stagesCalendrierInvalides'),fonction('lireCalendrierProfil'),
   section('/* AG-013, étape 2 : la sauvegarde est vérifiée entièrement','/* history */'),
   section('function ghRestoreLatest(','/* rétention'),
   section('function ghRestoreFile(','function ghCheckOnStartup('),
@@ -1015,6 +1015,24 @@ async function restaurer(contenu,fonction,options){
    {const e=imp(JSON.stringify(sauvegarde),choix(A));assert.equal(e.ctx.resumeImport(sauvegarde).couleurs,'conservés');assert.equal(e.ctx.resumeImport(avec(choix({}))).couleurs,'remplacés par aucun choix');assert.match(e.ctx.resumeImport(avec(choix(B))).couleurs,/^remplacés \(2 objet/);}
    assert(section('function renderModal(','\nfunction ').includes("Couleurs du calendrier (choix par objet) : '+rs.couleurs"),'AG-036 : la confirmation affiche la portée des couleurs');
    console.log('AG-036 : choix d’étape sauvegardés (vide explicite, illisible refusé), restaurés en remplacement, ancienne sauvegarde sans effet (R1), invalide refusé, panne annulée, portée annoncée OK.');}
+  /* ── AG-037 : confirmation d'import — nombre d'événements du calendrier remplacés (même définition que l'écran : regroupés, sans filtre) ── */
+  {const CAL=require(path.join(__dirname,'../calendar.js')),KC='ess-p1-calendar-ics-v1';
+   const ev=(i,jour)=>({key:'gdin:'+JSON.stringify(['u'+i,'A','2026-11-'+jour+'T09:00:00.000Z','2026-11-'+jour+'T10:00:00.000Z','Personne fictive '+i,'','participant:'+i]),title:'Personne fictive '+i,location:'',description:'Atelier fictif\nParticipant : P'+i,start:'2026-11-'+jour+'T09:00:00.000Z',end:'2026-11-'+jour+'T10:00:00.000Z',allDay:false,cancelled:false});
+   // 5 inscriptions en 2 séances (3 le 02, 2 le 03) ; 1 inscription = 1 séance
+   const cal5={version:1,events:[ev(1,'02'),ev(2,'02'),ev(3,'02'),ev(4,'03'),ev(5,'03')]},cal1={version:1,events:[ev(9,'05')]},calVide={version:1,events:[]};
+   const sauv=Object.assign({},sauvegarde),avec=c=>Object.assign({},sauvegarde,{calendarIcs:c});
+   const imp=(texte,existant)=>{const e=prepImport(texte);e.ctx.CalendarICS=CAL;if(existant!==undefined)e.st.setItem(KC,typeof existant==='string'?existant:JSON.stringify(existant));return e;};
+   assert.deepEqual(CAL.countEvents(cal5.events),{evenements:2,inscriptions:5},'AG-037 : séances regroupées ≠ inscriptions');assert.deepEqual(CAL.countEvents([]),{evenements:0,inscriptions:0});
+   // le décompte est celui de l'écran, hors filtre : même regroupement que sessions(events,true)
+   {const e=imp(JSON.stringify(avec(cal1)),cal5);const r=e.ctx.resumeImport(avec(cal1));assert.equal(r.calendrierActuel,'2 événements (5 inscriptions)','AG-037 : actuel lu dans le stockage du profil');assert.equal(r.calendrierFichier,'1 événement (1 inscription)','AG-037 : singulier, fichier');assert.equal(r.calendrier,'remplacé');}
+   {const e=imp(JSON.stringify(avec(calVide)),cal5);const r=e.ctx.resumeImport(avec(calVide));assert.equal(r.calendrierFichier,'0 événement (0 inscription)','AG-037 : fichier vide annoncé, pas masqué');}
+   {const e=imp(JSON.stringify(sauv),cal5);const r=e.ctx.resumeImport(sauv);assert.equal(r.calendrier,'conservé');assert.equal(r.calendrierFichier,'','AG-037 : champ absent → aucun chiffre côté fichier');assert.equal(r.calendrierActuel,'2 événements (5 inscriptions)');}
+   {const e=imp(JSON.stringify(avec(cal1)));const r=e.ctx.resumeImport(avec(cal1));assert.equal(r.calendrierActuel,'0 événement (0 inscription)','AG-037 : aucun calendrier local = 0, annoncé');}
+   {const e=imp(JSON.stringify(avec(cal1)),'{"version":2,"events":[]}');const r=e.ctx.resumeImport(avec(cal1));assert.equal(r.calendrierActuel,'nombre indisponible','AG-037 : calendrier local illisible → jamais 0');}
+   {const e=imp(JSON.stringify(avec(cal1)),cal5);e.ctx.CalendarICS={countEvents(){throw new Error('panne fictive');}};assert.equal(e.ctx.resumeImport(avec(cal1)).calendrierActuel,'nombre indisponible','AG-037 : décompte en panne → la confirmation reste affichable');
+    e.ctx.CalendarICS={};assert.equal(e.ctx.resumeImport(avec(cal1)).calendrierFichier,'nombre indisponible','AG-037 : module sans décompte → idem');}
+   assert(section('function renderModal(','\nfunction ').includes("rs.calendrierActuel+' actuellement → '+rs.calendrierFichier+' dans '+courte"),'AG-037 : la confirmation affiche les deux nombres');
+   console.log('AG-037 : décompte des événements remplacés (regroupés comme l’écran, inscriptions à part, singulier, vide, absent, illisible, affichage) OK.');}
   /* ── AG-033 (amendé par Codex le 16/11) : lien orientation → dossier, fiche et orientation dans la même opération ── */
   const orient=(id,extra)=>Object.assign({id,nom:'FICTIF',prenom:'Ouverte',done:false,commune:'Fumel',motif:'CAF',date:'2026-10-10'},extra||{});
   const prepLien=(orients,src,avant)=>{const e=charger();e.ctx.showActivePane=()=>{};if(typeof e.ctx.jourParis!=='function')e.ctx.jourParis=()=>'2026-11-01';

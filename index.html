@@ -6,7 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json?v=2">
 <meta name="theme-color" content="#4c51c6">
-<link rel="stylesheet" href="calendar.css?v=gdin-20261127-1">
+<link rel="stylesheet" href="calendar.css?v=gdin-20261127-2">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -976,7 +976,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
-<script src="calendar.js?v=gdin-20261127-1"></script>
+<script src="calendar.js?v=gdin-20261127-2"></script>
 <script>
 "use strict";
 
@@ -2597,6 +2597,12 @@ function verifierSauvegarde(data){
    remplacement annoncé et la proposition d'exporter l'état actuel. Rien n'est écrit avant « Remplacer » ; Annuler, ✕ et le fond de la fenêtre
    ne modifient rien. Les réglages communs (CMS, démarches, secteurs, modèles, variables, mandats) sont communs à tous les profils : ils sont nommés. */
 var IMPORT_COMMUNS=[['cmsList','CMS'],['demarches','démarches'],['secteurs','secteurs'],['customTemplates','modèles personnalisés'],['customVars','variables'],['mandats','mandats']];
+/* AG-037 : nombres affichés dans la confirmation d'import ; même définition que l'écran Calendrier (événements regroupés, sans filtre). */
+function decompteCalendrier(cal){
+  if(!cal||!Array.isArray(cal.events)||typeof CalendarICS==='undefined'||!CalendarICS.countEvents)return null;
+  try{return CalendarICS.countEvents(cal.events);}catch(e){return null;}
+}
+function texteDecompte(d){return d?d.evenements+' événement'+(d.evenements>1?'s':'')+' ('+d.inscriptions+' inscription'+(d.inscriptions>1?'s':'')+')':'nombre indisponible';}
 function resumeImport(data){
   function n(o,k){var v=o&&o[k];if(k==='history'&&Array.isArray(v))return v.filter(function(h){return !h||h.msgType!=='indispo';}).length;   /* pauses et blocages automatiques : pas des fiches */
     return Array.isArray(v)?v.length:(v&&typeof v==='object'?Object.keys(v).length:0);}
@@ -2604,6 +2610,8 @@ function resumeImport(data){
   return {profil:S.activeProfile,nom:(prof&&prof.nom)||S.activeProfile,
     lignes:[['Fiches','history'],['Journées','permanences'],['Orientations','orientations'],['Années archivées','yearlyStats']].map(function(c){return {libelle:c[0],actuel:n(cur,c[1]),fichier:data[c[1]]==null?null:n(data,c[1])};}),
     calendrier:Object.prototype.hasOwnProperty.call(data,'calendarIcs')?'remplacé':'conservé',
+    calendrierActuel:texteDecompte(decompteCalendrier(lireCalendrierProfil(S.activeProfile))),
+    calendrierFichier:Object.prototype.hasOwnProperty.call(data,'calendarIcs')?texteDecompte(decompteCalendrier(data.calendarIcs)):'',
     couleurs:Object.prototype.hasOwnProperty.call(data,'calendarStages')?(Object.keys(data.calendarStages.map).length?'remplacés ('+Object.keys(data.calendarStages.map).length+' objet(s))':'remplacés par aucun choix'):'conservés',
     communs:IMPORT_COMMUNS.filter(function(c){return data[c[0]]!=null;}).map(function(c){return c[1];})};
 }
@@ -8338,8 +8346,8 @@ function renderModal(){
     box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:13px;color:oklch(0.4 0.09 70);line-height:1.6;"},(gh?"La restauration":"L'import")+" va REMPLACER les données du profil « "+rs.nom+" » par celles de "+cible+". Les données actuelles de ce profil seront perdues si elles ne sont pas exportées avant."));
     var lg=el('ul',{style:"margin:0;padding-left:18px;font-size:13px;line-height:1.7;"});
     rs.lignes.forEach(function(l){lg.appendChild(el('li',{},l.libelle+' : '+l.actuel+' actuellement → '+(l.fichier==null?'inchangé (absent de '+courte+')':l.fichier+' dans '+courte)));});
-    lg.appendChild(el('li',{},'Calendrier : '+rs.calendrier+(rs.calendrier==='conservé'?' ('+courte+' n\'en contient pas)':' par celui de '+courte)));
-    lg.appendChild(el('li',{},'Couleurs du calendrier (choix par objet) : '+rs.couleurs+(rs.couleurs==='conservés'?' ('+courte+' n\'en contient pas)':' par celles de '+courte)));
+    lg.appendChild(el('li',{},'Calendrier : '+(rs.calendrier==='conservé'?'conservé ('+courte+' n\'en contient pas) : '+rs.calendrierActuel:'remplacé : '+rs.calendrierActuel+' actuellement → '+rs.calendrierFichier+' dans '+courte)));
+    lg.appendChild(el('li',{},'Couleurs du calendrier (choix par objet) : '+rs.couleurs+(rs.couleurs==='conservés'?' ('+courte+' n\'en contient pas)':'')));
     box.appendChild(lg);
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},rs.communs.length?'Réglages communs à tous les profils, remplacés aussi : '+rs.communs.join(', ')+'.':'Aucun réglage commun dans ce fichier : ils restent inchangés.'));
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},"Les fiches des autres profils ne sont pas touchées. Le thème et les délais d'alerte ne font pas partie de la sauvegarde : ils ne changent pas."));

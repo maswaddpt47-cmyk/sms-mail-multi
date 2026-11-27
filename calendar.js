@@ -105,6 +105,8 @@
       if(e.collective)e.title=e.activity||'Action '+e.action;
       e.participants=e.members.map(function(m){var meta=metadata(m);return {name:meta.participant||m.title,cancelled:m.cancelled,key:m.key};});return e;});
   }
+  // AG-037 : décompte pour la confirmation d'import. Événements = mêmes éléments que l'écran (regroupés, sans filtre) ; inscriptions = éléments stockés.
+  function countEvents(events){return {evenements:sessions(events,true).length,inscriptions:events.length};}
   function select(events,filters){filters=filters||{};var q=norm(filters.query);return events.filter(function(e){
     return (!filters.action||e.action===filters.action)&&(!filters.object||objectLabel(e)===filters.object)&&(!filters.location||e.location===filters.location)&&(!filters.type||(filters.type==='collective'?e.collective:filters.type==='individual'?!e.collective:filters.type==='zero'?e.zeroDuration:filters.type==='cancelled'?e.cancelled:true))&&(!q||norm([e.title,e.action,e.location].concat((e.members||[e]).map(function(m){return m.title+' '+m.description;})).join(' ')).includes(q));});}
   function merge(existing,incoming){var map=new Map(),added=0,updated=0,unchanged=0,identical=0,legacyExact=new Map(),legacyWithoutAction=new Map();
@@ -350,5 +352,5 @@
   }
   // AG-032 : après une restauration, un aperçu d'import en attente est abandonné (il visait l'ancien calendrier).
   function forget(profileId){if(states[profileId]){states[profileId].preview=null;states[profileId].message='';}}
-  return {forget:forget,contactItems:contactItems,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,validStages:validStages,choiceKey:choiceKey,loadStages:loadStages,saveStages:saveStages,STAGE_SUFFIX:STAGE_SUFFIX,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
+  return {forget:forget,contactItems:contactItems,differences:differences,duplicates:duplicates,applyDuplicates:applyDuplicates,normKey:normKey,stripContacts:stripContacts,parse:parse,dateValue:dateValue,merge:merge,load:load,save:save,overlaps:overlaps,bounds:bounds,positions:positions,rdvs:rdvs,render:render,stageOf:stageOf,STAGES:STAGES,validStages:validStages,countEvents:countEvents,choiceKey:choiceKey,loadStages:loadStages,saveStages:saveStages,STAGE_SUFFIX:STAGE_SUFFIX,visibleDays:visibleDays,hiddenWeekend:hiddenWeekend,localInstant:localInstant,parisDay:parisDay,metadata:metadata,sessions:sessions,select:select,objectLabel:objectLabel};
 });
