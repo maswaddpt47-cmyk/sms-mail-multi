@@ -45,8 +45,8 @@ Même constat fait en parallèle sur `SMS-mail` (repo miroir).
    `doImport()`. Testé en navigateur réel (Playwright) sur le profil "michel" : archivage,
    purge, agrégats, sélecteur d'année et **isolation entre profils** tous vérifiés
    fonctionnels (l'archivage sur un profil ne touche aucune clé localStorage d'un autre).
-4. Point hors code, à charge de l'utilisateur : vérifier avec son employeur (Conseil
-   Départemental) si ce traitement est couvert par un registre RGPD / DPO informé.
+4. *(Point retiré le 27/11/2026 à la demande de l'utilisateur : la vérification auprès de
+   l'employeur sort du programme ; la numérotation est conservée pour les renvois.)*
 5. ✅ **Fait (02/09/2026)** — Avertissement discret ajouté sur les 3 champs de saisie libre
    concernés (Notes du formulaire Générer, Motif de l'excuse et Notes du popup Agenda) :
    "Selon le RGPD, évitez d'y saisir des informations de santé ou autres données sensibles."
