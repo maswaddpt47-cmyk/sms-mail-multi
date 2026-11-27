@@ -16,6 +16,7 @@ function charger(){
   const document={addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},getElementById(){return null;},createElement:noeud,createTextNode:noeud,body:noeud(),documentElement:noeud()};
   const window={addEventListener(){},matchMedia(){return {matches:false,addEventListener(){}};},localStorage,location:{href:''},navigator:{}};
   const c=vm.createContext({document,window,localStorage,navigator:{},location:{href:''},setTimeout(){},clearTimeout(){},setInterval(){},console,Intl,Date:D,Math,JSON,URL:{createObjectURL(){return '';}},Blob:function(){}});
+  c.CalendarICS=require(path.join(__dirname,'../calendar.js'));   // module réel, comme dans la page (la garde AG-036 R3 refuse un champ de choix sans validateur)
   vm.runInContext(code,c);
   Object.assign(c,{showToast:t=>toasts.push(String(t)),renderModal(){},renderAll(){},regen(){},renderHeader(){},githubPush(){},maybeAutoBackupProfile(){},ghToken:()=>'',confirm:()=>true,renderStats(){},renderAgenda(){},renderTabs(){}});
   vm.runInContext(`S.activeProfile='p1';S.history=[];S.yearlyStats={};S.cmsList=[{id:1,nom:'Fumel'},{id:2,nom:'Marmande'}];S.secteurs=['Fumel','Marmande'];
