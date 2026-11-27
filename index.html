@@ -1544,8 +1544,7 @@ function ghRestoreLatest(token,onSuccess){
         if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
         var json=ghContenuSauvegarde(texte);
         S.importText=json;
-        if(doImport()){if(onSuccess)onSuccess();}
-        else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
+        demanderImport({source:'github',fichier:String(latest.path||'').split('/').pop(),apres:onSuccess});   /* 27/11/2026 : confirmation avant remplacement, comme l'import JSON */
       })
       .catch(function(e){showToast(e&&typeof e.ghStatus==='number'?ghMessageErreur(e.ghStatus,'Restauration GitHub'):'❌ Impossible de restaurer depuis GitHub','err');});
   });
@@ -1629,8 +1628,7 @@ function ghRestoreFile(token,filePath){
       if(S.activeProfile!==pid){showToast('❌ Restauration annulée : le profil a changé pendant le téléchargement, aucune donnée modifiée','err');return;}
       var json=ghContenuSauvegarde(texte);
       S.importText=json;
-      if(doImport())showToast('✅ Restauration réussie !');
-      else showToast(ecrireTout.incoherent?MSG_INCOHERENT:'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée','err');
+      demanderImport({source:'github',fichier:String(filePath||'').split('/').pop()});   /* 27/11/2026 : confirmation avant remplacement, comme l'import JSON */
     })
     .catch(function(e){showToast(e&&typeof e.ghStatus==='number'?ghMessageErreur(e.ghStatus,'Restauration GitHub'):'❌ Impossible de restaurer ce backup','err');});
 }
@@ -2590,24 +2588,27 @@ function resumeImport(data){
   function n(o,k){var v=o&&o[k];if(k==='history'&&Array.isArray(v))return v.filter(function(h){return !h||h.msgType!=='indispo';}).length;   /* pauses et blocages automatiques : pas des fiches */
     return Array.isArray(v)?v.length:(v&&typeof v==='object'?Object.keys(v).length:0);}
   var cur=exportData(),prof=PROFILES.filter(function(x){return x.id===S.activeProfile;})[0];
-  return {profil:S.activeProfile,nom:prof?prof.nom:S.activeProfile,
+  return {profil:S.activeProfile,nom:(prof&&prof.nom)||S.activeProfile,
     lignes:[['Fiches','history'],['Journées','permanences'],['Orientations','orientations'],['Années archivées','yearlyStats']].map(function(c){return {libelle:c[0],actuel:n(cur,c[1]),fichier:data[c[1]]==null?null:n(data,c[1])};}),
     calendrier:Object.prototype.hasOwnProperty.call(data,'calendarIcs')?'remplacé':'conservé',
     communs:IMPORT_COMMUNS.filter(function(c){return data[c[0]]!=null;}).map(function(c){return c[1];})};
 }
-function demanderImport(){
-  var data;
-  try{data=JSON.parse(String(S.importText||'').trim());}catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";showToast('❌ JSON invalide : aucune donnée modifiée','err');renderModal();return false;}
+/* opts (restauration GitHub, 27/11/2026) : {source:'github',fichier:nom du fichier,apres:fonction lancée après un remplacement réussi} */
+function demanderImport(opts){
+  var data,gh=!!(opts&&opts.source==='github'),pre=gh?'❌ Restauration annulée : ':'❌ ';
+  try{data=JSON.parse(String(S.importText||'').trim());}catch(e){S.importError="❌ JSON invalide. Vérifiez la sauvegarde complète.";showToast(pre+'JSON invalide, aucune donnée modifiée','err');renderModal();return false;}
   var erreur=verifierSauvegarde(data);
-  if(erreur){S.importError='❌ '+erreur+' Aucune donnée modifiée.';showToast('❌ '+erreur+' Aucune donnée modifiée.','err');renderModal();return false;}
-  S.importError="";S.importEnAttente={ctx:contexteFige(),resume:resumeImport(data)};S.modal='import-confirm';renderModal();return true;
+  if(erreur){S.importError='❌ '+erreur+' Aucune donnée modifiée.';showToast(pre+erreur+' Aucune donnée modifiée.','err');renderModal();return false;}
+  var rs=resumeImport(data);if(gh){rs.source='github';rs.fichier=opts.fichier||'';}
+  S.importError="";S.importEnAttente={ctx:contexteFige(),resume:rs,apres:gh?opts.apres:null};S.modal='import-confirm';renderModal();return true;
 }
 function annulerImport(){S.importEnAttente=null;S.importText="";S.importError="";S.modal=null;renderModal();showToast('Import annulé : aucune donnée modifiée');}
 function confirmerImport(){
   var att=S.importEnAttente;if(!att)return false;
   if(!contexteIntact(att.ctx)){S.importEnAttente=null;S.importText="";S.modal=null;renderModal();refusContexte('l\'import');return false;}   /* profil changé depuis la demande : rien n'est écrit */
-  S.importEnAttente=null;
-  if(doImport())return true;
+  S.importEnAttente=null;S.modal=null;   /* fenêtre fermée d'abord : un échec ne laisse pas une fenêtre vide */
+  if(doImport()){if(att.resume.source==='github')showToast('✅ Restauration réussie !');if(att.apres)att.apres();return true;}
+  showToast(ecrireTout.incoherent?MSG_INCOHERENT:(att.resume.source==='github'?'❌ Restauration annulée : sauvegarde illisible ou enregistrement impossible, aucune donnée modifiée':(S.importError||'❌ Import annulé : aucune donnée modifiée')),'err');
   return false;
 }
 function doImport(){
@@ -8316,11 +8317,12 @@ function renderModal(){
   else if(S.modal==='import-confirm'&&S.importEnAttente){
     var rs=S.importEnAttente.resume;
     box.setAttribute('role','alertdialog');box.setAttribute('aria-label','Confirmer le remplacement des données');
+    var gh=rs.source==='github',cible=gh?'la sauvegarde GitHub'+(rs.fichier?' ('+rs.fichier+')':''):'le fichier',courte=gh?'la sauvegarde':'le fichier';
     box.appendChild(header('⚠️ Remplacer les données de '+rs.nom+' ?'));
-    box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:13px;color:oklch(0.4 0.09 70);line-height:1.6;"},"L'import va REMPLACER les données du profil « "+rs.nom+" » par celles du fichier. Les données actuelles de ce profil seront perdues si elles ne sont pas exportées avant."));
+    box.appendChild(el('div',{style:"background:oklch(0.97 0.04 75);border:1px solid oklch(0.87 0.06 75);border-radius:12px;padding:12px 14px;font-size:13px;color:oklch(0.4 0.09 70);line-height:1.6;"},(gh?"La restauration":"L'import")+" va REMPLACER les données du profil « "+rs.nom+" » par celles de "+cible+". Les données actuelles de ce profil seront perdues si elles ne sont pas exportées avant."));
     var lg=el('ul',{style:"margin:0;padding-left:18px;font-size:13px;line-height:1.7;"});
-    rs.lignes.forEach(function(l){lg.appendChild(el('li',{},l.libelle+' : '+l.actuel+' actuellement → '+(l.fichier==null?'inchangé (absent du fichier)':l.fichier+' dans le fichier')));});
-    lg.appendChild(el('li',{},'Calendrier : '+rs.calendrier+(rs.calendrier==='conservé'?' (le fichier n\'en contient pas)':' par celui du fichier')));
+    rs.lignes.forEach(function(l){lg.appendChild(el('li',{},l.libelle+' : '+l.actuel+' actuellement → '+(l.fichier==null?'inchangé (absent de '+courte+')':l.fichier+' dans '+courte)));});
+    lg.appendChild(el('li',{},'Calendrier : '+rs.calendrier+(rs.calendrier==='conservé'?' ('+courte+' n\'en contient pas)':' par celui de '+courte)));
     box.appendChild(lg);
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},rs.communs.length?'Réglages communs à tous les profils, remplacés aussi : '+rs.communs.join(', ')+'.':'Aucun réglage commun dans ce fichier : ils restent inchangés.'));
     box.appendChild(el('div',{style:"font-size:12.5px;color:var(--c-dim);line-height:1.6;"},"Les fiches des autres profils ne sont pas touchées. Le thème et les délais d'alerte ne font pas partie de la sauvegarde : ils ne changent pas."));
