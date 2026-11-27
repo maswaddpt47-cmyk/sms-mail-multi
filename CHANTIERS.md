@@ -108,11 +108,13 @@ Toute entrée dit si elle ouvre un bloc `AGORA.md` ou non, et pourquoi.
 Règle 22 de MD-LIB ; ne pas reproposer une piste écartée sans fait nouveau.
 
 **En attente**
+- **Masquer la journée GDIN d'un lieu quand l'Agenda y a des RDV** (suggestion de l'utilisateur, 27/11) : 1 masquer les inscriptions individuelles sauf ateliers (recommandé), 2 toute la journée ateliers compris, 3 rien ; **sans réponse**. Réserves : ateliers GDIN absents de l'Agenda, masquage et non suppression (un réimport ramènerait les données). Critères 5 et 7 : bloc AGORA avant le code.
 - **Comptage demandes → RDV par CMS** (16/11, suite d'AG-033) : orientations devenues RDV dans « Activité par CMS » ; critère 7, bloc avant le code ; fiches antérieures au 16/11 sans lien ; réimport Excel = nouvelles orientations (Codex), aucun taux certifiable sur ce seul champ.
 - **Badge « ⚠️ 2 RDV »** sur une tuile à deux RDV actifs (01/11) : seulement si une double réservation réelle réapparaît ; différé.
 - **Second lot Activité par CMS** (démarches, doublons d'orientations signalés sans fusion) ; **créneaux libérés puis réattribués** (vérifier d'abord que les événements sont conservés) ; **rappels, relances et lapins** (exploratoire, associations seulement) ; **parcours individuels** reportés, sans identifiant de personne.
 
 **Écartées** (date — piste — raison)
+- 27/11/2026 — tolérer une faute de frappe dans le prénom d'une inscription GDIN pour la rapprocher de l'Agenda — décision de l'utilisateur : « c'est la première fois et c'est extrêmement rare », règle stricte conservée ; la raison affichée dans le détail suffit à diagnostiquer, et l'orthographe se corrige à la main dans l'Agenda. À ne pas reproposer sans fait nouveau (par exemple des fautes fréquentes).
 - 24/11/2026 — retirer une période du Calendrier avant réimport ; reporter téléphone et adresse du Calendrier ou d'un import ICS de l'Agenda dans les fiches de l'Agenda — « laisse tomber » (utilisateur) : le réimport du Calendrier est propre depuis AG-035 ; ne pas reproposer sans fait nouveau (doublons qui reviennent). Limite connue de l'import ICS de l'Agenda (Données → Importer ICS) : reconnaissance par date + heure + lieu, un seul inscrit par créneau.
 - 31/10 — domaine dédié pour le `localStorage` du jeton GitHub — « oublie ».
 - 01/11 — avertir avant restauration / fusion des sauvegardes — laissé de côté ; à rouvrir si un statut revient en arrière.
