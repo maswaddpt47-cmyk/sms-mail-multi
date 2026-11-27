@@ -6,7 +6,7 @@
 <title>SMS &amp; MAIL — Espace conseiller</title>
 <link rel="manifest" href="manifest.json?v=2">
 <meta name="theme-color" content="#4c51c6">
-<link rel="stylesheet" href="calendar.css?v=gdin-20261127-2">
+<link rel="stylesheet" href="calendar.css?v=gdin-20261127-3">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -976,7 +976,7 @@
   <div id="modal-root"></div><div id="toast-root"></div><div id="stat-tooltip"></div>
 </div>
 
-<script src="calendar.js?v=gdin-20261127-2"></script>
+<script src="calendar.js?v=gdin-20261127-3"></script>
 <script>
 "use strict";
 
@@ -2540,7 +2540,8 @@ function lireCalendrierProfil(pid){
 }
 /* AG-036 : choix d'étape (couleur) du Calendrier par objet, par profil. Absent du stockage → vide explicite écrit (comme le calendrier, AG-032 R1) ;
    illisible → clé marquée illisible, la sauvegarde est refusée (sauvegardeFiable). Un ancien fichier SANS le champ conserve les choix locaux. */
-function stagesCalendrierInvalides(d){return typeof CalendarICS!=='undefined'&&CalendarICS.validStages?!CalendarICS.validStages(d):!(d&&d.version===1&&d.map&&typeof d.map==='object'&&!Array.isArray(d.map));}
+/* AG-036 R3 (Codex) : sans validateur du module Calendrier, un champ de choix n'est jamais accepté sur sa seule forme. */
+function stagesCalendrierInvalides(d){return typeof CalendarICS==='undefined'||!CalendarICS.validStages||!CalendarICS.validStages(d);}
 function lireStagesProfil(pid){
   var k=pkFor(pid,'calendar-stages-v1'),brut;
   try{brut=localStorage.getItem(k);}catch(e){_clesIllisibles[k]=true;return null;}
@@ -2588,7 +2589,8 @@ function verifierSauvegarde(data){
   if(!textes(data.permanences,['commune','exceptDate','debut','fin']))return 'Sauvegarde invalide (journée illisible).';
   /* AG-032 : champ présent = calendrier complet à restaurer ; null ou invalide → import refusé (Q2) */
   if(Object.prototype.hasOwnProperty.call(data,'calendarIcs')&&(!data.calendarIcs||typeof data.calendarIcs!=='object'||calendrierInvalide(JSON.stringify(data.calendarIcs))))return 'Sauvegarde invalide (calendrier illisible).';
-  /* AG-036 : champ présent = choix de couleurs à restaurer (vide explicite compris) ; invalide → import entièrement refusé */
+  /* AG-036 : champ présent = choix de couleurs à restaurer (vide explicite compris) ; invalide → import entièrement refusé ; module sans validateur → refus explicite (R3) */
+  if(Object.prototype.hasOwnProperty.call(data,'calendarStages')&&(typeof CalendarICS==='undefined'||!CalendarICS.validStages))return 'Import impossible : le module Calendrier n\u2019est pas chargé (rechargez la page).';
   if(Object.prototype.hasOwnProperty.call(data,'calendarStages')&&(!data.calendarStages||typeof data.calendarStages!=='object'||stagesCalendrierInvalides(data.calendarStages)))return 'Sauvegarde invalide (choix de couleurs du calendrier illisibles).';
   return '';
 }

@@ -1001,6 +1001,8 @@ async function restaurer(contenu,fonction,options){
    {const e=prep(JSON.stringify(choix(A)));assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarStages)),choix(A),'AG-036 : choix exportés tels quels');assert.equal(e.ctx.sauvegardeFiable('p1'),true);}
    {const e=prep();assert.deepEqual(JSON.parse(JSON.stringify(e.ctx.exportDataForProfile('p1').calendarStages)),choix({}),'AG-036 : aucun choix → vide explicite exporté');}
    for(const [cas,v] of [['version 2','{"version":2,"map":{}}'],['id inconnu','{"version":1,"map":{"x":"rouge"}}'],['JSON cassé','{']]){const e=prep(v);e.ctx.exportDataForProfile('p1');assert.equal(e.ctx.sauvegardeFiable('p1'),false,'AG-036 : '+cas+' → sauvegarde refusée');}
+   // R3 côté export : sans validateur, un choix stocké n'est pas validé sur sa seule forme (sauvegarde refusée)
+   for(const mod of [undefined,{}]){const e=prep('{"version":1,"map":{"x":"rouge"}}');e.ctx.CalendarICS=mod;e.ctx.exportDataForProfile('p1');assert.equal(e.ctx.sauvegardeFiable('p1'),false,'AG-036 R3 : export sans validateur, identifiant inconnu → sauvegarde refusée');}
    // import / restauration
    const avec=c=>Object.assign({},sauvegarde,{calendarStages:c});
    const imp=(texte,existant)=>{const e=prepImport(texte);e.ctx.CalendarICS=CAL;if(existant!==undefined)e.st.setItem(K,JSON.stringify(existant));e.st.ecritures=0;return e;};
@@ -1011,6 +1013,11 @@ async function restaurer(contenu,fonction,options){
      const e=imp(JSON.stringify(avec(c)),choix(A)),avant=e.st.etat();assert.equal(e.ctx.doImport(),false,'AG-036 : '+cas+' refusé');assert.equal(e.st.etat(),avant,'AG-036 : '+cas+' sans aucune écriture');assert.match(e.S.importError,/choix de couleurs/);}
    {const e=imp(JSON.stringify(avec(choix(B))),choix(A)),avant=e.st.etat();e.st.panne=k=>k===K;assert.equal(e.ctx.doImport(),false);e.st.panne=null;assert.equal(e.st.etat(),avant,'AG-036 : panne à l’écriture des choix → tout revient en arrière');}
    {const cs=vm.runInContext('('+fonction('cleSuivie')+')',vm.createContext({CLES_REGLAGES:{}}));assert.equal(cs('ess-p1-calendar-stages-v1'),true,'AG-036 : choix suivis contre l’écrasement par un autre onglet');}
+   // R3 (Codex) : sans validateur disponible, un champ de choix n'est jamais accepté sur sa seule forme ; les anciennes sauvegardes (sans champ) passent
+   for(const [cas,mod] of [['module absent',undefined],['module sans validStages',{}]]){
+     const e=imp(JSON.stringify(avec(choix({'x':'rouge'}))),choix(A));e.ctx.CalendarICS=mod;const avant=e.st.etat();assert.equal(e.ctx.doImport(),false,'AG-036 R3 : '+cas+' → champ refusé');assert.equal(e.st.etat(),avant,'AG-036 R3 : '+cas+' sans écriture');assert.match(e.S.importError,/module Calendrier/);
+     const f=imp(JSON.stringify(avec(choix(B))),choix(A));f.ctx.CalendarICS=mod;assert.equal(f.ctx.doImport(),false,'AG-036 R3 : '+cas+', même un champ valide en apparence est refusé');
+     const g=imp(JSON.stringify(sauvegarde),choix(A));g.ctx.CalendarICS=mod;assert.equal(g.ctx.doImport(),true,'AG-036 R3 : '+cas+', ancienne sauvegarde sans champ acceptée');assert.deepEqual(JSON.parse(g.st.getItem(K)),choix(A),'AG-036 R3 : choix locaux conservés');}
    // résumé affiché avant confirmation : portée annoncée (conservés / remplacés par aucun choix / remplacés (n objets))
    {const e=imp(JSON.stringify(sauvegarde),choix(A));assert.equal(e.ctx.resumeImport(sauvegarde).couleurs,'conservés');assert.equal(e.ctx.resumeImport(avec(choix({}))).couleurs,'remplacés par aucun choix');assert.match(e.ctx.resumeImport(avec(choix(B))).couleurs,/^remplacés \(2 objet/);}
    assert(section('function renderModal(','\nfunction ').includes("Couleurs du calendrier (choix par objet) : '+rs.couleurs"),'AG-036 : la confirmation affiche la portée des couleurs');

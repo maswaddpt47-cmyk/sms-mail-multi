@@ -46,6 +46,18 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   mem.set(ctx.stagesKey,JSON.stringify({version:1,map:{}}));assert.throws(()=>C.saveStages(ctx,cur.map,cur.raw),/autre onglet/,'copie ancienne refusée');
   const frais=C.loadStages(storage,ctx.stagesKey);pannes=true;assert.throws(()=>C.saveStages(ctx,M({x:'excuse'}),frais.raw),/non confirmé/);pannes=false;
   assert.throws(()=>C.saveStages(ctx,M({'Majuscule':'excuse'}),frais.raw),/invalide/,'clé non normalisée refusée à l’écriture');}
+ // R1 (Codex) : deux onglets, même stockage ; le sélecteur écrit contre la version AFFICHÉE, jamais une relecture fraîche
+ {mem.delete(ctx.stagesKey);const A=C.loadStages(storage,ctx.stagesKey),B=C.loadStages(storage,ctx.stagesKey);
+  C.chooseStage(ctx,B,'carte solidaire','reservation');assert.deepEqual(JSON.parse(mem.get(ctx.stagesKey)).map,{'carte solidaire':'reservation'},'onglet B enregistré');
+  assert.throws(()=>C.chooseStage(ctx,A,'carte solidaire','excuse'),/autre onglet/,'R1 : onglet A périmé refusé, pas de rebase silencieux');assert.deepEqual(JSON.parse(mem.get(ctx.stagesKey)).map,{'carte solidaire':'reservation'},'R1 : le choix de B est conservé');
+  const frais=C.loadStages(storage,ctx.stagesKey);C.chooseStage(ctx,frais,'carte solidaire','excuse');assert.equal(JSON.parse(mem.get(ctx.stagesKey)).map['carte solidaire'],'excuse','après réouverture, le choix passe');
+  C.chooseStage(ctx,C.loadStages(storage,ctx.stagesKey),'carte solidaire','');assert.deepEqual(JSON.parse(mem.get(ctx.stagesKey)).map,{},'« Automatique » retire le choix de l’objet');
+  assert.throws(()=>C.chooseStage(ctx,C.loadStages(storage,ctx.stagesKey),'','excuse'),/Aucun choix possible/,'objet vide : refusé');}
+ // R2 (Codex) : une clé acceptée par le format est écrite, jamais perdue en silence (propriété propre __proto__)
+ {mem.delete(ctx.stagesKey);assert(C.validStages(JSON.parse('{"version":1,"map":{"__proto__":"excuse"}}')),'__proto__ propre accepté par le format');
+  C.chooseStage(ctx,C.loadStages(storage,ctx.stagesKey),'__proto__','excuse');assert.match(mem.get(ctx.stagesKey),/"__proto__":"excuse"/,'R2 : écrit tel quel');
+  const relu=C.loadStages(storage,ctx.stagesKey);assert.equal(Object.keys(relu.map).length,1,'R2 : relu avec la clé');assert.equal(C.stageOf({key:'k',title:'x',location:'',description:'__proto__',start:'2026-11-03T09:00:00.000Z',end:'2026-11-03T10:00:00.000Z',allDay:false},relu.map).id,'excuse','R2 : appliqué à l’objet « __proto__ »');
+  assert.equal(Object.getPrototypeOf(JSON.parse(mem.get(ctx.stagesKey)).map),Object.prototype,'aucune pollution de prototype');assert.equal(({}).excuse,undefined);}
  for(const abime of ['pas du json','{"version":1,"map":{"x":"rouge"}}','{"version":2,"map":{}}']){mem.set(ctx.stagesKey,abime);assert.throws(()=>C.loadStages(storage,ctx.stagesKey),'illisible : '+abime);assert.equal(mem.get(ctx.stagesKey),abime,'illisible jamais réécrit');}
  console.log('AG-036 : choix d’étape par objet (priorité, objet vide, prototype, normalisation), format versionné validé, écriture sûre (profil, autre onglet, panne, illisible) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
