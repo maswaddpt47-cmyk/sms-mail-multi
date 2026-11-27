@@ -35,6 +35,6 @@ if [ "${#raisons[@]}" -gt 0 ]; then
   echo "🧹 $F à nettoyer :"
   for r in "${raisons[@]}"; do echo "   - $r"; done
   echo "   → Le proposer à l'utilisateur en début de session : retirer le terminé,"
-  echo "     remonter l'invariant dans « Points à ne pas défaire », dater l'en-tête."
+  echo "     remonter l'invariant dans INVARIANTS.md, dater l'en-tête."
 fi
 exit 0

@@ -115,7 +115,7 @@ bloc n'avait pas lieu d'être.
 ### Tranché le JJ/MM/AAAA — décision : ...
 ```
 
-Un bloc tranché sort du fichier : sa conclusion remonte dans `CHANTIERS.md`
+Un bloc tranché sort du fichier : sa conclusion remonte dans `INVARIANTS.md`
 (points à ne pas défaire) ou dans `CLAUDE.md` si elle devient une règle ; le
 récit reste dans `git log`.
 

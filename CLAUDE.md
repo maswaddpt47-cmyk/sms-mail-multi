@@ -64,9 +64,11 @@ une ligne : rappel d'habitude, pas alerte RGPD.
 ## Reprise de session — CHANTIERS.md
 
 Lire **`CHANTIERS.md`** (racine) au démarrage : état du travail, décisions à
-trancher, points à ne pas défaire. Le mettre à jour à chaque avancée
-significative, pas en fin de session. Une tâche terminée en sort ; ce qui ne
-doit pas être défait remonte dans sa dernière section.
+trancher. Le mettre à jour à chaque avancée significative, pas en fin de
+session. Une tâche terminée en sort ; ce qui ne doit pas être défait remonte
+dans **`INVARIANTS.md`** (racine, créé le 27/11/2026 à la demande de
+l'utilisateur, il reprend l'ancienne section « Points à ne pas défaire »), à
+lire avant de modifier le code d'un sujet listé.
 
 **Modifications faites hors session** (consigne de l'utilisateur, 30/10/2026) : quand
 il dit « pull » après avoir modifié le dépôt lui-même ou avec un autre outil,
