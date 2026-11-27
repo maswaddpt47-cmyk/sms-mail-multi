@@ -164,6 +164,18 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   {const two=items([mk('a1','AA','Bb','09:30','Fumel'),mk('a2','CC','Dd','10:30','Marmande')]);const r=C.dayMask([g(1,'P1','Fumel'),g(2,'P2','Marmande'),g(3,'P3','Agen')].map(e=>({...e,members:[e]})),two,e=>'autre');assert.deepEqual(r.hidden.map(e=>e.title),['P1','P2'],'plusieurs lieux le même jour : chacun masque son lieu ; un 3e lieu reste');}
   {const r=C.dayMask([g(1,'PERSONNE X','Fumel')].map(e=>({...e,members:[e]})),[],e=>'autre');assert.equal(r.hidden.length,0,'aucune journée d’Agenda : rien n’est masqué');}
  }
+ // AG-039 R1 (Codex) : la protection d'un atelier vient de séances CANONIQUES (toutes les inscriptions, regroupées), pas de l'affichage ni du rapprochement
+ {const E1='2026-11-27T09:30:00.000Z',obj=(i,titre)=>({...ics(i,titre,D,'Fumel','777'),end:E1,description:'Séance fictive\nParticipant : '+titre});
+  const P=obj(1,'PERSONNE Paul'),Q=obj(2,'QUENTIN Quentin'),I={...ics(3,'SOLO Sam',D,'Fumel'),end:E1},all=[P,Q,I];
+  const canon=C.canonicalStageMap(all,e=>C.stageOf(e).id);
+  assert.equal(canon.get(P.key),'atelier','inscrit d’un collectif : atelier');assert.equal(canon.get(Q.key),'atelier');assert.notEqual(canon.get(I.key),'atelier','individuelle : pas un atelier');
+  const stageIdOf=e=>canon.get(e.members[0].key),ag2=items([mk('a1','AUTRE','Bob','09:30','Fumel','realise')]);
+  // regroupement décoché : chaque inscription est une séance seule, mais reste protégée
+  {const r=C.dayMask([P,Q,I].map(e=>({...e,members:[e]})),ag2,stageIdOf);assert.deepEqual(r.shown.map(e=>e.title),['PERSONNE Paul','QUENTIN Quentin'],'regroupement décoché : l’atelier reste visible');assert.deepEqual(r.hidden.map(e=>e.title),['SOLO Sam']);}
+  // un inscrit rapproché de l'Agenda : le reste de l'atelier demeure protégé
+  {const ag3=items([mk('a1','PERSONNE','Paul','09:30','Fumel','realise')]),pr=C.project(all,ag3);assert.equal(pr.ics.some(e=>e.key===P.key),false,'Paul est rapproché');
+   const r=C.dayMask(pr.ics.map(e=>({...e,members:[e]})),ag3,stageIdOf);assert.equal(r.shown.some(e=>e.title==='QUENTIN Quentin'),true,'Quentin, resté seul, garde la protection de l’atelier');assert.equal(r.hidden.some(e=>e.title==='QUENTIN Quentin'),false);
+   const faux=C.dayMask(pr.ics.map(e=>({...e,members:[e]})),ag3,e=>C.stageOf(e).id);assert.equal(faux.hidden.some(e=>e.title==='QUENTIN Quentin'),true,'preuve : sans étape canonique, Quentin serait masqué à tort');}}
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
 assert.deepEqual(C.visibleDays(C.bounds('2026-11-06','week'),'week'),['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06'],'AG-031 : semaine sans week-end');
