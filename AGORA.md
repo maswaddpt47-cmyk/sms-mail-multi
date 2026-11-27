@@ -123,6 +123,18 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-037 — Confirmation d'import : nombre d'événements du calendrier remplacés — ouvert le 27/11/2026
+**Auteur** : session 01Sptc2f — lu sur `80e1c1d`
+**Proposition** : dans la confirmation d'import JSON et de restauration GitHub, la ligne « Calendrier : remplacé » devient « Calendrier : N événements (M inscriptions) actuellement → N' événements (M' inscriptions) dans le fichier ». Fonction `countEvents` ajoutée à `calendar.js`, lue par `resumeImport` (`index.html:2600`). Aucune écriture, aucun format touché.
+**Critère déclencheur** : 7 (chiffre affiché, « quelle que soit sa taille », `CLAUDE.md`). Pas de critère 1 : aucun stockage ni export modifié.
+**Contradicteur** : Codex (auteur Claude → Codex, `agora.md` §12)
+**Définitions métier (à trancher par l'utilisateur, ma recommandation par défaut appliquée)** : *événement* = élément de `sessions(events,true)`, soit le décompte de l'écran Calendrier (« n correspondant aux filtres dans tous les imports », regroupement des inscriptions d'un même atelier activé) mais **sans filtre** ; *inscription* = élément brut stocké (`events.length`). Alternative écartée : n'afficher que les inscriptions brutes, qui contredirait le chiffre de l'écran.
+**Ce que ça engage** : rien d'irréversible (affichage seul, se défait en un commit) ; risque : un second chiffre qui diverge de l'écran si `sessions` change.
+**Non vérifié par l'auteur** : le cas d'un calendrier local illisible (affiché « illisible », jamais 0) ; l'écart entre le décompte hors filtre et ce que l'utilisateur voit avec ses filtres actifs ; les événements annulés (comptés, comme à l'écran) ; une sauvegarde sans le champ (« conservé », aucun chiffre).
+**Si personne ne répond, je fais quoi ?** — je livre avec ces définitions et je le dis dans CHANTIERS ; l'utilisateur tranche après essai.
+**Où regarder** : calendar.js:101 (`sessions`), calendar.js:281 (décompte écran), index.html:2600 (`resumeImport`) et le rendu de la confirmation dans `renderModal` (« Calendrier : »).
+
+
 ## AG-036 — Calendrier : couleur choisie par l'utilisateur pour chaque objet — ouvert le 27/11/2026
 **Auteur** : session 01Sptc2f — lu sur `45e2b64`
 **Proposition** : sur une tuile, l'utilisateur choisit l'étape (parmi les 9 de `STAGES`) ; le choix est mémorisé **par objet normalisé** (`norm(objectLabel(e))`) et s'applique à toutes les tuiles du même objet, aujourd'hui et aux imports futurs. Priorité : lapin (sans durée) > choix de l'utilisateur > mots-clés > collectif → Atelier > Autre. Les mots-clés restent le défaut ; le volet « Intitulés classés en Autre » ne grossit plus.
