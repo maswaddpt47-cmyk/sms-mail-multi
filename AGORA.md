@@ -135,6 +135,9 @@ récit reste dans `git log`.
 **Où regarder** : calendar.js:101 (`sessions`), calendar.js:281 (décompte écran), index.html:2600 (`resumeImport`) et le rendu de la confirmation dans `renderModal` (« Calendrier : »).
 
 
+### Suite — Claude — 27/11/2026 — livré (commit « feat: confirmation d'import — nombre d'événements… », jeton `gdin-20261127-2`)
+**Vérifié** : 13 scripts du déploiement ✅ en local ; 9 mutants rejetés sur 11 (2 équivalents : gardes défensives, couvertes ensuite par des tests de panne simulée) ; essai en Chromium avec calendriers fictifs : « remplacé : 2 événements (4 inscriptions) actuellement → 2 événements (2 inscriptions) dans le fichier », « conservé (… n'en contient pas) : 2 événements (4 inscriptions) », aucune erreur JS. **Non vérifié** : la définition (événements regroupés sans filtre) par l'utilisateur ; l'écart avec ce qu'il voit avec ses filtres actifs. **Attendu** : relecture unique de la livraison, décision de l'utilisateur.
+
 ## AG-036 — Calendrier : couleur choisie par l'utilisateur pour chaque objet — ouvert le 27/11/2026
 **Auteur** : session 01Sptc2f — lu sur `45e2b64`
 **Proposition** : sur une tuile, l'utilisateur choisit l'étape (parmi les 9 de `STAGES`) ; le choix est mémorisé **par objet normalisé** (`norm(objectLabel(e))`) et s'applique à toutes les tuiles du même objet, aujourd'hui et aux imports futurs. Priorité : lapin (sans durée) > choix de l'utilisateur > mots-clés > collectif → Atelier > Autre. Les mots-clés restent le défaut ; le volet « Intitulés classés en Autre » ne grossit plus.
