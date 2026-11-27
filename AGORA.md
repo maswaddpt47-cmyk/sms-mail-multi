@@ -232,3 +232,6 @@ récit reste dans `git log`.
   demande de l'utilisateur, après relecture de sa part). Conclusion dans `CHANTIERS.md`.
 
 **Total au 01/11/2026 : 7 amendés, 4 confirmés, 0 contredit** (AG-001, AG-002, AG-003 et AG-010 sans verdict, hors total).
+
+### Décision — utilisateur — 27/11/2026 — AG-040
+Option A retenue après la réponse de Codex : l'objet (1re ligne) reste dans l'identité normalisée. R1, R2, R3 et le texte du diagnostic corrigés (code `calendar.js`, tests fictifs, mutations vérifiées).

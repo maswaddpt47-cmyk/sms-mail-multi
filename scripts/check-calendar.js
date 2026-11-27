@@ -182,7 +182,7 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   assert.notEqual(ND('Classe 6C\nGroupe A'),ND('Classe 6C\nGroupe B'),'une vraie différence de texte reste une différence');assert.equal(ND(ND('b\n a\nc')),ND('b\n a\nc'),'idempotente');assert.equal(ND(''),'');
   const vv=(uid,titre,desc)=>'BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTART:20261130T130000Z\r\nDTEND:20261130T140000Z\r\nSUMMARY:'+titre+'\r\nCATEGORIES:777\r\nLOCATION:Cité\r\nDESCRIPTION:'+desc+'\r\nEND:VEVENT';
   const fic=l=>'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'+l.join('\r\n')+'\r\nEND:VCALENDAR';
-  const A1=vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A\\n0600000001'),A2=vv(9,'ELEVE Alpha','Groupe A\\n Classe  6C\\n0600000001'),B1=vv(9,'ELEVE Beta','Classe 6C\\nGroupe B');
+  const A1=vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A\\nSalle 2\\n0600000001'),A2=vv(9,'ELEVE Alpha','Classe  6C\\n Salle 2\\nGroupe A\\n0600000001'),B1=vv(9,'ELEVE Beta','Classe 6C\\nGroupe B');
   const lues=C.parse(fic([A1,A2,B1])).events;assert.equal(lues.length,3,'le fichier contient 3 lignes (Alpha deux fois)');
   // 1) import dans un calendrier vide : le doublon n'est plus recréé
   {const m=C.merge([],lues);assert.equal(m.events.length,2,'Alpha en deux lignes = une seule inscription ; Beta reste');assert.equal(m.added,2,'2 ajoutées');assert.deepEqual(m.events.map(e=>e.title).sort(),['ELEVE Alpha','ELEVE Beta']);
@@ -197,7 +197,7 @@ assert.deepEqual(C.bounds('2026-11-06','week'),['2026-11-02','2026-11-09']);
   // garde-fous : deux PERSONNES ne fusionnent jamais ; une vraie différence de ligne ne fusionne pas ; les contacts restent complétés
   {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Beta','Classe 6C\\nGroupe A')])).events);assert.equal(m.events.length,2,'même description, titres différents : deux inscriptions');}
   {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Alpha','Classe 6C\\nGroupe B')])).events);assert.equal(m.events.length,2,'même titre, ligne différente : deux inscriptions');}
-  {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Alpha','Groupe A\\nClasse 6C\\n0600000007')])).events);assert.equal(m.events.length,1);assert.match(m.events[0].description,/0600000007/,'le contact de la version écartée est reporté (AG-035 conservé)');}
+  {const m=C.merge([],C.parse(fic([vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A'),vv(9,'ELEVE Alpha','Classe 6C \\nGroupe  A\\n0600000007')])).events);assert.equal(m.events.length,1);assert.match(m.events[0].description,/0600000007/,'le contact de la version écartée est reporté (AG-035 conservé)');}
  }
  console.log('AG-038 : projection Agenda (correspondance complète seule, ambiguïtés conservées, rapprochement avant regroupement, statut exact, clés stables) OK.');}
 /* AG-031 : lundi–vendredi en Semaine/Mois, week-end compté s'il cache un événement. */
@@ -411,3 +411,19 @@ const byText=t=>nodes(pane,n=>n.tagName==='button'&&n.textContent===t)[0];
   assert.equal(C.contactItems([m('Objet seul')]).length,0);}
  console.log('Calendrier GDIN : 10 inscriptions fictives → 1 atelier, UID réutilisés, actions/lieux/activités, réimport multiple, recherche/filtres, durée nulle, horaires Paris/UTC/été, stockage/profils/pannes et parcours sûrs OK.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+/* AG-040 amendé (revue Codex, option A du 27/11) : données fictives. */
+{const vv=(uid,titre,desc,st)=>'BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTART:20261130T130000Z\r\nDTEND:20261130T140000Z\r\nSUMMARY:'+titre+'\r\nCATEGORIES:777\r\nLOCATION:Cité\r\n'+(st?'STATUS:'+st+'\r\n':'')+'DESCRIPTION:'+desc+'\r\nEND:VEVENT';
+ const fic=l=>'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'+l.join('\r\n')+'\r\nEND:VCALENDAR',P=l=>C.parse(fic(l)).events;
+ // R2 : l'ordre qui change l'objet (1re ligne) ne fusionne pas
+ {const e=P([vv(9,'ELEVE Alpha','Sondage\\nCAF'),vv(9,'ELEVE Alpha','CAF\\nSondage')]);assert.equal(C.merge([],e).events.length,2,'objets différents : deux inscriptions');assert.equal(C.duplicates(e).length,0,'pas proposé comme doublon');}
+ // R1 : versions contradictoires (annulé / actif), ordre des lignes différent : refus, dans les deux sens
+ {const a=vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A\\nSalle 2'),b=vv(9,'ELEVE Alpha','Classe 6C\\nSalle 2\\nGroupe A','CANCELLED');
+  assert.throws(()=>C.merge([],P([a,b])),/Deux versions/);assert.throws(()=>C.merge([],P([b,a])),/Deux versions/);
+  const c=vv(9,'ELEVE Alpha','Classe 6C\\nSalle 2\\nGroupe A\\n0600000001'),d=vv(9,'ELEVE Alpha','Classe 6C\\nGroupe A\\nSalle 2\\n0600000002');assert.throws(()=>C.merge([],P([c,d])),/Deux versions/,'contacts contradictoires');}
+ // R3 : espaces du participant
+ {const e=P([vv(9,'ELEVE Alpha','Participant : FICTIF Alice\\nX'),vv(9,'ELEVE Alpha','Participant : FICTIF  Alice\\nX')]);assert.equal(e.length,2);assert.equal(C.merge([],e).events.length,1,'espaces du participant ignorés');assert.equal(C.duplicates(e).length,1);
+  assert.equal(C.merge([],P([vv(9,'ELEVE Alpha','Participant : FICTIF Alice'),vv(9,'ELEVE Alpha','Participant : FICTIF Alicia')])).events.length,2,'pas de tolérance de faute');}
+ // diagnostic : lignes répétées ≠ ordre ou espaces
+ {const a={key:'k',title:'t',location:'',description:'Objet\nNote',start:'2026-11-30T13:00:00.000Z',end:'2026-11-30T14:00:00.000Z',allDay:false,cancelled:false},b={...a,description:'Objet\nNote\nNote'};
+  assert.match(C.differences([a,b])[0],/répétées/);assert.match(C.differences([a,{...a,description:'Note\nObjet'}])[0],/ordre ou espaces/);}
+}

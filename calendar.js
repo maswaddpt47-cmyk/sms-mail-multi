@@ -121,6 +121,10 @@
     var unique=new Map();incoming.forEach(function(e){if(unique.has(e.key)){if(JSON.stringify(unique.get(e.key))!==JSON.stringify(e))throw new Error('Deux versions différentes d’une même inscription dans des fichiers différents de ce lot. Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');identical++;}else unique.set(e.key,e);});
     // AG-035 R1 + AG-040 : une inscription est retrouvée par son identité NORMALISÉE (contacts écartés, ordre et espaces de la description ignorés), sans réécrire sa clé stockée ;
     // l'index est complété au fil de l'import pour que deux lignes d'un même fichier qui ne diffèrent que par l'ordre ou les espaces ne créent pas deux inscriptions.
+    // AG-040 R1 (Codex) : deux versions de même identité normalisée mais de statut ou de contacts différents restent refusées, comme avec la clé brute (AG-030).
+    var firstByNorm=new Map();unique.forEach(function(e,k){var nk=normKey({key:k}),f=firstByNorm.get(nk);if(!f){firstByNorm.set(nk,e);return;}
+      var ca={},conflict=false;contactLines(f.description).forEach(function(l){ca[contactLabel(l)]=contactValue(l);});contactLines(e.description).forEach(function(l){var lb=contactLabel(l);if(ca[lb]!==undefined&&ca[lb]!==contactValue(l))conflict=true;});
+      if(f.cancelled!==e.cancelled||conflict)throw new Error('Deux versions différentes d’une même inscription dans ce lot (statut ou contact différent). Aucun ajout : importez les fichiers séparément, du plus ancien au plus récent, après contrôle.');});
     var byNorm=new Map();map.forEach(function(x,k){var n=normKey({key:k});if(!byNorm.has(n))byNorm.set(n,k);});
     unique.forEach(function(e,k){if(!map.has(k)){var nk=normKey({key:k});if(byNorm.has(nk))k=byNorm.get(nk);}var prev=map.get(k);if(prev)e=Object.assign({},e,{key:k,description:completeContacts(prev.description,e.description)});if(!prev)added++;else if(JSON.stringify(prev)===JSON.stringify(e))unchanged++;else updated++;map.set(k,e);var nn=normKey({key:k});if(!byNorm.has(nn))byNorm.set(nn,k);});
     if(map.size>LIMIT)throw new Error('Le calendrier local est limité à 5 000 événements.');return {events:Array.from(map.values()),added:added,updated:updated,unchanged:unchanged,identical:identical};}
@@ -137,9 +141,12 @@
       if(a.title!==b.title)add('titre');if(a.location!==b.location)add('lieu');if(a.cancelled!==b.cancelled)add('statut annulé');
       if(a.description!==b.description){var la=lines(a.description),lb=lines(b.description),d=[];
         la.filter(function(l){return lb.indexOf(l)<0;}).concat(lb.filter(function(l){return la.indexOf(l)<0;})).forEach(function(l){var x=lab(l);if(d.indexOf(x)<0)d.push(x);});
-        add('description ('+(d.length?'lignes : '+d.join(', '):'ordre ou espaces seulement')+')');}});
+        add('description ('+(d.length?'lignes : '+d.join(', '):normDescription(a.description)!==normDescription(b.description)?'lignes répétées en nombre différent':'ordre ou espaces seulement')+')');}});
     return out;}
-  function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'&&v[6].indexOf('description:')===0){v[6]='description:'+normDescription(v[6].slice(12));return 'gdin:'+JSON.stringify(v);}}catch(err){}return e.key;}
+  function normKey(e){if(e.key.indexOf('gdin:')!==0)return e.key;try{var v=JSON.parse(e.key.slice(5));if(Array.isArray(v)&&v.length===7&&typeof v[6]==='string'){
+      // AG-040 amendé (Codex R2/R3, option A du 27/11) : l'objet (1re ligne) reste dans l'identité normalisée, l'ordre ne fusionne donc jamais deux objets différents ; espaces du participant ignorés.
+      if(v[6].indexOf('description:')===0){var d=v[6].slice(12);v[6]='description:'+normDescription(d)+'\u0001'+norm(objectLabel({key:'',description:d}));return 'gdin:'+JSON.stringify(v);}
+      if(v[6].indexOf('participant:')===0){v[6]='participant:'+v[6].slice(12).trim().replace(/\s+/g,' ');return 'gdin:'+JSON.stringify(v);}}}catch(err){}return e.key;}
   function contactValue(l){return (LABELED_CONTACT.test(l)?l.slice(l.indexOf(':')+1):l).toLowerCase().replace(/[\s.\-()]/g,'');}
   function duplicates(events){var groups=new Map();events.forEach(function(e,i){if(e.key.indexOf('gdin:')!==0)return;var k=normKey(e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({e:e,i:i});});var out=[];
     groups.forEach(function(g,k){if(g.length<2)return;var best=g.slice().sort(function(a,b){return contactLines(b.e.description).length-contactLines(a.e.description).length||(b.e.key===k)-(a.e.key===k)||b.i-a.i;})[0];
