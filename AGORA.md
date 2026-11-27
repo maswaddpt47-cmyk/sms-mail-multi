@@ -123,6 +123,19 @@ récit reste dans `git log`.
 
 # Blocs ouverts
 
+## AG-038 — Calendrier : afficher les RDV de l'Agenda, l'Agenda primant sur les doublons GDIN — ouvert le 27/11/2026
+**Auteur** : session 01Sptc2f — lu sur `de42cb3`
+**Proposition** : le Calendrier affiche, en plus des événements ICS, les RDV de l'historique du profil (Agenda) **en lecture seule, calculés à l'affichage, sans copie ni nouveau stockage** (base : `rdvs(history)`, `calendar.js:195`, inutilisée aujourd'hui). Si un RDV de l'Agenda et un événement GDIN sont le même, l'Agenda prime et le GDIN est masqué avec la mention « remplacé par l'Agenda » ; rien n'est supprimé. Un import ICS n'écrit toujours que dans `ess-<profil>-calendar-ics-v1` : il ne touche jamais l'historique.
+**Critère déclencheur** : 5 (contredit la note datée du 06/11, `CHANTIERS.md` : « onglet autonome sur ICS, aucune projection métier »), 7 (le décompte « n événements dans la période affichée » et le compteur d'import AG-037 changent de définition). Pas de critère 1 si rien n'est stocké.
+**Contradicteur** : Codex (auteur Claude → Codex, `agora.md` §12)
+**Décisions de l'utilisateur (27/11, « ok pour les 4 »)** : 1 RDV seuls (pas les journées de permanence) ; 2 l'Agenda prime sur le GDIN en cas de doublon ; 3 lecture seule, un clic ouvre la fiche dans l'Agenda ; 4 les RDV de l'Agenda comptent dans le décompte de la période affichée.
+**Définitions métier à fixer (proposées, à contredire)** : *même RDV* = même jour, même heure de début, même nom et prénom normalisés (`norm`) ; un seul critère manquant = deux entrées distinctes, jamais de fusion approximative. Couleurs : statuts de l'Agenda pour les RDV, étapes GDIN pour les ICS, jamais mélangées. RDV annulés/libérés : affichés comme annulés, comme à l'Agenda. Hors période, hors filtre : pas de décompte caché.
+**Ce que ça engage** : un rapprochement nominatif entre deux sources (risque de faux positif sur homonymes, de faux négatif sur ordre nom/prénom ou accents) ; deux comptages à garder cohérents (écran Calendrier, confirmation d'import AG-037) ; la sortie d'un invariant daté. Se défait en un commit tant que rien n'est stocké.
+**Non vérifié par l'auteur** : le format réel du titre des événements GDIN (NOM Prénom, ordre, particules, prénoms composés) face aux champs `nom`/`prenom` de l'historique ; les RDV sans heure ou sans nom ; les fiches à plusieurs bénéficiaires ; le fuseau (heure Paris) ; le coût d'affichage avec plusieurs centaines de RDV ; l'effet sur le filtre « Objet »/« Lieu ».
+**Si personne ne répond, je fais quoi ?** — je livre avec ces définitions, je le dis dans CHANTIERS, et l'utilisateur tranche après essai.
+**Où regarder** : calendar.js:195 (`rdvs`), calendar.js:101 (`sessions`), le décompte « dans la période affichée » (`calendar.js`, rendu des résultats), `resumeImport`/`decompteCalendrier` (`index.html`, AG-037), `renderCalendar` (`index.html`) pour ce que reçoit le module.
+
+
 # Blocs tranchés
 - **AG-037** — Confirmation d'import : nombre d'événements du calendrier remplacés — ouvert et livré le 27/11 (`70f12ab`) — **confirmé** par Codex (`5b3f7e9`) sans amendement ; **tranché le 27/11/2026 par l'utilisateur** (« oui » à la définition : événements regroupés comme l'écran, annulés compris, hors filtre et hors période ; inscriptions à part ; illisible = « nombre indisponible »). Textes intégraux : `git log -p AGORA.md`.
 - **AG-036** — Calendrier : étape (couleur) choisie par l'utilisateur, par objet — ouvert le 27/11 (`d71440f`), livré (`84014f5`) — **amendé** par Codex (`592c2f5` contrat : R1 absent/vide/invalide à la restauration, R2 objet vide ; `5b3f7e9` livraison : R1 conflit entre onglets, R2 `__proto__` perdu, R3 validation sans module), corrigé (`a22c99b`) ; **tranché le 27/11/2026 par l'utilisateur** (« tranché », après « le changement de couleur fonctionne » sur son téléphone). Textes intégraux : `git log -p AGORA.md`.
