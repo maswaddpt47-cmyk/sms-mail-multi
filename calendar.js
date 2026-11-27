@@ -212,14 +212,17 @@
   // Lieux compatibles : inconnu d'un côté = compatible ; connus des deux côtés, le lieu de l'Agenda doit apparaître comme mots entiers dans celui de l'ICS.
   function placesCompatible(icsLoc,agendaLoc){var a=norm(icsLoc),b=norm(agendaLoc);return !a||!b||hasWord(a.replace(/[^a-z0-9]+/g,' '),b.replace(/[^a-z0-9]+/g,' '));}
   // Rapprochement par INSCRIPTION, avant le regroupement en séances (R2 Codex) : même début exact, identité complète « NOM Prénom » (ni permutation ni découpage),
-  // lieux non incompatibles, et un seul candidat de chaque côté ; sinon les deux entrées restent (R1). Les inscriptions stockées ne sont jamais modifiées.
+  // lieux non incompatibles, et une seule fiche Agenda candidate par inscription ; sinon les entrées restent (R1, ambiguïté côté Agenda). Les inscriptions stockées ne sont jamais modifiées.
   function project(events,items){
     var cand=new Map(),byIcs=new Map();
     items.forEach(function(a,ai){if(a.allDay||!a.idKey)return;var t=Date.parse(a.start);
       events.forEach(function(e){if(e.allDay||Date.parse(e.start)!==t)return;if(norm(metadata(e).participant||e.title)!==a.idKey)return;if(!placesCompatible(e.location,a.location))return;
         if(!cand.has(ai))cand.set(ai,[]);cand.get(ai).push(e);if(!byIcs.has(e.key))byIcs.set(e.key,[]);byIcs.get(e.key).push(ai);});});
+    // Décision de l'utilisateur du 27/11 : plusieurs inscriptions GDIN de la MÊME personne au même début (doublons d'inscription, durées différentes) sont UN seul RDV :
+    // toutes masquées. L'ambiguïté ne reste que si plusieurs fiches de l'Agenda se disputent la même inscription (homonymes dans l'Agenda).
     var drop=new Set(),matched=0,ambiguous=0;
-    items.forEach(function(a,ai){var c=cand.get(ai)||[];a.masked=[];if(!c.length)return;if(c.length===1&&byIcs.get(c[0].key).length===1){a.masked=[c[0]];drop.add(c[0].key);matched++;}else ambiguous++;});
+    items.forEach(function(a,ai){var c=cand.get(ai)||[];a.masked=[];if(!c.length)return;
+      if(c.every(function(e){return byIcs.get(e.key).length===1;})){a.masked=c;c.forEach(function(e){drop.add(e.key);});matched+=c.length;}else ambiguous++;});
     return {ics:events.filter(function(e){return !drop.has(e.key);}),agenda:items,matched:matched,ambiguous:ambiguous};}
   function render(pane,ctx){
     if(!ctx.profileId)return;ctx.key='ess-'+ctx.profileId+'-calendar-ics-v1';ctx.stagesKey='ess-'+ctx.profileId+'-'+STAGE_SUFFIX;
