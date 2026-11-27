@@ -54,7 +54,7 @@ function charger(){
     computeYearArchive:(y)=>({year:y,total:S.history.filter(h=>String(h.date).slice(0,4)==String(y)).length}),
     controleAvantPurge:()=>[],nonPointesCohorte:()=>({attente:0,aPointer:0,aVerifier:0}),marquerNonReconciliees:(h)=>({history:h,marquees:0}),   /* AG-017 : testés pour de vrai dans check-archives.js */
     migratePermanences:(p)=>p.map(x=>Object.assign({},x,{migree:true})),PERM_MODEL_VERSION:3,
-    canGenerate:()=>true,telProblem:()=>'',renderGenerate(){},renderMandat(){},
+    canGenerate:()=>true,telProblem:()=>'',renderGenerate(){},renderMandat(){},renderModal(){},exportData:()=>({history:S.history,permanences:S.permanences||[],orientations:S.orientations||[],yearlyStats:S.yearlyStats||{}}),
     PROFILES:[{id:'p1'},{id:'p2'}],DEFAULT_CMS:[],DEFAULT_DEMARCHES:[],DEFAULT_SECTEURS:[],DEFAULT_TEMPLATES:{sms:'défaut v5'},DEFAULT_CUSTOM:[],DEFAULT_PERMANENCES:[],
     GH_REPO:'depot/fictif',GH_BRANCH:'main',ghHeaders:()=>({}),ghListBackups:(t,cb)=>cb([{path:'b/p1/backup.json'}]),fetch:null
   });
@@ -376,7 +376,7 @@ async function restaurer(contenu,fonction,options){
   if(options.panne)e.st.panne=()=>true;
   e.ctx.fetch=()=>new Promise(res=>setTimeout(()=>{if(options.changerProfil)e.S.activeProfile='p2';res({ok:true,text:()=>Promise.resolve(JSON.stringify({encoding:'base64',content:Buffer.from(contenu,'utf8').toString('base64')}))});},5));
   if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{appele++;});
-  await new Promise(r=>setTimeout(r,40));return {e,appele};
+  await new Promise(r=>setTimeout(r,40));if(!options.sansConfirmation){e.ctx.confirmerImport();await new Promise(r=>setTimeout(r,20));}return {e,get appele(){return appele;}};
 }
 (async()=>{
   for(const fonction of ['fichier','dernier']){
@@ -385,7 +385,7 @@ async function restaurer(contenu,fonction,options){
     if(fonction==='fichier')assert(ok.e.journal.toasts.some(t=>/Restauration réussie/.test(t)));else assert.equal(ok.appele,1);
     {const e=charger();e.S.history=[rdv('ancien','2026-09-01','09:30','ANCIEN','A')];e.st.setItem('ess-cms','"ancien"');e.st.ecritures=0;e.st.panne=(k,i)=>i>=2;
      e.ctx.fetch=()=>Promise.resolve({ok:true,text:()=>Promise.resolve(JSON.stringify({encoding:'base64',content:Buffer.from(JSON.stringify(sauvegarde),'utf8').toString('base64')}))});
-     if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
+     if(fonction==='fichier')e.ctx.ghRestoreFile('jeton','b');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));e.ctx.confirmerImport();
      assert(e.journal.toasts.some(m=>/retour en arrière incomplet/.test(m)),fonction+' : incohérence relayée');assert(!e.journal.toasts.some(m=>/aucune donnée modifiée/.test(m)),fonction+' : pas de « aucune donnée modifiée »');}
     for(const [cas,contenu,opt] of [['illisible','{"history":{}}',{}],['stockage plein',JSON.stringify(sauvegarde),{panne:true}],['profil changé',JSON.stringify(sauvegarde),{changerProfil:true}]]){
       const r=await restaurer(contenu,fonction,opt);
@@ -990,7 +990,7 @@ async function restaurer(contenu,fonction,options){
    // R3 : restauration GitHub d'un fichier de plus de 1 Mo, réponse « raw »
    for(const f of ['fichier','dernier']){const e=imp('',cal(1)),gros=JSON.stringify(avecCal(cal(5000)),null,2);assert(Buffer.byteLength(gros)>1024*1024,'fichier fictif > 1 Mo');let entetes=null;
      e.ctx.fetch=(url,opt)=>{entetes=opt.headers;return Promise.resolve({ok:true,text:()=>Promise.resolve(gros)});};
-     if(f==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));
+     if(f==='fichier')e.ctx.ghRestoreFile('jeton','b/p1/backup.json');else e.ctx.ghRestoreLatest('jeton',()=>{});await new Promise(r=>setTimeout(r,30));e.ctx.confirmerImport();
      assert.equal(entetes.Accept,'application/vnd.github.raw+json','AG-032 R3 : média raw demandé');assert.equal(JSON.parse(e.st.getItem(K)).events.length,5000,'AG-032 R3 : '+f+' > 1 Mo restauré');}
    console.log('AG-032 : calendrier sauvegardé (vide explicite, illisible refusé), restauré en remplacement, ancienne sauvegarde sans effet, invalide refusé, panne annulée, sauvegarde auto différée, restauration GitHub > 1 Mo OK.');}
   /* ── AG-033 (amendé par Codex le 16/11) : lien orientation → dossier, fiche et orientation dans la même opération ── */
@@ -1058,6 +1058,18 @@ async function restaurer(contenu,fonction,options){
     assert.equal(e.ctx.confirmerImport(),false);assert.equal(e.st.etat(),avant,'profil changé : rien d\'écrit');assert(!e.S.importEnAttente);assert.equal(e.S.importText,'');}
    // « Remplacer » sans demande préalable : rien
    {const e=prep(bon),avant=e.st.etat();assert.equal(e.ctx.confirmerImport(),false);assert.equal(e.st.etat(),avant);}
+   // restauration GitHub : même confirmation, rien d'écrit avant « Remplacer », suite lancée une seule fois après remplacement
+   for(const fonction of ['fichier','dernier']){
+     {const r=await restaurer(JSON.stringify(sauvegarde),fonction,{sansConfirmation:true}),avant=r.e.st.etat();
+      assert.equal(r.e.S.modal,'import-confirm',fonction+' : confirmation demandée');assert.equal(r.e.S.importEnAttente.resume.source,'github');assert.equal(r.e.S.importEnAttente.resume.nom,'p1');
+      assert.equal(r.e.S.history[0].id,'ancien',fonction+' : rien appliqué avant « Remplacer »');assert.equal(r.appele,0);
+      r.e.ctx.annulerImport();assert.equal(r.e.st.etat(),avant,fonction+' : Annuler = aucune écriture');assert.equal(r.e.S.history[0].id,'ancien');assert.equal(r.appele,0,fonction+' : suite non lancée après Annuler');}
+     {const r=await restaurer(JSON.stringify(sauvegarde),fonction,{sansConfirmation:true});assert.equal(r.e.ctx.confirmerImport(),true);
+      assert.equal(r.e.S.history[0].id,'x',fonction+' : remplacé après confirmation');assert(r.e.journal.toasts.some(t=>/Restauration réussie/.test(t)));await new Promise(q=>setTimeout(q,5));assert.equal(r.appele,fonction==='dernier'?1:0,fonction+' : suite lancée une fois');
+      assert.equal(r.e.ctx.confirmerImport(),false,'une seconde confirmation ne rejoue rien');}
+     {const r=await restaurer(JSON.stringify(sauvegarde),fonction,{sansConfirmation:true});r.e.ctx.closeModal&&0;r.e.st.panne=()=>true;assert.equal(r.e.ctx.confirmerImport(),false);
+      assert(r.e.journal.toasts.some(t=>/Restauration annulée/.test(t)),fonction+' : échec d\'écriture annoncé');assert.notEqual(r.e.S.modal,'import-confirm',fonction+' : pas de fenêtre vide après échec');assert.equal(r.e.S.history[0].id,'ancien');}
+   }
    // compteur de fiches : pauses automatiques non comptées
    {const e=prep(JSON.stringify({history:[rdv('a','2026-10-01','09:30','A','A'),{msgType:'indispo',date:'2026-10-01',heure:'12:30',nom:'Pause déjeuner'}]}));e.S.history.push({msgType:'indispo',date:'2026-09-01',heure:'12:30',nom:'Pause'});e.ctx.demanderImport();
     const l=e.S.importEnAttente.resume.lignes[0];assert.equal(l.actuel,1,'pause actuelle non comptée');assert.equal(l.fichier,1,'pause du fichier non comptée');}}
