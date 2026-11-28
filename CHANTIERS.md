@@ -73,3 +73,11 @@ Limites : essais uniquement sur données fictives ; ni lecture de sauvegarde ré
 Prochaine étape : décider puis traiter la reprise des modèles intégrés personnalisés et du compteur des mandats, noter les valeurs des réglages locaux du poste actuel, puis rejouer ces deux points avant une bascule réelle. Toute correction applicative reste soumise à l'accord explicite de l'utilisateur ; ce retest ne la réalise pas.
 
 **Suivi du retest (28/11)** : réserve « numéro des mandats » **corrigée** (option C) : `compteurMandat()` prend le plus grand entre `ess-mandat-counter` et les numéros des mandats conservés/restaurés ; aucun changement de format d'export ; 4 cas fictifs + mutant rejeté + 13 scripts ok. Reste ouverte : modèles intégrés modifiés (`templates`) exportés mais ignorés à l'import — touche un format de stockage, bloc AGORA avant le code, en attente de ta décision.
+
+## Retest du 28/11/2026 — tête de main
+Version testée : `b3f141a455bdae3c8edfb108b648eb89f0648d42`
+Données : fictives
+Verdict : réussi
+Testeur : Claude, session du 28/11/2026
+Preuves : delta `git diff 8b9cfa1..b3f141a` = `index.html` (compteur des mandats), `scripts/check-ecritures.js` (harnais) et `CHANTIERS.md`. Les 13 scripts `check-*.js` (hors `check-drift.js`, gelé) donnent rc=0 en UTC et en Europe/Paris (26 exécutions, code de retour lu). Compteur des mandats : cas du doublon après restauration (mandat `MAN-2026-0001` restauré, compteur local vide → prochain `MAN-2026-0002`), base passée sans mutation (rc=0) puis mutant sans lecture des mandats rejeté (rc=1). Chromium vierge à 390 px, profil Michel fictif (« DU TEST Alice ») : export par la fonction réelle (1 mandat), import par le sélecteur de fichier et « Remplacer les données de Michel » dans un contexte vierge : 1 mandat restauré, onglet Mandat affichant `MAN-2026-0002`, aucune erreur JS. Aucun code ni format d'export modifié par ce retest.
+Réserves : `templates` (exporté, ignoré à l'import) conservée, acceptée par le propriétaire sans correction ; accès de secours, jeton et copie du 27/11 à 23h26 déclarés, non vérifiés ; non essayés : téléphone physique, URL publique Pages, restauration GitHub par l'interface, autres profils, parcours complet d'un mandat jusqu'au téléchargement, volumes réels ; le compteur reste global (non remis à zéro par année), comportement inchangé.
