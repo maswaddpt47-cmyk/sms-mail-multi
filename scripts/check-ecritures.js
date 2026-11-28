@@ -30,7 +30,7 @@ const CODE=[
   fonction('lunchBreakEntry'),
   section('/* Amendement Codex (31/10) : import ICS en tout ou rien','/* AG-013, étape 2 : même RDV'),
   section('/* AG-013, étape 2 : même RDV','function importPlanningJson('),
-  fonction('archiveOldDaysCore'),fonction('identiteMandat'),fonction('numeroMandatValable'),fonction('generateMandatNum'),  fonction('orientationALier'),fonction('marquerOrientationTraitee'),fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('figerChampsCopie'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
+  fonction('archiveOldDaysCore'),fonction('identiteMandat'),fonction('numeroMandatValable'),fonction('compteurMandat'),fonction('generateMandatNum'),  fonction('orientationALier'),fonction('marquerOrientationTraitee'),fonction('handleGenerate'),fonction('lireListeStockee'),fonction('copyBody'),fonction('empreinteDossier'),fonction('figerChampsCopie'),fonction('findHistIdx'),fonction('migrateSharedCmsList'),
   // 5e vérification de Codex : partie migrations du vrai chargement (jusqu'aux pauses déjeuner, hors rendu)
   section('function loadProfileData(){','  applyLunchBreaks();')+'}'
 ].join('\n');

@@ -7252,8 +7252,10 @@ function todayFR(){return new Date().toLocaleDateString("fr-FR",{timeZone:"Europ
    en alloue un nouveau au prochain document, au lieu de réutiliser celui du précédent. */
 function identiteMandat(){return [(S.mandatPrenom||'').trim().toLowerCase(),(S.mandatNom||'').trim().toLowerCase()].join('|');}
 function numeroMandatValable(){return !!S.mandatNum&&S.mandatNumPour===identiteMandat();}
+/* Compteur de mandats : le plus grand entre le compteur local et les numéros des mandats conservés (restaurés inclus) — un secours ne réutilise jamais un numéro. */
+function compteurMandat(){var c=parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)||0;(S.mandats||[]).forEach(function(m){var x=/-(\d+)$/.exec(String(m&&m.num||''));if(x&&+x[1]>c)c=+x[1];});return c;}
 function generateMandatNum(){
-  var counter=(parseInt(localStorage.getItem('ess-mandat-counter')||'0',10))+1;
+  var counter=compteurMandat()+1;
   localStorage.setItem('ess-mandat-counter',String(counter));
   var year=anneeParis();
   var num='MAN-'+year+'-'+String(counter).padStart(4,'0');
@@ -7363,7 +7365,7 @@ function renderMandat(){
   lieu.appendChild(lieuSel);col.appendChild(lieu);
 
   var info=el('div',{style:"display:flex;flex-direction:column;gap:8px;background:var(--c-subtle-bg);border:1px solid oklch(0.93 0.008 256);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--c-dim);"});
-  var nextNum='MAN-'+anneeParis()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0');
+  var nextNum='MAN-'+anneeParis()+'-'+String((compteurMandat()+1)).padStart(4,'0');
   info.appendChild(el('div',{html:'<b>N° Mandat :</b> <span style="font-family:monospace;color:#1B4991;">'+nextNum+'</span> <span style="font-size:11px;color:#888;">(attribué au téléchargement)</span>'}));
   info.appendChild(el('div',{html:'<b>Date :</b> '+todayFR()}));
   info.appendChild(el('div',{html:'<b>Structure :</b> '+STRUCTURE}));
@@ -7422,7 +7424,7 @@ function buildMandatDoc(){
   page.appendChild(header);
 
   // ── Numéro de mandat ──
-  var num=(numeroMandatValable()&&S.mandatNum)||('MAN-'+anneeParis()+'-'+String((parseInt(localStorage.getItem('ess-mandat-counter')||'0',10)+1)).padStart(4,'0'));
+  var num=(numeroMandatValable()&&S.mandatNum)||('MAN-'+anneeParis()+'-'+String((compteurMandat()+1)).padStart(4,'0'));
   var numBadge=el('div',{style:"text-align:right;font-size:10.5pt;color:#1B4991;font-weight:700;margin-bottom:10px;"});
   numBadge.textContent="N° "+num+(numeroMandatValable()?"":" (sera confirmé au téléchargement)");
   page.appendChild(numBadge);
